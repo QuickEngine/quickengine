@@ -6,6 +6,12 @@
 	"engines": {
 		"node": ">=22"
 	},
+	"pnpm": {
+		"overrides": {
+			"esbuild": "0.28.1",
+			"postcss": "8.5.16"
+		}
+	},
 	"scripts": {
 		"dev": "turbo dev",
 		"dev:quickengine": "turbo dev --filter=@quickengine/web --filter=@quickengine/admin",

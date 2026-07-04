@@ -21,8 +21,8 @@
 		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
-		"@quickengine/env": "workspace:*",
 		"@neondatabase/serverless": "^1.0.2",
+		"@quickengine/env": "workspace:*",
 		"drizzle-orm": "^0.45.1",
 		"postgres": "^3.4",
 		"zod": "^3.25.76"
@@ -30,9 +30,9 @@
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
 		"dotenv": "^16",
-		"drizzle-kit": "^0.31.8",
-		"tsx": "^4.21.0",
+		"drizzle-kit": "^0.31.10",
+		"tsx": "^4.23.0",
 		"typescript": "5.9.2",
-		"vitest": "^3.2.4"
+		"vitest": "^3.2.6"
 	}
 }

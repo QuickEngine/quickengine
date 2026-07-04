@@ -4,6 +4,12 @@ All notable QuickEngine changes will be documented here.
 
 This project is pre-release. Until QuickEngine has real users and a stable release process, changelog entries are maintained manually.
 
+## [Unreleased]
+
+### Security
+
+- Added root pnpm overrides for `esbuild` and `postcss` to force patched transitive versions and clear Dependabot alerts.
+
 ## [0.1.0] - Foundation
 
 ### Added

@@ -1,0 +1,6 @@
+[allowlist]
+description = "Allow non-secret placeholder values used before public release"
+regexes = [
+	'''ci-placeholder-secret-at-least-32-characters''',
+	'''replace-with-at-least-32-characters''',
+]

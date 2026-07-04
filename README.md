@@ -18,7 +18,6 @@ quickengine/
     db/
     ui/
   docker/
-  docs/
 ```
 
 `apps/quickengine` is the company shell: public landing, authentication entry point, account management, billing, subscriptions, and suite access.
@@ -49,4 +48,4 @@ pnpm dev
 - Shared UI through `@quickengine/ui`
 - Shared config through `@quickengine/config`
 
-QuickEngine Software is the canonical company name. Do not use QuickEngine Technologies in new files.
+QuickEngine Software is the canonical company name.

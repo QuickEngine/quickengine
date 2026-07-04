@@ -2,7 +2,7 @@
 
 All QuickEngine products live under `apps/`.
 
-Each product follows the two-app pattern from the internal architecture docs:
+Each product follows a two-app pattern:
 
 - `web` is public-facing: marketing, landing pages, public tools, signup entry points.
 - `admin` is authenticated: dashboards, account screens, billing flows, and app-specific workspaces.

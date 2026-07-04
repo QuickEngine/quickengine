@@ -1,0 +1,46 @@
+{
+	"name": "@quickengine/sdk",
+	"version": "0.1.0",
+	"description": "TypeScript SDK for QuickEngine public APIs",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup src/index.ts --format cjs,esm --dts",
+		"dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+		"clean": "rm -rf dist",
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@quickengine/types": "workspace:*"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"tsup": "^8.4.0",
+		"typescript": "^5.9.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"quickengine",
+		"sdk",
+		"api"
+	],
+	"license": "MIT",
+	"author": "QuickEngine Software"
+}

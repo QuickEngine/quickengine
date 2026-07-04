@@ -1,0 +1,32 @@
+{
+	"name": "@quickengine/[app-name]-admin",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "next dev --port [admin-port]",
+		"build": "next build",
+		"start": "next start --port [admin-port]",
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "next typegen && tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@quickengine/auth": "workspace:*",
+		"@quickengine/db": "workspace:*",
+		"@quickengine/types": "workspace:*",
+		"@quickengine/ui": "workspace:*",
+		"next": "^16.2.5",
+		"react": "19.2.3",
+		"react-dom": "19.2.3"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"@types/node": "^22.15.3",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"typescript": "^5",
+		"vitest": "^3.2.4"
+	}
+}

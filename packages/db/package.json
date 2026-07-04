@@ -1,0 +1,38 @@
+{
+	"name": "@quickengine/db",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./client": "./src/client.ts",
+		"./drizzle": "./src/drizzle.ts",
+		"./schema": "./src/schema/index.ts",
+		"./schema/*": "./src/schema/*.ts"
+	},
+	"scripts": {
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio"
+	},
+	"dependencies": {
+		"@quickengine/env": "workspace:*",
+		"@neondatabase/serverless": "^1.0.2",
+		"drizzle-orm": "^0.45.1",
+		"postgres": "^3.4",
+		"zod": "^3.25.76"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"dotenv": "^16",
+		"drizzle-kit": "^0.31.8",
+		"tsx": "^4.21.0",
+		"typescript": "5.9.2",
+		"vitest": "^3.2.4"
+	}
+}

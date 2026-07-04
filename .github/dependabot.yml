@@ -5,14 +5,27 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    versioning-strategy: increase-if-necessary
     open-pull-requests-limit: 10
     groups:
-      minor-and-patch:
+      npm-minor-and-patch:
+        patterns:
+          - "*"
         update-types:
           - minor
           - patch
+      npm-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      github-actions:
+        patterns:
+          - "*"

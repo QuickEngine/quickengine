@@ -14,6 +14,16 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://quickengine:quickengine_dev_password@localhost:5435/quickengine
+      REDIS_URL: redis://localhost:6381
+      BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-characters
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_QUICKENGINE_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_ADMIN_URL: http://localhost:3001
+      NEXT_PUBLIC_QUICKENGINE_WEB_URL: http://localhost:3000
+      NEXT_PUBLIC_QUICKENGINE_ADMIN_URL: http://localhost:3001
 
     steps:
       - name: Checkout

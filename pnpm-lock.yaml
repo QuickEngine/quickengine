@@ -90,7 +90,7 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -206,7 +206,7 @@ importers:
         specifier: workspace:*
         version: link:../types
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -241,8 +241,8 @@ importers:
         specifier: ^1.6.2
         version: 1.6.23(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(kysely@0.29.2)(postgres@3.4.9))(next@16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.2))(tsx@4.22.4)(yaml@2.9.0))
       zod:
-        specifier: ^3.25.76
-        version: 3.25.76
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@quickengine/config':
         specifier: workspace:*
@@ -257,7 +257,7 @@ importers:
   packages/billing:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -270,7 +270,7 @@ importers:
   packages/cache:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -297,8 +297,8 @@ importers:
         specifier: ^3.4
         version: 3.4.9
       zod:
-        specifier: ^3.25.76
-        version: 3.25.76
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@quickengine/config':
         specifier: workspace:*
@@ -322,7 +322,7 @@ importers:
   packages/email:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -335,7 +335,7 @@ importers:
   packages/env:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -348,7 +348,7 @@ importers:
   packages/jobs:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -361,7 +361,7 @@ importers:
   packages/monitoring:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -374,7 +374,7 @@ importers:
   packages/realtime:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -403,7 +403,7 @@ importers:
   packages/search:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -416,7 +416,7 @@ importers:
   packages/storage:
     dependencies:
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':
@@ -585,7 +585,7 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       zod:
-        specifier: ^4.3.6
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@quickengine/config':

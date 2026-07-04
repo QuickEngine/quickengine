@@ -25,7 +25,7 @@
 		"@neondatabase/serverless": "^1.0.2",
 		"drizzle-orm": "^0.45.1",
 		"postgres": "^3.4",
-		"zod": "^3.25.76"
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",

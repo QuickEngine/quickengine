@@ -18,11 +18,11 @@
 		"@quickengine/db": "workspace:*",
 		"@quickengine/env": "workspace:*",
 		"better-auth": "^1.6.2",
-		"zod": "^3.25.76"
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"typescript": "5.9.2",
-		"vitest": "^3.2.4"
+		"typescript": "6.0.3",
+		"vitest": "^4.1.9"
 	}
 }

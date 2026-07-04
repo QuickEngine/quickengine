@@ -31,7 +31,7 @@
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
 		"tsup": "^8.4.0",
-		"typescript": "^5.9.3"
+		"typescript": "^6.0.3"
 	},
 	"publishConfig": {
 		"access": "public"

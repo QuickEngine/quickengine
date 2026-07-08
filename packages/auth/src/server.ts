@@ -4,6 +4,7 @@ import {
 	quickengineAccounts,
 	quickenginePasskeys,
 	quickengineSessions,
+	quickengineTwoFactors,
 	quickengineUsers,
 	quickengineVerifications,
 } from "@quickengine/db/schema/quickengine";
@@ -12,7 +13,7 @@ import { serverEnv } from "@quickengine/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { emailOTP, magicLink } from "better-auth/plugins";
+import { emailOTP, magicLink, twoFactor } from "better-auth/plugins";
 
 // The QuickEngine surfaces that are allowed to talk to this auth authority.
 // On localhost every port shares the `localhost` cookie, so a single session
@@ -42,6 +43,7 @@ export const auth = betterAuth({
 			account: quickengineAccounts,
 			verification: quickengineVerifications,
 			passkey: quickenginePasskeys,
+			twoFactor: quickengineTwoFactors,
 		},
 	}),
 	emailAndPassword: {
@@ -104,6 +106,9 @@ export const auth = betterAuth({
 	// to the BETTER_AUTH_URL host — `localhost` in dev, the auth domain in prod).
 	// nextCookies() must stay LAST so it can flush Set-Cookie in server actions.
 	plugins: [
+		// TOTP two-factor + recovery codes. With 2FA on, password sign-in returns
+		// a twoFactorRedirect instead of a session until a code is verified.
+		twoFactor({ issuer: "QuickEngine" }),
 		passkey({ rpName: "QuickEngine" }),
 		emailOTP({
 			async sendVerificationOTP({ email, otp }) {

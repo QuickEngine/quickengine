@@ -38,6 +38,8 @@ export const quickengineUsers = pgTable("quickengine_users", {
 	emailVerified: boolean("email_verified").default(false).notNull(),
 	image: text("image"),
 	role: text("role").default("member").notNull(),
+	// Set by the Better Auth two-factor plugin once a user finishes TOTP setup.
+	twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
 	onboardingCompletedAt: timestamp("onboarding_completed_at", {
 		withTimezone: true,
 	}),
@@ -104,6 +106,31 @@ export const quickengineVerifications = pgTable("quickengine_verifications", {
 		.defaultNow()
 		.notNull(),
 });
+
+// Two-factor (TOTP) secrets + recovery codes. JS property keys MUST match the
+// Better Auth two-factor plugin's field names (secret, backupCodes, …); the
+// DB columns stay snake_case. `secret`/`backupCodes` are never returned to the
+// client by the plugin. `lockedUntil` backs the plugin's failed-attempt lockout.
+export const quickengineTwoFactors = pgTable(
+	"quickengine_two_factors",
+	{
+		id: text("id").primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
+		secret: text("secret").notNull(),
+		backupCodes: text("backup_codes").notNull(),
+		verified: boolean("verified").default(true).notNull(),
+		failedVerificationCount: integer("failed_verification_count")
+			.default(0)
+			.notNull(),
+		lockedUntil: timestamp("locked_until", { withTimezone: true }),
+	},
+	(table) => [
+		index("quickengine_two_factors_user_idx").on(table.userId),
+		index("quickengine_two_factors_secret_idx").on(table.secret),
+	],
+);
 
 // WebAuthn passkeys. The JS property keys MUST match the Better Auth passkey
 // plugin's field names (publicKey, credentialID, deviceType, …) because the

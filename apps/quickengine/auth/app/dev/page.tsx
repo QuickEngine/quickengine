@@ -9,6 +9,7 @@ import {
 	signIn,
 	signOut,
 	signUp,
+	twoFactor,
 	useSession,
 } from "@quickengine/auth/client";
 import { clientEnv } from "@quickengine/env/client";
@@ -267,6 +268,52 @@ export default function DevAuthConsole() {
 							}
 						>
 							List passkeys
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() =>
+								run("2fa-enable", () => twoFactor.enable({ password }))
+							}
+						>
+							Enable 2FA (returns totpURI + codes)
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() =>
+								run("2fa-verify-totp", () =>
+									twoFactor.verifyTotp({ code: token }),
+								)
+							}
+						>
+							Verify TOTP (uses token field)
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() =>
+								run("2fa-backup-codes", () =>
+									twoFactor.generateBackupCodes({ password }),
+								)
+							}
+						>
+							Regenerate backup codes
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() =>
+								run("2fa-verify-backup", () =>
+									twoFactor.verifyBackupCode({ code: token }),
+								)
+							}
+						>
+							Verify backup code (uses token field)
+						</Button>
+						<Button
+							variant="outline"
+							onClick={() =>
+								run("2fa-disable", () => twoFactor.disable({ password }))
+							}
+						>
+							Disable 2FA
 						</Button>
 					</CardContent>
 				</Card>

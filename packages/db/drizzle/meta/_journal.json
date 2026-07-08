@@ -15,6 +15,13 @@
 			"when": 1783525139240,
 			"tag": "0001_perpetual_living_mummy",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1783526493235,
+			"tag": "0002_plain_sister_grimm",
+			"breakpoints": true
 		}
 	]
 }

@@ -14,6 +14,8 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@quickengine/env": "workspace:*",
+		"resend": "^6.17.1",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

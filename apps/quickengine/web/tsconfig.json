@@ -1,7 +1,6 @@
 {
 	"extends": "@quickengine/config/tsconfig/next",
 	"compilerOptions": {
-		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./*"]
 		}

@@ -6,8 +6,17 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- `@better-auth/passkey` dependency, ahead of passwordless / passkey sign-in.
+- Resend-backed email provider in `@quickengine/email`, with a console fallback that logs mail locally when no API key is set.
+- Functional auth dev console (`/dev`) plus `/verify-email` and `/reset-password` pages in the auth app, and client exports for password reset and email verification. Email/password sign-in, email verification, and password reset confirmed working end to end.
+
 ### Changed
 
+- Consolidated authentication to a single authority: removed the admin app's Better Auth handler so the auth app is the sole identity provider; added trusted origins, rate limiting, Next.js cookie handling, and shared `getSession` / `requireSession` helpers in `@quickengine/auth`.
+- Authentication now requires email verification and sends verification and password-reset emails through the email provider.
+- Added passwordless sign-in: email OTP and magic link, both delivered through the email provider (they reuse the existing verification table — no migration).
 - Reduced the app registry and shared types to the two real apps: QuickEngine (the account layer) and QuickDash (the single flagship product), matching the single-flagship direction.
 - Renamed subscription plan tiers to the Free / Starter / Pro / Growth / Team ladder plus Enterprise.
 - Decoupled subscriptions from per-app identifiers, so billing is tier-based rather than per-app.
@@ -19,6 +28,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - QuickFlow as a standalone app: its web/admin URLs, `quickflow_workspaces` schema, and app-registry entry. QuickFlow now lives inside QuickDash as the automation module.
 - The retired standalone-app registry entries (PDF, Image, Web, Text, and Dev tools, converters, business, productivity, AI, health, and video/audio). These are QuickDash modules or workspace types, not apps.
 - The per-app catalog (`quickengine_apps`) and per-app entitlement (`quickengine_entitlements`) tables, which encoded the old per-app billing model.
+
+### Fixed
+
+- Tailwind CSS was never compiling — no app had a PostCSS config. Added `postcss.config.mjs` to web, admin, and auth, plus a Tailwind `@source` for `@quickengine/ui`, so utility classes and the shared shadcn component styles actually render. Rebuilt the auth dev console on shadcn components.
+- Removed the deprecated `baseUrl` from the web, admin, and auth tsconfigs (path aliases resolve without it), clearing the TypeScript 7.0 deprecation error.
+- Associated auth-panel form labels with their inputs via `htmlFor`/`id`.
 
 ### Security
 

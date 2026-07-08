@@ -32,9 +32,37 @@ export default function DevAuthConsole() {
 	const [email, setEmail] = useState("quickenginesw@gmail.com");
 	const [password, setPassword] = useState("QuickEngine123!");
 	const [token, setToken] = useState("");
+	const [bearerToken, setBearerToken] = useState("");
 	const [log, setLog] = useState("");
 
 	const origin = clientEnv.NEXT_PUBLIC_QUICKENGINE_AUTH_URL;
+
+	// Bearer test: sign in WITHOUT cookies, capture the `set-auth-token` header.
+	// Because credentials are omitted, a later get-session that succeeds proves
+	// the token alone authenticates — the native (Tauri desktop/mobile) path.
+	const bearerSignIn = async () => {
+		const res = await fetch(`${origin}/api/auth/sign-in/email`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			credentials: "omit",
+			body: JSON.stringify({ email, password }),
+		});
+		const captured = res.headers.get("set-auth-token");
+		setBearerToken(captured ?? "");
+		return {
+			status: res.status,
+			setAuthToken: captured,
+			body: await res.json(),
+		};
+	};
+
+	const bearerGetSession = async () => {
+		const res = await fetch(`${origin}/api/auth/get-session`, {
+			headers: { authorization: `Bearer ${bearerToken}` },
+			credentials: "omit",
+		});
+		return { status: res.status, cookiesSent: false, body: await res.json() };
+	};
 
 	const run = async (label: string, fn: () => Promise<unknown>) => {
 		setLog(`${label}: running…`);
@@ -314,6 +342,18 @@ export default function DevAuthConsole() {
 							}
 						>
 							Disable 2FA
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() => run("bearer-signin", bearerSignIn)}
+						>
+							Bearer: sign in (no cookies) → capture token
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() => run("bearer-session", bearerGetSession)}
+						>
+							Bearer: get session with token (no cookies)
 						</Button>
 					</CardContent>
 				</Card>

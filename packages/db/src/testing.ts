@@ -9,8 +9,13 @@ import postgres from "postgres";
 // is populated. Pulling in `serverEnv` here would trip its zod validation at
 // config load. Everything below opens its own short-lived postgres connections.
 
-/** The dedicated integration-test database — never dev or prod data. */
-export const TEST_DB_NAME = "quickengine_test";
+/**
+ * The dedicated integration-test database — never dev or prod data. Each test
+ * package sets its own name via TEST_DB_NAME so suites that run in parallel
+ * (turbo) don't share a database and truncate each other mid-test.
+ */
+export const testDbName = (): string =>
+	process.env.TEST_DB_NAME ?? "quickengine_test";
 
 const DEFAULT_URL =
 	"postgresql://quickengine:quickengine_dev_password@localhost:5435/quickengine";
@@ -31,7 +36,7 @@ const quiet = { onnotice: () => {} } as const;
  * it impossible to point the suite at the dev or prod database by accident.
  */
 export const resolveTestDatabaseUrl = (): string =>
-	withDatabase(process.env.DATABASE_URL ?? DEFAULT_URL, TEST_DB_NAME);
+	withDatabase(process.env.DATABASE_URL ?? DEFAULT_URL, testDbName());
 
 /**
  * Create `quickengine_test` if it doesn't exist, then apply the committed
@@ -41,6 +46,7 @@ export const resolveTestDatabaseUrl = (): string =>
  */
 export const provisionTestDb = async (): Promise<void> => {
 	const testUrl = resolveTestDatabaseUrl();
+	const name = testDbName();
 
 	// CREATE DATABASE can't run against the target itself — connect to the
 	// always-present `postgres` maintenance database on the same server.
@@ -50,10 +56,10 @@ export const provisionTestDb = async (): Promise<void> => {
 	});
 	try {
 		const existing = await admin`
-			SELECT 1 FROM pg_database WHERE datname = ${TEST_DB_NAME}
+			SELECT 1 FROM pg_database WHERE datname = ${name}
 		`;
 		if (existing.length === 0) {
-			await admin.unsafe(`CREATE DATABASE "${TEST_DB_NAME}"`);
+			await admin.unsafe(`CREATE DATABASE "${name}"`);
 		}
 	} finally {
 		await admin.end();

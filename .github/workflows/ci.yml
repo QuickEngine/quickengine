@@ -14,6 +14,23 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    services:
+      # Integration tests (currently the auth suite) run against a real Postgres.
+      # The suite provisions its own `quickengine_test` database inside this
+      # instance and applies the committed migrations.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: quickengine
+          POSTGRES_PASSWORD: quickengine_dev_password
+          POSTGRES_DB: quickengine
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd "pg_isready -U quickengine"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://quickengine:quickengine_dev_password@localhost:5435/quickengine
       REDIS_URL: redis://localhost:6381

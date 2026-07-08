@@ -38,6 +38,16 @@
 	},
 	"overrides": [
 		{
+			"includes": ["**/*.svg"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"noSvgWithoutTitle": "off"
+					}
+				}
+			}
+		},
+		{
 			"includes": ["packages/ui/src/components/ui/**"],
 			"linter": {
 				"rules": {

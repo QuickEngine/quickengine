@@ -1,6 +1,12 @@
 # App Template
 
-Every new QuickEngine product follows this structure:
+New apps are rare. QuickEngine is the account layer and QuickDash is the single
+flagship product; most new capabilities ship as **modules inside QuickDash**
+(under `packages/modules/`), and most new business types are just a new QuickDash
+workspace recipe — neither needs a new app. Use this template only when a
+genuinely separate app surface is required.
+
+A new app follows this structure:
 
 ```txt
 apps/[app-name]/
@@ -26,8 +32,8 @@ apps/[app-name]/
 
 ```txt
 quickengine web/admin  3000 / 3001
+quickengine auth       3002
 quickdash web/admin    3010 / 3011
-quickflow web/admin    3020 / 3021
 next app pair          +10 from the previous pair
 ```
 

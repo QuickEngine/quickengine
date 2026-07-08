@@ -1,9 +1,4 @@
-export type SearchIndexName =
-	| "apps"
-	| "users"
-	| "quickdash"
-	| "quickflow"
-	| "docs";
+export type SearchIndexName = "apps" | "users" | "quickdash" | "docs";
 
 export type SearchRecord = {
 	objectID: string;

@@ -6,6 +6,20 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Changed
+
+- Reduced the app registry and shared types to the two real apps: QuickEngine (the account layer) and QuickDash (the single flagship product), matching the single-flagship direction.
+- Renamed subscription plan tiers to the Free / Starter / Pro / Growth / Team ladder plus Enterprise.
+- Decoupled subscriptions from per-app identifiers, so billing is tier-based rather than per-app.
+- Stripped the QuickEngine web front page to a bare black canvas ahead of a rebuild.
+- Regenerated the baseline database migration to match the realigned schema.
+
+### Removed
+
+- QuickFlow as a standalone app: its web/admin URLs, `quickflow_workspaces` schema, and app-registry entry. QuickFlow now lives inside QuickDash as the automation module.
+- The retired standalone-app registry entries (PDF, Image, Web, Text, and Dev tools, converters, business, productivity, AI, health, and video/audio). These are QuickDash modules or workspace types, not apps.
+- The per-app catalog (`quickengine_apps`) and per-app entitlement (`quickengine_entitlements`) tables, which encoded the old per-app billing model.
+
 ### Security
 
 - Added root pnpm overrides for `esbuild` and `postcss` to force patched transitive versions and clear Dependabot alerts.

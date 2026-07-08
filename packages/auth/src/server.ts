@@ -24,6 +24,24 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 	},
+	socialProviders: {
+		...(serverEnv.GOOGLE_CLIENT_ID && serverEnv.GOOGLE_CLIENT_SECRET
+			? {
+					google: {
+						clientId: serverEnv.GOOGLE_CLIENT_ID,
+						clientSecret: serverEnv.GOOGLE_CLIENT_SECRET,
+					},
+				}
+			: {}),
+		...(serverEnv.GITHUB_CLIENT_ID && serverEnv.GITHUB_CLIENT_SECRET
+			? {
+					github: {
+						clientId: serverEnv.GITHUB_CLIENT_ID,
+						clientSecret: serverEnv.GITHUB_CLIENT_SECRET,
+					},
+				}
+			: {}),
+	},
 	session: {
 		cookieCache: {
 			enabled: true,

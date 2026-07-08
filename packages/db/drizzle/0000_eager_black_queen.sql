@@ -19,28 +19,6 @@ CREATE TABLE "quickengine_accounts" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "quickengine_apps" (
-	"id" text PRIMARY KEY NOT NULL,
-	"name" text NOT NULL,
-	"category" text NOT NULL,
-	"status" text DEFAULT 'planned' NOT NULL,
-	"public_url" text,
-	"admin_url" text,
-	"metadata" jsonb DEFAULT '{}'::jsonb,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "quickengine_entitlements" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_id" text NOT NULL,
-	"app_id" text NOT NULL,
-	"source" text DEFAULT 'subscription' NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "quickengine_entitlements_user_app_unique" UNIQUE("user_id","app_id")
-);
---> statement-breakpoint
 CREATE TABLE "quickengine_organizations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
@@ -68,7 +46,6 @@ CREATE TABLE "quickengine_subscriptions" (
 	"user_id" text NOT NULL,
 	"organization_id" uuid,
 	"plan_id" text DEFAULT 'free' NOT NULL,
-	"app_id" text,
 	"status" text DEFAULT 'active' NOT NULL,
 	"billing_cycle" text,
 	"stripe_customer_id" text,
@@ -101,20 +78,10 @@ CREATE TABLE "quickengine_verifications" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "quickflow_workspaces" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 ALTER TABLE "quickengine_accounts" ADD CONSTRAINT "quickengine_accounts_user_id_quickengine_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."quickengine_users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "quickengine_entitlements" ADD CONSTRAINT "quickengine_entitlements_user_id_quickengine_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."quickengine_users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "quickengine_entitlements" ADD CONSTRAINT "quickengine_entitlements_app_id_quickengine_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."quickengine_apps"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quickengine_organizations" ADD CONSTRAINT "quickengine_organizations_owner_id_quickengine_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."quickengine_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quickengine_sessions" ADD CONSTRAINT "quickengine_sessions_user_id_quickengine_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."quickengine_users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quickengine_subscriptions" ADD CONSTRAINT "quickengine_subscriptions_user_id_quickengine_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."quickengine_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quickengine_subscriptions" ADD CONSTRAINT "quickengine_subscriptions_organization_id_quickengine_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."quickengine_organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "quickengine_subscriptions" ADD CONSTRAINT "quickengine_subscriptions_app_id_quickengine_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."quickengine_apps"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "quickengine_entitlements_user_idx" ON "quickengine_entitlements" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "quickengine_subscriptions_user_idx" ON "quickengine_subscriptions" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "quickengine_subscriptions_org_idx" ON "quickengine_subscriptions" USING btree ("organization_id");--> statement-breakpoint
-CREATE INDEX "quickengine_subscriptions_app_idx" ON "quickengine_subscriptions" USING btree ("app_id");
+CREATE INDEX "quickengine_subscriptions_org_idx" ON "quickengine_subscriptions" USING btree ("organization_id");

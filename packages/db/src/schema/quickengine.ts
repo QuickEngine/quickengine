@@ -1,31 +1,25 @@
 import {
 	boolean,
 	index,
-	jsonb,
 	pgTable,
 	text,
 	timestamp,
-	unique,
 	uuid,
 } from "drizzle-orm/pg-core";
 
-export type QuickEngineAppId =
-	| "quickengine"
-	| "quickdash"
-	| "quickflow"
-	| "pdf-tools"
-	| "image-tools"
-	| "web-tools"
-	| "text-tools"
-	| "dev-tools"
-	| "converters"
-	| "business-tools"
-	| "productivity"
-	| "ai-tools"
-	| "health"
-	| "video-audio";
+// QuickEngine is the account layer; QuickDash is the single flagship product.
+// Everything once planned as a separate app (QuickFlow, QuickTools, and the
+// utility apps) now lives as a module inside QuickDash, not as its own app.
+export type QuickEngineAppId = "quickengine" | "quickdash";
 
-export type QuickEnginePlanId = "free" | "individual" | "suite" | "business";
+// The self-serve tier ladder, plus Enterprise as a custom conversation.
+export type QuickEnginePlanId =
+	| "free"
+	| "starter"
+	| "pro"
+	| "growth"
+	| "team"
+	| "enterprise";
 
 export type QuickEngineBillingCycle = "monthly" | "annual";
 
@@ -125,22 +119,6 @@ export const quickengineOrganizations = pgTable("quickengine_organizations", {
 		.notNull(),
 });
 
-export const quickengineApps = pgTable("quickengine_apps", {
-	id: text("id").$type<QuickEngineAppId>().primaryKey(),
-	name: text("name").notNull(),
-	category: text("category").notNull(),
-	status: text("status").notNull().default("planned"),
-	publicUrl: text("public_url"),
-	adminUrl: text("admin_url"),
-	metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
-	createdAt: timestamp("created_at", { withTimezone: true })
-		.defaultNow()
-		.notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.notNull(),
-});
-
 export const quickengineSubscriptions = pgTable(
 	"quickengine_subscriptions",
 	{
@@ -156,9 +134,6 @@ export const quickengineSubscriptions = pgTable(
 			.$type<QuickEnginePlanId>()
 			.notNull()
 			.default("free"),
-		appId: text("app_id")
-			.$type<QuickEngineAppId>()
-			.references(() => quickengineApps.id),
 		status: text("status")
 			.$type<QuickEngineSubscriptionStatus>()
 			.notNull()
@@ -180,34 +155,5 @@ export const quickengineSubscriptions = pgTable(
 	(table) => [
 		index("quickengine_subscriptions_user_idx").on(table.userId),
 		index("quickengine_subscriptions_org_idx").on(table.organizationId),
-		index("quickengine_subscriptions_app_idx").on(table.appId),
-	],
-);
-
-export const quickengineEntitlements = pgTable(
-	"quickengine_entitlements",
-	{
-		id: uuid("id").primaryKey().defaultRandom(),
-		userId: text("user_id")
-			.notNull()
-			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
-		appId: text("app_id")
-			.$type<QuickEngineAppId>()
-			.notNull()
-			.references(() => quickengineApps.id),
-		source: text("source").notNull().default("subscription"),
-		createdAt: timestamp("created_at", { withTimezone: true })
-			.defaultNow()
-			.notNull(),
-		updatedAt: timestamp("updated_at", { withTimezone: true })
-			.defaultNow()
-			.notNull(),
-	},
-	(table) => [
-		unique("quickengine_entitlements_user_app_unique").on(
-			table.userId,
-			table.appId,
-		),
-		index("quickengine_entitlements_user_idx").on(table.userId),
 	],
 );

@@ -1,18 +1,7 @@
-export type QuickEngineAppId =
-	| "quickengine"
-	| "quickdash"
-	| "quickflow"
-	| "pdf-tools"
-	| "image-tools"
-	| "web-tools"
-	| "text-tools"
-	| "dev-tools"
-	| "converters"
-	| "business-tools"
-	| "productivity"
-	| "ai-tools"
-	| "health"
-	| "video-audio";
+// QuickEngine is the account layer; QuickDash is the single flagship product.
+// Former standalone apps (QuickFlow, QuickTools, and the utility apps) now live
+// as modules inside QuickDash rather than as their own apps.
+export type QuickEngineAppId = "quickengine" | "quickdash";
 
 export type QuickEngineAppSurface = "web" | "admin";
 

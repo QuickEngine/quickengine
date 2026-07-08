@@ -122,6 +122,61 @@ importers:
         specifier: ^3.2.6
         version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(tsx@4.23.0)(yaml@2.9.0)
 
+  apps/quickengine/auth:
+    dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@quickengine/auth':
+        specifier: workspace:*
+        version: link:../../../packages/auth
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../../../packages/db
+      '@quickengine/env':
+        specifier: workspace:*
+        version: link:../../../packages/env
+      '@quickengine/ui':
+        specifier: workspace:*
+        version: link:../../../packages/ui
+      better-auth:
+        specifier: ^1.6.2
+        version: 1.6.23(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(kysely@0.29.2)(postgres@3.4.9))(next@16.2.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(tsx@4.23.0)(yaml@2.9.0))
+      next:
+        specifier: ^16.2.5
+        version: 16.2.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: 19.2.3
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../../../packages/config
+      '@tailwindcss/postcss':
+        specifier: ^4.3.2
+        version: 4.3.2
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+      '@types/react':
+        specifier: ^19
+        version: 19.2.2
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.2(@types/react@19.2.2)
+      tailwindcss:
+        specifier: ^4
+        version: 4.3.2
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(tsx@4.23.0)(yaml@2.9.0)
+
   apps/quickengine/web:
     dependencies:
       '@base-ui/react':

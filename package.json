@@ -14,7 +14,7 @@
 	},
 	"scripts": {
 		"dev": "turbo dev",
-		"dev:quickengine": "turbo dev --filter=@quickengine/web --filter=@quickengine/admin",
+		"dev:quickengine": "turbo dev --filter=@quickengine/web --filter=@quickengine/auth --filter=@quickengine/admin",
 		"prepare": "husky",
 		"build": "turbo build",
 		"lint": "biome lint .",

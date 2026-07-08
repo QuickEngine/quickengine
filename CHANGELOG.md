@@ -8,6 +8,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- WebAuthn passkey sign-in: a new `quickengine_passkeys` table (with its migration), the Better Auth passkey plugin on the auth server, the passkey client plugin, and register / sign-in / list controls on the dev console.
 - `@better-auth/passkey` dependency, ahead of passwordless / passkey sign-in.
 - Resend-backed email provider in `@quickengine/email`, with a console fallback that logs mail locally when no API key is set.
 - Functional auth dev console (`/dev`) plus `/verify-email` and `/reset-password` pages in the auth app, and client exports for password reset and email verification. Email/password sign-in, email verification, and password reset confirmed working end to end.

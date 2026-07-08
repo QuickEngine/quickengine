@@ -2,6 +2,7 @@
 
 import {
 	emailOtp,
+	passkey,
 	requestPasswordReset,
 	resetPassword,
 	sendVerificationEmail,
@@ -242,6 +243,30 @@ export default function DevAuthConsole() {
 							}
 						>
 							Send magic link
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() =>
+								run("passkey-register", () =>
+									passkey.addPasskey({ name: `${email} · dev` }),
+								)
+							}
+						>
+							Register passkey (needs session)
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={() => run("passkey-signin", () => signIn.passkey())}
+						>
+							Sign in with passkey
+						</Button>
+						<Button
+							variant="outline"
+							onClick={() =>
+								run("passkey-list", () => passkey.listUserPasskeys())
+							}
+						>
+							List passkeys
 						</Button>
 					</CardContent>
 				</Card>

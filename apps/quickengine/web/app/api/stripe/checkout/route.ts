@@ -1,70 +1,54 @@
-const stripeCheckoutUrl = "https://api.stripe.com/v1/checkout/sessions";
-const stripeVersion = "2026-02-25.preview";
+import { getSession } from "@quickengine/auth/server";
+import { createCheckoutSession } from "@quickengine/billing";
+import type {
+	QuickEngineBillingCycle,
+	QuickEnginePlanId,
+} from "@quickengine/db/schema/quickengine";
 
 const getAppUrl = () =>
-	process.env.NEXT_PUBLIC_APP_URL ??
 	process.env.NEXT_PUBLIC_QUICKENGINE_WEB_URL ??
+	process.env.NEXT_PUBLIC_APP_URL ??
 	"http://localhost:3000";
 
-export async function POST(): Promise<Response> {
-	const secretKey = process.env.STRIPE_SECRET_KEY;
-	const priceId = process.env.STRIPE_QUICKENGINE_SUITE_MONTHLY_PRICE_ID;
+export async function POST(request: Request): Promise<Response> {
+	const session = await getSession(request.headers);
+	if (!session) {
+		return Response.json({ error: "Unauthenticated." }, { status: 401 });
+	}
 
-	if (!secretKey || !priceId) {
-		return Response.json(
-			{
-				error:
-					"Stripe checkout is not configured. Set STRIPE_SECRET_KEY and STRIPE_QUICKENGINE_SUITE_MONTHLY_PRICE_ID.",
-			},
-			{ status: 500 },
-		);
+	const { planId, cycle } = (await request.json().catch(() => ({}))) as {
+		planId?: QuickEnginePlanId;
+		cycle?: QuickEngineBillingCycle;
+	};
+	if (!planId) {
+		return Response.json({ error: "planId is required." }, { status: 400 });
 	}
 
 	const appUrl = getAppUrl();
-	const body = new URLSearchParams({
-		mode: "subscription",
-		"line_items[0][price]": priceId,
-		"line_items[0][quantity]": "1",
-		"managed_payments[enabled]": "true",
-		allow_promotion_codes: "true",
-		billing_address_collection: "auto",
-		success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-		cancel_url: `${appUrl}/checkout/cancel`,
-	});
-
-	const response = await fetch(stripeCheckoutUrl, {
-		method: "POST",
-		headers: {
-			authorization: `Bearer ${secretKey}`,
-			"content-type": "application/x-www-form-urlencoded",
-			"stripe-version": stripeVersion,
-		},
-		body,
-	});
-
-	const session: unknown = await response.json();
-
-	if (!response.ok) {
-		return Response.json(
-			{
-				error: "Stripe failed to create a checkout session.",
-				details: session,
+	try {
+		const checkout = await createCheckoutSession({
+			user: {
+				id: session.user.id,
+				email: session.user.email,
+				name: session.user.name,
 			},
-			{ status: response.status },
-		);
-	}
+			planId,
+			cycle: cycle ?? "monthly",
+			successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+			cancelUrl: `${appUrl}/checkout/cancel`,
+		});
 
-	if (
-		typeof session !== "object" ||
-		session === null ||
-		!("url" in session) ||
-		typeof session.url !== "string"
-	) {
+		if (!checkout.url) {
+			return Response.json(
+				{ error: "Stripe did not return a checkout URL." },
+				{ status: 502 },
+			);
+		}
+		return Response.json({ url: checkout.url });
+	} catch (error) {
 		return Response.json(
-			{ error: "Stripe did not return a checkout URL." },
-			{ status: 502 },
+			{ error: error instanceof Error ? error.message : "Checkout failed." },
+			{ status: 500 },
 		);
 	}
-
-	return Response.redirect(session.url, 303);
 }

@@ -1,3 +1,17 @@
 export default function CheckoutCancelPage() {
-	return <main />;
+	return (
+		<main className="grid min-h-dvh place-items-center bg-background text-foreground">
+			<div className="max-w-md space-y-2 px-6 text-center">
+				<h1 className="font-semibold text-xl tracking-tight">
+					Checkout canceled
+				</h1>
+				<p className="text-muted-foreground text-sm">
+					No payment was taken. You can start over from the billing console.
+				</p>
+				<a className="text-sm underline" href="/dev/billing">
+					Back to billing console
+				</a>
+			</div>
+		</main>
+	);
 }

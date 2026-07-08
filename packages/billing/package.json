@@ -11,13 +11,18 @@
 	"scripts": {
 		"lint": "biome lint .",
 		"format": "biome format . --write",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@quickengine/db": "workspace:*",
+		"@quickengine/env": "workspace:*",
+		"stripe": "^19.3.1",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"typescript": "^5"
+		"typescript": "^5",
+		"vitest": "^3.2.6"
 	}
 }

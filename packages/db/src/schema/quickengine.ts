@@ -1,6 +1,7 @@
 import {
 	boolean,
 	index,
+	integer,
 	pgTable,
 	text,
 	timestamp,
@@ -103,6 +104,34 @@ export const quickengineVerifications = pgTable("quickengine_verifications", {
 		.defaultNow()
 		.notNull(),
 });
+
+// WebAuthn passkeys. The JS property keys MUST match the Better Auth passkey
+// plugin's field names (publicKey, credentialID, deviceType, …) because the
+// drizzle adapter maps by property name; the DB columns stay snake_case.
+export const quickenginePasskeys = pgTable(
+	"quickengine_passkeys",
+	{
+		id: text("id").primaryKey(),
+		name: text("name"),
+		publicKey: text("public_key").notNull(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
+		credentialID: text("credential_id").notNull(),
+		counter: integer("counter").notNull(),
+		deviceType: text("device_type").notNull(),
+		backedUp: boolean("backed_up").notNull(),
+		transports: text("transports"),
+		aaguid: text("aaguid"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("quickengine_passkeys_user_idx").on(table.userId),
+		index("quickengine_passkeys_credential_idx").on(table.credentialID),
+	],
+);
 
 export const quickengineOrganizations = pgTable("quickengine_organizations", {
 	id: uuid("id").primaryKey().defaultRandom(),

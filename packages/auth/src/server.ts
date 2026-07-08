@@ -1,6 +1,8 @@
+import { passkey } from "@better-auth/passkey";
 import { db } from "@quickengine/db";
 import {
 	quickengineAccounts,
+	quickenginePasskeys,
 	quickengineSessions,
 	quickengineUsers,
 	quickengineVerifications,
@@ -39,6 +41,7 @@ export const auth = betterAuth({
 			session: quickengineSessions,
 			account: quickengineAccounts,
 			verification: quickengineVerifications,
+			passkey: quickenginePasskeys,
 		},
 	}),
 	emailAndPassword: {
@@ -96,9 +99,12 @@ export const auth = betterAuth({
 		window: 60,
 		max: 100,
 	},
-	// Passwordless: email OTP + magic link (both send via the email provider).
+	// Passwordless: email OTP + magic link (both send via the email provider),
+	// plus WebAuthn passkeys (the auth app hosts the ceremony; rpID/origin default
+	// to the BETTER_AUTH_URL host — `localhost` in dev, the auth domain in prod).
 	// nextCookies() must stay LAST so it can flush Set-Cookie in server actions.
 	plugins: [
+		passkey({ rpName: "QuickEngine" }),
 		emailOTP({
 			async sendVerificationOTP({ email, otp }) {
 				await getEmailProvider().send({

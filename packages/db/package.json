@@ -8,7 +8,8 @@
 		"./client": "./src/client.ts",
 		"./drizzle": "./src/drizzle.ts",
 		"./schema": "./src/schema/index.ts",
-		"./schema/*": "./src/schema/*.ts"
+		"./schema/*": "./src/schema/*.ts",
+		"./testing": "./src/testing.ts"
 	},
 	"scripts": {
 		"lint": "biome lint .",

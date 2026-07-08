@@ -8,6 +8,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- Two-factor authentication (TOTP) with recovery codes: a new `quickengine_two_factors` table plus a `two_factor_enabled` flag on users (with its migration), the Better Auth two-factor plugin on the auth server, the two-factor client plugin, and enable / verify / backup-code / disable controls on the dev console. With 2FA on, password sign-in requires a TOTP or recovery code to complete.
 - WebAuthn passkey sign-in: a new `quickengine_passkeys` table (with its migration), the Better Auth passkey plugin on the auth server, the passkey client plugin, and register / sign-in / list controls on the dev console.
 - `@better-auth/passkey` dependency, ahead of passwordless / passkey sign-in.
 - Resend-backed email provider in `@quickengine/email`, with a console fallback that logs mail locally when no API key is set.

@@ -5,8 +5,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
 	title: {
-		default: "QuickEngine Auth",
-		template: "%s | QuickEngine Auth",
+		default: "Sign In",
+		template: "%s | QuickEngine",
 	},
 	description: "Central sign-in and account access for QuickEngine Software.",
 	icons: {

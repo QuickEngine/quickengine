@@ -21,6 +21,8 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- Unified the browser identity across all three apps: the same favicon (the web app's mark) now ships in web, auth, and dashboard, and every app uses one tab-title convention — `Page | QuickEngine`. Each page carries its own name (Sign In, Sign Up, Verify Email, Reset Password, Overview, Checkout Complete, …) instead of a single bare app title.
+- Dropped hyphens from the auth page routes: `/sign-in` → `/signin`, `/sign-up` → `/signup`, `/verify-email` → `/verify`, `/reset-password` → `/reset`. Better Auth's own API endpoints (`/api/auth/sign-in/…`) are unchanged. All internal links and the password-reset / email-verification callback URLs were updated to match.
 - Renamed the `apps/quickengine/admin` app to `apps/quickengine/dashboard` (`@quickengine/dashboard`) — it's the user-facing account panel, not staff tooling. Env vars `NEXT_PUBLIC_ADMIN_URL` → `NEXT_PUBLIC_DASHBOARD_URL` and `NEXT_PUBLIC_QUICKENGINE_ADMIN_URL` → `NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL` (QuickDash's admin URLs unchanged).
 - Consolidated authentication to a single authority: removed the admin app's Better Auth handler so the auth app is the sole identity provider; added trusted origins, rate limiting, Next.js cookie handling, and shared `getSession` / `requireSession` helpers in `@quickengine/auth`.
 - Authentication now requires email verification and sends verification and password-reset emails through the email provider.

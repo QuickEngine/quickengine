@@ -83,7 +83,7 @@ export default function SignInPage() {
 		setError("");
 		const { error: prError } = await requestPasswordReset({
 			email,
-			redirectTo: `${window.location.origin}/reset-password`,
+			redirectTo: `${window.location.origin}/reset`,
 		});
 		setPending(false);
 		if (prError) {
@@ -263,7 +263,7 @@ export default function SignInPage() {
 
 			<p className="mt-6 text-center text-[13px] text-muted-foreground">
 				Don't have an account?{" "}
-				<a href="/sign-up" className={textLink}>
+				<a href="/signup" className={textLink}>
 					Get started
 				</a>
 			</p>

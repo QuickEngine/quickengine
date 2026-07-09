@@ -27,7 +27,7 @@ function VerifyEmail() {
 						setStatus("sending…");
 						const { error: sendError } = await sendVerificationEmail({
 							email,
-							callbackURL: `${window.location.origin}/verify-email`,
+							callbackURL: `${window.location.origin}/verify`,
 						});
 						setStatus(
 							sendError

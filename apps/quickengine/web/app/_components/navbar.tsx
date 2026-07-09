@@ -56,11 +56,11 @@ export function Navbar() {
 				</nav>
 
 				<div className="flex items-center gap-4 justify-self-end">
-					<a href={`${authUrl}/sign-in`} className={navLink}>
+					<a href={`${authUrl}/signin`} className={navLink}>
 						Sign in
 					</a>
 					<a
-						href={`${authUrl}/sign-up`}
+						href={`${authUrl}/signup`}
 						className="inline-flex h-8 items-center rounded-full bg-white px-5 font-medium text-[13px] text-black outline-none transition-colors hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white/40"
 					>
 						Get Started

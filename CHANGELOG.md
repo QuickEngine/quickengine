@@ -8,6 +8,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- The account **dashboard** is now a real, session-protected panel instead of a bare white page: the void-black theme + self-hosted brand fonts + mesh background (matching web and auth), a header showing the signed-in email and a working sign-out, and a placeholder Overview. Its tab title now follows the `Page | QuickEngine` convention too.
 - QuickEngine web front door (skeleton, pre-polish): a fixed frosted-glass header (logo mark + centered nav — Products / Pricing / Resources / Contact — with a hover-dim interaction and contiguous hit areas, plus Sign in + a Get Started pill), a locked-in responsive `.page-gutter` margin standard, the self-hosted brand fonts (Clash Grotesk display + General Sans body via `next/font/local`, no external CDN flash), and a mesh + grain site background. The header's Sign in / Get Started now link out to the auth app.
 - Polished the whole **auth app** — every user-facing screen (sign in, sign up, verify email, reset password) now carries the on-brand UI instead of the old raw forms, matching the marketing site pixel-for-pixel (same fonts, void-black theme, mesh background, and monochrome FontAwesome Google/GitHub marks). All existing methods stay wired: email/password, Google/GitHub, magic link, passkey, forgot-password, and the 2FA challenge + recovery-code step. The auth root redirects straight to sign in (no marketing front page). Reset and verify now have proper new-password (with confirmation) and resend flows.
 - **nuqs** for URL-persisted state, wired into all three apps (web, auth, dashboard) so future UI state (pricing toggle, dashboard filters/tabs) can live in shareable, refresh-proof URLs. First use: the auth `?redirect=` target is now read through nuqs — and hardened with an **open-redirect guard** so a crafted `?redirect=https://evil.com` is ignored and only our own app origins are honored.
@@ -22,6 +23,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- Sessions now last **30 days on a sliding window** (refresh-on-use), up from 7. Active users effectively stay signed in; only ~30 days of real inactivity logs them out — a meal break or a long weekend never does.
 - Unified the browser identity across all three apps: the same favicon (the web app's mark) now ships in web, auth, and dashboard, and every app uses one tab-title convention — `Page | QuickEngine`. Each page carries its own name (Sign In, Sign Up, Verify Email, Reset Password, Overview, Checkout Complete, …) instead of a single bare app title.
 - Dropped hyphens from the auth page routes: `/sign-in` → `/signin`, `/sign-up` → `/signup`, `/verify-email` → `/verify`, `/reset-password` → `/reset`. Better Auth's own API endpoints (`/api/auth/sign-in/…`) are unchanged. All internal links and the password-reset / email-verification callback URLs were updated to match.
 - Renamed the `apps/quickengine/admin` app to `apps/quickengine/dashboard` (`@quickengine/dashboard`) — it's the user-facing account panel, not staff tooling. Env vars `NEXT_PUBLIC_ADMIN_URL` → `NEXT_PUBLIC_DASHBOARD_URL` and `NEXT_PUBLIC_QUICKENGINE_ADMIN_URL` → `NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL` (QuickDash's admin URLs unchanged).
@@ -49,6 +51,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Security
 
+- The dashboard requires a valid session: unauthenticated visitors are redirected to the auth app's sign-in (carrying a redirect back), and every dashboard response is served `no-store` (via Next 16's `proxy` convention, the successor to the deprecated `middleware`) so the browser back button can't reveal account content after sign-out.
 - Signed-in users are redirected away from the sign-in / sign-up pages. Each page is now a server component that checks the session before rendering, so an already-authenticated visitor is sent to their destination instead of the login form — the browser back button can no longer park a live session back on `/signin`. The redirect target is validated against our own app origins (shared open-redirect guard), same on the server and client.
 - Added root pnpm overrides for `esbuild` and `postcss` to force patched transitive versions and clear Dependabot alerts.
 

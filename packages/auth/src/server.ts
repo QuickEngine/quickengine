@@ -102,6 +102,11 @@ export const auth = betterAuth({
 			: {}),
 	},
 	session: {
+		// 30-day sliding window (industry standard for "stay logged in" SaaS):
+		// the expiry refreshes on use, so only ~30 days of real inactivity logs a
+		// user out — a meal break or a long weekend never does.
+		expiresIn: 60 * 60 * 24 * 30,
+		updateAge: 60 * 60 * 24,
 		cookieCache: {
 			enabled: true,
 			maxAge: 60 * 5,

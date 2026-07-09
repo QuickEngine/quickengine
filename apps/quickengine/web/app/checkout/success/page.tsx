@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Checkout Complete" };
+
 export default function CheckoutSuccessPage() {
 	return (
 		<main className="grid min-h-dvh place-items-center bg-background text-foreground">

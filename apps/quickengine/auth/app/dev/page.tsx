@@ -163,7 +163,7 @@ export default function DevAuthConsole() {
 										name,
 										email,
 										password,
-										callbackURL: `${origin}/verify-email`,
+										callbackURL: `${origin}/verify`,
 									}),
 								)
 							}
@@ -189,7 +189,7 @@ export default function DevAuthConsole() {
 								run("resend-verify", () =>
 									sendVerificationEmail({
 										email,
-										callbackURL: `${origin}/verify-email`,
+										callbackURL: `${origin}/verify`,
 									}),
 								)
 							}
@@ -202,7 +202,7 @@ export default function DevAuthConsole() {
 								run("forgot-pw", () =>
 									requestPasswordReset({
 										email,
-										redirectTo: `${origin}/reset-password`,
+										redirectTo: `${origin}/reset`,
 									}),
 								)
 							}

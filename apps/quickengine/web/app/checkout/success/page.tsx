@@ -11,10 +11,10 @@ export default function CheckoutSuccessPage() {
 				</h1>
 				<p className="text-muted-foreground text-sm">
 					Stripe has your payment. Your subscription updates as soon as the
-					webhook is processed — head back to the billing console to confirm.
+					webhook is processed.
 				</p>
-				<a className="text-sm underline" href="/dev/billing">
-					Back to billing console
+				<a className="text-sm underline" href="/">
+					Back home
 				</a>
 			</div>
 		</main>

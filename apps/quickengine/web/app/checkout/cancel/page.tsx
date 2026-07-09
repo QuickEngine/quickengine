@@ -10,10 +10,10 @@ export default function CheckoutCancelPage() {
 					Checkout canceled
 				</h1>
 				<p className="text-muted-foreground text-sm">
-					No payment was taken. You can start over from the billing console.
+					No payment was taken. You can try again anytime.
 				</p>
-				<a className="text-sm underline" href="/dev/billing">
-					Back to billing console
+				<a className="text-sm underline" href="/">
+					Back home
 				</a>
 			</div>
 		</main>

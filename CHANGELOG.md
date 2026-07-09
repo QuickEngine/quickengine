@@ -24,6 +24,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- Dropped the aurora-blue accent from the shared theme: `--primary`, `--accent`, and `--ring` are now neutral, so the palette stays fully monochrome void-black until a real accent is chosen.
 - Consolidated the shared UI into **`@quickengine/ui`** so apps stop redefining the same look. The void-black theme, mesh + grain background, brand fonts, and the auth shell / status-screen / form-and-button primitives now live once in the package (a `brand.css` layer + a `fonts` export + a component barrel); web, auth, and dashboard import them instead of keeping per-app copies of the theme, fonts, and `Background`. New apps inherit the look for free. Each app keeps only a thin `globals.css` (import the shared base + brand, scan the package) and genuinely app-specific bits (e.g. web's `.page-gutter`).
 - Sessions now last **30 days on a sliding window** (refresh-on-use), up from 7. Active users effectively stay signed in; only ~30 days of real inactivity logs them out — a meal break or a long weekend never does.
 - Unified the browser identity across all three apps: the same favicon (the web app's mark) now ships in web, auth, and dashboard, and every app uses one tab-title convention — `Page | QuickEngine`. Each page carries its own name (Sign In, Sign Up, Verify Email, Reset Password, Overview, Checkout Complete, …) instead of a single bare app title.
@@ -40,6 +41,8 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Removed
 
+- The `/dev` consoles — the auth flow test surface (`auth/dev`) and the billing dev console (`web/dev/billing`). They were scaffolding; the real sign-in/up screens now cover auth, and account/billing management is moving into the dashboard. Checkout success/cancel pages link home instead of the removed console. (A fresh dev/test surface can be added later if needed.)
+- ~5 MB of unused font kits from `web/public` (`GeneralSans_Complete`, `ClashGrotesk_Complete`) — fonts are now served once from `@quickengine/ui`.
 - QuickFlow as a standalone app: its web/admin URLs, `quickflow_workspaces` schema, and app-registry entry. QuickFlow now lives inside QuickDash as the automation module.
 - The retired standalone-app registry entries (PDF, Image, Web, Text, and Dev tools, converters, business, productivity, AI, health, and video/audio). These are QuickDash modules or workspace types, not apps.
 - The per-app catalog (`quickengine_apps`) and per-app entitlement (`quickengine_entitlements`) tables, which encoded the old per-app billing model.

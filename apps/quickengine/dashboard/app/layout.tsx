@@ -1,10 +1,10 @@
 import { getSession } from "@quickengine/auth/server";
+import { Background } from "@quickengine/ui";
+import { clashGrotesk, generalSans } from "@quickengine/ui/fonts";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { Background } from "./_components/background";
-import { clashGrotesk, generalSans } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {

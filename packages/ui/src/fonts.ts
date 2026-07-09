@@ -1,7 +1,8 @@
 import localFont from "next/font/local";
 
-// Self-hosted brand faces (variable woff2) — matches the web app. General Sans =
-// body, Clash Grotesk = display.
+// Self-hosted brand faces, defined once for every app. General Sans = body,
+// Clash Grotesk = display. Apps apply `.variable` on <html> and reference them
+// via the CSS vars in brand.css.
 export const generalSans = localFont({
 	src: "./fonts/GeneralSans-Variable.woff2",
 	variable: "--font-general",

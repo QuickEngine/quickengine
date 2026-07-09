@@ -24,6 +24,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- Consolidated duplicate env vars to one canonical name per URL: dropped `NEXT_PUBLIC_APP_URL` (same as `NEXT_PUBLIC_QUICKENGINE_WEB_URL`) and `NEXT_PUBLIC_DASHBOARD_URL` (same as `NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL`) from the env schema, the auth trusted-origins list, the checkout route, and `.env.example`. Also removed the now-redundant `.optional()` on the optional server-env fields (the `emptyStringAsUndefined` helper already makes them optional).
 - Dropped the aurora-blue accent from the shared theme: `--primary`, `--accent`, and `--ring` are now neutral, so the palette stays fully monochrome void-black until a real accent is chosen.
 - Consolidated the shared UI into **`@quickengine/ui`** so apps stop redefining the same look. The void-black theme, mesh + grain background, brand fonts, and the auth shell / status-screen / form-and-button primitives now live once in the package (a `brand.css` layer + a `fonts` export + a component barrel); web, auth, and dashboard import them instead of keeping per-app copies of the theme, fonts, and `Background`. New apps inherit the look for free. Each app keeps only a thin `globals.css` (import the shared base + brand, scan the package) and genuinely app-specific bits (e.g. web's `.page-gutter`).
 - Sessions now last **30 days on a sliding window** (refresh-on-use), up from 7. Active users effectively stay signed in; only ~30 days of real inactivity logs them out — a meal break or a long weekend never does.

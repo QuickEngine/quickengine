@@ -5,8 +5,6 @@ import { z } from "zod";
 const url = z.string().url();
 
 export const clientEnvSchema = z.object({
-	NEXT_PUBLIC_APP_URL: url.default("http://localhost:3000"),
-	NEXT_PUBLIC_DASHBOARD_URL: url.default("http://localhost:3001"),
 	NEXT_PUBLIC_QUICKENGINE_AUTH_URL: url.default("http://localhost:3002"),
 	NEXT_PUBLIC_QUICKENGINE_WEB_URL: url.default("http://localhost:3000"),
 	NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL: url.default("http://localhost:3001"),
@@ -15,8 +13,6 @@ export const clientEnvSchema = z.object({
 });
 
 export const clientEnv = clientEnvSchema.parse({
-	NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-	NEXT_PUBLIC_DASHBOARD_URL: process.env.NEXT_PUBLIC_DASHBOARD_URL,
 	NEXT_PUBLIC_QUICKENGINE_AUTH_URL:
 		process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL,
 	NEXT_PUBLIC_QUICKENGINE_WEB_URL: process.env.NEXT_PUBLIC_QUICKENGINE_WEB_URL,

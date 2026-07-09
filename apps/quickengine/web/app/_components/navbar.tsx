@@ -24,6 +24,9 @@ const pageLink = `${navLink} px-4 py-2`;
 // auth right. `--control` is the shared height for the logo + pill button.
 // Margins from `.page-gutter`.
 export function Navbar() {
+	// Auth lives on the separate auth app — link out to it (marketing hosts no auth).
+	const authUrl =
+		process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
 	return (
 		<header className="fixed inset-x-0 top-0 z-50 bg-background/60 backdrop-blur-xl backdrop-saturate-150">
 			<div className="page-gutter group grid h-16 grid-cols-[1fr_auto_1fr] items-center [--control:1.5rem]">
@@ -53,11 +56,11 @@ export function Navbar() {
 				</nav>
 
 				<div className="flex items-center gap-4 justify-self-end">
-					<a href="/sign-in" className={navLink}>
+					<a href={`${authUrl}/sign-in`} className={navLink}>
 						Sign in
 					</a>
 					<a
-						href="/sign-up"
+						href={`${authUrl}/sign-up`}
 						className="inline-flex h-8 items-center rounded-full bg-white px-5 font-medium text-[13px] text-black outline-none transition-colors hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white/40"
 					>
 						Get Started

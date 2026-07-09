@@ -117,10 +117,13 @@ export const auth = betterAuth({
 		window: 60,
 		max: 100,
 	},
-	// Passwordless: email OTP + magic link (both send via the email provider),
-	// plus WebAuthn passkeys (the auth app hosts the ceremony; rpID/origin default
-	// to the BETTER_AUTH_URL host — `localhost` in dev, the auth domain in prod).
-	// nextCookies() must stay LAST so it can flush Set-Cookie in server actions.
+	// Passwordless: magic link (surfaced in the web sign-in UI) + email OTP (a
+	// 6-digit code — kept ready for the native apps, where a tappable link is
+	// worse than a code; intentionally NOT surfaced in the web UI yet). Both send
+	// via the email provider. WebAuthn passkeys: the auth app hosts the ceremony;
+	// rpID/origin default to the BETTER_AUTH_URL host (localhost in dev, the auth
+	// domain in prod). nextCookies() must stay LAST so it can flush Set-Cookie in
+	// server actions.
 	plugins: [
 		// TOTP two-factor + recovery codes. With 2FA on, password sign-in returns
 		// a twoFactorRedirect instead of a session until a code is verified.

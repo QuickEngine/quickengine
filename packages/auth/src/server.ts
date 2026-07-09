@@ -35,6 +35,19 @@ export const auth = betterAuth({
 	baseURL: serverEnv.BETTER_AUTH_URL,
 	secret: serverEnv.BETTER_AUTH_SECRET,
 	trustedOrigins,
+	// In prod, share the session cookie across subdomains (web/auth/dashboard) by
+	// setting AUTH_COOKIE_DOMAIN (e.g. ".quickengine.xyz"). Unset locally — every
+	// localhost port already shares the cookie.
+	...(serverEnv.AUTH_COOKIE_DOMAIN
+		? {
+				advanced: {
+					crossSubDomainCookies: {
+						enabled: true,
+						domain: serverEnv.AUTH_COOKIE_DOMAIN,
+					},
+				},
+			}
+		: {}),
 	database: drizzleAdapter(db, {
 		provider: "pg",
 		schema: {

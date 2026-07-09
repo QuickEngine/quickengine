@@ -16,6 +16,9 @@ export const serverEnvSchema = clientEnvSchema.extend({
 	UPSTASH_REDIS_REST_TOKEN: emptyStringAsUndefined(z.string()).optional(),
 	BETTER_AUTH_SECRET: z.string().min(32),
 	BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
+	// Parent domain for cross-subdomain session cookies (e.g. ".quickengine.xyz").
+	// Unset locally (localhost shares cookies across ports already).
+	AUTH_COOKIE_DOMAIN: emptyStringAsUndefined(z.string()).optional(),
 	INITIAL_ADMIN_EMAILS: emptyStringAsUndefined(z.string()).optional(),
 	GOOGLE_CLIENT_ID: emptyStringAsUndefined(z.string()).optional(),
 	GOOGLE_CLIENT_SECRET: emptyStringAsUndefined(z.string()).optional(),
@@ -62,6 +65,7 @@ export const serverEnv = serverEnvSchema.parse({
 	UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
 	BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
 	BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+	AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN,
 	INITIAL_ADMIN_EMAILS: process.env.INITIAL_ADMIN_EMAILS,
 	GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
 	GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,

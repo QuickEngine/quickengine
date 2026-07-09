@@ -10,7 +10,7 @@ const destinations = [
 	{
 		label: "Account",
 		description: "Profile, billing, subscriptions, and app access.",
-		href: clientEnv.NEXT_PUBLIC_QUICKENGINE_ADMIN_URL,
+		href: clientEnv.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL,
 	},
 ];
 

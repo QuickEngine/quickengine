@@ -3,9 +3,9 @@
 /* Tailwind v4 must scan the shared UI package so shadcn component classes are generated. */
 @source "../../../../packages/ui/src";
 
-/* Brand faces (provisional direction). `font-display` = Clash Grotesk. */
+/* Brand faces (self-hosted via next/font — vars set on <html>). */
 @theme {
-	--font-display: "Clash Grotesk", ui-sans-serif, sans-serif;
+	--font-display: var(--font-clash), ui-sans-serif, sans-serif;
 }
 
 /* Dark-first "void black" theme tokens (mirrors the auth app). */
@@ -39,8 +39,8 @@ body {
 	background: #000000;
 	color: #f7fbff;
 	font-family:
-		"General Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-		"Segoe UI", sans-serif;
+		var(--font-general), ui-sans-serif, system-ui, -apple-system,
+		BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 body {

@@ -6,8 +6,7 @@ import {
 	signIn,
 	twoFactor,
 } from "@quickengine/auth/client";
-import { clientEnv } from "@quickengine/env/client";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, Suspense, useState } from "react";
 import {
 	AuthShell,
 	Divider,
@@ -19,19 +18,16 @@ import {
 	subtleButton,
 	textLink,
 } from "../_auth-ui";
-
-const destination = () =>
-	(typeof window !== "undefined" &&
-		new URLSearchParams(window.location.search).get("redirect")) ||
-	clientEnv.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL;
-
-const finish = () => {
-	window.location.href = destination();
-};
+import { useAuthDestination } from "../_use-auth-destination";
 
 type Step = "credentials" | "twoFactor" | "sent";
 
-export default function SignInPage() {
+function SignInForm() {
+	const destination = useAuthDestination();
+	const finish = () => {
+		window.location.href = destination;
+	};
+
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [code, setCode] = useState("");
@@ -42,7 +38,7 @@ export default function SignInPage() {
 	const [error, setError] = useState("");
 
 	const social = (provider: "google" | "github") =>
-		signIn.social({ provider, callbackURL: destination() });
+		signIn.social({ provider, callbackURL: destination });
 
 	const withPasskey = async () => {
 		setError("");
@@ -63,7 +59,7 @@ export default function SignInPage() {
 		setError("");
 		const { error: mlError } = await signIn.magicLink({
 			email,
-			callbackURL: destination(),
+			callbackURL: destination,
 		});
 		setPending(false);
 		if (mlError) {
@@ -268,5 +264,13 @@ export default function SignInPage() {
 				</a>
 			</p>
 		</AuthShell>
+	);
+}
+
+export default function SignInPage() {
+	return (
+		<Suspense>
+			<SignInForm />
+		</Suspense>
 	);
 }

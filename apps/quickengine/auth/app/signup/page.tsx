@@ -1,8 +1,7 @@
 "use client";
 
 import { signIn, signUp } from "@quickengine/auth/client";
-import { clientEnv } from "@quickengine/env/client";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, Suspense, useState } from "react";
 import {
 	AuthShell,
 	Divider,
@@ -13,14 +12,10 @@ import {
 	socialButton,
 	textLink,
 } from "../_auth-ui";
+import { useAuthDestination } from "../_use-auth-destination";
 
-// Where to land after auth: ?redirect=<url>, else the account dashboard.
-const destination = () =>
-	(typeof window !== "undefined" &&
-		new URLSearchParams(window.location.search).get("redirect")) ||
-	clientEnv.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL;
-
-export default function SignUpPage() {
+function SignUpForm() {
+	const destination = useAuthDestination();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -29,7 +24,7 @@ export default function SignUpPage() {
 	const [sent, setSent] = useState(false);
 
 	const social = (provider: "google" | "github") =>
-		signIn.social({ provider, callbackURL: destination() });
+		signIn.social({ provider, callbackURL: destination });
 
 	const onSubmit = async (event: FormEvent) => {
 		event.preventDefault();
@@ -39,7 +34,7 @@ export default function SignUpPage() {
 			name,
 			email,
 			password,
-			callbackURL: destination(),
+			callbackURL: destination,
 		});
 		setPending(false);
 		if (signUpError) {
@@ -140,5 +135,13 @@ export default function SignUpPage() {
 				</>
 			)}
 		</AuthShell>
+	);
+}
+
+export default function SignUpPage() {
+	return (
+		<Suspense>
+			<SignUpForm />
+		</Suspense>
 	);
 }

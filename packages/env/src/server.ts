@@ -3,8 +3,15 @@
 import { z } from "zod";
 import { clientEnvSchema } from "./client";
 
+// Treats an empty string (a set-but-blank env var, e.g. `AUTH_COOKIE_DOMAIN=`)
+// the same as an unset one. The inner schema is made optional so the resulting
+// `undefined` validates — otherwise a blank value would fail as "expected string,
+// received undefined" despite the caller marking the field optional.
 const emptyStringAsUndefined = <TSchema extends z.ZodType>(schema: TSchema) =>
-	z.preprocess((value) => (value === "" ? undefined : value), schema);
+	z.preprocess(
+		(value) => (value === "" ? undefined : value),
+		z.optional(schema),
+	);
 
 export const serverEnvSchema = clientEnvSchema.extend({
 	NODE_ENV: z

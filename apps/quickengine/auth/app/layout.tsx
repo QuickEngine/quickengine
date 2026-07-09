@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Background } from "./_components/background";
 import { clashGrotesk, generalSans } from "./fonts";
 import "./globals.css";
@@ -24,7 +25,7 @@ export default function RootLayout({
 		>
 			<body>
 				<Background />
-				{children}
+				<NuqsAdapter>{children}</NuqsAdapter>
 			</body>
 		</html>
 	);

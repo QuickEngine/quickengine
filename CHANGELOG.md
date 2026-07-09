@@ -49,6 +49,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Security
 
+- Signed-in users are redirected away from the sign-in / sign-up pages. Each page is now a server component that checks the session before rendering, so an already-authenticated visitor is sent to their destination instead of the login form — the browser back button can no longer park a live session back on `/signin`. The redirect target is validated against our own app origins (shared open-redirect guard), same on the server and client.
 - Added root pnpm overrides for `esbuild` and `postcss` to force patched transitive versions and clear Dependabot alerts.
 
 ## [0.1.0] - Foundation

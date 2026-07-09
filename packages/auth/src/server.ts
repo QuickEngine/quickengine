@@ -24,9 +24,9 @@ import { bearer, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
 const trustedOrigins = [
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_AUTH_URL,
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_WEB_URL,
-	serverEnv.NEXT_PUBLIC_QUICKENGINE_ADMIN_URL,
+	serverEnv.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL,
 	serverEnv.NEXT_PUBLIC_APP_URL,
-	serverEnv.NEXT_PUBLIC_ADMIN_URL,
+	serverEnv.NEXT_PUBLIC_DASHBOARD_URL,
 ].filter(
 	(origin, index, all) => Boolean(origin) && all.indexOf(origin) === index,
 );
@@ -35,6 +35,19 @@ export const auth = betterAuth({
 	baseURL: serverEnv.BETTER_AUTH_URL,
 	secret: serverEnv.BETTER_AUTH_SECRET,
 	trustedOrigins,
+	// In prod, share the session cookie across subdomains (web/auth/dashboard) by
+	// setting AUTH_COOKIE_DOMAIN (e.g. ".quickengine.xyz"). Unset locally — every
+	// localhost port already shares the cookie.
+	...(serverEnv.AUTH_COOKIE_DOMAIN
+		? {
+				advanced: {
+					crossSubDomainCookies: {
+						enabled: true,
+						domain: serverEnv.AUTH_COOKIE_DOMAIN,
+					},
+				},
+			}
+		: {}),
 	database: drizzleAdapter(db, {
 		provider: "pg",
 		schema: {

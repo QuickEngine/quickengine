@@ -15,7 +15,7 @@ type AuthPanelProps = {
 	mode: AuthMode;
 };
 
-const defaultRedirect = clientEnv.NEXT_PUBLIC_QUICKENGINE_ADMIN_URL;
+const defaultRedirect = clientEnv.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL;
 
 const getErrorMessage = (error: unknown) => {
 	if (error instanceof Error) {

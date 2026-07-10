@@ -1,4 +1,4 @@
-import { Panel, PanelLabel, StatCard } from "./_components/surface";
+import { Panel, PanelLabel, StatCard } from "../_components/surface";
 
 // Placeholder rollups — the umbrella view across every workspace (read-only).
 // Real aggregates (and real series) wire in once workspaces + billing connect.

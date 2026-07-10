@@ -38,10 +38,12 @@ function VerifyEmail() {
 						Email verified
 					</h1>
 					<p className="mt-2 text-[14px] text-muted-foreground leading-relaxed">
-						Your email is confirmed. You're all set to sign in.
+						Your email is confirmed. Let's secure your account.
 					</p>
-					<a href="/signin" className={`${primaryButton} mt-6 w-full`}>
-						Continue to sign in
+					{/* Fresh email/password signups flow through the optional security
+					    step next. (OAuth never lands here — it doesn't verify email.) */}
+					<a href="/secure" className={`${primaryButton} mt-6 w-full`}>
+						Continue
 					</a>
 				</div>
 			</AuthShell>

@@ -48,6 +48,16 @@ function Canvas({
 const headingClass =
 	"font-display font-normal text-4xl text-foreground tracking-tight";
 
+// One line of the success "receipt" (what got created), deployment-summary style.
+function SummaryRow({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="flex items-center justify-between border-foreground/[0.06] border-b py-2.5 text-sm last:border-0">
+			<span className="text-muted-foreground">{label}</span>
+			<span className="font-medium text-foreground">{value}</span>
+		</div>
+	);
+}
+
 export function OnboardingFlow() {
 	const router = useRouter();
 	const [step, setStep] = useState<Step>("choose");
@@ -375,25 +385,38 @@ export function OnboardingFlow() {
 		);
 	}
 
-	// Step 4 — Success (Vercel-style deploy screen) → Workspaces
+	// Step 4 — Success moment (the deploy-success payoff) → Workspaces
 	return (
 		<Canvas>
-			<div className="flex flex-col items-center text-center">
-				<div className="flex size-14 items-center justify-center rounded-full bg-foreground/10">
-					<Check className="size-7 text-foreground" weight="bold" />
+			<div className="mx-auto flex max-w-md flex-col items-center text-center motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-500">
+				<div className="flex size-16 items-center justify-center rounded-full border border-foreground/15 bg-foreground/[0.06]">
+					<Check className="size-8 text-foreground" weight="bold" />
 				</div>
-				<h1 className={`mt-6 ${headingClass}`}>Your workspace is ready.</h1>
-				<p className="mt-3 max-w-md text-muted-foreground">
-					{businessName.trim() || "Your workspace"} is set up with{" "}
-					{enabled.size} module{enabled.size === 1 ? "" : "s"}. You can add more
-					any time.
+				<p className="mt-6 text-[11px] text-muted-foreground uppercase tracking-[0.18em]">
+					Workspace ready
 				</p>
+				<h1 className={`mt-2 ${headingClass}`}>
+					{businessName.trim() || "You're all set"}
+				</h1>
+				<p className="mt-3 text-muted-foreground">
+					Your backend is configured and ready to build on.
+				</p>
+
+				<div className="mt-8 w-full rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] p-5 text-left">
+					<SummaryRow label="Business" value={businessName.trim() || "—"} />
+					<SummaryRow
+						label="Type"
+						value={typeId ? businessTypeName(typeId) : "—"}
+					/>
+					<SummaryRow label="Modules" value={`${enabled.size} enabled`} />
+				</div>
+
 				<button
 					type="button"
 					onClick={() => router.push("/workspaces")}
-					className="mt-8 rounded-lg bg-foreground px-6 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90"
+					className="mt-8 w-full rounded-lg bg-foreground px-6 py-3 font-medium text-background transition-opacity hover:opacity-90"
 				>
-					Continue to workspace
+					Enter {businessName.trim() || "workspace"}
 				</button>
 			</div>
 		</Canvas>

@@ -15,6 +15,9 @@
 	"scripts": {
 		"dev": "turbo dev",
 		"dev:quickengine": "turbo dev --filter=@quickengine/web --filter=@quickengine/auth --filter=@quickengine/dashboard",
+		"web": "pnpm --filter @quickengine/web dev",
+		"dash": "pnpm --filter @quickengine/dashboard dev",
+		"auth": "pnpm --filter @quickengine/auth-app dev",
 		"prepare": "husky",
 		"build": "turbo build",
 		"lint": "biome lint .",
@@ -29,6 +32,7 @@
 		"db:generate": "pnpm --filter @quickengine/db db:generate",
 		"db:migrate": "pnpm --filter @quickengine/db db:migrate",
 		"db:push": "pnpm --filter @quickengine/db db:push",
+		"db:clean": "bash scripts/db-clean.sh",
 		"db:studio": "pnpm --filter @quickengine/db db:studio",
 		"docker:up": "docker compose -f docker/docker-compose.yml up -d",
 		"docker:down": "docker compose -f docker/docker-compose.yml down",

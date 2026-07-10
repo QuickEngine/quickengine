@@ -32,6 +32,9 @@ import {
 } from "@quickengine/ui/components/ui/sidebar";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { BillingSettings } from "./billing-settings";
+import { ProfileSettings } from "./profile-settings";
+import { SecuritySettings } from "./security-settings";
 import { ThemeSwitch } from "./theme-switch";
 
 // Neutral active/hover fills — overrides the shadcn default's blue-ish
@@ -102,7 +105,13 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
 							<h2 className="font-medium text-foreground text-sm">{active}</h2>
 						</header>
 						<div className="flex-1 overflow-y-auto p-5">
-							{active === "Appearance" ? (
+							{active === "Profile" ? (
+								<ProfileSettings />
+							) : active === "Security" ? (
+								<SecuritySettings />
+							) : active === "Billing" ? (
+								<BillingSettings />
+							) : active === "Appearance" ? (
 								<div className="flex items-center justify-between gap-4">
 									<div className="flex flex-col">
 										<span className="text-foreground text-sm">Theme</span>

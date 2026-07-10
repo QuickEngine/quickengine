@@ -12,7 +12,7 @@ import { DashboardNav } from "../_components/nav";
 import { ProfileMenu } from "../_components/profile-menu";
 import { SearchBar } from "../_components/search-bar";
 import { TeamSwitcher } from "../_components/team-switcher";
-import { hasOnboarded } from "../_lib/onboarding";
+import { getAccountState } from "../_lib/onboarding";
 
 // The account-app shell (header + sidebar). Lives in its own route group so the
 // onboarding takeover can render outside it. Auth is already enforced by the root
@@ -24,11 +24,11 @@ export default async function AppLayout({
 	if (!session) {
 		return null; // unreachable — the root layout already redirected
 	}
-	// First-run users haven't set up a workspace yet — send them to onboarding.
-	// (This layout doesn't wrap /onboarding, so there's no redirect loop.)
-	if (
-		!(await hasOnboarded(session.user.id, session.user.onboardingCompletedAt))
-	) {
+	// Fresh account read (company name + onboarding flag) — avoids the stale
+	// session cookie cache. First-run users go to onboarding; this layout doesn't
+	// wrap /onboarding, so there's no redirect loop.
+	const account = await getAccountState(session.user.id);
+	if (!account.onboardingCompletedAt) {
 		redirect("/onboarding");
 	}
 
@@ -42,9 +42,7 @@ export default async function AppLayout({
 					<TeamSwitcher
 						seed={session.user.id}
 						name={
-							session.user.companyName ??
-							session.user.name ??
-							session.user.email
+							account.companyName ?? session.user.name ?? session.user.email
 						}
 					/>
 				</div>

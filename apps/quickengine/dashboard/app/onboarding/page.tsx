@@ -2,7 +2,7 @@ import { getSession } from "@quickengine/auth/server";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { hasOnboarded } from "../_lib/onboarding";
+import { getAccountState } from "../_lib/onboarding";
 import { OnboardingFlow } from "./flow";
 
 export const metadata: Metadata = { title: "Get started" };
@@ -14,7 +14,7 @@ export default async function Page() {
 	const session = await getSession(await headers());
 	if (
 		session &&
-		(await hasOnboarded(session.user.id, session.user.onboardingCompletedAt))
+		(await getAccountState(session.user.id)).onboardingCompletedAt
 	) {
 		redirect("/");
 	}

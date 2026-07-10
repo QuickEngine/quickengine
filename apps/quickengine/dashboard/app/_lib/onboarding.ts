@@ -1,21 +1,26 @@
 import { db, eq } from "@quickengine/db";
 import { quickengineUsers } from "@quickengine/db/schema/quickengine";
 
-// Whether the user has finished onboarding. Trusts the (cached) session value
-// when it's set, but falls back to a fresh DB read when it's empty — so a user
-// who *just* completed onboarding isn't bounced back by the stale 5-minute
-// session cookie cache.
-export async function hasOnboarded(
-	userId: string,
-	cached: Date | string | null | undefined,
-): Promise<boolean> {
-	if (cached) {
-		return true;
-	}
+export type AccountState = {
+	companyName: string | null;
+	onboardingCompletedAt: Date | null;
+};
+
+// Fresh read of the account fields the shell needs — company name for the header,
+// onboarding flag for routing. Reads the DB directly rather than trusting the
+// session cookie cache, which can lag by minutes right after onboarding (so the
+// header would otherwise show the old name and the gate could loop).
+export async function getAccountState(userId: string): Promise<AccountState> {
 	const [row] = await db
-		.select({ at: quickengineUsers.onboardingCompletedAt })
+		.select({
+			companyName: quickengineUsers.companyName,
+			onboardingCompletedAt: quickengineUsers.onboardingCompletedAt,
+		})
 		.from(quickengineUsers)
 		.where(eq(quickengineUsers.id, userId))
 		.limit(1);
-	return Boolean(row?.at);
+	return {
+		companyName: row?.companyName ?? null,
+		onboardingCompletedAt: row?.onboardingCompletedAt ?? null,
+	};
 }

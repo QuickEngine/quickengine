@@ -10,7 +10,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
 	title: {
-		default: "Dashboard | QuickEngine",
+		default: "Workspaces | QuickEngine",
 		template: "%s | QuickEngine",
 	},
 	description: "Account, billing, and suite access for QuickEngine Software.",

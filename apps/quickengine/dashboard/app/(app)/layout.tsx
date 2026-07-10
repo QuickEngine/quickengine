@@ -5,12 +5,14 @@ import {
 	SidebarProvider,
 } from "@quickengine/ui/components/ui/sidebar";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { Breadcrumbs } from "../_components/breadcrumbs";
 import { DashboardNav } from "../_components/nav";
 import { ProfileMenu } from "../_components/profile-menu";
 import { SearchBar } from "../_components/search-bar";
 import { TeamSwitcher } from "../_components/team-switcher";
+import { hasOnboarded } from "../_lib/onboarding";
 
 // The account-app shell (header + sidebar). Lives in its own route group so the
 // onboarding takeover can render outside it. Auth is already enforced by the root
@@ -22,6 +24,13 @@ export default async function AppLayout({
 	if (!session) {
 		return null; // unreachable — the root layout already redirected
 	}
+	// First-run users haven't set up a workspace yet — send them to onboarding.
+	// (This layout doesn't wrap /onboarding, so there's no redirect loop.)
+	if (
+		!(await hasOnboarded(session.user.id, session.user.onboardingCompletedAt))
+	) {
+		redirect("/onboarding");
+	}
 
 	return (
 		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
@@ -32,7 +41,11 @@ export default async function AppLayout({
 				<div className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4">
 					<TeamSwitcher
 						seed={session.user.id}
-						name={session.user.name ?? session.user.email}
+						name={
+							session.user.companyName ??
+							session.user.name ??
+							session.user.email
+						}
 					/>
 				</div>
 				<div className="flex flex-1 items-center justify-between px-4">

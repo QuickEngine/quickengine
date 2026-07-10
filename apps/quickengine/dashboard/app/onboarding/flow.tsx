@@ -16,6 +16,7 @@ import {
 	TIER_LABEL,
 } from "../_lib/modules";
 import { monthlyPrice, PLANS } from "../_lib/plans";
+import { completeOnboarding } from "./actions";
 
 type Step = "choose" | "name" | "type" | "modules" | "plan" | "success";
 
@@ -54,6 +55,7 @@ export function OnboardingFlow() {
 	const [enabled, setEnabled] = useState<Set<string>>(new Set());
 	const [annual, setAnnual] = useState(true);
 	const [businessName, setBusinessName] = useState("");
+	const [submitting, setSubmitting] = useState(false);
 
 	function chooseType(id: string) {
 		setTypeId(id);
@@ -78,6 +80,24 @@ export function OnboardingFlow() {
 			}
 			return next;
 		});
+	}
+
+	// Persist the workspace + mark onboarding complete, then show the success step.
+	async function finish() {
+		if (!typeId) {
+			return;
+		}
+		setSubmitting(true);
+		try {
+			await completeOnboarding({
+				businessName,
+				businessType: typeId,
+				modules: [...enabled],
+			});
+			setStep("success");
+		} catch {
+			setSubmitting(false);
+		}
 	}
 
 	// Step 1 — Guided vs Manual
@@ -334,8 +354,9 @@ export function OnboardingFlow() {
 								</ul>
 								<button
 									type="button"
-									onClick={() => setStep("success")}
-									className={`mt-5 rounded-lg px-4 py-2 font-medium text-sm transition-colors ${
+									disabled={submitting}
+									onClick={finish}
+									className={`mt-5 rounded-lg px-4 py-2 font-medium text-sm transition-colors disabled:opacity-50 ${
 										isFree
 											? "border border-foreground/15 text-foreground hover:bg-foreground/5"
 											: "bg-foreground text-background hover:opacity-90"

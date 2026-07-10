@@ -31,8 +31,8 @@ const navButton =
 type NavItem = { href: string; label: string; icon: Icon };
 
 const mainNav: NavItem[] = [
-	{ href: "/", label: "Dashboard", icon: Gauge },
-	{ href: "/workspaces", label: "Workspaces", icon: SquaresFour },
+	{ href: "/", label: "Workspaces", icon: SquaresFour },
+	{ href: "/overview", label: "Overview", icon: Gauge },
 	{ href: "/revenue", label: "Revenue", icon: CurrencyDollar },
 	{ href: "/analytics", label: "Analytics", icon: ChartLine },
 	{ href: "/team", label: "Team", icon: UsersThree },

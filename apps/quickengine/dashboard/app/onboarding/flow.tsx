@@ -413,7 +413,7 @@ export function OnboardingFlow() {
 
 				<button
 					type="button"
-					onClick={() => router.push("/workspaces")}
+					onClick={() => router.push("/")}
 					className="mt-8 w-full rounded-lg bg-foreground px-6 py-3 font-medium text-background transition-opacity hover:opacity-90"
 				>
 					Enter {businessName.trim() || "workspace"}

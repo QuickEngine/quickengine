@@ -10,5 +10,6 @@ export {
 	textLink,
 } from "./components/auth-ui";
 export { Background } from "./components/background";
+export { GeneratedAvatar } from "./components/generated-avatar";
 export { GlobalErrorScreen } from "./components/global-error-screen";
 export { cn } from "./lib/utils";

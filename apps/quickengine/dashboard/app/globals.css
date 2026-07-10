@@ -4,3 +4,16 @@
 /* Tailwind v4 must scan the shared UI package so its component + brand classes
    are generated. */
 @source "../../../../packages/ui/src";
+
+/* Crossfade the theme flip (light <-> dark) instead of a hard flash. Interactive
+   elements with their own transition-colors keep their faster timing; this only
+   catches the big themed surfaces (background, borders, text). */
+@media (prefers-reduced-motion: no-preference) {
+	*,
+	::before,
+	::after {
+		transition-property: background-color, border-color, color, fill;
+		transition-duration: 300ms;
+		transition-timing-function: ease;
+	}
+}

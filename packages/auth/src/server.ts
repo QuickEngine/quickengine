@@ -46,6 +46,15 @@ export const auth = betterAuth({
 				},
 			}
 		: {}),
+	// Custom user fields surfaced on the session. The account app reads these to
+	// route new users into onboarding and to show the company name in the header.
+	// Server-set only — never accepted from client input.
+	user: {
+		additionalFields: {
+			companyName: { type: "string", required: false, input: false },
+			onboardingCompletedAt: { type: "date", required: false, input: false },
+		},
+	},
 	database: drizzleAdapter(db, {
 		provider: "pg",
 		schema: {

@@ -2,6 +2,7 @@ import {
 	boolean,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp,
@@ -40,6 +41,9 @@ export const quickengineUsers = pgTable("quickengine_users", {
 	role: text("role").default("member").notNull(),
 	// Set by the Better Auth two-factor plugin once a user finishes TOTP setup.
 	twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
+	// Business/company name set during onboarding; shown as the account name in
+	// the app header. Null until the user names their business.
+	companyName: text("company_name"),
 	onboardingCompletedAt: timestamp("onboarding_completed_at", {
 		withTimezone: true,
 	}),
@@ -50,6 +54,29 @@ export const quickengineUsers = pgTable("quickengine_users", {
 		.defaultNow()
 		.notNull(),
 });
+
+// A workspace = a scoped QuickDash instance tied to one business type, with a
+// chosen set of enabled modules. Created during onboarding (and later from
+// "New Workspace").
+export const quickengineWorkspaces = pgTable(
+	"quickengine_workspaces",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		ownerId: text("owner_id")
+			.notNull()
+			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
+		name: text("name").notNull(),
+		businessType: text("business_type").notNull(),
+		modules: jsonb("modules").$type<string[]>().notNull().default([]),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [index("quickengine_workspaces_owner_idx").on(table.ownerId)],
+);
 
 export const quickengineSessions = pgTable("quickengine_sessions", {
 	id: text("id").primaryKey(),

@@ -18,6 +18,15 @@ export const serverEnvSchema = clientEnvSchema.extend({
 		.enum(["development", "test", "production"])
 		.default("development"),
 	DATABASE_URL: z.string().url(),
+	// Set automatically by Vercel: "production" | "preview" | "development".
+	// Unset locally and in CI.
+	VERCEL_ENV: emptyStringAsUndefined(
+		z.enum(["production", "preview", "development"]),
+	),
+	// Set to "true" ONLY on the production environment (paired with the prod
+	// DATABASE_URL). Lets the DB client refuse to boot a non-production deploy
+	// against the production database — see docs/COST_GUARDRAILS.md.
+	DATABASE_IS_PRODUCTION: emptyStringAsUndefined(z.string()),
 	REDIS_URL: z.string().url().default("redis://localhost:6381"),
 	UPSTASH_REDIS_REST_URL: emptyStringAsUndefined(z.string().url()),
 	UPSTASH_REDIS_REST_TOKEN: emptyStringAsUndefined(z.string()),
@@ -65,6 +74,8 @@ export const serverEnvSchema = clientEnvSchema.extend({
 export const serverEnv = serverEnvSchema.parse({
 	NODE_ENV: process.env.NODE_ENV,
 	DATABASE_URL: process.env.DATABASE_URL,
+	VERCEL_ENV: process.env.VERCEL_ENV,
+	DATABASE_IS_PRODUCTION: process.env.DATABASE_IS_PRODUCTION,
 	REDIS_URL: process.env.REDIS_URL,
 	UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
 	UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,

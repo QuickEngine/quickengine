@@ -22,10 +22,12 @@ export type EmailProvider = {
 	send(input: SendEmailInput): Promise<SendEmailResult>;
 };
 
-// Default sender. `onboarding@resend.dev` works in dev with just an API key (no
-// domain verification). In production, set a sender on a Resend-verified domain
-// once quickengine.net is live (see the domain checklist in docs/STATE.md).
-const DEFAULT_FROM = "QuickEngine <onboarding@resend.dev>";
+// Default sender. Set EMAIL_FROM to a sender on a Resend-verified domain in prod
+// (e.g. "QuickEngine <noreply@quickengine.xyz>") so mail reaches any recipient.
+// Unset falls back to `onboarding@resend.dev`, which works in dev with just an
+// API key but only delivers to the Resend account owner.
+const DEFAULT_FROM =
+	serverEnv.EMAIL_FROM ?? "QuickEngine <onboarding@resend.dev>";
 
 // Logs instead of sending, so dev auth flows (verification / reset URLs) are
 // visible in the server console without a live inbox.

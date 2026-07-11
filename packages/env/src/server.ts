@@ -58,6 +58,10 @@ export const serverEnvSchema = clientEnvSchema.extend({
 	SENTRY_PROJECT: emptyStringAsUndefined(z.string()),
 	SENTRY_AUTH_TOKEN: emptyStringAsUndefined(z.string()),
 	RESEND_API_KEY: emptyStringAsUndefined(z.string()),
+	// Outbound sender, e.g. "QuickEngine <noreply@quickengine.xyz>". Must be on a
+	// Resend-verified domain in prod; unset falls back to onboarding@resend.dev
+	// (which only delivers to the Resend account owner).
+	EMAIL_FROM: emptyStringAsUndefined(z.string()),
 	RESEND_WEBHOOK_SECRET: emptyStringAsUndefined(z.string()),
 	INNGEST_EVENT_KEY: emptyStringAsUndefined(z.string()),
 	INNGEST_SIGNING_KEY: emptyStringAsUndefined(z.string()),
@@ -106,6 +110,7 @@ export const serverEnv = serverEnvSchema.parse({
 	SENTRY_PROJECT: process.env.SENTRY_PROJECT,
 	SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
 	RESEND_API_KEY: process.env.RESEND_API_KEY,
+	EMAIL_FROM: process.env.EMAIL_FROM,
 	RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
 	INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
 	INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,

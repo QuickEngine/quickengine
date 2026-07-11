@@ -7,17 +7,14 @@
 
 /* Locked-in page gutter — the single source of truth for horizontal margins.
    Every page section uses `.page-gutter` so we don't refight this per component.
-   Web-only (marketing layout). 24px mobile · 48px tablet · 80px desktop. */
+   Web-only (marketing layout). Side margins are set to the header height
+   (h-16 = 4rem) so the horizontal framing matches the header's thickness —
+   symmetrical on every edge. Mobile drops to 1.5rem so content isn't cramped. */
 .page-gutter {
 	padding-inline: 1.5rem;
 }
 @media (min-width: 640px) {
 	.page-gutter {
-		padding-inline: 3rem;
-	}
-}
-@media (min-width: 1024px) {
-	.page-gutter {
-		padding-inline: 5rem;
+		padding-inline: 4rem;
 	}
 }

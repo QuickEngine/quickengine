@@ -2,6 +2,7 @@ import { Background } from "@quickengine/ui";
 import { clashGrotesk, generalSans } from "@quickengine/ui/fonts";
 import type { Metadata } from "next";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { ThemeProvider } from "./_components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,11 +22,14 @@ export default function RootLayout({
 	return (
 		<html
 			lang="en"
+			suppressHydrationWarning
 			className={`${generalSans.variable} ${clashGrotesk.variable}`}
 		>
 			<body>
-				<Background />
-				<NuqsAdapter>{children}</NuqsAdapter>
+				<ThemeProvider>
+					<Background />
+					<NuqsAdapter>{children}</NuqsAdapter>
+				</ThemeProvider>
 			</body>
 		</html>
 	);

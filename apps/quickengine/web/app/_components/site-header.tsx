@@ -20,34 +20,36 @@ const NAV_LINKS: { label: string; href: string; menu?: string }[] = [
 	{ label: "Pricing", href: "/pricing" },
 ];
 
-// Placeholder mega-menu content — structure is real, copy is provisional.
+// Mega-menu content wired to real pages. The leading "Overview" link in each
+// menu points at the hub, so mobile (where the parent is an accordion toggle,
+// not a link) can still reach it.
 const MENUS: Record<string, MenuColumn[]> = {
 	products: [
 		{
 			title: "Platform",
 			links: [
-				{ label: "Overview", href: "#" },
-				{ label: "Workspaces", href: "#" },
-				{ label: "Modules", href: "#" },
-				{ label: "Marketplace", href: "#" },
+				{ label: "Overview", href: "/products" },
+				{ label: "Workspaces", href: "/products/workspaces" },
+				{ label: "Modules", href: "/products/modules" },
+				{ label: "Marketplace", href: "/products/marketplace" },
 			],
 		},
 		{
 			title: "Popular modules",
 			links: [
-				{ label: "Auth", href: "#" },
-				{ label: "Billing", href: "#" },
-				{ label: "Storage", href: "#" },
-				{ label: "Search", href: "#" },
+				{ label: "Auth", href: "/products/modules/auth" },
+				{ label: "Billing", href: "/products/modules/billing" },
+				{ label: "Storage", href: "/products/modules/storage" },
+				{ label: "Search", href: "/products/modules/search" },
 			],
 		},
 		{
 			title: "More modules",
 			links: [
-				{ label: "Jobs", href: "#" },
-				{ label: "Realtime", href: "#" },
-				{ label: "Analytics", href: "#" },
-				{ label: "Webhooks", href: "#" },
+				{ label: "Jobs", href: "/products/modules/jobs" },
+				{ label: "Realtime", href: "/products/modules/realtime" },
+				{ label: "Analytics", href: "/products/modules/analytics" },
+				{ label: "Webhooks", href: "/products/modules/webhooks" },
 			],
 		},
 	],
@@ -55,27 +57,28 @@ const MENUS: Record<string, MenuColumn[]> = {
 		{
 			title: "Build",
 			links: [
-				{ label: "Documentation", href: "#" },
-				{ label: "API reference", href: "#" },
-				{ label: "SDKs", href: "#" },
-				{ label: "CLI", href: "#" },
+				{ label: "Overview", href: "/developers" },
+				{ label: "Documentation", href: "/docs" },
+				{ label: "API reference", href: "/docs/api" },
+				{ label: "SDKs", href: "/docs/sdks" },
+				{ label: "CLI", href: "/docs/cli" },
 			],
 		},
 		{
 			title: "Explore",
 			links: [
-				{ label: "Quickstarts", href: "#" },
-				{ label: "Examples", href: "#" },
-				{ label: "Changelog", href: "#" },
-				{ label: "Status", href: "#" },
+				{ label: "Quickstarts", href: "/docs/quickstarts" },
+				{ label: "Examples", href: "/docs/examples" },
+				{ label: "Changelog", href: "/changelog" },
+				{ label: "Status", href: "/status" },
 			],
 		},
 		{
 			title: "Community",
 			links: [
-				{ label: "GitHub", href: "#" },
-				{ label: "Discord", href: "#" },
-				{ label: "Support", href: "#" },
+				{ label: "GitHub", href: "https://github.com/QuickEngine" },
+				{ label: "Discord", href: "/community" },
+				{ label: "Support", href: "/support" },
 			],
 		},
 	],
@@ -83,27 +86,28 @@ const MENUS: Record<string, MenuColumn[]> = {
 		{
 			title: "By business type",
 			links: [
-				{ label: "E-commerce", href: "#" },
-				{ label: "Agency", href: "#" },
-				{ label: "Freelancer", href: "#" },
-				{ label: "SaaS", href: "#" },
+				{ label: "Overview", href: "/business" },
+				{ label: "E-commerce", href: "/business/ecommerce" },
+				{ label: "Agencies", href: "/business/agencies" },
+				{ label: "Freelancers", href: "/business/freelancers" },
+				{ label: "SaaS", href: "/business/saas" },
 			],
 		},
 		{
 			title: "By stage",
 			links: [
-				{ label: "Startups", href: "#" },
-				{ label: "Scale-ups", href: "#" },
-				{ label: "Enterprise", href: "#" },
-				{ label: "Migrations", href: "#" },
+				{ label: "Startups", href: "/business/startups" },
+				{ label: "Scale-ups", href: "/business/scale-ups" },
+				{ label: "Enterprise", href: "/business/enterprise" },
+				{ label: "Migrations", href: "/business/migrations" },
 			],
 		},
 		{
 			title: "Programs",
 			links: [
-				{ label: "Partners", href: "#" },
-				{ label: "Startup program", href: "#" },
-				{ label: "Talk to sales", href: "#" },
+				{ label: "Partners", href: "/partners" },
+				{ label: "Startup program", href: "/startup-program" },
+				{ label: "Talk to sales", href: "/contact" },
 			],
 		},
 	],
@@ -111,26 +115,27 @@ const MENUS: Record<string, MenuColumn[]> = {
 		{
 			title: "Learn",
 			links: [
-				{ label: "Blog", href: "#" },
-				{ label: "Guides", href: "#" },
-				{ label: "Tutorials", href: "#" },
-				{ label: "Webinars", href: "#" },
+				{ label: "Overview", href: "/resources" },
+				{ label: "Blog", href: "/blog" },
+				{ label: "Guides", href: "/guides" },
+				{ label: "Tutorials", href: "/tutorials" },
+				{ label: "Webinars", href: "/webinars" },
 			],
 		},
 		{
 			title: "Proof",
 			links: [
-				{ label: "Customers", href: "#" },
-				{ label: "Case studies", href: "#" },
-				{ label: "Events", href: "#" },
+				{ label: "Customers", href: "/customers" },
+				{ label: "Case studies", href: "/case-studies" },
+				{ label: "Events", href: "/events" },
 			],
 		},
 		{
 			title: "Help",
 			links: [
-				{ label: "Support", href: "#" },
-				{ label: "Community", href: "#" },
-				{ label: "Contact", href: "#" },
+				{ label: "Support", href: "/support" },
+				{ label: "Community", href: "/community" },
+				{ label: "Contact", href: "/contact" },
 			],
 		},
 	],
@@ -155,6 +160,15 @@ export function SiteHeader() {
 	const [active, setActive] = useState<string | null>(null);
 	const [mobileOpen, setMobileOpen] = useState(false);
 	const [openSection, setOpenSection] = useState<string | null>(null);
+	const [scrolled, setScrolled] = useState(false);
+
+	// Header border fades in once scrolled off the top, and back out at the top.
+	useEffect(() => {
+		const onScroll = () => setScrolled(window.scrollY > 8);
+		onScroll();
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
+	}, []);
 
 	// Lock page scroll while any panel is open (desktop mega-menu or mobile
 	// menu). Compensates for the scrollbar width so desktop content doesn't jump.
@@ -179,7 +193,11 @@ export function SiteHeader() {
 		// biome-ignore lint/a11y/noStaticElementInteractions: onMouseLeave only closes the hover mega-menu; keyboard users open via focus and dismiss by tabbing away. Full keyboard/escape dismissal is a planned follow-up.
 		<header
 			onMouseLeave={() => setActive(null)}
-			className="fixed inset-x-0 top-0 z-50 border-border border-b bg-background/60 backdrop-blur-xl backdrop-saturate-150"
+			className={`fixed inset-x-0 top-0 z-50 border-b bg-background/60 backdrop-blur-xl backdrop-saturate-150 transition-colors duration-200 ${
+				scrolled || active || mobileOpen
+					? "border-border"
+					: "border-transparent"
+			}`}
 		>
 			<div className="page-gutter group flex h-16 items-center justify-between">
 				<div className="flex items-center gap-6">

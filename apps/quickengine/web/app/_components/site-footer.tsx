@@ -75,6 +75,7 @@ const COLUMNS = [
 			{ label: "Terms", href: "/terms" },
 			{ label: "Privacy", href: "/privacy" },
 			{ label: "Cookies", href: "/cookies" },
+			{ label: "Refund", href: "/refund" },
 		],
 	},
 ];
@@ -91,7 +92,7 @@ const SOCIALS = [
 	},
 	{
 		label: "Product Hunt",
-		href: "https://www.producthunt.com/products/quickengine-software",
+		href: "https://www.producthunt.com/@quickengine",
 		icon: faProductHunt,
 	},
 	{
@@ -102,9 +103,8 @@ const SOCIALS = [
 	},
 	{ label: "GitHub", href: "https://github.com/QuickEngine", icon: faGithub },
 	{
-		// TODO: confirm the real Instagram handle.
 		label: "Instagram",
-		href: "https://instagram.com/quickenginesoftware",
+		href: "https://www.instagram.com/quickengine",
 		icon: faInstagram,
 	},
 	{

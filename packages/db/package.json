@@ -6,6 +6,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./client": "./src/client.ts",
+		"./health": "./src/health.ts",
 		"./drizzle": "./src/drizzle.ts",
 		"./schema": "./src/schema/index.ts",
 		"./schema/*": "./src/schema/*.ts",

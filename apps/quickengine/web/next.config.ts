@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs";
 import { config } from "dotenv";
 import type { NextConfig } from "next";
 
@@ -16,4 +17,12 @@ const nextConfig: NextConfig = {
 	allowedDevOrigins: ["192.168.3.155"],
 };
 
-export default nextConfig;
+// Wrap with Sentry — uploads source maps at build (when org/project/token are
+// set) and instruments the app. `silent` keeps local builds quiet.
+export default withSentryConfig(nextConfig, {
+	org: process.env.SENTRY_ORG,
+	project: process.env.SENTRY_PROJECT,
+	authToken: process.env.SENTRY_AUTH_TOKEN,
+	silent: !process.env.CI,
+	widenClientFileUpload: true,
+});

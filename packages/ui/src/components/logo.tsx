@@ -1,0 +1,23 @@
+import type { SVGProps } from "react";
+
+// QuickEngine brand mark. Colored via currentColor so it adapts to the surface —
+// set the color with a text-* class (dark on light, light on dark). Size it with
+// a className (e.g. size-6).
+export function Logo(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg
+			viewBox="0 0 500 500"
+			fill="none"
+			xmlns="http://www.w3.org/2000/svg"
+			role="img"
+			aria-label="QuickEngine"
+			{...props}
+		>
+			<title>QuickEngine</title>
+			<path
+				d="M114.617 136.697C114.605 137.002 114.598 137.308 114.598 137.615V321.101C114.598 333.768 124.859 344.037 137.518 344.037H320.873C321.18 344.037 321.486 344.029 321.79 344.017V344.037H342.317L342.379 343.976H344.086L500 500H337.934L296.679 458.716H137.518C61.5689 458.716 2.95402e-06 397.103 0 321.101V251.376L114.598 136.697H114.617ZM320.873 0C396.822 2.95534e-06 458.39 61.6129 458.391 137.615V207.34L343.793 322.019H343.773C343.785 321.714 343.793 321.408 343.793 321.101V137.615C343.793 124.948 333.531 114.679 320.873 114.679H137.518C137.211 114.679 136.905 114.686 136.601 114.698V114.679H114.598L0 0H320.873Z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}

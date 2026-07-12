@@ -36,6 +36,7 @@
 		"db:migrate": "pnpm --filter @quickengine/db db:migrate",
 		"db:push": "pnpm --filter @quickengine/db db:push",
 		"db:clean": "bash scripts/db-clean.sh",
+		"db:reset": "node packages/db/scripts/reset.mjs",
 		"db:studio": "pnpm --filter @quickengine/db db:studio",
 		"docker:up": "docker compose -f docker/docker-compose.yml up -d",
 		"docker:down": "docker compose -f docker/docker-compose.yml down",

@@ -57,13 +57,16 @@ describe("invoice status machine", () => {
 		expect(canTransition("sent", "paid")).toBe(true);
 	});
 
+	it("allows a draft to be paid directly (payment-link settlement)", () => {
+		expect(canTransition("draft", "paid")).toBe(true);
+	});
+
 	it("allows voiding anything not yet paid", () => {
 		expect(canTransition("draft", "void")).toBe(true);
 		expect(canTransition("sent", "void")).toBe(true);
 	});
 
 	it("rejects illegal jumps", () => {
-		expect(canTransition("draft", "paid")).toBe(false); // must be sent first
 		expect(canTransition("paid", "draft")).toBe(false); // paid is terminal
 		expect(canTransition("paid", "void")).toBe(false); // can't void a paid invoice
 		expect(canTransition("void", "sent")).toBe(false); // void is terminal

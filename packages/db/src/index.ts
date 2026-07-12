@@ -2,4 +2,5 @@
 export { and, eq, or, sql } from "drizzle-orm";
 export * from "./client";
 export * from "./drizzle";
+export * from "./orgs";
 export * from "./schema";

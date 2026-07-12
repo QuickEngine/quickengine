@@ -12,6 +12,7 @@ import { DashboardNav } from "../_components/nav";
 import { ProfileMenu } from "../_components/profile-menu";
 import { SearchBar } from "../_components/search-bar";
 import { TeamSwitcher } from "../_components/team-switcher";
+import { UpgradeButton } from "../_components/upgrade-button";
 import { getAccountState } from "../_lib/onboarding";
 
 // The account-app shell (header + sidebar). Lives in its own route group so the
@@ -50,6 +51,7 @@ export default async function AppLayout({
 					<Breadcrumbs />
 					<div className="flex items-center gap-3">
 						<SearchBar />
+						<UpgradeButton />
 						<ProfileMenu
 							seed={session.user.id}
 							name={session.user.name ?? ""}

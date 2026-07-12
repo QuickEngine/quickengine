@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Status" };
+export const metadata = buildMetadata({
+	title: "Status",
+	description:
+		"QuickEngine system status — live uptime and incident history for our services.",
+	path: "/status",
+});
 
 // PLACEHOLDER — a static status board. A real one would read live health checks.
 const SYSTEMS = [

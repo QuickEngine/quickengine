@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Changelog" };
+export const metadata = buildMetadata({
+	title: "Changelog",
+	description:
+		"QuickEngine changelog — the latest features, improvements, and fixes.",
+	path: "/changelog",
+});
 
 // PLACEHOLDER release notes.
 const RELEASES = [

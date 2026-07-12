@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Partners" };
+export const metadata = buildMetadata({
+	title: "Partners",
+	description:
+		"Partner with QuickEngine — build integrations and grow alongside our platform.",
+	path: "/partners",
+});
 
 // PLACEHOLDER — partner program tracks.
 const TRACKS = [

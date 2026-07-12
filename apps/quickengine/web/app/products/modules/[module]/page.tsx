@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../../../_components/site-footer";
 import { SiteHeader } from "../../../_components/site-header";
 import { getModule, MODULES } from "../_modules";
@@ -18,7 +19,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
 	const { module } = await params;
 	const def = getModule(module);
-	return { title: def ? def.name : "Modules" };
+	return def
+		? buildMetadata({
+				title: def.name,
+				description: def.description,
+				path: `/products/modules/${module}`,
+			})
+		: buildMetadata({ title: "Modules", path: "/products/modules" });
 }
 
 export default async function ModulePage({

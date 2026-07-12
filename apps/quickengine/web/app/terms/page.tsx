@@ -1,7 +1,12 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { LegalPage } from "../_components/legal";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+export const metadata = buildMetadata({
+	title: "Terms of Service",
+	description:
+		"QuickEngine Terms of Service — the terms that govern your use of our platform.",
+	path: "/terms",
+});
 
 export default function TermsPage() {
 	return (

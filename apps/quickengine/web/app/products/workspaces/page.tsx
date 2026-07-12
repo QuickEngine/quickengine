@@ -1,11 +1,16 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../../_components/site-footer";
 import { SiteHeader } from "../../_components/site-header";
 
 const AUTH_URL =
 	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
 
-export const metadata: Metadata = { title: "Workspaces" };
+export const metadata = buildMetadata({
+	title: "Workspaces",
+	description:
+		"QuickEngine workspaces — one backend scoped to your business type, from e-commerce to agencies to SaaS.",
+	path: "/products/workspaces",
+});
 
 const POINTS = [
 	{

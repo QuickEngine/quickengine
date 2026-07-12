@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Careers" };
+export const metadata = buildMetadata({
+	title: "Careers",
+	description:
+		"Careers at QuickEngine — help build the backend the next generation of businesses runs on.",
+	path: "/careers",
+});
 
 // PLACEHOLDER roles.
 const ROLES = [

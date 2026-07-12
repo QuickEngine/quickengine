@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Startup Program" };
+export const metadata = buildMetadata({
+	title: "Startup Program",
+	description:
+		"The QuickEngine Startup Program — credits and support to help early-stage teams ship on day one.",
+	path: "/startup-program",
+});
 
 // PLACEHOLDER — program perks and eligibility are provisional.
 const PERKS = [

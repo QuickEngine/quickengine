@@ -1,10 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
 	title: "Resources",
-};
+	description:
+		"QuickEngine resources — guides, tutorials, customer stories, and more to help you build.",
+	path: "/resources",
+});
 
 // PLACEHOLDER — copy is provisional; several targets don't exist as pages yet.
 const GROUPS = [

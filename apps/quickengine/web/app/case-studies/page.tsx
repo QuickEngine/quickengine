@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Case Studies" };
+export const metadata = buildMetadata({
+	title: "Case Studies",
+	description:
+		"QuickEngine case studies — how real businesses ship faster on one backend.",
+	path: "/case-studies",
+});
 
 // PLACEHOLDER case studies.
 const STUDIES = [

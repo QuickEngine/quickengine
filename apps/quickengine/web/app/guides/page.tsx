@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Guides" };
+export const metadata = buildMetadata({
+	title: "Guides",
+	description:
+		"QuickEngine guides — practical walkthroughs for getting the most out of your backend.",
+	path: "/guides",
+});
 
 // PLACEHOLDER — a guide library. Each links to /guides/<slug>.
 const GUIDES = [

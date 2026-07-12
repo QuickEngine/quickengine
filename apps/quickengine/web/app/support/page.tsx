@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Support" };
+export const metadata = buildMetadata({
+	title: "Support",
+	description:
+		"QuickEngine support — get help, browse the docs, or reach our team.",
+	path: "/support",
+});
 
 // PLACEHOLDER — a help-center entry. Topics link into /docs sections.
 const TOPICS = [

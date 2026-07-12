@@ -45,6 +45,9 @@ importers:
       '@quickengine/auth':
         specifier: workspace:*
         version: link:../../../packages/auth
+      '@quickengine/billing':
+        specifier: workspace:*
+        version: link:../../../packages/billing
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../../packages/db

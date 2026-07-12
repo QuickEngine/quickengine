@@ -13,6 +13,7 @@ import {
 	User,
 	UsersThree,
 } from "@phosphor-icons/react";
+import { StatusIndicator } from "@quickengine/ui";
 import {
 	Dialog,
 	DialogContent,
@@ -59,6 +60,10 @@ const sections: Section[] = [
 // Placeholder locales — English + Tagalog out of the gate (built by hand today;
 // full i18n wires in later).
 const LANGUAGES = ["English", "Tagalog"];
+
+// The public status + support pages live on the web app.
+const WEB_URL =
+	process.env.NEXT_PUBLIC_QUICKENGINE_WEB_URL ?? "https://quickengine.xyz";
 
 // Settings, as a dialog with its own sidebar (the sidebar-13 pattern): categories
 // on the left, the selected category's content on the right.
@@ -137,6 +142,29 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
 											{language === lang ? <Check className="size-4" /> : null}
 										</button>
 									))}
+								</div>
+							) : active === "Support" ? (
+								<div className="flex flex-col gap-4">
+									<div className="flex items-center justify-between gap-4">
+										<div className="flex flex-col">
+											<span className="text-foreground text-sm">
+												System status
+											</span>
+											<span className="text-muted-foreground text-xs">
+												Live status of QuickEngine services.
+											</span>
+										</div>
+										<StatusIndicator
+											endpoint="/api/health"
+											href={`${WEB_URL}/status`}
+										/>
+									</div>
+									<a
+										href={`${WEB_URL}/support`}
+										className="w-fit text-foreground text-sm underline-offset-4 hover:underline"
+									>
+										Contact support →
+									</a>
 								</div>
 							) : (
 								<p className="text-muted-foreground text-sm">

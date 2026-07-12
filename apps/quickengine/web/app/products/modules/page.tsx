@@ -1,9 +1,14 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../../_components/site-footer";
 import { SiteHeader } from "../../_components/site-header";
 import { MODULES } from "./_modules";
 
-export const metadata: Metadata = { title: "Modules" };
+export const metadata = buildMetadata({
+	title: "Modules",
+	description:
+		"QuickEngine modules — switch on auth, billing, storage, search, and more, each a building block of your backend.",
+	path: "/products/modules",
+});
 
 export default function ModulesPage() {
 	return (

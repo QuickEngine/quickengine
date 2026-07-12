@@ -1,11 +1,16 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
 const AUTH_URL =
 	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
 
-export const metadata: Metadata = { title: "About" };
+export const metadata = buildMetadata({
+	title: "About",
+	description:
+		"The team and mission behind QuickEngine — the headless business backend that lets you build more and switch less.",
+	path: "/about",
+});
 
 // PLACEHOLDER — all copy on this page is provisional.
 const VALUES = [

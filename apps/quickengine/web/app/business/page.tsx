@@ -1,11 +1,16 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
 const AUTH_URL =
 	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
 
-export const metadata: Metadata = { title: "Business" };
+export const metadata = buildMetadata({
+	title: "Business",
+	description:
+		"QuickEngine for your business type — tailored solutions for e-commerce, agencies, freelancers, SaaS, and more.",
+	path: "/business",
+});
 
 // PLACEHOLDER — the business-type directory. Cards link to /business/<slug>.
 const TYPES = [

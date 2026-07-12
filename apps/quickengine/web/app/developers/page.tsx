@@ -1,11 +1,16 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
 const AUTH_URL =
 	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
 
-export const metadata: Metadata = { title: "Developers" };
+export const metadata = buildMetadata({
+	title: "Developers",
+	description:
+		"Build on QuickEngine — APIs, SDKs, and a CLI to wire your frontend to a backend that already speaks your business.",
+	path: "/developers",
+});
 
 const BUILD = [
 	{ name: "Documentation", desc: "Everything, end to end.", href: "/docs" },

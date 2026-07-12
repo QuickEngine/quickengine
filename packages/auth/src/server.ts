@@ -14,6 +14,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { bearer, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
+import { matchOrigin } from "./_origin";
 
 // The QuickEngine surfaces that are allowed to talk to this auth authority.
 // On localhost every port shares the `localhost` cookie, so a single session
@@ -21,13 +22,22 @@ import { bearer, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
 // can't be shared across subdomains (public-suffix list) — that's handled by
 // the token/redirect path, and switches to cross-subdomain cookies once the
 // real quickengine.net domain is live (see docs/STATE.md domain checklist).
-const trustedOrigins = [
+export const trustedOrigins = [
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_AUTH_URL,
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_WEB_URL,
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL,
 ].filter(
 	(origin, index, all) => Boolean(origin) && all.indexOf(origin) === index,
 );
+
+// Whether a cross-origin request may talk to the auth API (used for CORS on the
+// route handler). Trusts the explicit app origins, plus — in prod — any subdomain
+// of the shared cookie domain, so a sibling surface (account/web) always reaches
+// the auth API even if one env URL drifts. The cookie domain is our own parent,
+// so this can't widen trust beyond QuickEngine's subdomains.
+export function isAllowedOrigin(origin: string | null | undefined): boolean {
+	return matchOrigin(origin, trustedOrigins, serverEnv.AUTH_COOKIE_DOMAIN);
+}
 
 export const auth = betterAuth({
 	baseURL: serverEnv.BETTER_AUTH_URL,

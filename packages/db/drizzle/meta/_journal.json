@@ -29,6 +29,13 @@
 			"when": 1783713355294,
 			"tag": "0003_jittery_meteorite",
 			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "7",
+			"when": 1783833816503,
+			"tag": "0004_public_serpent_society",
+			"breakpoints": true
 		}
 	]
 }

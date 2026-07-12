@@ -1,4 +1,5 @@
 import {
+	bigint,
 	boolean,
 	index,
 	integer,
@@ -6,6 +7,7 @@ import {
 	pgTable,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
 
@@ -238,5 +240,34 @@ export const quickengineSubscriptions = pgTable(
 	(table) => [
 		index("quickengine_subscriptions_user_idx").on(table.userId),
 		index("quickengine_subscriptions_org_idx").on(table.organizationId),
+	],
+);
+
+// Usage counters for the metering engine. Metered PER ACCOUNT (scopeId = the
+// owning user id today). One row per (account, meter, period): COUNTERS (actions)
+// get a fresh row each billing period and are incremented; GAUGES (storage/seats/
+// workspaces) keep a single sentinel-period row holding the current total. See
+// @quickengine/billing metering.
+export const quickengineUsage = pgTable(
+	"quickengine_usage",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		scopeId: text("scope_id").notNull(),
+		// "actions" | "storageBytes" | "seats" | "workspaces".
+		meter: text("meter").notNull(),
+		periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+		periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+		// Accumulated value (counter) or current total (gauge). bigint for bytes.
+		value: bigint("value", { mode: "number" }).notNull().default(0),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("quickengine_usage_scope_meter_period_idx").on(
+			table.scopeId,
+			table.meter,
+			table.periodStart,
+		),
 	],
 );

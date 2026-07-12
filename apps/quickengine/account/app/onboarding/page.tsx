@@ -19,9 +19,7 @@ export default async function Page() {
 	// Offer 2FA setup only to email/password sign-ups who don't already have it on.
 	return (
 		<OnboardingFlow
-			offerTwoFactor={Boolean(
-				state && state.hasPassword && !state.twoFactorEnabled,
-			)}
+			offerTwoFactor={Boolean(state?.hasPassword && !state.twoFactorEnabled)}
 		/>
 	);
 }

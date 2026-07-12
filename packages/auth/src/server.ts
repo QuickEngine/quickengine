@@ -24,7 +24,7 @@ import { bearer, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
 const trustedOrigins = [
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_AUTH_URL,
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_WEB_URL,
-	serverEnv.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL,
+	serverEnv.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL,
 ].filter(
 	(origin, index, all) => Boolean(origin) && all.indexOf(origin) === index,
 );

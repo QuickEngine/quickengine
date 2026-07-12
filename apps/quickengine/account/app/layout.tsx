@@ -10,8 +10,8 @@ import "./globals.css";
 
 const AUTH_URL =
 	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
-const DASHBOARD_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL ?? "http://localhost:3001";
+const ACCOUNT_URL =
+	process.env.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL ?? "http://localhost:3001";
 // Share images live in the web app's /public — one source of truth, no drift.
 const WEB_URL =
 	process.env.NEXT_PUBLIC_QUICKENGINE_WEB_URL ?? "https://quickengine.xyz";
@@ -20,7 +20,7 @@ const OG_DESCRIPTION =
 	"Account, billing, and suite access for QuickEngine Software.";
 
 export const metadata: Metadata = {
-	metadataBase: new URL(DASHBOARD_URL),
+	metadataBase: new URL(ACCOUNT_URL),
 	title: {
 		default: "Workspaces | QuickEngine",
 		template: "%s | QuickEngine",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		title: OG_TITLE,
 		description: OG_DESCRIPTION,
-		url: DASHBOARD_URL,
+		url: ACCOUNT_URL,
 		siteName: "QuickEngine",
 		type: "website",
 		locale: "en_US",
@@ -64,9 +64,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	const session = await getSession(await headers());
 	if (!session) {
-		redirect(
-			`${AUTH_URL}/signin?redirect=${encodeURIComponent(DASHBOARD_URL)}`,
-		);
+		redirect(`${AUTH_URL}/signin?redirect=${encodeURIComponent(ACCOUNT_URL)}`);
 	}
 
 	return (

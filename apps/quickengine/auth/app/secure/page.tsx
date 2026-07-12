@@ -10,11 +10,11 @@ import {
 	textLink,
 } from "../_auth-ui";
 
-const DASHBOARD_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL ?? "http://localhost:3001";
+const ACCOUNT_URL =
+	process.env.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL ?? "http://localhost:3001";
 
 function goToDashboard() {
-	window.location.href = DASHBOARD_URL;
+	window.location.href = ACCOUNT_URL;
 }
 
 type Step = "choose" | "totp-password" | "totp-verify" | "done";

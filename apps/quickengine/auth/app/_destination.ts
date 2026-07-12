@@ -5,13 +5,13 @@ import { resolveRedirect } from "./_redirect";
 // else — e.g. a crafted `?redirect=https://evil.com` — is ignored (see the
 // open-redirect guard in `_redirect.ts`).
 const ALLOWED_ORIGINS = [
-	clientEnv.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL,
+	clientEnv.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL,
 	clientEnv.NEXT_PUBLIC_QUICKENGINE_WEB_URL,
 	clientEnv.NEXT_PUBLIC_QUICKENGINE_AUTH_URL,
 ].map((u) => new URL(u).origin);
 
 export const FALLBACK_DESTINATION =
-	clientEnv.NEXT_PUBLIC_QUICKENGINE_DASHBOARD_URL;
+	clientEnv.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL;
 
 // Resolve the post-auth landing URL: the `?redirect=` target when it points at
 // one of our own apps, otherwise the account dashboard.

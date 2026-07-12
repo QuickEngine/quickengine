@@ -32,30 +32,42 @@ export function TwoFactorStep({ onDone }: { onDone: () => void }) {
 		event.preventDefault();
 		setError("");
 		setPending(true);
-		const { data, error: enableError } = await twoFactor.enable({ password });
-		setPending(false);
-		if (enableError || !data) {
-			setError(
-				enableError?.message ?? "Couldn't start setup — check your password.",
-			);
-			return;
+		try {
+			const { data, error: enableError } = await twoFactor.enable({ password });
+			if (enableError || !data) {
+				setError(
+					enableError?.message ?? "Couldn't start setup — check your password.",
+				);
+				return;
+			}
+			setSecret(data.totpURI.match(/secret=([^&]+)/)?.[1] ?? "");
+			setBackupCodes(data.backupCodes ?? []);
+			setSub("verify");
+		} catch {
+			// A thrown (vs returned) error means the request never completed —
+			// almost always a cross-origin/network failure reaching the auth app.
+			setError("Couldn't reach the server. Please try again.");
+		} finally {
+			setPending(false);
 		}
-		setSecret(data.totpURI.match(/secret=([^&]+)/)?.[1] ?? "");
-		setBackupCodes(data.backupCodes ?? []);
-		setSub("verify");
 	}
 
 	async function onVerify(event: FormEvent) {
 		event.preventDefault();
 		setError("");
 		setPending(true);
-		const { error: verifyError } = await twoFactor.verifyTotp({ code });
-		setPending(false);
-		if (verifyError) {
-			setError(verifyError.message ?? "That code didn't match. Try again.");
-			return;
+		try {
+			const { error: verifyError } = await twoFactor.verifyTotp({ code });
+			if (verifyError) {
+				setError(verifyError.message ?? "That code didn't match. Try again.");
+				return;
+			}
+			onDone();
+		} catch {
+			setError("Couldn't reach the server. Please try again.");
+		} finally {
+			setPending(false);
 		}
-		onDone();
 	}
 
 	if (sub === "intro") {

@@ -10,6 +10,7 @@ import {
 	SITE_TAGLINE,
 	SITE_URL,
 	siteJsonLd,
+	TWITTER_IMAGE,
 } from "./_lib/seo";
 import "./globals.css";
 
@@ -43,7 +44,7 @@ export const metadata: Metadata = {
 		card: "summary_large_image",
 		title: HOME_TITLE,
 		description: SITE_DESCRIPTION,
-		images: [OG_IMAGE.url],
+		images: [TWITTER_IMAGE.url],
 	},
 };
 

@@ -68,6 +68,10 @@ export const quickengineWorkspaces = pgTable(
 			.notNull()
 			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
 		name: text("name").notNull(),
+		// URL-safe identifier, unique per owner (the display name is NOT unique).
+		// Nullable so the column adds without backfilling old rows; new workspaces
+		// always get one generated (see the account app's slug helpers).
+		slug: text("slug"),
 		businessType: text("business_type").notNull(),
 		modules: jsonb("modules").$type<string[]>().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true })
@@ -77,7 +81,13 @@ export const quickengineWorkspaces = pgTable(
 			.defaultNow()
 			.notNull(),
 	},
-	(table) => [index("quickengine_workspaces_owner_idx").on(table.ownerId)],
+	(table) => [
+		index("quickengine_workspaces_owner_idx").on(table.ownerId),
+		uniqueIndex("quickengine_workspaces_owner_slug_idx").on(
+			table.ownerId,
+			table.slug,
+		),
+	],
 );
 
 export const quickengineSessions = pgTable("quickengine_sessions", {

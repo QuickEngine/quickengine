@@ -33,9 +33,11 @@ describe("client-records settings", () => {
 });
 
 describe("client-records manifest", () => {
-	it("exposes a stable identity + metered action", () => {
+	it("exposes a stable identity and is not metered", () => {
 		expect(clientRecordsModule.id).toBe("client-records");
 		expect(clientRecordsModule.kind).toBe("shared");
-		expect(clientRecordsModule.meteredAction).toBe("client_record.created");
+		// Storing a contact is free — no per-create metering.
+		expect(clientRecordsModule.meteredAction).toBeNull();
+		expect(clientRecordsModule.dependsOn).toEqual([]);
 	});
 });

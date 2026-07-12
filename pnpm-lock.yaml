@@ -479,9 +479,6 @@ importers:
 
   packages/modules/client-records:
     dependencies:
-      '@quickengine/billing':
-        specifier: workspace:*
-        version: link:../../billing
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db

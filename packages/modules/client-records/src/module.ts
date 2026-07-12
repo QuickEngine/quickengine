@@ -28,8 +28,11 @@ export const clientRecordsModule = {
 		"A shared record of the people and organizations your business deals with — customers, clients, students, whatever fits.",
 	// Shared modules are available on every workspace regardless of business type.
 	kind: "shared",
-	// One metered action = creating a record.
-	meteredAction: "client_record.created",
+	// Foundation module — depends on nothing; other modules depend on it.
+	dependsOn: [] as const,
+	// Not metered. Storing a contact isn't a billable action (you don't pay to have
+	// customers). A free-tier count cap is the only lever, enforced at the plan layer.
+	meteredAction: null,
 	settingsSchema: clientRecordsSettingsSchema,
 	defaultSettings: clientRecordsSettingsSchema.parse({}),
 } as const;

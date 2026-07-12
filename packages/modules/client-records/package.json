@@ -15,7 +15,6 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
-		"@quickengine/billing": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"zod": "^4.3.6"
 	},

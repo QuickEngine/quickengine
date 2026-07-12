@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Tutorials" };
+export const metadata = buildMetadata({
+	title: "Tutorials",
+	description:
+		"QuickEngine tutorials — step-by-step lessons to build real features on your backend.",
+	path: "/tutorials",
+});
 
 // PLACEHOLDER — short, task-focused how-tos.
 const TUTORIALS = [

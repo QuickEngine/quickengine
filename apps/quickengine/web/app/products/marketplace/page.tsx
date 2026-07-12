@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../../_components/site-footer";
 import { SiteHeader } from "../../_components/site-header";
 
-export const metadata: Metadata = { title: "Marketplace" };
+export const metadata = buildMetadata({
+	title: "Marketplace",
+	description:
+		"The QuickEngine marketplace — discover modules and integrations that extend your backend.",
+	path: "/products/marketplace",
+});
 
 // PLACEHOLDER — marketplace listings.
 const ITEMS = [

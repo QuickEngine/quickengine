@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Events" };
+export const metadata = buildMetadata({
+	title: "Events",
+	description:
+		"QuickEngine events — webinars, meetups, and launches for the community.",
+	path: "/events",
+});
 
 // PLACEHOLDER events.
 const EVENTS = [

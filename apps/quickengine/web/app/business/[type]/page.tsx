@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../../_components/site-footer";
 import { SiteHeader } from "../../_components/site-header";
 
@@ -133,7 +134,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
 	const { type } = await params;
 	const solution = SOLUTIONS[type as Slug];
-	return { title: solution ? solution.name : "Business" };
+	return solution
+		? buildMetadata({
+				title: solution.name,
+				description: solution.sub,
+				path: `/business/${type}`,
+			})
+		: buildMetadata({ title: "Business", path: "/business" });
 }
 
 export default async function BusinessSolutionPage({

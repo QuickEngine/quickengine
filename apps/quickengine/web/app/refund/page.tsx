@@ -1,7 +1,12 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { LegalPage } from "../_components/legal";
 
-export const metadata: Metadata = { title: "Refund & Cancellation Policy" };
+export const metadata = buildMetadata({
+	title: "Refund & Cancellation Policy",
+	description:
+		"QuickEngine Refund & Cancellation Policy — how billing, refunds, and cancellations work.",
+	path: "/refund",
+});
 
 // NOTE: unlike Terms / Privacy / Cookies, there is no source draft for this in
 // docs/. This is a placeholder authored to match the Terms (Stripe billing,

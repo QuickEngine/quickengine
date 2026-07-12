@@ -1,9 +1,14 @@
 import { Logo } from "@quickengine/ui";
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Brand" };
+export const metadata = buildMetadata({
+	title: "Brand",
+	description:
+		"QuickEngine brand assets — logos, colors, and guidelines for using our marks.",
+	path: "/brand",
+});
 
 // PLACEHOLDER — brand assets + basic guidelines. Download links are stubs.
 const COLORS = [

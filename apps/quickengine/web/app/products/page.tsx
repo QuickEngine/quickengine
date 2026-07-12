@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 import { MODULES } from "./modules/_modules";
@@ -6,7 +6,12 @@ import { MODULES } from "./modules/_modules";
 const AUTH_URL =
 	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
 
-export const metadata: Metadata = { title: "Products" };
+export const metadata = buildMetadata({
+	title: "Products",
+	description:
+		"Everything QuickEngine gives your business: workspaces, modules, and a marketplace — one backend for your whole operation.",
+	path: "/products",
+});
 
 const PLATFORM = [
 	{

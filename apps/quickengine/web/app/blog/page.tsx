@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Blog" };
+export const metadata = buildMetadata({
+	title: "Blog",
+	description:
+		"The QuickEngine blog — product updates, engineering notes, and thoughts on building modern businesses.",
+	path: "/blog",
+});
 
 // PLACEHOLDER posts — a blog index. Each would link to /blog/<slug>.
 const POSTS = [

@@ -9,7 +9,7 @@ import {
 	faYoutube,
 } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Logo } from "@quickengine/ui";
+import { Logo, StatusIndicator } from "@quickengine/ui";
 import { LanguageSelector } from "./language-selector";
 import { ThemeSwitch } from "./theme-switch";
 
@@ -153,19 +153,22 @@ export function SiteFooter() {
 
 				{/* Bottom bar: socials left · copyright center · theme + language right */}
 				<div className="mt-16 grid grid-cols-1 items-center justify-items-center gap-6 sm:grid-cols-3">
-					<div className="flex flex-wrap items-center gap-4 sm:justify-self-start">
-						{SOCIALS.map((social) => (
-							<a
-								key={social.label}
-								href={social.href}
-								aria-label={social.label}
-								target="_blank"
-								rel="noreferrer noopener"
-								className="text-muted-foreground transition-colors hover:text-foreground"
-							>
-								<FontAwesomeIcon icon={social.icon} className="h-4 w-auto" />
-							</a>
-						))}
+					<div className="flex flex-col items-center gap-4 sm:items-start sm:justify-self-start">
+						<StatusIndicator href="/status" />
+						<div className="flex flex-wrap items-center justify-center gap-4">
+							{SOCIALS.map((social) => (
+								<a
+									key={social.label}
+									href={social.href}
+									aria-label={social.label}
+									target="_blank"
+									rel="noreferrer noopener"
+									className="text-muted-foreground transition-colors hover:text-foreground"
+								>
+									<FontAwesomeIcon icon={social.icon} className="h-4 w-auto" />
+								</a>
+							))}
+						</div>
 					</div>
 
 					<p className="text-center text-[13px] text-muted-foreground sm:justify-self-center">

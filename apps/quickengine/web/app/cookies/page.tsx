@@ -1,7 +1,11 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { LegalPage, legalTable } from "../_components/legal";
 
-export const metadata: Metadata = { title: "Cookie Policy" };
+export const metadata = buildMetadata({
+	title: "Cookie Policy",
+	description: "QuickEngine Cookie Policy — how and why we use cookies.",
+	path: "/cookies",
+});
 
 export default function CookiesPage() {
 	return (

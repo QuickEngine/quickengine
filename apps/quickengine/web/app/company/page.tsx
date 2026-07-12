@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Company" };
+export const metadata = buildMetadata({
+	title: "Company",
+	description:
+		"QuickEngine Software — who we are, what we're building, and where we're headed.",
+	path: "/company",
+});
 
 // Directory for the company section — mirrors the footer's Company column.
 const PAGES = [

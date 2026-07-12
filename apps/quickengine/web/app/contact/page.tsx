@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Contact" };
+export const metadata = buildMetadata({
+	title: "Contact",
+	description:
+		"Get in touch with QuickEngine — sales, support, or partnerships, we're here to help.",
+	path: "/contact",
+});
 
 // PLACEHOLDER contact routes. Emails are provisional.
 const METHODS = [

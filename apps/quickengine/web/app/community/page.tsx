@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Community" };
+export const metadata = buildMetadata({
+	title: "Community",
+	description:
+		"The QuickEngine community — connect with other builders running their business on QuickEngine.",
+	path: "/community",
+});
 
 // PLACEHOLDER — ways to plug into the community. Real links/counts swap in later.
 const CHANNELS = [

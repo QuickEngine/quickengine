@@ -1,8 +1,13 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { SiteFooter } from "../_components/site-footer";
 import { SiteHeader } from "../_components/site-header";
 
-export const metadata: Metadata = { title: "Customers" };
+export const metadata = buildMetadata({
+	title: "Customers",
+	description:
+		"QuickEngine customers — the businesses building on our backend.",
+	path: "/customers",
+});
 
 // PLACEHOLDER — customer stories. Real logos/quotes swap in later.
 const CUSTOMERS = [

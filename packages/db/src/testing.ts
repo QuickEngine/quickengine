@@ -84,25 +84,23 @@ export const testDbClient = (): ReturnType<typeof postgres> => {
 	return sharedClient;
 };
 
-// Truncated between every test for isolation. Ordered child-first, but CASCADE
-// makes order moot; RESTART IDENTITY resets any serial counters.
-const TABLES = [
-	"quickengine_two_factors",
-	"quickengine_passkeys",
-	"quickengine_sessions",
-	"quickengine_accounts",
-	"quickengine_verifications",
-	"quickengine_subscriptions",
-	"quickengine_organizations",
-	"quickengine_users",
-];
-
-/** Wipe every auth-related table so each test starts from a clean slate. */
+/**
+ * Wipe every public table so each test starts from a clean slate. Discovers the
+ * tables at runtime (excluding Drizzle's migration bookkeeping) rather than
+ * hardcoding a list, so a newly added table can never be silently left out of the
+ * reset — which would let usage/state leak between tests. CASCADE handles FK order.
+ */
 export const truncateAll = async (): Promise<void> => {
-	const list = TABLES.map((table) => `"${table}"`).join(", ");
-	await testDbClient().unsafe(
-		`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`,
-	);
+	const client = testDbClient();
+	const rows = await client<{ tablename: string }[]>`
+		SELECT tablename FROM pg_tables
+		WHERE schemaname = 'public' AND tablename NOT LIKE ${"\\_\\_drizzle%"}
+	`;
+	if (rows.length === 0) {
+		return;
+	}
+	const list = rows.map((row) => `"${row.tablename}"`).join(", ");
+	await client.unsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
 };
 
 /** Close the shared connection so the test process can exit cleanly. */

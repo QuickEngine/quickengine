@@ -1,7 +1,12 @@
-import type { Metadata } from "next";
+import { buildMetadata } from "@/app/_lib/seo";
 import { LegalPage, legalTable } from "../_components/legal";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata = buildMetadata({
+	title: "Privacy Policy",
+	description:
+		"QuickEngine Privacy Policy — how we collect, use, and protect your data.",
+	path: "/privacy",
+});
 
 export default function PrivacyPage() {
 	return (

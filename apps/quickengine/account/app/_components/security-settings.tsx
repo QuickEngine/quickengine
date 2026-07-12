@@ -1,6 +1,7 @@
 "use client";
 
 import { passkey, twoFactor, useSession } from "@quickengine/auth/client";
+import { QRCodeSVG } from "qrcode.react";
 import { type FormEvent, useState } from "react";
 
 const primaryBtn =
@@ -27,6 +28,7 @@ export function SecuritySettings() {
 
 	const [step, setStep] = useState<TotpStep>("idle");
 	const [password, setPassword] = useState("");
+	const [totpUri, setTotpUri] = useState("");
 	const [secret, setSecret] = useState("");
 	const [backupCodes, setBackupCodes] = useState<string[]>([]);
 	const [code, setCode] = useState("");
@@ -56,6 +58,7 @@ export function SecuritySettings() {
 			);
 			return;
 		}
+		setTotpUri(data.totpURI);
 		setSecret(data.totpURI.match(/secret=([^&]+)/)?.[1] ?? "");
 		setBackupCodes(data.backupCodes ?? []);
 		setStep("verify");
@@ -175,12 +178,22 @@ export function SecuritySettings() {
 
 				{!twoFAOn && step === "verify" && (
 					<div className="mt-3 flex flex-col gap-3">
-						<div>
-							<p className="mb-1 text-muted-foreground text-xs">
-								Add this key to your authenticator:
-							</p>
-							<div className="rounded-lg border border-input bg-foreground/[0.02] p-2 font-mono text-foreground text-xs break-all">
-								{secret}
+						<div className="flex items-start gap-3">
+							<div className="rounded-lg bg-white p-2.5">
+								<QRCodeSVG
+									value={totpUri}
+									size={112}
+									bgColor="#ffffff"
+									fgColor="#000000"
+								/>
+							</div>
+							<div className="min-w-0">
+								<p className="mb-1 text-muted-foreground text-xs">
+									Scan, or enter this key:
+								</p>
+								<div className="rounded-lg border border-input bg-foreground/[0.02] p-2 font-mono text-foreground text-xs break-all">
+									{secret}
+								</div>
 							</div>
 						</div>
 						{backupCodes.length > 0 && (

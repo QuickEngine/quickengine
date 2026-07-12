@@ -27,7 +27,8 @@ export const trustedOrigins = [
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_WEB_URL,
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL,
 ].filter(
-	(origin, index, all) => Boolean(origin) && all.indexOf(origin) === index,
+	(origin, index, all): origin is string =>
+		Boolean(origin) && all.indexOf(origin) === index,
 );
 
 // Whether a cross-origin request may talk to the auth API (used for CORS on the
@@ -152,7 +153,19 @@ export const auth = betterAuth({
 		// `Authorization: Bearer <token>` — no cookies, no new table. Web keeps
 		// using cookies; this is purely the token path for native surfaces.
 		bearer(),
-		passkey({ rpName: "QuickEngine" }),
+		// rpID must be the shared PARENT domain so a passkey created on one surface
+		// (e.g. account.quickengine.xyz) is valid on the others; the origin allowlist
+		// lets the WebAuthn ceremony run from any of them. Unset locally, where it
+		// defaults to the localhost auth origin.
+		passkey({
+			rpName: "QuickEngine",
+			...(serverEnv.AUTH_COOKIE_DOMAIN
+				? {
+						rpID: serverEnv.AUTH_COOKIE_DOMAIN.replace(/^\./, ""),
+						origin: trustedOrigins,
+					}
+				: {}),
+		}),
 		emailOTP({
 			async sendVerificationOTP({ email, otp }) {
 				await getEmailProvider().send({

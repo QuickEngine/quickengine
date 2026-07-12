@@ -50,6 +50,27 @@
 			"when": 1783849381661,
 			"tag": "0006_puzzling_matthew_murdock",
 			"breakpoints": true
+		},
+		{
+			"idx": 7,
+			"version": "7",
+			"when": 1783850721201,
+			"tag": "0007_mean_tana_nile",
+			"breakpoints": true
+		},
+		{
+			"idx": 8,
+			"version": "7",
+			"when": 1783852045419,
+			"tag": "0008_flippant_shape",
+			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "7",
+			"when": 1783854306745,
+			"tag": "0009_mighty_inertia",
+			"breakpoints": true
 		}
 	]
 }

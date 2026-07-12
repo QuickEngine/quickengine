@@ -19,7 +19,7 @@ import {
 } from "../_auth-ui";
 import { useAuthDestination } from "../_use-auth-destination";
 
-type Step = "credentials" | "twoFactor" | "sent";
+type Step = "email" | "method" | "twoFactor" | "sent";
 
 export function SignInForm() {
 	const destination = useAuthDestination();
@@ -30,7 +30,7 @@ export function SignInForm() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [code, setCode] = useState("");
-	const [step, setStep] = useState<Step>("credentials");
+	const [step, setStep] = useState<Step>("email");
 	const [sentMessage, setSentMessage] = useState("");
 	const [useRecovery, setUseRecovery] = useState(false);
 	const [pending, setPending] = useState(false);
@@ -49,11 +49,19 @@ export function SignInForm() {
 		finish();
 	};
 
-	const magicLink = async () => {
+	// Identifier step: capture the email, then decide what to show next. Enterprise
+	// SSO hooks in HERE (#22, SSO phase) — if the email's domain maps to a
+	// configured provider, redirect to that IdP instead of asking for a password.
+	const onContinue = (event: FormEvent) => {
+		event.preventDefault();
 		if (!email) {
-			setError("Enter your email first, then request a link.");
 			return;
 		}
+		setError("");
+		setStep("method");
+	};
+
+	const magicLink = async () => {
 		setPending(true);
 		setError("");
 		const { error: mlError } = await signIn.magicLink({
@@ -70,10 +78,6 @@ export function SignInForm() {
 	};
 
 	const forgotPassword = async () => {
-		if (!email) {
-			setError("Enter your email first, then reset your password.");
-			return;
-		}
 		setPending(true);
 		setError("");
 		const { error: prError } = await requestPasswordReset({
@@ -187,6 +191,71 @@ export function SignInForm() {
 		);
 	}
 
+	// Method step — email captured, now show the password + passwordless options.
+	if (step === "method") {
+		return (
+			<AuthShell>
+				<div className="mb-8 text-center">
+					<h1 className="font-medium text-[22px] text-foreground tracking-tight">
+						Enter your password
+					</h1>
+					<p className="mt-2 text-[14px] text-muted-foreground">
+						Signing in as {email}.{" "}
+						<button
+							type="button"
+							onClick={() => {
+								setStep("email");
+								setPassword("");
+								setError("");
+							}}
+							className={textLink}
+						>
+							Change
+						</button>
+					</p>
+				</div>
+
+				<form onSubmit={onSubmit} className="flex flex-col gap-3">
+					<input
+						className={field}
+						type="password"
+						placeholder="Password"
+						autoComplete="current-password"
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+						// biome-ignore lint/a11y/noAutofocus: password is the field to fill here
+						autoFocus
+						required
+					/>
+					{error && <p className="text-[13px] text-red-400">{error}</p>}
+					<button type="submit" disabled={pending} className={primaryButton}>
+						{pending ? "Signing in…" : "Sign in"}
+					</button>
+				</form>
+
+				<div className="mt-4 flex items-center justify-between">
+					<button
+						type="button"
+						onClick={magicLink}
+						disabled={pending}
+						className={textLink}
+					>
+						Email me a link
+					</button>
+					<button
+						type="button"
+						onClick={forgotPassword}
+						disabled={pending}
+						className={textLink}
+					>
+						Forgot password?
+					</button>
+				</div>
+			</AuthShell>
+		);
+	}
+
+	// Email step — the identifier-first entry point.
 	return (
 		<AuthShell>
 			<div className="mb-8 text-center">
@@ -222,7 +291,7 @@ export function SignInForm() {
 
 			<Divider />
 
-			<form onSubmit={onSubmit} className="flex flex-col gap-3">
+			<form onSubmit={onContinue} className="flex flex-col gap-3">
 				<input
 					className={field}
 					type="email"
@@ -232,29 +301,11 @@ export function SignInForm() {
 					onChange={(e) => setEmail(e.target.value)}
 					required
 				/>
-				<input
-					className={field}
-					type="password"
-					placeholder="Password"
-					autoComplete="current-password"
-					value={password}
-					onChange={(e) => setPassword(e.target.value)}
-					required
-				/>
 				{error && <p className="text-[13px] text-red-400">{error}</p>}
 				<button type="submit" disabled={pending} className={primaryButton}>
-					{pending ? "Signing in…" : "Sign in"}
+					Continue
 				</button>
 			</form>
-
-			<div className="mt-4 flex items-center justify-between">
-				<button type="button" onClick={magicLink} className={textLink}>
-					Email me a link
-				</button>
-				<button type="button" onClick={forgotPassword} className={textLink}>
-					Forgot password?
-				</button>
-			</div>
 
 			<p className="mt-6 text-center text-[13px] text-muted-foreground">
 				Don't have an account?{" "}

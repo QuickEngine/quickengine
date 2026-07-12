@@ -19,6 +19,15 @@ export const OG_IMAGE = {
 	alt: `${SITE_NAME} — ${SITE_TAGLINE}`,
 };
 
+// X/Twitter's large card uses a 16:9 crop, so it gets its own 1200x675 image.
+// Still one file for the whole site — set here, inherited everywhere.
+export const TWITTER_IMAGE = {
+	url: "/twitter-image.png",
+	width: 1200,
+	height: 675,
+	alt: `${SITE_NAME} — ${SITE_TAGLINE}`,
+};
+
 // Public profiles, mirrored from the footer. Feeds the Organization schema's
 // `sameAs`, which helps search engines link the brand to its social presence.
 export const SOCIAL_LINKS = [
@@ -97,7 +106,7 @@ export function buildMetadata({
 			...(title ? { title } : {}),
 			description: desc,
 			card: "summary_large_image",
-			images: [OG_IMAGE.url],
+			images: [TWITTER_IMAGE.url],
 		},
 	};
 }

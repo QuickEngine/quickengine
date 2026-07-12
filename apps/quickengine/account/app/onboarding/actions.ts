@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { db, eq } from "@quickengine/db";
+import { db, ensurePersonalOrg, eq } from "@quickengine/db";
 import {
 	quickengineUsers,
 	quickengineWorkspaces,
@@ -46,7 +46,15 @@ export async function completeOnboarding(input: {
 		.filter((slug): slug is string => slug !== null);
 	const slug = nextAvailableSlug(slugify(name), taken);
 
+	// The workspace belongs to the user's personal org (idempotent — covers
+	// existing users who predate the signup hook).
+	const organizationId = await ensurePersonalOrg(
+		userId,
+		session.user.name ?? session.user.email,
+	);
+
 	await db.insert(quickengineWorkspaces).values({
+		organizationId,
 		ownerId: userId,
 		name,
 		slug,

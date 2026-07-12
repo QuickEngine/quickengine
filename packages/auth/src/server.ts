@@ -1,5 +1,5 @@
 import { passkey } from "@better-auth/passkey";
-import { db } from "@quickengine/db";
+import { db, ensurePersonalOrg } from "@quickengine/db";
 import {
 	quickengineAccounts,
 	quickenginePasskeys,
@@ -64,6 +64,17 @@ export const auth = betterAuth({
 		additionalFields: {
 			companyName: { type: "string", required: false, input: false },
 			onboardingCompletedAt: { type: "date", required: false, input: false },
+		},
+	},
+	// On signup, give every new user their personal org (solo space) + an owner
+	// membership — the Vercel model: one login, an auto-created personal account.
+	databaseHooks: {
+		user: {
+			create: {
+				after: async (user) => {
+					await ensurePersonalOrg(user.id, user.name ?? user.email);
+				},
+			},
 		},
 	},
 	database: drizzleAdapter(db, {

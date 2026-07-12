@@ -34,6 +34,10 @@ export type QuickEngineSubscriptionStatus =
 	| "canceled"
 	| "incomplete";
 
+// Org-level roles (the account/team tier). Kept primitive per the roadmap;
+// expandable. Workspace-level roles are a later refinement.
+export type QuickEngineOrgRole = "owner" | "admin" | "member";
+
 export const quickengineUsers = pgTable("quickengine_users", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
@@ -67,6 +71,12 @@ export const quickengineWorkspaces = pgTable(
 		ownerId: text("owner_id")
 			.notNull()
 			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
+		// The org this workspace belongs to. Nullable so the column adds without a
+		// backfill; new workspaces always set it (see onboarding).
+		organizationId: uuid("organization_id").references(
+			() => quickengineOrganizations.id,
+			{ onDelete: "cascade" },
+		),
 		name: text("name").notNull(),
 		// URL-safe identifier, unique per owner (the display name is NOT unique).
 		// Nullable so the column adds without backfilling old rows; new workspaces
@@ -199,10 +209,16 @@ export const quickenginePasskeys = pgTable(
 	],
 );
 
+// An organization = the ACCOUNT / team container (billing + membership live here).
+// Every user gets a `personal` org auto-created on signup (their solo space); they
+// can also create or be invited to shared orgs. Workspaces belong to an org. This
+// is the Vercel model: one login, many orgs, switched via a scope switcher.
 export const quickengineOrganizations = pgTable("quickengine_organizations", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	name: text("name").notNull(),
 	slug: text("slug").notNull().unique(),
+	// A user's private, auto-created solo account. Shared orgs are false.
+	isPersonal: boolean("is_personal").default(false).notNull(),
 	ownerId: text("owner_id")
 		.notNull()
 		.references(() => quickengineUsers.id),
@@ -213,6 +229,35 @@ export const quickengineOrganizations = pgTable("quickengine_organizations", {
 		.defaultNow()
 		.notNull(),
 });
+
+// Who belongs to an org + their role. Owner is a member row too (role "owner").
+// This is what "seats" counts. Unique per (org, user).
+export const quickengineOrganizationMembers = pgTable(
+	"quickengine_organization_members",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		organizationId: uuid("organization_id")
+			.notNull()
+			.references(() => quickengineOrganizations.id, { onDelete: "cascade" }),
+		userId: text("user_id")
+			.notNull()
+			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
+		role: text("role").$type<QuickEngineOrgRole>().notNull().default("member"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("quickengine_org_members_org_user_idx").on(
+			table.organizationId,
+			table.userId,
+		),
+		index("quickengine_org_members_user_idx").on(table.userId),
+	],
+);
 
 export const quickengineSubscriptions = pgTable(
 	"quickengine_subscriptions",

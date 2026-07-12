@@ -1,0 +1,2 @@
+ALTER TABLE "quickengine_workspaces" ADD COLUMN "slug" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "quickengine_workspaces_owner_slug_idx" ON "quickengine_workspaces" USING btree ("owner_id","slug");

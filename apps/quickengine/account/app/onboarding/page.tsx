@@ -12,11 +12,16 @@ export const metadata: Metadata = { title: "Get started" };
 // already finished onboarding back into the app so they can't re-run it.
 export default async function Page() {
 	const session = await getSession(await headers());
-	if (
-		session &&
-		(await getAccountState(session.user.id)).onboardingCompletedAt
-	) {
+	const state = session ? await getAccountState(session.user.id) : null;
+	if (state?.onboardingCompletedAt) {
 		redirect("/");
 	}
-	return <OnboardingFlow />;
+	// Offer 2FA setup only to email/password sign-ups who don't already have it on.
+	return (
+		<OnboardingFlow
+			offerTwoFactor={Boolean(
+				state && state.hasPassword && !state.twoFactorEnabled,
+			)}
+		/>
+	);
 }

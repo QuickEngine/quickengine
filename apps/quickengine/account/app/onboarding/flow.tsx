@@ -17,8 +17,9 @@ import {
 } from "../_lib/modules";
 import { monthlyPrice, PLANS } from "../_lib/plans";
 import { completeOnboarding } from "./actions";
+import { TwoFactorStep } from "./two-factor-step";
 
-type Step = "choose" | "name" | "type" | "modules" | "plan" | "success";
+type Step = "2fa" | "choose" | "name" | "type" | "modules" | "plan" | "success";
 
 // Centered, shell-free canvas shared by every onboarding step.
 function Canvas({
@@ -58,9 +59,13 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 	);
 }
 
-export function OnboardingFlow() {
+export function OnboardingFlow({
+	offerTwoFactor,
+}: {
+	offerTwoFactor: boolean;
+}) {
 	const router = useRouter();
-	const [step, setStep] = useState<Step>("choose");
+	const [step, setStep] = useState<Step>(offerTwoFactor ? "2fa" : "choose");
 	const [typeId, setTypeId] = useState<string | null>(null);
 	const [enabled, setEnabled] = useState<Set<string>>(new Set());
 	const [annual, setAnnual] = useState(true);
@@ -108,6 +113,15 @@ export function OnboardingFlow() {
 		} catch {
 			setSubmitting(false);
 		}
+	}
+
+	// Step 0 — Optional 2FA setup, first thing for email/password sign-ups.
+	if (step === "2fa") {
+		return (
+			<Canvas>
+				<TwoFactorStep onDone={() => setStep("choose")} />
+			</Canvas>
+		);
 	}
 
 	// Step 1 — Guided vs Manual

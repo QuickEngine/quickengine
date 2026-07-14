@@ -16,6 +16,7 @@
 	},
 	"dependencies": {
 		"@quickengine/db": "workspace:*",
+		"@quickengine/mod-bookings": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-fulfillment": "workspace:*",
 		"@quickengine/mod-inventory": "workspace:*",

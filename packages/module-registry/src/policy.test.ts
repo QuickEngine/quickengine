@@ -137,6 +137,30 @@ describe("module registry policy", () => {
 		).not.toThrow();
 	});
 
+	it("recognizes Bookings and protects its client/catalog dependencies", () => {
+		expect(parseModuleSettings("bookings", {})).toEqual({
+			defaultTimeZone: "UTC",
+			defaultDurationMinutes: 60,
+			allowClientCancellation: true,
+			cancellationNoticeHours: 24,
+		});
+		expect(
+			findEnabledDependents("products-services", [
+				"products-services",
+				"bookings",
+			]),
+		).toEqual(["bookings"]);
+		expect(() =>
+			assertModuleCanBeDisabled("products-services", [
+				"products-services",
+				"bookings",
+			]),
+		).toThrow("MODULE_REQUIRED_BY:products-services:bookings");
+		expect(() =>
+			assertModuleCanBeDisabled("bookings", ["bookings"]),
+		).not.toThrow();
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(
@@ -159,6 +183,12 @@ describe("module registry policy", () => {
 });
 
 describe("module enablement plan", () => {
+	it("enables Bookings after its client and catalog dependencies", () => {
+		expect(
+			planModuleEnablement("bookings", []).map((item) => item.moduleId),
+		).toEqual(["client-records", "products-services", "bookings"]);
+	});
+
 	it("enables Shipping's complete dependency chain in canonical order", () => {
 		expect(
 			planModuleEnablement("shipping", []).map((item) => item.moduleId),

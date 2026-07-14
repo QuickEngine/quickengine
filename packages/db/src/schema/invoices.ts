@@ -1,7 +1,10 @@
+import { sql } from "drizzle-orm";
 import {
+	check,
 	index,
 	integer,
 	pgTable,
+	primaryKey,
 	text,
 	timestamp,
 	uniqueIndex,
@@ -9,6 +12,26 @@ import {
 } from "drizzle-orm/pg-core";
 import { clientRecords } from "./client-records";
 import { quickengineWorkspaces } from "./quickengine";
+
+export const invoiceSequences = pgTable(
+	"invoice_sequences",
+	{
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
+		lastSequence: integer("last_sequence").notNull().default(0),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "invoice_sequences_workspace_pk",
+			columns: [table.workspaceId],
+		}),
+		check("invoice_sequences_positive_check", sql`${table.lastSequence} >= 0`),
+	],
+);
 
 // Invoicing module — bills a workspace's clients. Composes on the Client Records
 // module: an invoice points at a client record (the first cross-module reference,
@@ -54,6 +77,10 @@ export const invoices = pgTable(
 	(table) => [
 		index("invoices_workspace_idx").on(table.workspaceId),
 		index("invoices_client_idx").on(table.clientId),
+		uniqueIndex("invoices_workspace_number_unique").on(
+			table.workspaceId,
+			table.number,
+		),
 	],
 );
 

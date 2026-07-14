@@ -212,6 +212,25 @@ describe("module registry policy", () => {
 		expect(() => assertModuleCanBeDisabled("files", ["files"])).not.toThrow();
 	});
 
+	it("recognizes Quotes & Estimates and protects its client dependency", () => {
+		expect(parseModuleSettings("quotes-estimates", {})).toEqual({
+			quoteNumberPrefix: "QTE",
+			estimateNumberPrefix: "EST",
+			proposalNumberPrefix: "PRO",
+			defaultCurrency: "USD",
+			defaultValidityDays: 30,
+		});
+		expect(
+			planModuleEnablement("quotes-estimates", []).map((item) => item.moduleId),
+		).toEqual(["client-records", "quotes-estimates"]);
+		expect(
+			findEnabledDependents("client-records", ["quotes-estimates"]),
+		).toEqual(["quotes-estimates"]);
+		expect(() =>
+			assertModuleCanBeDisabled("quotes-estimates", ["quotes-estimates"]),
+		).not.toThrow();
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(

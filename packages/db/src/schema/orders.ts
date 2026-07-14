@@ -1,8 +1,11 @@
+import { sql } from "drizzle-orm";
 import {
+	check,
 	index,
 	integer,
 	jsonb,
 	pgTable,
+	primaryKey,
 	text,
 	timestamp,
 	uniqueIndex,
@@ -12,6 +15,26 @@ import { catalogItems, catalogItemVariants } from "./catalog-items";
 import { clientRecords } from "./client-records";
 import { fulfillments } from "./fulfillments";
 import { quickengineWorkspaces } from "./quickengine";
+
+export const orderSequences = pgTable(
+	"order_sequences",
+	{
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
+		lastSequence: integer("last_sequence").notNull().default(0),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "order_sequences_workspace_pk",
+			columns: [table.workspaceId],
+		}),
+		check("order_sequences_positive_check", sql`${table.lastSequence} >= 0`),
+	],
+);
 
 export const orders = pgTable(
 	"orders",

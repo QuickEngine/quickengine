@@ -169,6 +169,13 @@
 			"when": 1784031943764,
 			"tag": "0023_amusing_gravity",
 			"breakpoints": true
+		},
+		{
+			"idx": 24,
+			"version": "7",
+			"when": 1784036513392,
+			"tag": "0024_happy_black_queen",
+			"breakpoints": true
 		}
 	]
 }

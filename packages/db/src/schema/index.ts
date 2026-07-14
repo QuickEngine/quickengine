@@ -1,6 +1,7 @@
 export * from "./bookings";
 export * from "./catalog-items";
 export * from "./client-records";
+export * from "./contracts-esign";
 export * from "./files";
 export * from "./fulfillments";
 export * from "./inventory";

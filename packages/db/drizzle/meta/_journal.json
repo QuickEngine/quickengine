@@ -176,6 +176,13 @@
 			"when": 1784036513392,
 			"tag": "0024_happy_black_queen",
 			"breakpoints": true
+		},
+		{
+			"idx": 25,
+			"version": "7",
+			"when": 1784064863229,
+			"tag": "0025_bitter_carmella_unuscione",
+			"breakpoints": true
 		}
 	]
 }

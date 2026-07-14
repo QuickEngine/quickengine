@@ -231,6 +231,21 @@ describe("module registry policy", () => {
 		).not.toThrow();
 	});
 
+	it("recognizes Contracts & E-sign and protects its client and file dependencies", () => {
+		expect(parseModuleSettings("contracts-esign", {})).toEqual({
+			contractNumberPrefix: "CTR",
+			defaultSigningExpiryDays: 14,
+			defaultConsentText:
+				"I have reviewed this agreement and agree to sign it electronically.",
+		});
+		expect(
+			planModuleEnablement("contracts-esign", []).map((item) => item.moduleId),
+		).toEqual(["client-records", "files", "contracts-esign"]);
+		expect(findEnabledDependents("files", ["contracts-esign"])).toEqual([
+			"contracts-esign",
+		]);
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(

@@ -8,7 +8,7 @@ import {
 	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
-import { catalogItems } from "./catalog-items";
+import { catalogItems, catalogItemVariants } from "./catalog-items";
 import { clientRecords } from "./client-records";
 import { fulfillments } from "./fulfillments";
 import { quickengineWorkspaces } from "./quickengine";
@@ -88,6 +88,14 @@ export const orderLineItems = pgTable(
 		catalogItemId: uuid("catalog_item_id").references(() => catalogItems.id, {
 			onDelete: "set null",
 		}),
+		catalogItemVariantId: uuid("catalog_item_variant_id").references(
+			() => catalogItemVariants.id,
+			{ onDelete: "set null" },
+		),
+		variantOptions: jsonb("variant_options")
+			.$type<Array<{ name: string; value: string }>>()
+			.notNull()
+			.default([]),
 		name: text("name").notNull(),
 		type: text("type", {
 			enum: ["physical", "digital", "service", "package", "rental"],
@@ -102,5 +110,8 @@ export const orderLineItems = pgTable(
 			.notNull()
 			.default({}),
 	},
-	(table) => [index("order_line_items_order_idx").on(table.orderId)],
+	(table) => [
+		index("order_line_items_order_idx").on(table.orderId),
+		index("order_line_items_variant_idx").on(table.catalogItemVariantId),
+	],
 );

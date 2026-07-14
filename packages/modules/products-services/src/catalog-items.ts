@@ -1,6 +1,7 @@
 import {
 	and,
 	catalogItems,
+	catalogItemVariants,
 	db,
 	eq,
 	quickengineWorkspaces,
@@ -14,29 +15,42 @@ import {
 	catalogItemPatchSchema,
 } from "./item";
 
-async function requireWorkspace(workspaceId: string) {
-	const [workspace] = await db
-		.select({ id: quickengineWorkspaces.id })
-		.from(quickengineWorkspaces)
-		.where(eq(quickengineWorkspaces.id, workspaceId))
-		.limit(1);
-	if (!workspace) {
-		throw new Error("WORKSPACE_NOT_FOUND");
-	}
-}
-
 export async function createCatalogItem(
 	workspaceId: string,
 	input: CatalogItemInput,
 ) {
 	const item = catalogItemInputSchema.parse(input);
-	await requireWorkspace(workspaceId);
-
-	const [created] = await db
-		.insert(catalogItems)
-		.values({ workspaceId, ...item })
-		.returning();
-	return created;
+	return db.transaction(async (tx) => {
+		const [workspace] = await tx
+			.select({ id: quickengineWorkspaces.id })
+			.from(quickengineWorkspaces)
+			.where(eq(quickengineWorkspaces.id, workspaceId))
+			.limit(1)
+			.for("update");
+		if (!workspace) {
+			throw new Error("WORKSPACE_NOT_FOUND");
+		}
+		if (item.sku) {
+			const [variant] = await tx
+				.select({ id: catalogItemVariants.id })
+				.from(catalogItemVariants)
+				.where(
+					and(
+						eq(catalogItemVariants.workspaceId, workspaceId),
+						eq(catalogItemVariants.sku, item.sku),
+					),
+				)
+				.limit(1);
+			if (variant) {
+				throw new Error("CATALOG_SKU_IN_USE");
+			}
+		}
+		const [created] = await tx
+			.insert(catalogItems)
+			.values({ workspaceId, ...item })
+			.returning();
+		return created;
+	});
 }
 
 export async function listCatalogItems(
@@ -73,20 +87,54 @@ export async function updateCatalogItem(
 	input: CatalogItemPatch,
 ) {
 	const patch = catalogItemPatchSchema.parse(input);
-	const current = await getCatalogItem(workspaceId, id);
-	if (!current) {
-		throw new Error("CATALOG_ITEM_NOT_FOUND");
-	}
-
-	const updatedValues = catalogItemInputSchema.parse({ ...current, ...patch });
-	const [updated] = await db
-		.update(catalogItems)
-		.set({ ...updatedValues, updatedAt: new Date() })
-		.where(
-			and(eq(catalogItems.workspaceId, workspaceId), eq(catalogItems.id, id)),
-		)
-		.returning();
-	return updated;
+	return db.transaction(async (tx) => {
+		const [workspace] = await tx
+			.select({ id: quickengineWorkspaces.id })
+			.from(quickengineWorkspaces)
+			.where(eq(quickengineWorkspaces.id, workspaceId))
+			.limit(1)
+			.for("update");
+		if (!workspace) {
+			throw new Error("WORKSPACE_NOT_FOUND");
+		}
+		const [current] = await tx
+			.select()
+			.from(catalogItems)
+			.where(
+				and(eq(catalogItems.workspaceId, workspaceId), eq(catalogItems.id, id)),
+			)
+			.limit(1);
+		if (!current) {
+			throw new Error("CATALOG_ITEM_NOT_FOUND");
+		}
+		const updatedValues = catalogItemInputSchema.parse({
+			...current,
+			...patch,
+		});
+		if (updatedValues.sku) {
+			const [variant] = await tx
+				.select({ id: catalogItemVariants.id })
+				.from(catalogItemVariants)
+				.where(
+					and(
+						eq(catalogItemVariants.workspaceId, workspaceId),
+						eq(catalogItemVariants.sku, updatedValues.sku),
+					),
+				)
+				.limit(1);
+			if (variant) {
+				throw new Error("CATALOG_SKU_IN_USE");
+			}
+		}
+		const [updated] = await tx
+			.update(catalogItems)
+			.set({ ...updatedValues, updatedAt: new Date() })
+			.where(
+				and(eq(catalogItems.workspaceId, workspaceId), eq(catalogItems.id, id)),
+			)
+			.returning();
+		return updated;
+	});
 }
 
 export async function setCatalogItemStatus(

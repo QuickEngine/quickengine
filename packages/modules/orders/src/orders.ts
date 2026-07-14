@@ -1,6 +1,7 @@
 import {
 	and,
 	catalogItems,
+	catalogItemVariants,
 	clientRecords,
 	db,
 	eq,
@@ -29,6 +30,10 @@ async function assertReferences(
 	workspaceId: string,
 	input: ReturnType<typeof orderInputSchema.parse>,
 ) {
+	const variantOptionsById = new Map<
+		string,
+		Array<{ name: string; value: string }>
+	>();
 	const [client] = await executor
 		.select({
 			workspaceId: clientRecords.workspaceId,
@@ -60,8 +65,30 @@ async function assertReferences(
 		if (item.workspaceId !== workspaceId) {
 			throw new Error("CATALOG_ITEM_WORKSPACE_MISMATCH");
 		}
+		if (!line.catalogItemVariantId) {
+			continue;
+		}
+		const [variant] = await executor
+			.select({
+				workspaceId: catalogItemVariants.workspaceId,
+				catalogItemId: catalogItemVariants.catalogItemId,
+				options: catalogItemVariants.options,
+			})
+			.from(catalogItemVariants)
+			.where(eq(catalogItemVariants.id, line.catalogItemVariantId))
+			.limit(1);
+		if (!variant) {
+			throw new Error("CATALOG_ITEM_VARIANT_NOT_FOUND");
+		}
+		if (variant.workspaceId !== workspaceId) {
+			throw new Error("CATALOG_ITEM_VARIANT_WORKSPACE_MISMATCH");
+		}
+		if (variant.catalogItemId !== line.catalogItemId) {
+			throw new Error("CATALOG_ITEM_VARIANT_PARENT_MISMATCH");
+		}
+		variantOptionsById.set(line.catalogItemVariantId, variant.options);
 	}
-	return client;
+	return { client, variantOptionsById };
 }
 
 export async function createOrder(
@@ -81,7 +108,11 @@ export async function createOrder(
 		if (!workspace) {
 			throw new Error("WORKSPACE_NOT_FOUND");
 		}
-		const client = await assertReferences(tx, workspaceId, parsed);
+		const { client, variantOptionsById } = await assertReferences(
+			tx,
+			workspaceId,
+			parsed,
+		);
 
 		const [{ maximum }] = await tx
 			.select({
@@ -112,6 +143,10 @@ export async function createOrder(
 			parsed.lines.map((line, position) => ({
 				orderId: order.id,
 				catalogItemId: line.catalogItemId,
+				catalogItemVariantId: line.catalogItemVariantId,
+				variantOptions: line.catalogItemVariantId
+					? variantOptionsById.get(line.catalogItemVariantId)
+					: [],
 				name: line.name,
 				type: line.type,
 				sku: line.sku,
@@ -166,7 +201,11 @@ export async function updateDraftOrder(
 		if (current.status !== "draft") {
 			throw new Error("ORDER_NOT_EDITABLE");
 		}
-		const client = await assertReferences(tx, workspaceId, parsed);
+		const { client, variantOptionsById } = await assertReferences(
+			tx,
+			workspaceId,
+			parsed,
+		);
 		const [updated] = await tx
 			.update(orders)
 			.set({
@@ -187,6 +226,10 @@ export async function updateDraftOrder(
 			parsed.lines.map((line, position) => ({
 				orderId: id,
 				catalogItemId: line.catalogItemId,
+				catalogItemVariantId: line.catalogItemVariantId,
+				variantOptions: line.catalogItemVariantId
+					? variantOptionsById.get(line.catalogItemVariantId)
+					: [],
 				name: line.name,
 				type: line.type,
 				sku: line.sku,

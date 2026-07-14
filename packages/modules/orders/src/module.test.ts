@@ -10,6 +10,7 @@ import {
 
 const clientId = "00000000-0000-4000-8000-000000000001";
 const catalogItemId = "00000000-0000-4000-8000-000000000002";
+const catalogItemVariantId = "00000000-0000-4000-8000-000000000003";
 
 describe("order line snapshots", () => {
 	it("keeps the purchased name, type, SKU, quantity, and price", () => {
@@ -41,6 +42,31 @@ describe("order line snapshots", () => {
 				unitPriceCents: 10_000,
 			}),
 		).toMatchObject({ catalogItemId: null, name: "Retired Service" });
+	});
+
+	it("links a concrete variant through its parent catalog item", () => {
+		expect(
+			orderLineInputSchema.parse({
+				catalogItemId,
+				catalogItemVariantId,
+				name: "Business Cards — Matte / 500",
+				type: "physical",
+				quantity: 1,
+				unitPriceCents: 5_000,
+			}),
+		).toMatchObject({ catalogItemId, catalogItemVariantId });
+	});
+
+	it("rejects a variant without its parent catalog item", () => {
+		expect(() =>
+			orderLineInputSchema.parse({
+				catalogItemVariantId,
+				name: "Orphaned variant",
+				type: "physical",
+				quantity: 1,
+				unitPriceCents: 5_000,
+			}),
+		).toThrow();
 	});
 
 	it("requires a positive whole-unit quantity and integer-cent price", () => {

@@ -74,6 +74,27 @@ describe("module registry policy", () => {
 		).not.toThrow();
 	});
 
+	it("prevents removing Products & Services while Orders uses it", () => {
+		expect(
+			findEnabledDependents("products-services", [
+				"products-services",
+				"orders",
+			]),
+		).toEqual(["orders"]);
+		expect(() =>
+			assertModuleCanBeDisabled("products-services", [
+				"products-services",
+				"orders",
+			]),
+		).toThrow("MODULE_REQUIRED_BY:products-services:orders");
+	});
+
+	it("allows Orders itself to be disabled", () => {
+		expect(() =>
+			assertModuleCanBeDisabled("orders", ["products-services", "orders"]),
+		).not.toThrow();
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(
@@ -96,6 +117,19 @@ describe("module registry policy", () => {
 });
 
 describe("module enablement plan", () => {
+	it("enables the full Orders dependency chain in canonical order", () => {
+		expect(
+			planModuleEnablement("orders", []).map((item) => item.moduleId),
+		).toEqual([
+			"client-records",
+			"products-services",
+			"invoicing",
+			"payments",
+			"fulfillment",
+			"orders",
+		]);
+	});
+
 	it("adds a requested module and all missing dependencies in order", () => {
 		expect(planModuleEnablement("fulfillment", [])).toEqual([
 			expect.objectContaining({ moduleId: "client-records", isNew: true }),

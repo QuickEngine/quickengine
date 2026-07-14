@@ -66,6 +66,8 @@ export async function recordPayment(
 	workspaceId: string,
 	input: RecordPaymentInput,
 ) {
+	const now = new Date();
+	const initialStatus = input.status ?? "pending";
 	const [workspace] = await db
 		.select({ id: quickengineWorkspaces.id })
 		.from(quickengineWorkspaces)
@@ -103,8 +105,14 @@ export async function recordPayment(
 			amountCents: input.amountCents,
 			applicationFeeCents: input.applicationFeeCents ?? 0,
 			currency: input.currency ?? "USD",
-			status: input.status ?? "pending",
+			status: initialStatus,
 			stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+			succeededAt:
+				initialStatus === "succeeded" || initialStatus === "refunded"
+					? now
+					: null,
+			failedAt: initialStatus === "failed" ? now : null,
+			refundedAt: initialStatus === "refunded" ? now : null,
 		})
 		.returning();
 	return payment;
@@ -116,7 +124,12 @@ export async function recordPayment(
  * source of truth for the money, so a reconciliation that can't apply (invoice
  * already paid, or voided) is swallowed rather than failing the payment update.
  */
-export async function setPaymentStatus(id: string, status: PaymentStatus) {
+export async function setPaymentStatus(
+	id: string,
+	status: PaymentStatus,
+	options: { now?: Date } = {},
+) {
+	const now = options.now ?? new Date();
 	const [current] = await db
 		.select({
 			status: payments.status,
@@ -137,7 +150,13 @@ export async function setPaymentStatus(id: string, status: PaymentStatus) {
 
 	const [payment] = await db
 		.update(payments)
-		.set({ status, updatedAt: new Date() })
+		.set({
+			status,
+			succeededAt: status === "succeeded" ? now : undefined,
+			failedAt: status === "failed" ? now : undefined,
+			refundedAt: status === "refunded" ? now : undefined,
+			updatedAt: now,
+		})
 		.where(eq(payments.id, id))
 		.returning();
 

@@ -1,5 +1,6 @@
 export { createCheckoutSession } from "./checkout";
 export {
+	checkAllowance,
 	checkLimit,
 	type EnforceResult,
 	enforce,

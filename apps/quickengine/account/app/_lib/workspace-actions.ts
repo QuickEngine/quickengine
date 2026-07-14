@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { and, db, eq } from "@quickengine/db";
+import { and, db, eq, fileDocuments } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import {
 	disableWorkspaceModule,
@@ -189,6 +189,17 @@ export async function deleteWorkspaceAction(
 	}
 	if (confirmation !== workspace.name) {
 		return { error: "The workspace name does not match." };
+	}
+	const [storedFile] = await db
+		.select({ id: fileDocuments.id })
+		.from(fileDocuments)
+		.where(eq(fileDocuments.workspaceId, workspace.id))
+		.limit(1);
+	if (storedFile) {
+		return {
+			error:
+				"Permanently delete this workspace's stored files before deleting the workspace.",
+		};
 	}
 
 	const [deleted] = await db

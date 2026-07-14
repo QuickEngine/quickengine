@@ -87,8 +87,8 @@ export const MODULES: ModuleDef[] = [
 	},
 	{
 		id: "files",
-		name: "File storage",
-		description: "Store and share your documents.",
+		name: "Files & Documents",
+		description: "Store versioned files and attach them to business records.",
 		category: "shared",
 		status: "coming-soon",
 		icon: FolderSimple,

@@ -2,11 +2,12 @@
 
 import { getSession } from "@quickengine/auth/server";
 import { getAccountPlanId, getPlan, getUsage } from "@quickengine/billing";
-import { db, eq } from "@quickengine/db";
+import { and, db, eq, fileDocuments } from "@quickengine/db";
 import {
 	quickengineOrganizations,
 	quickengineSubscriptions,
 	quickengineUsers,
+	quickengineWorkspaces,
 } from "@quickengine/db/schema/quickengine";
 import { headers } from "next/headers";
 
@@ -52,6 +53,18 @@ export async function deleteAccount() {
 		throw new Error("UNAUTHENTICATED");
 	}
 	const userId = session.user.id;
+	const [storedFile] = await db
+		.select({ id: fileDocuments.id })
+		.from(fileDocuments)
+		.innerJoin(
+			quickengineWorkspaces,
+			and(
+				eq(quickengineWorkspaces.id, fileDocuments.workspaceId),
+				eq(quickengineWorkspaces.ownerId, userId),
+			),
+		)
+		.limit(1);
+	if (storedFile) throw new Error("ACCOUNT_HAS_STORED_FILES");
 	await db.transaction(async (tx) => {
 		await tx
 			.delete(quickengineSubscriptions)

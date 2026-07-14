@@ -9,7 +9,7 @@ const AUTH_URL =
 type Recipe = { type: string; modules: string[]; plan: string };
 
 // MOCK — placeholder recommendation logic. Replace with a call to a server
-// route (e.g. /api/recommend) that runs Claude Haiku over the input; the API
+// route (e.g. /api/recommend) that runs a lightweight hosted model; the API
 // key must live server-side, never in the client bundle. The keyword heuristic
 // below just makes the demo feel real until that route exists.
 const RECIPES: (Recipe & { keywords: string[] })[] = [

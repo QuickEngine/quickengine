@@ -19,6 +19,7 @@
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-fulfillment": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",
+		"@quickengine/mod-orders": "workspace:*",
 		"@quickengine/mod-payments": "workspace:*",
 		"@quickengine/mod-products-services": "workspace:*",
 		"zod": "^4.3.6"

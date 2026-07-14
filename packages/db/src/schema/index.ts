@@ -2,6 +2,7 @@ export * from "./catalog-items";
 export * from "./client-records";
 export * from "./fulfillments";
 export * from "./invoices";
+export * from "./orders";
 export * from "./payments";
 export * from "./quickdash";
 export * from "./quickengine";

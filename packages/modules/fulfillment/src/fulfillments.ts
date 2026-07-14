@@ -22,13 +22,14 @@ export type CreateFulfillmentInput = {
 };
 
 async function assertWorkspaceOwnsReference(
+	executor: Pick<typeof db, "select">,
 	workspaceId: string,
 	table: typeof clientRecords | typeof invoices | typeof payments,
 	id: string,
 	missingError: string,
 	mismatchError: string,
 ) {
-	const [record] = await db
+	const [record] = await executor
 		.select({ workspaceId: table.workspaceId })
 		.from(table)
 		.where(eq(table.id, id))
@@ -45,13 +46,14 @@ async function assertWorkspaceOwnsReference(
 export async function createFulfillment(
 	workspaceId: string,
 	input: CreateFulfillmentInput,
+	executor: Pick<typeof db, "select" | "insert"> = db,
 ) {
 	const title = input.title.trim();
 	if (!title) {
 		throw new Error("FULFILLMENT_TITLE_REQUIRED");
 	}
 
-	const [workspace] = await db
+	const [workspace] = await executor
 		.select({ id: quickengineWorkspaces.id })
 		.from(quickengineWorkspaces)
 		.where(eq(quickengineWorkspaces.id, workspaceId))
@@ -62,6 +64,7 @@ export async function createFulfillment(
 
 	if (input.clientId) {
 		await assertWorkspaceOwnsReference(
+			executor,
 			workspaceId,
 			clientRecords,
 			input.clientId,
@@ -71,6 +74,7 @@ export async function createFulfillment(
 	}
 	if (input.invoiceId) {
 		await assertWorkspaceOwnsReference(
+			executor,
 			workspaceId,
 			invoices,
 			input.invoiceId,
@@ -80,6 +84,7 @@ export async function createFulfillment(
 	}
 	if (input.paymentId) {
 		await assertWorkspaceOwnsReference(
+			executor,
 			workspaceId,
 			payments,
 			input.paymentId,
@@ -88,7 +93,7 @@ export async function createFulfillment(
 		);
 	}
 
-	const [fulfillment] = await db
+	const [fulfillment] = await executor
 		.insert(fulfillments)
 		.values({
 			workspaceId,
@@ -108,8 +113,9 @@ export async function createFulfillment(
 export async function setFulfillmentStatus(
 	id: string,
 	status: FulfillmentStatus,
+	executor: Pick<typeof db, "select" | "update"> = db,
 ) {
-	const [current] = await db
+	const [current] = await executor
 		.select({ status: fulfillments.status })
 		.from(fulfillments)
 		.where(eq(fulfillments.id, id))
@@ -125,7 +131,7 @@ export async function setFulfillmentStatus(
 	}
 
 	const now = new Date();
-	const [fulfillment] = await db
+	const [fulfillment] = await executor
 		.update(fulfillments)
 		.set({
 			status,
@@ -153,8 +159,11 @@ export async function listFulfillments(workspaceId: string) {
 		.where(eq(fulfillments.workspaceId, workspaceId));
 }
 
-export async function deleteFulfillment(id: string) {
-	const [deleted] = await db
+export async function deleteFulfillment(
+	id: string,
+	executor: Pick<typeof db, "delete"> = db,
+) {
+	const [deleted] = await executor
 		.delete(fulfillments)
 		.where(eq(fulfillments.id, id))
 		.returning();

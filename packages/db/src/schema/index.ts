@@ -7,4 +7,5 @@ export * from "./orders";
 export * from "./payments";
 export * from "./quickdash";
 export * from "./quickengine";
+export * from "./shipments";
 export * from "./workspace-modules";

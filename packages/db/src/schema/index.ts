@@ -1,6 +1,7 @@
 export * from "./catalog-items";
 export * from "./client-records";
 export * from "./fulfillments";
+export * from "./inventory";
 export * from "./invoices";
 export * from "./orders";
 export * from "./payments";

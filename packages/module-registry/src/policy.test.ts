@@ -95,6 +95,31 @@ describe("module registry policy", () => {
 		).not.toThrow();
 	});
 
+	it("recognizes Inventory as optional with safe stock defaults", () => {
+		expect(parseModuleSettings("inventory", {})).toEqual({
+			defaultLowStockThreshold: 5,
+			allowNegativeStock: false,
+		});
+		expect(() =>
+			assertModuleCanBeDisabled("inventory", ["inventory"]),
+		).not.toThrow();
+	});
+
+	it("prevents removing Products & Services while Inventory uses it", () => {
+		expect(
+			findEnabledDependents("products-services", [
+				"products-services",
+				"inventory",
+			]),
+		).toEqual(["inventory"]);
+		expect(() =>
+			assertModuleCanBeDisabled("products-services", [
+				"products-services",
+				"inventory",
+			]),
+		).toThrow("MODULE_REQUIRED_BY:products-services:inventory");
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(
@@ -117,6 +142,12 @@ describe("module registry policy", () => {
 });
 
 describe("module enablement plan", () => {
+	it("enables Products & Services before Inventory", () => {
+		expect(
+			planModuleEnablement("inventory", []).map((item) => item.moduleId),
+		).toEqual(["products-services", "inventory"]);
+	});
+
 	it("enables the full Orders dependency chain in canonical order", () => {
 		expect(
 			planModuleEnablement("orders", []).map((item) => item.moduleId),

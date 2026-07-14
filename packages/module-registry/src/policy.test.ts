@@ -246,6 +246,20 @@ describe("module registry policy", () => {
 		]);
 	});
 
+	it("recognizes Reporting & Analytics as module-aware and unmetered", () => {
+		expect(parseModuleSettings("reporting-analytics", {})).toEqual({
+			defaultTimeZone: "UTC",
+			weekStartsOn: "monday",
+		});
+		expect(planModuleEnablement("reporting-analytics", [])).toEqual([
+			{
+				moduleId: "reporting-analytics",
+				settings: { defaultTimeZone: "UTC", weekStartsOn: "monday" },
+				isNew: true,
+			},
+		]);
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(

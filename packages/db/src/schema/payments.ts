@@ -76,6 +76,9 @@ export const payments = pgTable(
 			.default("pending"),
 		provider: text("provider").notNull().default("stripe"),
 		stripePaymentIntentId: text("stripe_payment_intent_id"),
+		succeededAt: timestamp("succeeded_at", { withTimezone: true }),
+		failedAt: timestamp("failed_at", { withTimezone: true }),
+		refundedAt: timestamp("refunded_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

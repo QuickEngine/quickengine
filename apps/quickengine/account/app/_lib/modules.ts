@@ -110,11 +110,11 @@ export const MODULES: ModuleDef[] = [
 		icon: CalendarBlank,
 	},
 	{
-		id: "reporting",
-		name: "Reporting",
+		id: "reporting-analytics",
+		name: "Reporting & Analytics",
 		description: "Dashboards and insights across your data.",
 		category: "shared",
-		status: "coming-soon",
+		status: "built",
 		icon: ChartBar,
 	},
 	{

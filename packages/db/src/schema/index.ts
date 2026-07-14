@@ -3,3 +3,4 @@ export * from "./invoices";
 export * from "./payments";
 export * from "./quickdash";
 export * from "./quickengine";
+export * from "./workspace-modules";

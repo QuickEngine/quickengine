@@ -2,7 +2,6 @@
 
 import {
 	ArrowSquareOut,
-	CaretDown,
 	Funnel,
 	MagnifyingGlass,
 	Rows,
@@ -23,9 +22,12 @@ import {
 	ToggleGroup,
 	ToggleGroupItem,
 } from "@quickengine/ui/components/ui/toggle-group";
+import Link from "next/link";
 import { useState } from "react";
+import { getBusinessType } from "../_lib/workspace-catalog";
 
 type View = "cards" | "table";
+type StatusFilter = "active" | "archived" | "all";
 
 export type WorkspaceSummary = {
 	id: string;
@@ -33,20 +35,12 @@ export type WorkspaceSummary = {
 	slug: string | null;
 	businessType: string;
 	modules: string[];
+	archivedAt: string | null;
 	createdAt: string;
 };
 
-const BUSINESS_TYPE_LABELS: Record<string, string> = {
-	ecommerce: "E-commerce",
-	agency: "Agency",
-	freelancer: "Freelancer",
-	saas: "SaaS",
-	creator: "Creator",
-	consulting: "Consulting",
-};
-
 function businessTypeLabel(id: string): string {
-	return BUSINESS_TYPE_LABELS[id] ?? id;
+	return getBusinessType(id)?.name ?? id;
 }
 
 function createdDate(value: string): string {
@@ -57,19 +51,6 @@ function createdDate(value: string): string {
 	}).format(new Date(value));
 }
 
-// Placeholder workspace recipes (each scoped to one business type). The real,
-// docs-driven list replaces this once workspace creation is wired.
-const WORKSPACE_TYPES = [
-	"E-commerce",
-	"Agency",
-	"Freelancer",
-	"SaaS",
-	"Creator",
-	"Nonprofit",
-	"Restaurant",
-	"Blank",
-];
-
 export function WorkspacesToolbar({
 	workspaces,
 }: {
@@ -77,8 +58,15 @@ export function WorkspacesToolbar({
 }) {
 	const [query, setQuery] = useState("");
 	const [view, setView] = useState<View>("cards");
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
 	const normalizedQuery = query.trim().toLowerCase();
 	const visibleWorkspaces = workspaces.filter((workspace) => {
+		if (statusFilter === "active" && workspace.archivedAt) {
+			return false;
+		}
+		if (statusFilter === "archived" && !workspace.archivedAt) {
+			return false;
+		}
 		if (!normalizedQuery) {
 			return true;
 		}
@@ -115,11 +103,19 @@ export function WorkspacesToolbar({
 						</Button>
 					</PopoverTrigger>
 					<PopoverContent align="end" className="w-64">
-						<p className="font-medium text-foreground text-sm">Filters</p>
-						{/* Filter controls land here once we decide what's filterable. */}
-						<p className="mt-1 text-muted-foreground text-xs">
-							No filters yet.
-						</p>
+						<p className="font-medium text-foreground text-sm">Status</p>
+						<div className="mt-2 grid gap-1">
+							{(["active", "archived", "all"] as const).map((status) => (
+								<button
+									key={status}
+									type="button"
+									onClick={() => setStatusFilter(status)}
+									className={`rounded-md px-2 py-1.5 text-left text-sm capitalize ${statusFilter === status ? "bg-foreground/[0.08]" : "hover:bg-foreground/[0.04]"}`}
+								>
+									{status}
+								</button>
+							))}
+						</div>
 					</PopoverContent>
 				</Popover>
 
@@ -139,29 +135,9 @@ export function WorkspacesToolbar({
 					</ToggleGroupItem>
 				</ToggleGroup>
 
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button className="font-normal">
-							New Workspace
-							<CaretDown className="size-4" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent
-						align="end"
-						className="w-(--radix-popover-trigger-width) p-1"
-					>
-						{/* Placeholder recipes — the real business-type list wires in later. */}
-						{WORKSPACE_TYPES.map((type) => (
-							<button
-								key={type}
-								type="button"
-								className="w-full rounded-md px-2 py-1.5 text-left text-foreground text-sm transition-colors hover:bg-foreground/5"
-							>
-								{type}
-							</button>
-						))}
-					</PopoverContent>
-				</Popover>
+				<Button asChild className="font-normal">
+					<Link href="/workspaces/new">New Workspace</Link>
+				</Button>
 			</div>
 
 			{workspaces.length === 0 ? (
@@ -173,7 +149,9 @@ export function WorkspacesToolbar({
 				</div>
 			) : visibleWorkspaces.length === 0 ? (
 				<div className="flex min-h-64 items-center justify-center rounded-lg border border-dashed text-muted-foreground text-sm">
-					No workspaces match “{query.trim()}”
+					{normalizedQuery
+						? `No workspaces match “${query.trim()}”`
+						: `No ${statusFilter} workspaces`}
 				</div>
 			) : view === "cards" ? (
 				<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -185,14 +163,23 @@ export function WorkspacesToolbar({
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
 									<h2 className="truncate font-medium text-foreground">
-										{workspace.name}
+										{workspace.slug ? (
+											<Link
+												href={`/workspaces/${workspace.slug}`}
+												className="hover:underline"
+											>
+												{workspace.name}
+											</Link>
+										) : (
+											workspace.name
+										)}
 									</h2>
 									<p className="mt-1 text-muted-foreground text-sm">
 										{businessTypeLabel(workspace.businessType)}
 									</p>
 								</div>
 								<span className="shrink-0 rounded-full border border-foreground/10 px-2 py-0.5 text-[11px] text-muted-foreground">
-									Configured
+									{workspace.archivedAt ? "Archived" : "Active"}
 								</span>
 							</div>
 
@@ -211,14 +198,26 @@ export function WorkspacesToolbar({
 								</div>
 							</div>
 
-							<Button
-								disabled
-								variant="outline"
-								className="mt-5 w-full font-normal"
-							>
-								<ArrowSquareOut className="size-4" />
-								QuickDash coming next
-							</Button>
+							{workspace.slug ? (
+								<Button
+									asChild
+									variant="outline"
+									className="mt-5 w-full font-normal"
+								>
+									<Link href={`/workspaces/${workspace.slug}`}>
+										Manage workspace
+									</Link>
+								</Button>
+							) : (
+								<Button
+									disabled
+									variant="outline"
+									className="mt-5 w-full font-normal"
+								>
+									<ArrowSquareOut className="size-4" />
+									Workspace unavailable
+								</Button>
+							)}
 						</article>
 					))}
 				</div>
@@ -236,10 +235,20 @@ export function WorkspacesToolbar({
 							className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_100px_140px] gap-4 border-foreground/[0.06] border-b px-4 py-3 text-sm last:border-0"
 						>
 							<span className="truncate font-medium text-foreground">
-								{workspace.name}
+								{workspace.slug ? (
+									<Link
+										href={`/workspaces/${workspace.slug}`}
+										className="hover:underline"
+									>
+										{workspace.name}
+									</Link>
+								) : (
+									workspace.name
+								)}
 							</span>
 							<span className="truncate text-muted-foreground">
 								{businessTypeLabel(workspace.businessType)}
+								{workspace.archivedAt ? " · Archived" : ""}
 							</span>
 							<span className="text-muted-foreground">
 								{workspace.modules.length}

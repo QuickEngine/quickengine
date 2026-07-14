@@ -1,0 +1,1 @@
+ALTER TABLE "quickengine_workspaces" ADD COLUMN "archived_at" timestamp with time zone;

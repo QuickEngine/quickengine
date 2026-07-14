@@ -515,6 +515,9 @@ importers:
       '@quickengine/mod-projects-tasks':
         specifier: workspace:*
         version: link:../modules/projects-tasks
+      '@quickengine/mod-quotes-estimates':
+        specifier: workspace:*
+        version: link:../modules/quotes-estimates
       '@quickengine/mod-shipping':
         specifier: workspace:*
         version: link:../modules/shipping
@@ -716,6 +719,34 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/modules/quotes-estimates:
+    dependencies:
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../../db
+      '@quickengine/mod-invoicing':
+        specifier: workspace:*
+        version: link:../invoicing
+      '@quickengine/mod-orders':
+        specifier: workspace:*
+        version: link:../orders
+      '@quickengine/mod-products-services':
+        specifier: workspace:*
+        version: link:../products-services
       zod:
         specifier: ^4.3.6
         version: 4.4.3

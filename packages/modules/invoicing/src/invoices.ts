@@ -5,6 +5,7 @@ import {
 	eq,
 	inArray,
 	invoiceLineItems,
+	invoiceSequences,
 	invoices,
 	quickengineWorkspaces,
 	sql,
@@ -24,7 +25,28 @@ export type SourcedInvoiceLineItemInput = InvoiceLineItemInput & {
 	sourceRecordId: string;
 };
 
-type InvoiceTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type InvoiceTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
+export async function allocateInvoiceSequence(
+	tx: InvoiceTransaction,
+	workspaceId: string,
+	now = new Date(),
+) {
+	const [counter] = await tx
+		.insert(invoiceSequences)
+		.values({ workspaceId, lastSequence: 1, updatedAt: now })
+		.onConflictDoUpdate({
+			target: invoiceSequences.workspaceId,
+			set: {
+				lastSequence: sql`${invoiceSequences.lastSequence} + 1`,
+				updatedAt: now,
+			},
+		})
+		.returning({ sequence: invoiceSequences.lastSequence });
+	return counter.sequence;
+}
 
 export type CreateInvoiceInput = {
 	clientId?: string | null;
@@ -44,48 +66,31 @@ export async function createInvoice(
 	workspaceId: string,
 	input: CreateInvoiceInput,
 ) {
-	const [workspace] = await db
-		.select({ id: quickengineWorkspaces.id })
-		.from(quickengineWorkspaces)
-		.where(eq(quickengineWorkspaces.id, workspaceId))
-		.limit(1);
-	if (!workspace) {
-		throw new Error("WORKSPACE_NOT_FOUND");
-	}
-
-	// Tenant isolation: an invoice may only reference a client that lives in the
-	// same workspace. Without this check a caller could bill against another
-	// workspace's client by passing its id.
-	if (input.clientId) {
-		const [client] = await db
-			.select({ workspaceId: clientRecords.workspaceId })
-			.from(clientRecords)
-			.where(eq(clientRecords.id, input.clientId))
-			.limit(1);
-		if (!client) {
-			throw new Error("CLIENT_NOT_FOUND");
-		}
-		if (client.workspaceId !== workspaceId) {
-			throw new Error("CLIENT_WORKSPACE_MISMATCH");
-		}
-	}
-
 	if (input.lineItems.length === 0) {
 		throw new Error("INVOICE_REQUIRES_LINE_ITEMS");
 	}
-
 	const totals = computeInvoiceTotals(input.lineItems, input.taxCents ?? 0);
-
-	// Next per-workspace sequence number. count()+1 races under concurrent creates
-	// and can reuse a number after a delete — acceptable for now; a per-workspace
-	// counter row is the fix when it matters.
-	const [{ count }] = await db
-		.select({ count: sql<number>`count(*)::int` })
-		.from(invoices)
-		.where(eq(invoices.workspaceId, workspaceId));
-	const number = formatInvoiceNumber(input.numberPrefix ?? "INV", count + 1);
-
 	return db.transaction(async (tx) => {
+		const [workspace] = await tx
+			.select({ id: quickengineWorkspaces.id })
+			.from(quickengineWorkspaces)
+			.where(eq(quickengineWorkspaces.id, workspaceId))
+			.limit(1);
+		if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
+		// Tenant isolation: an invoice may only reference a client from this workspace.
+		if (input.clientId) {
+			const [client] = await tx
+				.select({ workspaceId: clientRecords.workspaceId })
+				.from(clientRecords)
+				.where(eq(clientRecords.id, input.clientId))
+				.limit(1);
+			if (!client) throw new Error("CLIENT_NOT_FOUND");
+			if (client.workspaceId !== workspaceId) {
+				throw new Error("CLIENT_WORKSPACE_MISMATCH");
+			}
+		}
+		const sequence = await allocateInvoiceSequence(tx, workspaceId);
+		const number = formatInvoiceNumber(input.numberPrefix ?? "INV", sequence);
 		const [invoice] = await tx
 			.insert(invoices)
 			.values({

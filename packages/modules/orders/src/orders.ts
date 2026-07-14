@@ -7,6 +7,7 @@ import {
 	eq,
 	isNull,
 	orderLineItems,
+	orderSequences,
 	orders,
 	quickengineWorkspaces,
 	sql,
@@ -24,6 +25,28 @@ import {
 } from "./totals";
 
 export type CreateOrderInput = OrderInput & { numberPrefix?: string };
+export type OrderTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
+export async function allocateOrderSequence(
+	tx: OrderTransaction,
+	workspaceId: string,
+	now = new Date(),
+) {
+	const [counter] = await tx
+		.insert(orderSequences)
+		.values({ workspaceId, lastSequence: 1, updatedAt: now })
+		.onConflictDoUpdate({
+			target: orderSequences.workspaceId,
+			set: {
+				lastSequence: sql`${orderSequences.lastSequence} + 1`,
+				updatedAt: now,
+			},
+		})
+		.returning({ sequence: orderSequences.lastSequence });
+	return counter.sequence;
+}
 
 async function assertReferences(
 	executor: Pick<typeof db, "select">,
@@ -114,13 +137,7 @@ export async function createOrder(
 			parsed,
 		);
 
-		const [{ maximum }] = await tx
-			.select({
-				maximum: sql<number>`coalesce(max(${orders.sequence}), 0)::int`,
-			})
-			.from(orders)
-			.where(eq(orders.workspaceId, workspaceId));
-		const sequence = maximum + 1;
+		const sequence = await allocateOrderSequence(tx, workspaceId);
 		const number = formatOrderNumber(input.numberPrefix ?? "ORD", sequence);
 		const [order] = await tx
 			.insert(orders)

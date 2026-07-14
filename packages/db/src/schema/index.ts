@@ -10,6 +10,7 @@ export * from "./payments";
 export * from "./projects-tasks";
 export * from "./quickdash";
 export * from "./quickengine";
+export * from "./quotes-estimates";
 export * from "./shipments";
 export * from "./time-entries";
 export * from "./workspace-modules";

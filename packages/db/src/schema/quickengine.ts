@@ -84,6 +84,9 @@ export const quickengineWorkspaces = pgTable(
 		slug: text("slug"),
 		businessType: text("business_type").notNull(),
 		modules: jsonb("modules").$type<string[]>().notNull().default([]),
+		// Archiving removes a workspace from normal operation without deleting any
+		// module data. Permanent deletion remains a separate explicit action.
+		archivedAt: timestamp("archived_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

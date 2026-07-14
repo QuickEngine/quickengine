@@ -22,6 +22,7 @@ export default async function Page() {
 			slug: quickengineWorkspaces.slug,
 			businessType: quickengineWorkspaces.businessType,
 			modules: quickengineWorkspaces.modules,
+			archivedAt: quickengineWorkspaces.archivedAt,
 			createdAt: quickengineWorkspaces.createdAt,
 		})
 		.from(quickengineWorkspaces)
@@ -30,6 +31,7 @@ export default async function Page() {
 
 	const workspaces = rows.map((workspace) => ({
 		...workspace,
+		archivedAt: workspace.archivedAt?.toISOString() ?? null,
 		createdAt: workspace.createdAt.toISOString(),
 	}));
 

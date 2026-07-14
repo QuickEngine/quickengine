@@ -28,6 +28,8 @@ const LABELS: Record<string, string> = {
 	profile: "Profile",
 	security: "Security",
 	"api-keys": "API keys",
+	workspaces: "Workspaces",
+	new: "New workspace",
 };
 
 // Parent segments that have no index route of their own point at a sensible
@@ -35,6 +37,7 @@ const LABELS: Record<string, string> = {
 // no /settings page, so "Settings" lands on the first settings screen).
 const PARENT_HREF: Record<string, string> = {
 	settings: "/settings/profile",
+	workspaces: "/",
 };
 
 function labelFor(segment: string): string {

@@ -5,6 +5,7 @@ import { invoicingModule } from "@quickengine/mod-invoicing/module";
 import { ordersModule } from "@quickengine/mod-orders/module";
 import { paymentsModule } from "@quickengine/mod-payments/module";
 import { productsServicesModule } from "@quickengine/mod-products-services/module";
+import { shippingModule } from "@quickengine/mod-shipping/module";
 import type { ModuleManifest } from "./manifest";
 
 // The catalog of every module QuickDash ships. New module = add its manifest here.
@@ -17,6 +18,7 @@ const ALL_MODULES: readonly ModuleManifest[] = [
 	productsServicesModule,
 	ordersModule,
 	inventoryModule,
+	shippingModule,
 ];
 
 // Indexed by id for O(1) lookup.

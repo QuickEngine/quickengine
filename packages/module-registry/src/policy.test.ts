@@ -120,6 +120,23 @@ describe("module registry policy", () => {
 		).toThrow("MODULE_REQUIRED_BY:products-services:inventory");
 	});
 
+	it("recognizes Shipping and protects its Orders dependency", () => {
+		expect(parseModuleSettings("shipping", {})).toEqual({
+			defaultOriginCountry: "US",
+			defaultCarrier: null,
+			requireTracking: false,
+		});
+		expect(findEnabledDependents("orders", ["orders", "shipping"])).toEqual([
+			"shipping",
+		]);
+		expect(() =>
+			assertModuleCanBeDisabled("orders", ["orders", "shipping"]),
+		).toThrow("MODULE_REQUIRED_BY:orders:shipping");
+		expect(() =>
+			assertModuleCanBeDisabled("shipping", ["orders", "shipping"]),
+		).not.toThrow();
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(
@@ -142,6 +159,20 @@ describe("module registry policy", () => {
 });
 
 describe("module enablement plan", () => {
+	it("enables Shipping's complete dependency chain in canonical order", () => {
+		expect(
+			planModuleEnablement("shipping", []).map((item) => item.moduleId),
+		).toEqual([
+			"client-records",
+			"products-services",
+			"invoicing",
+			"payments",
+			"fulfillment",
+			"orders",
+			"shipping",
+		]);
+	});
+
 	it("enables Products & Services before Inventory", () => {
 		expect(
 			planModuleEnablement("inventory", []).map((item) => item.moduleId),

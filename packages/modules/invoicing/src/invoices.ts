@@ -1,7 +1,9 @@
 import {
+	and,
 	clientRecords,
 	db,
 	eq,
+	inArray,
 	invoiceLineItems,
 	invoices,
 	quickengineWorkspaces,
@@ -16,6 +18,13 @@ export type InvoiceLineItemInput = {
 	unitPriceCents: number;
 	position?: number;
 };
+
+export type SourcedInvoiceLineItemInput = InvoiceLineItemInput & {
+	sourceModule: string;
+	sourceRecordId: string;
+};
+
+type InvoiceTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type CreateInvoiceInput = {
 	clientId?: string | null;
@@ -104,6 +113,120 @@ export async function createInvoice(
 
 		return invoice;
 	});
+}
+
+/**
+ * Append module-owned lines to a draft invoice and recompute its totals.
+ *
+ * The caller supplies the transaction so the source module can update its own
+ * records in the same commit. Locking the invoice serializes line mutations and
+ * the source identity columns make retries safe at the database boundary.
+ */
+export async function appendDraftInvoiceLineItems(
+	tx: InvoiceTransaction,
+	workspaceId: string,
+	invoiceId: string,
+	lineItems: SourcedInvoiceLineItemInput[],
+) {
+	if (lineItems.length === 0) throw new Error("INVOICE_LINES_REQUIRED");
+	const [invoice] = await tx
+		.select()
+		.from(invoices)
+		.where(
+			and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, invoiceId)),
+		)
+		.limit(1)
+		.for("update");
+	if (!invoice) throw new Error("INVOICE_NOT_FOUND");
+	if (invoice.status !== "draft") throw new Error("INVOICE_NOT_EDITABLE");
+
+	const existing = await tx
+		.select({
+			quantity: invoiceLineItems.quantity,
+			unitPriceCents: invoiceLineItems.unitPriceCents,
+			position: invoiceLineItems.position,
+		})
+		.from(invoiceLineItems)
+		.where(eq(invoiceLineItems.invoiceId, invoiceId));
+	const nextPosition =
+		existing.reduce((highest, line) => Math.max(highest, line.position), -1) +
+		1;
+	await tx.insert(invoiceLineItems).values(
+		lineItems.map((line, index) => ({
+			invoiceId,
+			description: line.description,
+			quantity: line.quantity,
+			unitPriceCents: line.unitPriceCents,
+			sourceModule: line.sourceModule,
+			sourceRecordId: line.sourceRecordId,
+			position: line.position ?? nextPosition + index,
+		})),
+	);
+
+	const totals = computeInvoiceTotals(
+		[...existing, ...lineItems],
+		invoice.taxCents,
+	);
+	const [updated] = await tx
+		.update(invoices)
+		.set({ ...totals, updatedAt: new Date() })
+		.where(
+			and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, invoiceId)),
+		)
+		.returning();
+	return updated;
+}
+
+/** Remove source-owned lines from a draft invoice and recompute its totals. */
+export async function removeDraftInvoiceLineItemsBySource(
+	tx: InvoiceTransaction,
+	workspaceId: string,
+	invoiceId: string,
+	sourceModule: string,
+	sourceRecordIds: string[],
+) {
+	if (sourceRecordIds.length === 0) throw new Error("INVOICE_LINES_REQUIRED");
+	const [invoice] = await tx
+		.select()
+		.from(invoices)
+		.where(
+			and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, invoiceId)),
+		)
+		.limit(1)
+		.for("update");
+	if (!invoice) throw new Error("INVOICE_NOT_FOUND");
+	if (invoice.status !== "draft") throw new Error("INVOICE_NOT_EDITABLE");
+
+	const removed = await tx
+		.delete(invoiceLineItems)
+		.where(
+			and(
+				eq(invoiceLineItems.invoiceId, invoiceId),
+				eq(invoiceLineItems.sourceModule, sourceModule),
+				inArray(invoiceLineItems.sourceRecordId, sourceRecordIds),
+			),
+		)
+		.returning({ id: invoiceLineItems.id });
+	if (removed.length !== sourceRecordIds.length) {
+		throw new Error("INVOICE_SOURCE_LINES_MISMATCH");
+	}
+
+	const remaining = await tx
+		.select({
+			quantity: invoiceLineItems.quantity,
+			unitPriceCents: invoiceLineItems.unitPriceCents,
+		})
+		.from(invoiceLineItems)
+		.where(eq(invoiceLineItems.invoiceId, invoiceId));
+	const totals = computeInvoiceTotals(remaining, invoice.taxCents);
+	const [updated] = await tx
+		.update(invoices)
+		.set({ ...totals, updatedAt: new Date() })
+		.where(
+			and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, invoiceId)),
+		)
+		.returning();
+	return updated;
 }
 
 /** All invoices in a workspace, newest first. */

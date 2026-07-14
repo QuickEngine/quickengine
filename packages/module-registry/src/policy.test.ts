@@ -175,6 +175,29 @@ describe("module registry policy", () => {
 		).not.toThrow();
 	});
 
+	it("recognizes Time Tracking and protects both bridge dependencies", () => {
+		expect(parseModuleSettings("time-tracking", {})).toEqual({
+			defaultBillable: true,
+			defaultHourlyRateCents: null,
+			defaultCurrency: "USD",
+			defaultTimeZone: "UTC",
+			billingRounding: { mode: "none", incrementMinutes: 1 },
+			requireApprovalBeforeInvoicing: true,
+		});
+		expect(
+			findEnabledDependents("projects-tasks", [
+				"projects-tasks",
+				"time-tracking",
+			]),
+		).toEqual(["time-tracking"]);
+		expect(
+			findEnabledDependents("invoicing", ["invoicing", "time-tracking"]),
+		).toEqual(["time-tracking"]);
+		expect(() =>
+			assertModuleCanBeDisabled("time-tracking", ["time-tracking"]),
+		).not.toThrow();
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(
@@ -197,6 +220,17 @@ describe("module registry policy", () => {
 });
 
 describe("module enablement plan", () => {
+	it("enables the complete Time Tracking bridge in dependency order", () => {
+		expect(
+			planModuleEnablement("time-tracking", []).map((item) => item.moduleId),
+		).toEqual([
+			"client-records",
+			"projects-tasks",
+			"invoicing",
+			"time-tracking",
+		]);
+	});
+
 	it("enables Client Records before Projects & Tasks", () => {
 		expect(
 			planModuleEnablement("projects-tasks", []).map((item) => item.moduleId),

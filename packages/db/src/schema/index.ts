@@ -10,4 +10,5 @@ export * from "./projects-tasks";
 export * from "./quickdash";
 export * from "./quickengine";
 export * from "./shipments";
+export * from "./time-entries";
 export * from "./workspace-modules";

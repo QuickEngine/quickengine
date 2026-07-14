@@ -4,6 +4,7 @@ import {
 	pgTable,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
 import { clientRecords } from "./client-records";
@@ -68,8 +69,16 @@ export const invoiceLineItems = pgTable(
 		description: text("description").notNull(),
 		quantity: integer("quantity").notNull().default(1),
 		unitPriceCents: integer("unit_price_cents").notNull().default(0),
+		sourceModule: text("source_module"),
+		sourceRecordId: uuid("source_record_id"),
 		// Preserves the order lines were entered in.
 		position: integer("position").notNull().default(0),
 	},
-	(table) => [index("invoice_line_items_invoice_idx").on(table.invoiceId)],
+	(table) => [
+		index("invoice_line_items_invoice_idx").on(table.invoiceId),
+		uniqueIndex("invoice_line_items_source_idx").on(
+			table.sourceModule,
+			table.sourceRecordId,
+		),
+	],
 );

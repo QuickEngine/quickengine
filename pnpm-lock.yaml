@@ -477,6 +477,34 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/module-registry:
+    dependencies:
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../db
+      '@quickengine/mod-client-records':
+        specifier: workspace:*
+        version: link:../modules/client-records
+      '@quickengine/mod-invoicing':
+        specifier: workspace:*
+        version: link:../modules/invoicing
+      '@quickengine/mod-payments':
+        specifier: workspace:*
+        version: link:../modules/payments
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+
   packages/modules/client-records:
     dependencies:
       '@quickengine/db':

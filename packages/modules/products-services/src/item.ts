@@ -26,7 +26,7 @@ const catalogItemFieldsSchema = z.object({
 	description: z.string().trim().max(10_000).nullable().default(null),
 	type: z.enum(CATALOG_ITEM_TYPES),
 	status: z.enum(CATALOG_ITEM_STATUSES).default("draft"),
-	sku: z.string().trim().min(1).max(100).nullable().default(null),
+	sku: z.string().trim().toUpperCase().min(1).max(100).nullable().default(null),
 	pricingModel: z.enum(PRICING_MODELS).default("fixed"),
 	priceCents: z.number().int().nonnegative().nullable().default(null),
 	currency: z
@@ -72,7 +72,7 @@ export const catalogItemPatchSchema = z
 		name: z.string().trim().min(1).max(160).optional(),
 		description: z.string().trim().max(10_000).nullable().optional(),
 		type: z.enum(CATALOG_ITEM_TYPES).optional(),
-		sku: z.string().trim().min(1).max(100).nullable().optional(),
+		sku: z.string().trim().toUpperCase().min(1).max(100).nullable().optional(),
 		pricingModel: z.enum(PRICING_MODELS).optional(),
 		priceCents: z.number().int().nonnegative().nullable().optional(),
 		currency: z

@@ -8,7 +8,8 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./item": "./src/item.ts",
-		"./module": "./src/module.ts"
+		"./module": "./src/module.ts",
+		"./variant": "./src/variant.ts"
 	},
 	"scripts": {
 		"lint": "biome lint .",

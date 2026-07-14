@@ -6,6 +6,7 @@ const POSTGRES_INTEGER_MAX = 2_147_483_647;
 export const orderLineInputSchema = z
 	.object({
 		catalogItemId: z.uuid().nullable().default(null),
+		catalogItemVariantId: z.uuid().nullable().default(null),
 		name: z.string().trim().min(1).max(160),
 		type: z.enum(CATALOG_ITEM_TYPES),
 		sku: z.string().trim().min(1).max(100).nullable().default(null),
@@ -16,7 +17,11 @@ export const orderLineInputSchema = z
 	.refine(
 		(line) => line.quantity * line.unitPriceCents <= POSTGRES_INTEGER_MAX,
 		{ message: "Line total exceeds the supported amount" },
-	);
+	)
+	.refine((line) => !line.catalogItemVariantId || Boolean(line.catalogItemId), {
+		message: "A product variant requires its parent catalog item",
+		path: ["catalogItemVariantId"],
+	});
 
 export type OrderLineInput = z.input<typeof orderLineInputSchema>;
 export type OrderLine = z.output<typeof orderLineInputSchema>;

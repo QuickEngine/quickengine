@@ -161,6 +161,20 @@ describe("module registry policy", () => {
 		).not.toThrow();
 	});
 
+	it("recognizes Projects & Tasks and protects its client dependency", () => {
+		expect(parseModuleSettings("projects-tasks", {})).toEqual({
+			allowInternalProjects: true,
+			allowSubtasks: true,
+			defaultTaskPriority: "normal",
+		});
+		expect(findEnabledDependents("client-records", ["projects-tasks"])).toEqual(
+			["projects-tasks"],
+		);
+		expect(() =>
+			assertModuleCanBeDisabled("projects-tasks", ["projects-tasks"]),
+		).not.toThrow();
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(
@@ -183,6 +197,12 @@ describe("module registry policy", () => {
 });
 
 describe("module enablement plan", () => {
+	it("enables Client Records before Projects & Tasks", () => {
+		expect(
+			planModuleEnablement("projects-tasks", []).map((item) => item.moduleId),
+		).toEqual(["client-records", "projects-tasks"]);
+	});
+
 	it("enables Bookings after its client and catalog dependencies", () => {
 		expect(
 			planModuleEnablement("bookings", []).map((item) => item.moduleId),

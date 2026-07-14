@@ -24,6 +24,7 @@
 		"@quickengine/mod-orders": "workspace:*",
 		"@quickengine/mod-payments": "workspace:*",
 		"@quickengine/mod-products-services": "workspace:*",
+		"@quickengine/mod-projects-tasks": "workspace:*",
 		"@quickengine/mod-shipping": "workspace:*",
 		"zod": "^4.3.6"
 	},

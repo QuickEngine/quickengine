@@ -6,6 +6,7 @@ export * from "./inventory";
 export * from "./invoices";
 export * from "./orders";
 export * from "./payments";
+export * from "./projects-tasks";
 export * from "./quickdash";
 export * from "./quickengine";
 export * from "./shipments";

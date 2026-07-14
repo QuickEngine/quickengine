@@ -509,6 +509,9 @@ importers:
       '@quickengine/mod-products-services':
         specifier: workspace:*
         version: link:../modules/products-services
+      '@quickengine/mod-projects-tasks':
+        specifier: workspace:*
+        version: link:../modules/projects-tasks
       '@quickengine/mod-shipping':
         specifier: workspace:*
         version: link:../modules/shipping
@@ -675,6 +678,25 @@ importers:
         version: 3.2.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
 
   packages/modules/products-services:
+    dependencies:
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../../db
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/modules/projects-tasks:
     dependencies:
       '@quickengine/db':
         specifier: workspace:*

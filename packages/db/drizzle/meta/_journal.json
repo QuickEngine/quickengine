@@ -134,6 +134,13 @@
 			"when": 1784025612245,
 			"tag": "0018_shiny_hellion",
 			"breakpoints": true
+		},
+		{
+			"idx": 19,
+			"version": "7",
+			"when": 1784026829169,
+			"tag": "0019_stormy_randall_flagg",
+			"breakpoints": true
 		}
 	]
 }

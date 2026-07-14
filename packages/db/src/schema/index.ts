@@ -1,4 +1,5 @@
 export * from "./client-records";
+export * from "./fulfillments";
 export * from "./invoices";
 export * from "./payments";
 export * from "./quickdash";

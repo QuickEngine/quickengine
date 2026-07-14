@@ -148,6 +148,20 @@
 			"when": 1784028310256,
 			"tag": "0020_low_madame_web",
 			"breakpoints": true
+		},
+		{
+			"idx": 21,
+			"version": "7",
+			"when": 1784029838352,
+			"tag": "0021_workable_captain_marvel",
+			"breakpoints": true
+		},
+		{
+			"idx": 22,
+			"version": "7",
+			"when": 1784030313979,
+			"tag": "0022_outstanding_young_avengers",
+			"breakpoints": true
 		}
 	]
 }

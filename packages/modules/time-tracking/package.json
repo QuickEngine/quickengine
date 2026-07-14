@@ -1,12 +1,15 @@
 {
-	"name": "@quickengine/module-registry",
+	"name": "@quickengine/mod-time-tracking",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./billing": "./src/billing.ts",
+		"./module": "./src/module.ts",
+		"./time-entry": "./src/time-entry.ts"
 	},
 	"scripts": {
 		"lint": "biome lint .",
@@ -16,17 +19,8 @@
 	},
 	"dependencies": {
 		"@quickengine/db": "workspace:*",
-		"@quickengine/mod-bookings": "workspace:*",
-		"@quickengine/mod-client-records": "workspace:*",
-		"@quickengine/mod-fulfillment": "workspace:*",
-		"@quickengine/mod-inventory": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",
-		"@quickengine/mod-orders": "workspace:*",
-		"@quickengine/mod-payments": "workspace:*",
-		"@quickengine/mod-products-services": "workspace:*",
 		"@quickengine/mod-projects-tasks": "workspace:*",
-		"@quickengine/mod-shipping": "workspace:*",
-		"@quickengine/mod-time-tracking": "workspace:*",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

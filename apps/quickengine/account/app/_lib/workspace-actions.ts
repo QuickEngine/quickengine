@@ -3,6 +3,10 @@
 import { getSession } from "@quickengine/auth/server";
 import { and, db, eq } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
+import {
+	disableWorkspaceModule,
+	enableWorkspaceModule,
+} from "@quickengine/module-registry";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -17,6 +21,7 @@ export type WorkspaceLifecycleState = {
 	success: boolean;
 };
 export type DeleteWorkspaceState = { error: string | null };
+export type WorkspaceModuleState = { error: string | null; success: boolean };
 
 export async function createWorkspaceAction(
 	_previous: CreateWorkspaceState,
@@ -201,4 +206,77 @@ export async function deleteWorkspaceAction(
 
 	revalidatePath("/");
 	redirect("/");
+}
+
+export async function setWorkspaceModuleEnabledAction(
+	_previous: WorkspaceModuleState,
+	formData: FormData,
+): Promise<WorkspaceModuleState> {
+	const session = await getSession(await headers());
+	if (!session) {
+		return {
+			error: "Your session expired. Please sign in again.",
+			success: false,
+		};
+	}
+
+	const workspaceId = String(formData.get("workspaceId") ?? "");
+	const slug = String(formData.get("slug") ?? "");
+	const moduleId = String(formData.get("moduleId") ?? "");
+	const enabledValue = String(formData.get("enabled") ?? "");
+	if (enabledValue !== "true" && enabledValue !== "false") {
+		return { error: "Invalid module status.", success: false };
+	}
+
+	const [workspace] = await db
+		.select({
+			id: quickengineWorkspaces.id,
+			archivedAt: quickengineWorkspaces.archivedAt,
+		})
+		.from(quickengineWorkspaces)
+		.where(
+			and(
+				eq(quickengineWorkspaces.id, workspaceId),
+				eq(quickengineWorkspaces.slug, slug),
+				eq(quickengineWorkspaces.ownerId, session.user.id),
+			),
+		)
+		.limit(1);
+	if (!workspace) {
+		return { error: "Workspace not found.", success: false };
+	}
+	if (workspace.archivedAt) {
+		return {
+			error: "Restore this workspace before changing its modules.",
+			success: false,
+		};
+	}
+
+	try {
+		if (enabledValue === "true") {
+			await enableWorkspaceModule(workspace.id, moduleId);
+		} else {
+			await disableWorkspaceModule(workspace.id, moduleId);
+		}
+	} catch (error) {
+		if (error instanceof Error) {
+			if (error.message.startsWith("FOUNDATION_MODULE_REQUIRED:")) {
+				return {
+					error: "Foundation modules are always included.",
+					success: false,
+				};
+			}
+			if (error.message.startsWith("MODULE_REQUIRED_BY:")) {
+				return {
+					error: "Another enabled module depends on this module.",
+					success: false,
+				};
+			}
+		}
+		return { error: "We couldn't update this module.", success: false };
+	}
+
+	revalidatePath("/");
+	revalidatePath(`/workspaces/${slug}`);
+	return { error: null, success: true };
 }

@@ -1,7 +1,10 @@
 import { getSession } from "@quickengine/auth/server";
 import { and, db, eq } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
-import { getWorkspaceModules } from "@quickengine/module-registry";
+import {
+	FOUNDATION_MODULE_IDS,
+	getWorkspaceModuleCatalog,
+} from "@quickengine/module-registry";
 import { Button } from "@quickengine/ui/components/ui/button";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -9,6 +12,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBusinessType } from "../../../_lib/workspace-catalog";
 import { DeleteWorkspaceForm } from "./delete-workspace-form";
+import { ModuleToggleForm } from "./module-toggle-form";
 import { WorkspaceLifecycleForm } from "./workspace-lifecycle-form";
 import { WorkspaceNameForm } from "./workspace-name-form";
 
@@ -63,8 +67,9 @@ export default async function Page({
 		notFound();
 	}
 
-	const modules = await getWorkspaceModules(workspace.id);
+	const modules = await getWorkspaceModuleCatalog(workspace.id);
 	const businessType = getBusinessType(workspace.businessType);
+	const foundationIds = new Set<string>(FOUNDATION_MODULE_IDS);
 
 	return (
 		<div className="space-y-8 p-6">
@@ -139,32 +144,53 @@ export default async function Page({
 					</p>
 				</div>
 				<div className="mt-4 grid gap-4 lg:grid-cols-2">
-					{modules.map((module) => (
-						<article
-							key={module.id}
-							className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] p-5"
-						>
-							<div className="flex items-start justify-between gap-3">
-								<div>
-									<h3 className="font-medium">{module.name}</h3>
-									<p className="mt-1 text-muted-foreground text-sm">
-										{module.description}
-									</p>
-								</div>
-								<span className="rounded-full border border-foreground/10 px-2 py-0.5 text-[11px] text-muted-foreground">
-									{module.enabled ? "Enabled" : "Disabled"}
-								</span>
-							</div>
-							<dl className="mt-4 grid gap-2 border-foreground/[0.06] border-t pt-4 text-sm">
-								{Object.entries(module.settings).map(([key, value]) => (
-									<div key={key} className="flex justify-between gap-4">
-										<dt className="text-muted-foreground">{key}</dt>
-										<dd className="text-right">{settingValue(value)}</dd>
+					{modules.map((module) => {
+						const foundation = foundationIds.has(module.id);
+						return (
+							<article
+								key={module.id}
+								className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] p-5"
+							>
+								<div className="flex items-start justify-between gap-3">
+									<div>
+										<h3 className="font-medium">{module.name}</h3>
+										<p className="mt-1 text-muted-foreground text-sm">
+											{module.description}
+										</p>
 									</div>
-								))}
-							</dl>
-						</article>
-					))}
+									<div className="flex shrink-0 flex-col items-end gap-2">
+										<span className="rounded-full border border-foreground/10 px-2 py-0.5 text-[11px] text-muted-foreground">
+											{module.enabled ? "Enabled" : "Disabled"}
+										</span>
+										{foundation ? (
+											<span className="text-muted-foreground text-xs">
+												Always included
+											</span>
+										) : workspace.archivedAt ? (
+											<span className="text-muted-foreground text-xs">
+												Restore to manage
+											</span>
+										) : (
+											<ModuleToggleForm
+												workspaceId={workspace.id}
+												slug={workspace.slug ?? slug}
+												moduleId={module.id}
+												enabled={module.enabled}
+											/>
+										)}
+									</div>
+								</div>
+								<dl className="mt-4 grid gap-2 border-foreground/[0.06] border-t pt-4 text-sm">
+									{Object.entries(module.settings).map(([key, value]) => (
+										<div key={key} className="flex justify-between gap-4">
+											<dt className="text-muted-foreground">{key}</dt>
+											<dd className="text-right">{settingValue(value)}</dd>
+										</div>
+									))}
+								</dl>
+							</article>
+						);
+					})}
 				</div>
 			</section>
 		</div>

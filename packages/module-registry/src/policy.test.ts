@@ -62,6 +62,18 @@ describe("module registry policy", () => {
 		).toThrow();
 	});
 
+	it("recognizes Products & Services as an optional module", () => {
+		expect(parseModuleSettings("products-services", {})).toEqual({
+			defaultCurrency: "USD",
+			productLabelPlural: "Products",
+			serviceLabelPlural: "Services",
+			showSku: true,
+		});
+		expect(() =>
+			assertModuleCanBeDisabled("products-services", ["products-services"]),
+		).not.toThrow();
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(

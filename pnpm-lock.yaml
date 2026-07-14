@@ -497,6 +497,9 @@ importers:
       '@quickengine/mod-payments':
         specifier: workspace:*
         version: link:../modules/payments
+      '@quickengine/mod-products-services':
+        specifier: workspace:*
+        version: link:../modules/products-services
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -582,6 +585,25 @@ importers:
       stripe:
         specifier: ^19.3.1
         version: 19.3.1(@types/node@22.20.1)
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/modules/products-services:
+    dependencies:
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../../db
       zod:
         specifier: ^4.3.6
         version: 4.4.3

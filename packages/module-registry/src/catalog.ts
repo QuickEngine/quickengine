@@ -6,6 +6,7 @@ import { invoicingModule } from "@quickengine/mod-invoicing/module";
 import { ordersModule } from "@quickengine/mod-orders/module";
 import { paymentsModule } from "@quickengine/mod-payments/module";
 import { productsServicesModule } from "@quickengine/mod-products-services/module";
+import { projectsTasksModule } from "@quickengine/mod-projects-tasks/module";
 import { shippingModule } from "@quickengine/mod-shipping/module";
 import type { ModuleManifest } from "./manifest";
 
@@ -21,6 +22,7 @@ const ALL_MODULES: readonly ModuleManifest[] = [
 	inventoryModule,
 	shippingModule,
 	bookingsModule,
+	projectsTasksModule,
 ];
 
 // Indexed by id for O(1) lookup.

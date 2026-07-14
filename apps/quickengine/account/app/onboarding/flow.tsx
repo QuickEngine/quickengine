@@ -13,7 +13,6 @@ import {
 	BUSINESS_TYPES,
 	businessTypeName,
 	modulesForType,
-	TIER_LABEL,
 } from "../_lib/modules";
 import { monthlyPrice, PLANS } from "../_lib/plans";
 import { completeOnboarding } from "./actions";
@@ -71,14 +70,15 @@ export function OnboardingFlow({
 	const [annual, setAnnual] = useState(true);
 	const [businessName, setBusinessName] = useState("");
 	const [submitting, setSubmitting] = useState(false);
+	const [submitError, setSubmitError] = useState<string | null>(null);
 
 	function chooseType(id: string) {
 		setTypeId(id);
-		// Preselect the free modules for this recipe.
+		// Every workspace includes the built foundation modules permanently.
 		setEnabled(
 			new Set(
 				modulesForType(id)
-					.filter((m) => m.tier === "free")
+					.filter((module) => module.status === "built" && module.required)
 					.map((m) => m.id),
 			),
 		);
@@ -86,6 +86,12 @@ export function OnboardingFlow({
 	}
 
 	function toggle(id: string) {
+		const module = typeId
+			? modulesForType(typeId).find((candidate) => candidate.id === id)
+			: undefined;
+		if (!module || module.required || module.status !== "built") {
+			return;
+		}
 		setEnabled((prev) => {
 			const next = new Set(prev);
 			if (next.has(id)) {
@@ -103,14 +109,17 @@ export function OnboardingFlow({
 			return;
 		}
 		setSubmitting(true);
+		setSubmitError(null);
 		try {
 			await completeOnboarding({
 				businessName,
 				businessType: typeId,
-				modules: [...enabled],
 			});
 			setStep("success");
 		} catch {
+			setSubmitError(
+				"We couldn't create your workspace. Nothing was partially saved—please try again.",
+			);
 			setSubmitting(false);
 		}
 	}
@@ -231,13 +240,14 @@ export function OnboardingFlow({
 			<Canvas onBack={() => setStep("type")}>
 				<h1 className={headingClass}>Choose your modules</h1>
 				<p className="mt-3 text-muted-foreground">
-					Preselected for {businessTypeName(typeId)}. Toggle what you need —
-					locked ones unlock with a paid plan.
+					Every {businessTypeName(typeId)} workspace includes the foundation.
+					More capabilities will become available as they are built.
 				</p>
 
 				<div className="mt-8 space-y-2">
 					{modulesForType(typeId).map((m) => {
-						const locked = m.tier !== "free";
+						const comingSoon = m.status === "coming-soon";
+						const locked = comingSoon || m.required;
 						const on = enabled.has(m.id);
 						return (
 							<button
@@ -246,7 +256,7 @@ export function OnboardingFlow({
 								disabled={locked}
 								onClick={() => toggle(m.id)}
 								className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-colors ${
-									locked
+									comingSoon
 										? "cursor-not-allowed border-foreground/[0.06] opacity-55"
 										: on
 											? "border-foreground/25 bg-foreground/[0.04]"
@@ -262,10 +272,10 @@ export function OnboardingFlow({
 										{m.description}
 									</div>
 								</div>
-								{locked ? (
+								{comingSoon ? (
 									<span className="flex shrink-0 items-center gap-1.5 rounded-full border border-foreground/10 px-2.5 py-0.5 text-[11px] text-muted-foreground">
 										<Lock className="size-3" />
-										{TIER_LABEL[m.tier]}
+										Coming soon
 									</span>
 								) : (
 									<span
@@ -392,6 +402,11 @@ export function OnboardingFlow({
 						);
 					})}
 				</div>
+				{submitError ? (
+					<p role="alert" className="mt-4 text-destructive text-sm">
+						{submitError}
+					</p>
+				) : null}
 				<p className="mt-4 text-[11px] text-muted-foreground">
 					Prices are placeholders pending final pricing.
 				</p>

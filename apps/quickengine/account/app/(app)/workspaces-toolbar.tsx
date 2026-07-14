@@ -26,6 +26,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { getBusinessType } from "../_lib/workspace-catalog";
 
+const QUICKDASH_URL =
+	process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ?? "http://localhost:3011";
+
 type View = "cards" | "table";
 type StatusFilter = "active" | "archived" | "all";
 
@@ -163,11 +166,15 @@ export function WorkspacesToolbar({
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
 									<h2 className="truncate font-medium text-foreground">
-										{workspace.slug ? (
-											<Link
-												href={`/workspaces/${workspace.slug}`}
+										{!workspace.archivedAt ? (
+											<a
+												href={`${QUICKDASH_URL}/${workspace.id}`}
 												className="hover:underline"
 											>
+												{workspace.name}
+											</a>
+										) : workspace.slug ? (
+											<Link href={`/workspaces/${workspace.slug}`}>
 												{workspace.name}
 											</Link>
 										) : (
@@ -198,14 +205,23 @@ export function WorkspacesToolbar({
 								</div>
 							</div>
 
-							{workspace.slug ? (
-								<Button
-									asChild
-									variant="outline"
-									className="mt-5 w-full font-normal"
-								>
+							{!workspace.archivedAt ? (
+								<div className="mt-5 grid grid-cols-2 gap-2">
+									<Button asChild className="font-normal">
+										<a href={`${QUICKDASH_URL}/${workspace.id}`}>
+											Open QuickDash
+										</a>
+									</Button>
+									{workspace.slug ? (
+										<Button asChild variant="outline" className="font-normal">
+											<Link href={`/workspaces/${workspace.slug}`}>Manage</Link>
+										</Button>
+									) : null}
+								</div>
+							) : workspace.slug ? (
+								<Button asChild variant="outline" className="mt-5 w-full">
 									<Link href={`/workspaces/${workspace.slug}`}>
-										Manage workspace
+										Manage archived workspace
 									</Link>
 								</Button>
 							) : (
@@ -235,11 +251,15 @@ export function WorkspacesToolbar({
 							className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_100px_140px] gap-4 border-foreground/[0.06] border-b px-4 py-3 text-sm last:border-0"
 						>
 							<span className="truncate font-medium text-foreground">
-								{workspace.slug ? (
-									<Link
-										href={`/workspaces/${workspace.slug}`}
+								{!workspace.archivedAt ? (
+									<a
+										href={`${QUICKDASH_URL}/${workspace.id}`}
 										className="hover:underline"
 									>
+										{workspace.name}
+									</a>
+								) : workspace.slug ? (
+									<Link href={`/workspaces/${workspace.slug}`}>
 										{workspace.name}
 									</Link>
 								) : (

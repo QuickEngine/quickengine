@@ -1,0 +1,14 @@
+@import "@quickengine/ui/globals.css";
+@import "@quickengine/ui/brand.css";
+
+@source "../../../../packages/ui/src";
+
+@media (prefers-reduced-motion: no-preference) {
+	*,
+	::before,
+	::after {
+		transition-property: background-color, border-color, color, fill;
+		transition-duration: 300ms;
+		transition-timing-function: ease;
+	}
+}

@@ -8,6 +8,7 @@ import {
 	ChartBar,
 	ChatCircle,
 	CloudArrowUp,
+	CreditCard,
 	FolderSimple,
 	type Icon,
 	Kanban,
@@ -17,21 +18,10 @@ import {
 	Receipt,
 	ShoppingCart,
 	Storefront,
+	Truck,
 	User,
 	UsersThree,
 } from "@phosphor-icons/react";
-
-// Placeholder tier ladder + gating. Which modules sit behind which tier is a
-// monetization decision (Asher + Reese); these are reasonable starting picks.
-export type Tier = "free" | "starter" | "pro" | "growth" | "team";
-
-export const TIER_LABEL: Record<Tier, string> = {
-	free: "Free",
-	starter: "Starter",
-	pro: "Pro",
-	growth: "Growth",
-	team: "Team",
-};
 
 export type BusinessType = { id: string; name: string; icon: Icon };
 
@@ -50,7 +40,8 @@ export type ModuleDef = {
 	name: string;
 	description: string;
 	category: "shared" | "industry";
-	tier: Tier;
+	status: "built" | "coming-soon";
+	required?: boolean;
 	icon: Icon;
 	types?: string[]; // industry-only: which business types include it
 };
@@ -59,27 +50,47 @@ export type ModuleDef = {
 // modules only appear for the business types that list them.
 export const MODULES: ModuleDef[] = [
 	{
-		id: "clients",
+		id: "client-records",
 		name: "Client records",
 		description: "Customers, contacts, and their history.",
 		category: "shared",
-		tier: "free",
+		status: "built",
+		required: true,
 		icon: AddressBook,
 	},
 	{
 		id: "invoicing",
-		name: "Invoicing & payments",
-		description: "Send invoices and get paid.",
+		name: "Invoicing",
+		description: "Create, send, and track invoices.",
 		category: "shared",
-		tier: "free",
+		status: "built",
+		required: true,
 		icon: Receipt,
+	},
+	{
+		id: "payments",
+		name: "Payments",
+		description: "Collect money and reconcile paid invoices.",
+		category: "shared",
+		status: "built",
+		required: true,
+		icon: CreditCard,
+	},
+	{
+		id: "fulfillment",
+		name: "Fulfillment",
+		description: "Deliver the product, service, file, or completed work.",
+		category: "shared",
+		status: "coming-soon",
+		required: true,
+		icon: Truck,
 	},
 	{
 		id: "files",
 		name: "File storage",
 		description: "Store and share your documents.",
 		category: "shared",
-		tier: "free",
+		status: "coming-soon",
 		icon: FolderSimple,
 	},
 	{
@@ -87,7 +98,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Communications",
 		description: "Messages and notifications in one place.",
 		category: "shared",
-		tier: "free",
+		status: "coming-soon",
 		icon: ChatCircle,
 	},
 	{
@@ -95,7 +106,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Scheduling",
 		description: "Bookings, calendars, and reminders.",
 		category: "shared",
-		tier: "starter",
+		status: "coming-soon",
 		icon: CalendarBlank,
 	},
 	{
@@ -103,7 +114,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Reporting",
 		description: "Dashboards and insights across your data.",
 		category: "shared",
-		tier: "pro",
+		status: "coming-soon",
 		icon: ChartBar,
 	},
 	{
@@ -111,7 +122,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Automation",
 		description: "Trigger actions and workflows automatically.",
 		category: "shared",
-		tier: "pro",
+		status: "coming-soon",
 		icon: Lightning,
 	},
 	{
@@ -119,7 +130,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Team & roles",
 		description: "Invite people and manage permissions.",
 		category: "shared",
-		tier: "team",
+		status: "coming-soon",
 		icon: UsersThree,
 	},
 	{
@@ -127,7 +138,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Order management",
 		description: "Track and fulfill orders end to end.",
 		category: "industry",
-		tier: "free",
+		status: "coming-soon",
 		icon: ShoppingCart,
 		types: ["ecommerce"],
 	},
@@ -136,7 +147,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Inventory",
 		description: "Stock levels, variants, and restocking.",
 		category: "industry",
-		tier: "starter",
+		status: "coming-soon",
 		icon: Package,
 		types: ["ecommerce"],
 	},
@@ -145,7 +156,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Subscriptions & churn",
 		description: "Recurring plans and retention metrics.",
 		category: "industry",
-		tier: "pro",
+		status: "coming-soon",
 		icon: ArrowsClockwise,
 		types: ["saas"],
 	},
@@ -154,7 +165,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Projects & retainers",
 		description: "Track project work and retainers.",
 		category: "industry",
-		tier: "starter",
+		status: "coming-soon",
 		icon: Kanban,
 		types: ["agency", "consulting", "freelancer"],
 	},
@@ -163,7 +174,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Content & publishing",
 		description: "Plan and schedule your content.",
 		category: "industry",
-		tier: "starter",
+		status: "coming-soon",
 		icon: PencilRuler,
 		types: ["creator"],
 	},

@@ -1,6 +1,6 @@
-import { clientRecordsModule } from "@quickengine/mod-client-records";
-import { invoicingModule } from "@quickengine/mod-invoicing";
-import { paymentsModule } from "@quickengine/mod-payments";
+import { clientRecordsModule } from "@quickengine/mod-client-records/module";
+import { invoicingModule } from "@quickengine/mod-invoicing/module";
+import { paymentsModule } from "@quickengine/mod-payments/module";
 import type { ModuleManifest } from "./manifest";
 
 // The catalog of every module QuickDash ships. New module = add its manifest here.

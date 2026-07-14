@@ -18,6 +18,7 @@
 		"@quickengine/auth": "workspace:*",
 		"@quickengine/billing": "workspace:*",
 		"@quickengine/db": "workspace:*",
+		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/types": "workspace:*",
 		"@quickengine/ui": "workspace:*",
 		"@sentry/nextjs": "^10.65.0",

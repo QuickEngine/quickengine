@@ -6,6 +6,8 @@ import {
 	quickengineUsers,
 	quickengineWorkspaces,
 } from "@quickengine/db/schema/quickengine";
+import { workspaceModules } from "@quickengine/db/schema/workspace-modules";
+import { resolveFoundationModules } from "@quickengine/module-registry";
 import { headers } from "next/headers";
 import { nextAvailableSlug, slugify } from "../_lib/slug";
 
@@ -15,7 +17,6 @@ import { nextAvailableSlug, slugify } from "../_lib/slug";
 export async function completeOnboarding(input: {
 	businessName: string;
 	businessType: string;
-	modules: string[];
 }) {
 	const session = await getSession(await headers());
 	if (!session) {
@@ -23,28 +24,8 @@ export async function completeOnboarding(input: {
 	}
 	const userId = session.user.id;
 
-	// Idempotent: if onboarding already finished, don't create a second workspace.
-	// Guards against a double-submit or the action being re-run.
-	const [user] = await db
-		.select({ onboardingCompletedAt: quickengineUsers.onboardingCompletedAt })
-		.from(quickengineUsers)
-		.where(eq(quickengineUsers.id, userId))
-		.limit(1);
-	if (user?.onboardingCompletedAt) {
-		return;
-	}
-
 	const name = input.businessName.trim() || "My workspace";
-
-	// A URL-safe slug, unique among this owner's workspaces (display names aren't).
-	const owned = await db
-		.select({ slug: quickengineWorkspaces.slug })
-		.from(quickengineWorkspaces)
-		.where(eq(quickengineWorkspaces.ownerId, userId));
-	const taken = owned
-		.map((workspace) => workspace.slug)
-		.filter((slug): slug is string => slug !== null);
-	const slug = nextAvailableSlug(slugify(name), taken);
+	const foundation = resolveFoundationModules();
 
 	// The workspace belongs to the user's personal org (idempotent — covers
 	// existing users who predate the signup hook).
@@ -53,17 +34,58 @@ export async function completeOnboarding(input: {
 		session.user.name ?? session.user.email,
 	);
 
-	await db.insert(quickengineWorkspaces).values({
-		organizationId,
-		ownerId: userId,
-		name,
-		slug,
-		businessType: input.businessType,
-		modules: input.modules,
-	});
+	// Workspace + module configuration + onboarding completion commit together. If
+	// any registry row fails, no half-configured workspace survives.
+	await db.transaction(async (tx) => {
+		// Idempotent: a double-submit or replay cannot create another workspace.
+		const [user] = await tx
+			.select({ onboardingCompletedAt: quickengineUsers.onboardingCompletedAt })
+			.from(quickengineUsers)
+			.where(eq(quickengineUsers.id, userId))
+			.limit(1);
+		if (user?.onboardingCompletedAt) {
+			return;
+		}
 
-	await db
-		.update(quickengineUsers)
-		.set({ companyName: name, onboardingCompletedAt: new Date() })
-		.where(eq(quickengineUsers.id, userId));
+		// A URL-safe slug, unique among this owner's workspaces (display names aren't).
+		const owned = await tx
+			.select({ slug: quickengineWorkspaces.slug })
+			.from(quickengineWorkspaces)
+			.where(eq(quickengineWorkspaces.ownerId, userId));
+		const taken = owned
+			.map((workspace) => workspace.slug)
+			.filter((slug): slug is string => slug !== null);
+		const slug = nextAvailableSlug(slugify(name), taken);
+		const canonicalModuleIds = foundation.map((module) => module.id);
+
+		const [workspace] = await tx
+			.insert(quickengineWorkspaces)
+			.values({
+				organizationId,
+				ownerId: userId,
+				name,
+				slug,
+				businessType: input.businessType,
+				// Temporary compatibility mirror. The registry is the new source of truth.
+				modules: canonicalModuleIds,
+			})
+			.returning({ id: quickengineWorkspaces.id });
+		if (!workspace) {
+			throw new Error("WORKSPACE_CREATE_FAILED");
+		}
+
+		await tx.insert(workspaceModules).values(
+			foundation.map((module) => ({
+				workspaceId: workspace.id,
+				moduleId: module.id,
+				enabled: true,
+				settings: module.defaultSettings as Record<string, unknown>,
+			})),
+		);
+
+		await tx
+			.update(quickengineUsers)
+			.set({ companyName: name, onboardingCompletedAt: new Date() })
+			.where(eq(quickengineUsers.id, userId));
+	});
 }

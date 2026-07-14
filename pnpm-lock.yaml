@@ -51,6 +51,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../../packages/db
+      '@quickengine/module-registry':
+        specifier: workspace:*
+        version: link:../../../packages/module-registry
       '@quickengine/types':
         specifier: workspace:*
         version: link:../../../packages/types

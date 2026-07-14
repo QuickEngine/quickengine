@@ -26,6 +26,7 @@ export const trustedOrigins = [
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_AUTH_URL,
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_WEB_URL,
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL,
+	serverEnv.NEXT_PUBLIC_QUICKDASH_ADMIN_URL,
 ].filter(
 	(origin, index, all): origin is string =>
 		Boolean(origin) && all.indexOf(origin) === index,

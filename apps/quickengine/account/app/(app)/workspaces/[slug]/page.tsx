@@ -16,6 +16,9 @@ import { ModuleToggleForm } from "./module-toggle-form";
 import { WorkspaceLifecycleForm } from "./workspace-lifecycle-form";
 import { WorkspaceNameForm } from "./workspace-name-form";
 
+const QUICKDASH_URL =
+	process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ?? "http://localhost:3011";
+
 export const metadata: Metadata = { title: "Workspace" };
 
 function createdDate(value: Date): string {
@@ -85,9 +88,16 @@ export default async function Page({
 						Created {createdDate(workspace.createdAt)}
 					</p>
 				</div>
-				<Button asChild variant="outline">
-					<Link href="/">Back to workspaces</Link>
-				</Button>
+				<div className="flex gap-2">
+					{!workspace.archivedAt ? (
+						<Button asChild>
+							<a href={`${QUICKDASH_URL}/${workspace.id}`}>Open QuickDash</a>
+						</Button>
+					) : null}
+					<Button asChild variant="outline">
+						<Link href="/">Back to workspaces</Link>
+					</Button>
+				</div>
 			</div>
 			{workspace.archivedAt && (
 				<div className="rounded-xl border border-foreground/10 bg-foreground/[0.04] p-4 text-sm">

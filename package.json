@@ -17,9 +17,11 @@
 	},
 	"scripts": {
 		"dev": "turbo dev",
-		"dev:quickengine": "turbo dev --filter=@quickengine/web --filter=@quickengine/auth --filter=@quickengine/account",
+		"dev:quickengine": "turbo dev --filter=@quickengine/web --filter=@quickengine/auth-app --filter=@quickengine/account",
+		"dev:quickdash": "turbo dev --filter=@quickengine/quickdash",
 		"web": "pnpm --filter @quickengine/web dev",
-		"dash": "pnpm --filter @quickengine/account dev",
+		"dash": "pnpm --filter @quickengine/quickdash dev",
+		"account": "pnpm --filter @quickengine/account dev",
 		"auth": "pnpm --filter @quickengine/auth-app dev",
 		"prepare": "husky",
 		"build": "turbo build",

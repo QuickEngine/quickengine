@@ -16,10 +16,10 @@ describe("module dependency resolver", () => {
 
 	it("deduplicates modules reached through multiple paths", () => {
 		expect(
-			resolveModules(["payments", "invoicing", "client-records"]).map(
+			resolveModules(["fulfillment", "payments", "invoicing"]).map(
 				(module) => module.id,
 			),
-		).toEqual(["client-records", "invoicing", "payments"]);
+		).toEqual(["client-records", "invoicing", "payments", "fulfillment"]);
 	});
 
 	it("rejects unknown module ids", () => {
@@ -33,11 +33,22 @@ describe("module dependency resolver", () => {
 			"client-records",
 			"invoicing",
 			"payments",
+			"fulfillment",
 		]);
 		expect(resolveFoundationModules().map((module) => module.id)).toEqual([
 			"client-records",
 			"invoicing",
 			"payments",
+			"fulfillment",
+		]);
+	});
+
+	it("resolves the entire foundation from Fulfillment alone", () => {
+		expect(resolveModules(["fulfillment"]).map((module) => module.id)).toEqual([
+			"client-records",
+			"invoicing",
+			"payments",
+			"fulfillment",
 		]);
 	});
 });

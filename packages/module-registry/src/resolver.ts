@@ -5,6 +5,7 @@ export const FOUNDATION_MODULE_IDS = [
 	"client-records",
 	"invoicing",
 	"payments",
+	"fulfillment",
 ] as const;
 
 /** Resolve requested modules in dependency-first order. */

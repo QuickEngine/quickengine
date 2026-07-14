@@ -81,7 +81,7 @@ export const MODULES: ModuleDef[] = [
 		name: "Fulfillment",
 		description: "Deliver the product, service, file, or completed work.",
 		category: "shared",
-		status: "coming-soon",
+		status: "built",
 		required: true,
 		icon: Truck,
 	},

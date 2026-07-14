@@ -9,7 +9,7 @@ import {
 	assertModulesAvailable,
 	type ModuleMutationOptions,
 } from "./availability";
-import { getModule } from "./catalog";
+import { getModule, listModules } from "./catalog";
 import { planModulesEnablement } from "./enablement";
 import {
 	assertModuleCanBeDisabled,
@@ -58,6 +58,28 @@ export async function getWorkspaceModules(
 			enabled: row.enabled,
 			settings: parseModuleSettings(module.id, row.settings),
 		};
+	});
+}
+
+/** Every shipped module overlaid with this workspace's saved configuration. */
+export async function getWorkspaceModuleCatalog(
+	workspaceId: string,
+): Promise<readonly WorkspaceModuleConfiguration[]> {
+	const configured = await getWorkspaceModules(workspaceId);
+	const byId = new Map(configured.map((module) => [module.id, module]));
+
+	return listModules().map((module) => {
+		const saved = byId.get(module.id);
+		return (
+			saved ?? {
+				id: module.id,
+				name: module.name,
+				description: module.description,
+				kind: module.kind,
+				enabled: false,
+				settings: module.defaultSettings as Record<string, unknown>,
+			}
+		);
 	});
 }
 

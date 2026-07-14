@@ -1,0 +1,33 @@
+{
+	"name": "@quickengine/mod-files",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./attachment": "./src/attachment.ts",
+		"./document": "./src/document.ts",
+		"./folder": "./src/folder.ts",
+		"./module": "./src/module.ts"
+	},
+	"scripts": {
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@quickengine/billing": "workspace:*",
+		"@quickengine/db": "workspace:*",
+		"@quickengine/jobs": "workspace:*",
+		"@quickengine/storage": "workspace:*",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"typescript": "^5",
+		"vitest": "^3.2.6"
+	}
+}

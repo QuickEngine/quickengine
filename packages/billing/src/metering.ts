@@ -101,6 +101,20 @@ export async function checkLimit({
 
 export type EnforceResult = LimitCheck & { allowed: boolean };
 
+/** Apply the enforcement policy without recording usage. */
+export async function checkAllowance({
+	scopeId,
+	meter: key,
+	amount = 1,
+}: MeterInput): Promise<EnforceResult> {
+	const planId = await getAccountPlanId(scopeId);
+	const limit = getPlanLimits(planId)[key];
+	const used = await readValue(scopeId, key);
+	const allowed = withinGrace(limit, used);
+	const nextUsed = METER_KIND[key] === "gauge" ? amount : used + amount;
+	return { ...evaluate(key, limit, allowed ? nextUsed : used), allowed };
+}
+
 // The gate a module calls BEFORE starting a unit of work. Soft policy: work is
 // allowed until usage passes the grace ceiling ((1 + GRACE) × limit), and the
 // action that tips the account over is still allowed to finish. Only records the
@@ -111,14 +125,11 @@ export async function enforce({
 	meter: key,
 	amount = 1,
 }: MeterInput): Promise<EnforceResult> {
-	const planId = await getAccountPlanId(scopeId);
-	const limit = getPlanLimits(planId)[key];
-	const used = await readValue(scopeId, key);
-	const allowed = withinGrace(limit, used);
-	if (allowed) {
+	const result = await checkAllowance({ scopeId, meter: key, amount });
+	if (result.allowed) {
 		await meter({ scopeId, meter: key, amount });
 	}
-	return { ...evaluate(key, limit, allowed ? used + amount : used), allowed };
+	return result;
 }
 
 /** Every meter's status for an account — for the usage dashboard. */

@@ -198,6 +198,20 @@ describe("module registry policy", () => {
 		).not.toThrow();
 	});
 
+	it("recognizes Files as optional, dependency-free, and storage-metered", () => {
+		expect(parseModuleSettings("files", {})).toEqual({
+			defaultAttachmentMode: "pinned",
+		});
+		expect(planModuleEnablement("files", [])).toEqual([
+			{
+				moduleId: "files",
+				settings: { defaultAttachmentMode: "pinned" },
+				isNew: true,
+			},
+		]);
+		expect(() => assertModuleCanBeDisabled("files", ["files"])).not.toThrow();
+	});
+
 	it("merges a partial patch without losing other saved settings", () => {
 		expect(
 			mergeModuleSettings(

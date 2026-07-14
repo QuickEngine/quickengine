@@ -1,5 +1,6 @@
 import { bookingsModule } from "@quickengine/mod-bookings/module";
 import { clientRecordsModule } from "@quickengine/mod-client-records/module";
+import { filesModule } from "@quickengine/mod-files/module";
 import { fulfillmentModule } from "@quickengine/mod-fulfillment/module";
 import { inventoryModule } from "@quickengine/mod-inventory/module";
 import { invoicingModule } from "@quickengine/mod-invoicing/module";
@@ -18,6 +19,7 @@ const ALL_MODULES: readonly ModuleManifest[] = [
 	invoicingModule,
 	paymentsModule,
 	fulfillmentModule,
+	filesModule,
 	productsServicesModule,
 	ordersModule,
 	inventoryModule,

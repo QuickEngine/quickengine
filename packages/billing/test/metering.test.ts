@@ -2,6 +2,7 @@ import { db, eq } from "@quickengine/db";
 import { quickengineSubscriptions } from "@quickengine/db/schema/quickengine";
 import { describe, expect, it } from "vitest";
 import {
+	checkAllowance,
 	checkLimit,
 	enforce,
 	getAccountPlanId,
@@ -68,6 +69,35 @@ describe("metering engine", () => {
 		});
 		expect(blocked.allowed).toBe(false);
 		expect(blocked.used).toBe(1111); // unchanged — a blocked action isn't counted
+	});
+
+	it("enforce treats a gauge amount as the proposed absolute total", async () => {
+		const scope = "acc-enforce-gauge";
+		await meter({ scopeId: scope, meter: "storageBytes", amount: 500 });
+		const result = await enforce({
+			scopeId: scope,
+			meter: "storageBytes",
+			amount: 700,
+		});
+		expect(result.allowed).toBe(true);
+		expect(result.used).toBe(700);
+		expect(
+			(await checkLimit({ scopeId: scope, meter: "storageBytes" })).used,
+		).toBe(700);
+	});
+
+	it("can preflight a gauge total without recording bytes that do not exist", async () => {
+		const scope = "acc-preflight-gauge";
+		await meter({ scopeId: scope, meter: "storageBytes", amount: 500 });
+		const result = await checkAllowance({
+			scopeId: scope,
+			meter: "storageBytes",
+			amount: 700,
+		});
+		expect(result).toMatchObject({ allowed: true, used: 700 });
+		expect(
+			(await checkLimit({ scopeId: scope, meter: "storageBytes" })).used,
+		).toBe(500);
 	});
 
 	it("counts concurrent increments atomically (no lost writes)", async () => {

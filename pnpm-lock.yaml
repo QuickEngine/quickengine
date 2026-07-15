@@ -133,6 +133,9 @@ importers:
       '@quickengine/mod-invoicing':
         specifier: workspace:*
         version: link:../../../packages/modules/invoicing
+      '@quickengine/mod-orders':
+        specifier: workspace:*
+        version: link:../../../packages/modules/orders
       '@quickengine/mod-payments':
         specifier: workspace:*
         version: link:../../../packages/modules/payments

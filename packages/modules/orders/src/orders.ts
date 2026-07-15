@@ -4,7 +4,9 @@ import {
 	catalogItemVariants,
 	clientRecords,
 	db,
+	desc,
 	eq,
+	fulfillments,
 	isNull,
 	orderLineItems,
 	orderSequences,
@@ -14,7 +16,7 @@ import {
 } from "@quickengine/db";
 import {
 	createFulfillment,
-	deleteFulfillment,
+	setFulfillmentStatus,
 } from "@quickengine/mod-fulfillment";
 import { type OrderInput, orderInputSchema } from "./order";
 import { canTransitionOrder, type OrderStatus } from "./status";
@@ -179,7 +181,11 @@ export async function createOrder(
 }
 
 export async function listOrders(workspaceId: string) {
-	return db.select().from(orders).where(eq(orders.workspaceId, workspaceId));
+	return db
+		.select()
+		.from(orders)
+		.where(eq(orders.workspaceId, workspaceId))
+		.orderBy(desc(orders.createdAt), desc(orders.id));
 }
 
 export async function getOrder(workspaceId: string, id: string) {
@@ -194,7 +200,8 @@ export async function getOrder(workspaceId: string, id: string) {
 	const lines = await db
 		.select()
 		.from(orderLineItems)
-		.where(eq(orderLineItems.orderId, id));
+		.where(eq(orderLineItems.orderId, id))
+		.orderBy(orderLineItems.position);
 	return { ...order, lines };
 }
 
@@ -266,88 +273,135 @@ export async function setOrderStatus(
 	id: string,
 	status: OrderStatus,
 ) {
-	const current = await getOrder(workspaceId, id);
-	if (!current) {
-		throw new Error("ORDER_NOT_FOUND");
-	}
-	if (current.status === status) {
-		throw new Error("ORDER_STATUS_UNCHANGED");
-	}
-	if (!canTransitionOrder(current.status, status)) {
-		throw new Error("ORDER_ILLEGAL_TRANSITION");
-	}
-	const now = new Date();
-	const timestamp = {
-		placed: { placedAt: now },
-		confirmed: { confirmedAt: now },
-		processing: { processingAt: now },
-		fulfilled: { fulfilledAt: now },
-		cancelled: { cancelledAt: now },
-		draft: {},
-	}[status];
-	const [updated] = await db
-		.update(orders)
-		.set({ status, ...timestamp, updatedAt: now })
-		.where(
-			and(
-				eq(orders.workspaceId, workspaceId),
-				eq(orders.id, id),
-				eq(orders.status, current.status),
-			),
-		)
-		.returning();
-	if (!updated) {
-		throw new Error("ORDER_CONCURRENT_UPDATE");
-	}
-	return updated;
+	return db.transaction(async (tx) => {
+		const [current] = await tx
+			.select({ status: orders.status, fulfillmentId: orders.fulfillmentId })
+			.from(orders)
+			.where(and(eq(orders.workspaceId, workspaceId), eq(orders.id, id)))
+			.limit(1)
+			.for("update");
+		if (!current) throw new Error("ORDER_NOT_FOUND");
+		if (current.status === status) throw new Error("ORDER_STATUS_UNCHANGED");
+		if (!canTransitionOrder(current.status, status))
+			throw new Error("ORDER_ILLEGAL_TRANSITION");
+
+		let fulfillmentStatus:
+			| "pending"
+			| "in_progress"
+			| "fulfilled"
+			| "failed"
+			| "cancelled"
+			| undefined;
+		if (current.fulfillmentId) {
+			const [fulfillment] = await tx
+				.select({ status: fulfillments.status })
+				.from(fulfillments)
+				.where(
+					and(
+						eq(fulfillments.workspaceId, workspaceId),
+						eq(fulfillments.id, current.fulfillmentId),
+					),
+				)
+				.limit(1)
+				.for("update");
+			fulfillmentStatus = fulfillment?.status;
+		}
+		if (status === "fulfilled" && fulfillmentStatus !== "fulfilled") {
+			throw new Error("ORDER_FULFILLMENT_NOT_COMPLETE");
+		}
+		if (status === "cancelled" && fulfillmentStatus === "fulfilled") {
+			throw new Error("ORDER_FULFILLMENT_ALREADY_COMPLETE");
+		}
+		if (
+			status === "cancelled" &&
+			current.fulfillmentId &&
+			(fulfillmentStatus === "pending" || fulfillmentStatus === "in_progress")
+		) {
+			await setFulfillmentStatus(
+				workspaceId,
+				current.fulfillmentId,
+				"cancelled",
+				tx,
+			);
+		}
+
+		const now = new Date();
+		const timestamp = {
+			placed: { placedAt: now },
+			confirmed: { confirmedAt: now },
+			processing: { processingAt: now },
+			fulfilled: { fulfilledAt: now },
+			cancelled: { cancelledAt: now },
+			draft: {},
+		}[status];
+		const [updated] = await tx
+			.update(orders)
+			.set({ status, ...timestamp, updatedAt: now })
+			.where(
+				and(
+					eq(orders.workspaceId, workspaceId),
+					eq(orders.id, id),
+					eq(orders.status, current.status),
+				),
+			)
+			.returning();
+		if (!updated) throw new Error("ORDER_CONCURRENT_UPDATE");
+		return updated;
+	});
 }
 
 export async function ensureOrderFulfillment(workspaceId: string, id: string) {
-	const order = await getOrder(workspaceId, id);
-	if (!order) {
-		throw new Error("ORDER_NOT_FOUND");
-	}
-	if (!["confirmed", "processing"].includes(order.status)) {
-		throw new Error("ORDER_NOT_READY_FOR_FULFILLMENT");
-	}
-	if (order.fulfillmentId) {
-		return order.fulfillmentId;
-	}
-	const types = new Set(order.lines.map((line) => line.type));
-	const kind =
-		types.has("physical") || types.has("rental")
-			? "physical"
-			: types.size === 1 && types.has("digital")
-				? "digital"
-				: types.size === 1 && types.has("service")
-					? "service"
-					: "other";
-	const fulfillment = await createFulfillment(workspaceId, {
-		title: `Order ${order.number}`,
-		kind,
-		clientId: order.clientId,
-		details: { orderId: order.id, orderNumber: order.number },
-	});
-	const [linked] = await db
-		.update(orders)
-		.set({ fulfillmentId: fulfillment.id, updatedAt: new Date() })
-		.where(
-			and(
-				eq(orders.workspaceId, workspaceId),
-				eq(orders.id, id),
-				isNull(orders.fulfillmentId),
-			),
-		)
-		.returning({ fulfillmentId: orders.fulfillmentId });
-	if (!linked?.fulfillmentId) {
-		await deleteFulfillment(workspaceId, fulfillment.id);
-		const latest = await getOrder(workspaceId, id);
-		if (!latest?.fulfillmentId) {
+	return db.transaction(async (tx) => {
+		const [order] = await tx
+			.select()
+			.from(orders)
+			.where(and(eq(orders.workspaceId, workspaceId), eq(orders.id, id)))
+			.limit(1)
+			.for("update");
+		if (!order) throw new Error("ORDER_NOT_FOUND");
+		if (!["confirmed", "processing"].includes(order.status))
+			throw new Error("ORDER_NOT_READY_FOR_FULFILLMENT");
+		if (order.fulfillmentId) return order.fulfillmentId;
+		const lines = await tx
+			.select({ type: orderLineItems.type })
+			.from(orderLineItems)
+			.where(eq(orderLineItems.orderId, id));
+		const types = new Set(lines.map((line) => line.type));
+		const kind =
+			types.has("physical") || types.has("rental")
+				? "physical"
+				: types.size === 1 && types.has("digital")
+					? "digital"
+					: types.size === 1 && types.has("service")
+						? "service"
+						: "other";
+		const fulfillment = await createFulfillment(
+			workspaceId,
+			{
+				title: `Order ${order.number}`,
+				kind,
+				clientId: order.clientId,
+				sourceModule: "orders",
+				sourceRecordId: order.id,
+				details: { orderId: order.id, orderNumber: order.number },
+			},
+			tx,
+		);
+		const [linked] = await tx
+			.update(orders)
+			.set({ fulfillmentId: fulfillment.id, updatedAt: new Date() })
+			.where(
+				and(
+					eq(orders.workspaceId, workspaceId),
+					eq(orders.id, id),
+					isNull(orders.fulfillmentId),
+				),
+			)
+			.returning({ fulfillmentId: orders.fulfillmentId });
+		if (!linked?.fulfillmentId)
 			throw new Error("ORDER_FULFILLMENT_LINK_FAILED");
-		}
-		return latest.fulfillmentId;
-	}
-	return linked.fulfillmentId;
+		return linked.fulfillmentId;
+	});
 }
 
 export async function deleteOrder(workspaceId: string, id: string) {
@@ -355,7 +409,7 @@ export async function deleteOrder(workspaceId: string, id: string) {
 	if (!current) {
 		throw new Error("ORDER_NOT_FOUND");
 	}
-	if (current.status !== "draft" && current.status !== "cancelled") {
+	if (current.status !== "draft") {
 		throw new Error("ORDER_NOT_DELETABLE");
 	}
 	const [deleted] = await db

@@ -10,15 +10,18 @@ import {
 	quickengineWorkspaces,
 	sql,
 } from "@quickengine/db";
+import { z } from "zod";
 import { canTransition, type InvoiceStatus } from "./status";
 import { computeInvoiceTotals, formatInvoiceNumber } from "./totals";
 
-export type InvoiceLineItemInput = {
-	description: string;
-	quantity: number;
-	unitPriceCents: number;
-	position?: number;
-};
+export const invoiceLineItemInputSchema = z.object({
+	description: z.string().trim().min(1).max(500),
+	quantity: z.number().int().min(1).max(1_000_000),
+	unitPriceCents: z.number().int().min(0).max(2_000_000_000),
+	position: z.number().int().min(0).max(10_000).optional(),
+});
+
+export type InvoiceLineItemInput = z.input<typeof invoiceLineItemInputSchema>;
 
 export type SourcedInvoiceLineItemInput = InvoiceLineItemInput & {
 	sourceModule: string;
@@ -59,6 +62,46 @@ export type CreateInvoiceInput = {
 	lineItems: InvoiceLineItemInput[];
 };
 
+export const createInvoiceInputSchema = z.object({
+	clientId: z.string().uuid().nullable().optional(),
+	currency: z
+		.string()
+		.trim()
+		.length(3)
+		.transform((value) => value.toUpperCase())
+		.optional(),
+	taxCents: z.number().int().min(0).max(2_000_000_000).optional(),
+	notes: z.string().trim().max(10_000).nullable().optional(),
+	dueAt: z.date().nullable().optional(),
+	numberPrefix: z.string().trim().min(1).max(12).optional(),
+	lineItems: z.array(invoiceLineItemInputSchema).min(1).max(100),
+});
+
+export type UpdateDraftInvoiceInput = Omit<CreateInvoiceInput, "numberPrefix">;
+
+async function getClientSnapshot(
+	tx: InvoiceTransaction,
+	workspaceId: string,
+	clientId: string | null | undefined,
+) {
+	if (!clientId) return null;
+	const [client] = await tx
+		.select({
+			workspaceId: clientRecords.workspaceId,
+			name: clientRecords.name,
+			email: clientRecords.email,
+			company: clientRecords.company,
+		})
+		.from(clientRecords)
+		.where(eq(clientRecords.id, clientId))
+		.limit(1);
+	if (!client) throw new Error("CLIENT_NOT_FOUND");
+	if (client.workspaceId !== workspaceId) {
+		throw new Error("CLIENT_WORKSPACE_MISMATCH");
+	}
+	return client;
+}
+
 // Create an invoice with its line items. NOT metered — creating an invoice is a
 // business outcome, not billable infrastructure (see the manifest). Totals are
 // computed server-side from the line items, never trusted from the client.
@@ -66,10 +109,11 @@ export async function createInvoice(
 	workspaceId: string,
 	input: CreateInvoiceInput,
 ) {
-	if (input.lineItems.length === 0) {
-		throw new Error("INVOICE_REQUIRES_LINE_ITEMS");
+	const values = createInvoiceInputSchema.parse(input);
+	const totals = computeInvoiceTotals(values.lineItems, values.taxCents ?? 0);
+	if (!Number.isSafeInteger(totals.totalCents)) {
+		throw new Error("INVOICE_TOTAL_OUT_OF_RANGE");
 	}
-	const totals = computeInvoiceTotals(input.lineItems, input.taxCents ?? 0);
 	return db.transaction(async (tx) => {
 		const [workspace] = await tx
 			.select({ id: quickengineWorkspaces.id })
@@ -77,37 +121,29 @@ export async function createInvoice(
 			.where(eq(quickengineWorkspaces.id, workspaceId))
 			.limit(1);
 		if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
-		// Tenant isolation: an invoice may only reference a client from this workspace.
-		if (input.clientId) {
-			const [client] = await tx
-				.select({ workspaceId: clientRecords.workspaceId })
-				.from(clientRecords)
-				.where(eq(clientRecords.id, input.clientId))
-				.limit(1);
-			if (!client) throw new Error("CLIENT_NOT_FOUND");
-			if (client.workspaceId !== workspaceId) {
-				throw new Error("CLIENT_WORKSPACE_MISMATCH");
-			}
-		}
+		const client = await getClientSnapshot(tx, workspaceId, values.clientId);
 		const sequence = await allocateInvoiceSequence(tx, workspaceId);
-		const number = formatInvoiceNumber(input.numberPrefix ?? "INV", sequence);
+		const number = formatInvoiceNumber(values.numberPrefix ?? "INV", sequence);
 		const [invoice] = await tx
 			.insert(invoices)
 			.values({
 				workspaceId,
-				clientId: input.clientId ?? null,
+				clientId: values.clientId ?? null,
+				clientName: client?.name ?? null,
+				clientEmail: client?.email ?? null,
+				clientCompany: client?.company ?? null,
 				number,
-				currency: input.currency ?? "USD",
+				currency: values.currency ?? "USD",
 				subtotalCents: totals.subtotalCents,
 				taxCents: totals.taxCents,
 				totalCents: totals.totalCents,
-				notes: input.notes ?? null,
-				dueAt: input.dueAt ?? null,
+				notes: values.notes ?? null,
+				dueAt: values.dueAt ?? null,
 			})
 			.returning();
 
 		await tx.insert(invoiceLineItems).values(
-			input.lineItems.map((line, i) => ({
+			values.lineItems.map((line, i) => ({
 				invoiceId: invoice.id,
 				description: line.description,
 				quantity: line.quantity,
@@ -239,15 +275,16 @@ export async function listInvoices(workspaceId: string) {
 	return db
 		.select()
 		.from(invoices)
-		.where(eq(invoices.workspaceId, workspaceId));
+		.where(eq(invoices.workspaceId, workspaceId))
+		.orderBy(sql`${invoices.createdAt} desc`);
 }
 
 /** A single invoice with its line items (or undefined). */
-export async function getInvoice(id: string) {
+export async function getInvoice(workspaceId: string, id: string) {
 	const [invoice] = await db
 		.select()
 		.from(invoices)
-		.where(eq(invoices.id, id))
+		.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
 		.limit(1);
 	if (!invoice) {
 		return undefined;
@@ -255,42 +292,129 @@ export async function getInvoice(id: string) {
 	const lineItems = await db
 		.select()
 		.from(invoiceLineItems)
-		.where(eq(invoiceLineItems.invoiceId, id));
+		.where(eq(invoiceLineItems.invoiceId, id))
+		.orderBy(invoiceLineItems.position);
 	return { ...invoice, lineItems };
 }
 
-/** Move an invoice to a new status, stamping the matching timestamp. */
-export async function setInvoiceStatus(id: string, status: InvoiceStatus) {
-	const [current] = await db
-		.select({ status: invoices.status })
-		.from(invoices)
-		.where(eq(invoices.id, id))
-		.limit(1);
-	if (!current) {
-		throw new Error("INVOICE_NOT_FOUND");
+/** Replace a human-authored draft while preserving its immutable invoice number. */
+export async function updateDraftInvoice(
+	workspaceId: string,
+	id: string,
+	input: UpdateDraftInvoiceInput,
+) {
+	const values = createInvoiceInputSchema
+		.omit({ numberPrefix: true })
+		.parse(input);
+	const totals = computeInvoiceTotals(values.lineItems, values.taxCents ?? 0);
+	if (!Number.isSafeInteger(totals.totalCents)) {
+		throw new Error("INVOICE_TOTAL_OUT_OF_RANGE");
 	}
-	if (current.status === status) {
-		throw new Error("INVOICE_STATUS_UNCHANGED");
-	}
-	if (!canTransition(current.status as InvoiceStatus, status)) {
-		throw new Error("INVOICE_ILLEGAL_TRANSITION");
-	}
-
-	const now = new Date();
-	const [invoice] = await db
-		.update(invoices)
-		.set({
-			status,
-			updatedAt: now,
-			...(status === "sent" ? { issuedAt: now } : {}),
-			...(status === "paid" ? { paidAt: now } : {}),
-		})
-		.where(eq(invoices.id, id))
-		.returning();
-	return invoice;
+	return db.transaction(async (tx) => {
+		const [invoice] = await tx
+			.select()
+			.from(invoices)
+			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
+			.limit(1)
+			.for("update");
+		if (!invoice) throw new Error("INVOICE_NOT_FOUND");
+		if (invoice.status !== "draft") throw new Error("INVOICE_NOT_EDITABLE");
+		const existingLines = await tx
+			.select({ sourceModule: invoiceLineItems.sourceModule })
+			.from(invoiceLineItems)
+			.where(eq(invoiceLineItems.invoiceId, id));
+		if (existingLines.some((line) => line.sourceModule !== null)) {
+			throw new Error("INVOICE_HAS_MANAGED_LINES");
+		}
+		const client = await getClientSnapshot(tx, workspaceId, values.clientId);
+		await tx
+			.delete(invoiceLineItems)
+			.where(eq(invoiceLineItems.invoiceId, invoice.id));
+		await tx.insert(invoiceLineItems).values(
+			values.lineItems.map((line, index) => ({
+				invoiceId: invoice.id,
+				description: line.description,
+				quantity: line.quantity,
+				unitPriceCents: line.unitPriceCents,
+				position: line.position ?? index,
+			})),
+		);
+		const [updated] = await tx
+			.update(invoices)
+			.set({
+				clientId: values.clientId ?? null,
+				clientName: client?.name ?? null,
+				clientEmail: client?.email ?? null,
+				clientCompany: client?.company ?? null,
+				currency: values.currency ?? "USD",
+				...totals,
+				notes: values.notes ?? null,
+				dueAt: values.dueAt ?? null,
+				updatedAt: new Date(),
+			})
+			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
+			.returning();
+		return updated;
+	});
 }
 
-/** Permanently delete an invoice (its line items cascade). */
-export async function deleteInvoice(id: string) {
-	await db.delete(invoices).where(eq(invoices.id, id));
+/** Move an invoice to a new status, stamping the matching timestamp. */
+export async function setInvoiceStatus(
+	workspaceId: string,
+	id: string,
+	status: InvoiceStatus,
+	options: { now?: Date } = {},
+) {
+	return db.transaction(async (tx) => {
+		const [current] = await tx
+			.select({ status: invoices.status })
+			.from(invoices)
+			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
+			.limit(1)
+			.for("update");
+		if (!current) throw new Error("INVOICE_NOT_FOUND");
+		if (current.status === status) throw new Error("INVOICE_STATUS_UNCHANGED");
+		if (!canTransition(current.status as InvoiceStatus, status)) {
+			throw new Error("INVOICE_ILLEGAL_TRANSITION");
+		}
+
+		const now = options.now ?? new Date();
+		const [invoice] = await tx
+			.update(invoices)
+			.set({
+				status,
+				updatedAt: now,
+				...(status === "sent" ? { issuedAt: now } : {}),
+				...(status === "paid" ? { paidAt: now } : {}),
+			})
+			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
+			.returning();
+		return invoice;
+	});
+}
+
+/** Permanently delete only an ordinary draft; issued financial history is preserved. */
+export async function deleteInvoice(workspaceId: string, id: string) {
+	return db.transaction(async (tx) => {
+		const [invoice] = await tx
+			.select({ status: invoices.status })
+			.from(invoices)
+			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
+			.limit(1)
+			.for("update");
+		if (!invoice) return undefined;
+		if (invoice.status !== "draft") throw new Error("INVOICE_NOT_DELETABLE");
+		const lines = await tx
+			.select({ sourceModule: invoiceLineItems.sourceModule })
+			.from(invoiceLineItems)
+			.where(eq(invoiceLineItems.invoiceId, id));
+		if (lines.some((line) => line.sourceModule !== null)) {
+			throw new Error("INVOICE_HAS_MANAGED_LINES");
+		}
+		const [deleted] = await tx
+			.delete(invoices)
+			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
+			.returning({ id: invoices.id });
+		return deleted;
+	});
 }

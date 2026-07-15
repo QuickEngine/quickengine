@@ -134,6 +134,9 @@ export async function convertQuoteEstimateToInvoice(
 			.values({
 				workspaceId,
 				clientId: quote.clientId,
+				clientName: quote.clientName,
+				clientEmail: quote.clientEmail,
+				clientCompany: quote.clientCompany,
 				number,
 				status: "draft",
 				currency: quote.currency,

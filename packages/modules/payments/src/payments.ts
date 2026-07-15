@@ -162,7 +162,9 @@ export async function setPaymentStatus(
 
 	if (status === "succeeded" && current.invoiceId) {
 		try {
-			await setInvoiceStatus(current.invoiceId, "paid");
+			await setInvoiceStatus(payment.workspaceId, current.invoiceId, "paid", {
+				now,
+			});
 		} catch {
 			// Invoice already paid/void or not transitionable — money is recorded either
 			// way; invoice status is a best-effort reflection of it.

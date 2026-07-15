@@ -1,4 +1,5 @@
 import {
+	and,
 	clientRecords,
 	db,
 	eq,
@@ -6,148 +7,217 @@ import {
 	invoices,
 	payments,
 	quickengineWorkspaces,
+	sql,
 } from "@quickengine/db";
+import { z } from "zod";
 import { canTransition, type FulfillmentStatus } from "./status";
 
-export type FulfillmentKind = "physical" | "digital" | "service" | "other";
+export type FulfillmentKind =
+	| "physical"
+	| "digital"
+	| "service"
+	| "pickup"
+	| "other";
+type FulfillmentExecutor = Pick<
+	typeof db,
+	"select" | "insert" | "update" | "delete"
+>;
 
-export type CreateFulfillmentInput = {
-	title: string;
-	kind?: FulfillmentKind;
-	clientId?: string | null;
-	invoiceId?: string | null;
-	paymentId?: string | null;
-	details?: Record<string, unknown>;
-	dueAt?: Date | null;
-};
+export const createFulfillmentInputSchema = z
+	.object({
+		title: z.string().trim().min(1).max(300),
+		kind: z
+			.enum(["physical", "digital", "service", "pickup", "other"])
+			.optional(),
+		clientId: z.string().uuid().nullable().optional(),
+		invoiceId: z.string().uuid().nullable().optional(),
+		paymentId: z.string().uuid().nullable().optional(),
+		sourceModule: z.string().trim().min(1).max(100).nullable().optional(),
+		sourceRecordId: z.string().uuid().nullable().optional(),
+		instructions: z.string().trim().max(10_000).nullable().optional(),
+		details: z.record(z.string(), z.unknown()).optional(),
+		dueAt: z.date().nullable().optional(),
+	})
+	.refine(
+		(value) => Boolean(value.sourceModule) === Boolean(value.sourceRecordId),
+		"Source module and record must be provided together.",
+	)
+	.superRefine((value, context) => {
+		if (JSON.stringify(value.details ?? {}).length > 20_000) {
+			context.addIssue({ code: "custom", message: "Details are too large." });
+		}
+	});
 
-async function assertWorkspaceOwnsReference(
-	executor: Pick<typeof db, "select">,
-	workspaceId: string,
-	table: typeof clientRecords | typeof invoices | typeof payments,
-	id: string,
-	missingError: string,
-	mismatchError: string,
-) {
-	const [record] = await executor
-		.select({ workspaceId: table.workspaceId })
-		.from(table)
-		.where(eq(table.id, id))
-		.limit(1);
-	if (!record) {
-		throw new Error(missingError);
-	}
-	if (record.workspaceId !== workspaceId) {
-		throw new Error(mismatchError);
-	}
-}
+export type CreateFulfillmentInput = z.input<
+	typeof createFulfillmentInputSchema
+>;
 
 /** Create a universal record for delivering what the business promised. */
 export async function createFulfillment(
 	workspaceId: string,
 	input: CreateFulfillmentInput,
-	executor: Pick<typeof db, "select" | "insert"> = db,
+	executor: FulfillmentExecutor = db,
 ) {
-	const title = input.title.trim();
-	if (!title) {
-		throw new Error("FULFILLMENT_TITLE_REQUIRED");
-	}
-
+	const values = createFulfillmentInputSchema.parse(input);
 	const [workspace] = await executor
 		.select({ id: quickengineWorkspaces.id })
 		.from(quickengineWorkspaces)
 		.where(eq(quickengineWorkspaces.id, workspaceId))
 		.limit(1);
-	if (!workspace) {
-		throw new Error("WORKSPACE_NOT_FOUND");
+	if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
+
+	let invoice: typeof invoices.$inferSelect | undefined;
+	if (values.invoiceId) {
+		[invoice] = await executor
+			.select()
+			.from(invoices)
+			.where(
+				and(
+					eq(invoices.workspaceId, workspaceId),
+					eq(invoices.id, values.invoiceId),
+				),
+			)
+			.limit(1);
+		if (!invoice) throw new Error("INVOICE_NOT_FOUND");
+		if (invoice.status !== "paid") throw new Error("INVOICE_NOT_PAID");
 	}
 
-	if (input.clientId) {
-		await assertWorkspaceOwnsReference(
-			executor,
-			workspaceId,
-			clientRecords,
-			input.clientId,
-			"CLIENT_NOT_FOUND",
-			"CLIENT_WORKSPACE_MISMATCH",
-		);
+	let payment: typeof payments.$inferSelect | undefined;
+	if (values.paymentId) {
+		[payment] = await executor
+			.select()
+			.from(payments)
+			.where(
+				and(
+					eq(payments.workspaceId, workspaceId),
+					eq(payments.id, values.paymentId),
+				),
+			)
+			.limit(1);
+		if (!payment) throw new Error("PAYMENT_NOT_FOUND");
+		if (payment.status !== "succeeded")
+			throw new Error("PAYMENT_NOT_SUCCEEDED");
+		if (invoice && payment.invoiceId && payment.invoiceId !== invoice.id) {
+			throw new Error("PAYMENT_INVOICE_MISMATCH");
+		}
 	}
-	if (input.invoiceId) {
-		await assertWorkspaceOwnsReference(
-			executor,
-			workspaceId,
-			invoices,
-			input.invoiceId,
-			"INVOICE_NOT_FOUND",
-			"INVOICE_WORKSPACE_MISMATCH",
-		);
+
+	const clientId =
+		values.clientId ?? invoice?.clientId ?? payment?.clientId ?? null;
+	if (
+		invoice?.clientId &&
+		values.clientId &&
+		invoice.clientId !== values.clientId
+	) {
+		throw new Error("CLIENT_INVOICE_MISMATCH");
 	}
-	if (input.paymentId) {
-		await assertWorkspaceOwnsReference(
-			executor,
-			workspaceId,
-			payments,
-			input.paymentId,
-			"PAYMENT_NOT_FOUND",
-			"PAYMENT_WORKSPACE_MISMATCH",
-		);
+	let client: typeof clientRecords.$inferSelect | undefined;
+	if (clientId) {
+		[client] = await executor
+			.select()
+			.from(clientRecords)
+			.where(
+				and(
+					eq(clientRecords.workspaceId, workspaceId),
+					eq(clientRecords.id, clientId),
+				),
+			)
+			.limit(1);
+		if (!client && !invoice && !payment) throw new Error("CLIENT_NOT_FOUND");
+	}
+
+	if (values.sourceModule && values.sourceRecordId) {
+		const [existing] = await executor
+			.select({ id: fulfillments.id })
+			.from(fulfillments)
+			.where(
+				and(
+					eq(fulfillments.workspaceId, workspaceId),
+					eq(fulfillments.sourceModule, values.sourceModule),
+					eq(fulfillments.sourceRecordId, values.sourceRecordId),
+				),
+			)
+			.limit(1);
+		if (existing) throw new Error("FULFILLMENT_SOURCE_EXISTS");
 	}
 
 	const [fulfillment] = await executor
 		.insert(fulfillments)
 		.values({
 			workspaceId,
-			title,
-			kind: input.kind ?? "other",
-			clientId: input.clientId ?? null,
-			invoiceId: input.invoiceId ?? null,
-			paymentId: input.paymentId ?? null,
-			details: input.details ?? {},
-			dueAt: input.dueAt ?? null,
+			title: values.title,
+			kind: values.kind ?? "other",
+			clientId,
+			invoiceId: values.invoiceId ?? null,
+			paymentId: values.paymentId ?? null,
+			clientName:
+				client?.name ?? invoice?.clientName ?? payment?.clientName ?? null,
+			clientEmail:
+				client?.email ?? invoice?.clientEmail ?? payment?.clientEmail ?? null,
+			clientCompany:
+				client?.company ??
+				invoice?.clientCompany ??
+				payment?.clientCompany ??
+				null,
+			invoiceNumber: invoice?.number ?? null,
+			sourceModule: values.sourceModule ?? null,
+			sourceRecordId: values.sourceRecordId ?? null,
+			instructions: values.instructions ?? null,
+			details: values.details ?? {},
+			dueAt: values.dueAt ?? null,
 		})
 		.returning();
 	return fulfillment;
 }
 
-/** Move a fulfillment through its deliberately small universal lifecycle. */
 export async function setFulfillmentStatus(
+	workspaceId: string,
 	id: string,
 	status: FulfillmentStatus,
-	executor: Pick<typeof db, "select" | "update"> = db,
+	executor: FulfillmentExecutor = db,
 ) {
 	const [current] = await executor
 		.select({ status: fulfillments.status })
 		.from(fulfillments)
-		.where(eq(fulfillments.id, id))
+		.where(
+			and(eq(fulfillments.workspaceId, workspaceId), eq(fulfillments.id, id)),
+		)
 		.limit(1);
-	if (!current) {
-		throw new Error("FULFILLMENT_NOT_FOUND");
-	}
-	if (current.status === status) {
+	if (!current) throw new Error("FULFILLMENT_NOT_FOUND");
+	if (current.status === status)
 		throw new Error("FULFILLMENT_STATUS_UNCHANGED");
-	}
 	if (!canTransition(current.status as FulfillmentStatus, status)) {
 		throw new Error("FULFILLMENT_ILLEGAL_TRANSITION");
 	}
-
 	const now = new Date();
 	const [fulfillment] = await executor
 		.update(fulfillments)
 		.set({
 			status,
 			fulfilledAt: status === "fulfilled" ? now : null,
+			failedAt: status === "failed" ? now : null,
+			cancelledAt: status === "cancelled" ? now : null,
 			updatedAt: now,
 		})
-		.where(eq(fulfillments.id, id))
+		.where(
+			and(
+				eq(fulfillments.workspaceId, workspaceId),
+				eq(fulfillments.id, id),
+				eq(fulfillments.status, current.status),
+			),
+		)
 		.returning();
+	if (!fulfillment) throw new Error("FULFILLMENT_CONCURRENT_UPDATE");
 	return fulfillment;
 }
 
-export async function getFulfillment(id: string) {
+export async function getFulfillment(workspaceId: string, id: string) {
 	const [fulfillment] = await db
 		.select()
 		.from(fulfillments)
-		.where(eq(fulfillments.id, id))
+		.where(
+			and(eq(fulfillments.workspaceId, workspaceId), eq(fulfillments.id, id)),
+		)
 		.limit(1);
 	return fulfillment;
 }
@@ -156,16 +226,24 @@ export async function listFulfillments(workspaceId: string) {
 	return db
 		.select()
 		.from(fulfillments)
-		.where(eq(fulfillments.workspaceId, workspaceId));
+		.where(eq(fulfillments.workspaceId, workspaceId))
+		.orderBy(sql`${fulfillments.createdAt} desc`, sql`${fulfillments.id} desc`);
 }
 
 export async function deleteFulfillment(
+	workspaceId: string,
 	id: string,
-	executor: Pick<typeof db, "delete"> = db,
+	executor: FulfillmentExecutor = db,
 ) {
 	const [deleted] = await executor
 		.delete(fulfillments)
-		.where(eq(fulfillments.id, id))
+		.where(
+			and(
+				eq(fulfillments.workspaceId, workspaceId),
+				eq(fulfillments.id, id),
+				eq(fulfillments.status, "pending"),
+			),
+		)
 		.returning();
 	return deleted;
 }

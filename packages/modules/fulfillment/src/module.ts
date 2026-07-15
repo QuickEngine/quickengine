@@ -4,6 +4,7 @@ export const fulfillmentKinds = [
 	"physical",
 	"digital",
 	"service",
+	"pickup",
 	"other",
 ] as const;
 

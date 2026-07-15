@@ -54,6 +54,9 @@ importers:
       '@quickengine/mod-fulfillment':
         specifier: workspace:*
         version: link:../../../packages/modules/fulfillment
+      '@quickengine/mod-files':
+        specifier: workspace:*
+        version: link:../../../packages/modules/files
       '@quickengine/mod-inventory':
         specifier: workspace:*
         version: link:../../../packages/modules/inventory
@@ -81,6 +84,9 @@ importers:
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../../packages/module-registry
+      '@quickengine/storage':
+        specifier: workspace:*
+        version: link:../../../packages/storage
       '@quickengine/ui':
         specifier: workspace:*
         version: link:../../../packages/ui

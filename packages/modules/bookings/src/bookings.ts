@@ -5,6 +5,7 @@ import {
 	catalogItemVariants,
 	clientRecords,
 	db,
+	desc,
 	eq,
 	gt,
 	inArray,
@@ -138,7 +139,8 @@ export async function listBookings(workspaceId: string) {
 	return db
 		.select()
 		.from(bookings)
-		.where(eq(bookings.workspaceId, workspaceId));
+		.where(eq(bookings.workspaceId, workspaceId))
+		.orderBy(desc(bookings.startsAt), desc(bookings.id));
 }
 
 export async function getBooking(workspaceId: string, id: string) {

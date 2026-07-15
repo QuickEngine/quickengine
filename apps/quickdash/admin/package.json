@@ -17,6 +17,7 @@
 		"@quickengine/auth": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
+		"@quickengine/mod-bookings": "workspace:*",
 		"@quickengine/mod-fulfillment": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",
 		"@quickengine/mod-inventory": "workspace:*",

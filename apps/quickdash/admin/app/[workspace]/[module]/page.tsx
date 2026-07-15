@@ -45,6 +45,10 @@ import {
 	listShipments,
 	shippingSettingsSchema,
 } from "@quickengine/mod-shipping";
+import {
+	listTimeEntries,
+	timeTrackingSettingsSchema,
+} from "@quickengine/mod-time-tracking";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
@@ -59,6 +63,7 @@ import { OrdersView } from "../../_components/orders-view";
 import { PaymentsView } from "../../_components/payments-view";
 import { ProjectsView } from "../../_components/projects-view";
 import { ShippingView } from "../../_components/shipping-view";
+import { TimeTrackingView } from "../../_components/time-tracking-view";
 import { getModuleNavigation } from "../../_lib/module-navigation";
 import { requireWorkspaceAccess } from "../../_lib/workspace-access";
 
@@ -239,6 +244,25 @@ export default async function Page({
 			? await listClientRecords(access.workspace.id)
 			: null;
 	const today = new Date();
+	const timeSettings =
+		moduleId === "time-tracking"
+			? timeTrackingSettingsSchema.parse(enabledModule.settings)
+			: null;
+	const timeRows =
+		moduleId === "time-tracking"
+			? await listTimeEntries(access.workspace.id)
+			: null;
+	const timeProjects =
+		moduleId === "time-tracking"
+			? await listProjects(access.workspace.id)
+			: null;
+	const timeTasks = timeProjects
+		? await Promise.all(
+				timeProjects.map((project) =>
+					listProjectTasks(access.workspace.id, project.id),
+				),
+			)
+		: null;
 	const projectRows =
 		moduleId === "projects-tasks"
 			? await listProjects(access.workspace.id)
@@ -275,7 +299,37 @@ export default async function Page({
 					</p>
 				</div>
 			</div>
-			{projectRows && projectTasks && projectClients ? (
+			{timeRows && timeProjects && timeTasks && timeSettings ? (
+				<TimeTrackingView
+					workspaceId={access.workspace.id}
+					defaultBillable={timeSettings.defaultBillable}
+					defaultRateCents={timeSettings.defaultHourlyRateCents}
+					projects={timeProjects
+						.filter(
+							(project) => !["completed", "cancelled"].includes(project.status),
+						)
+						.map((project, index) => ({
+							id: project.id,
+							name: project.name,
+							tasks: (timeTasks[index] ?? [])
+								.filter(
+									(task) => !["completed", "cancelled"].includes(task.status),
+								)
+								.map((task) => ({ id: task.id, title: task.title })),
+						}))}
+					entries={timeRows.map((entry) => ({
+						id: entry.id,
+						projectName: entry.projectName,
+						taskTitle: entry.taskTitle,
+						description: entry.description,
+						status: entry.status,
+						durationSeconds: entry.durationSeconds,
+						workDate: entry.workDate,
+						billable: entry.billable,
+						startedAt: entry.startedAt?.toISOString() ?? null,
+					}))}
+				/>
+			) : projectRows && projectTasks && projectClients ? (
 				<ProjectsView
 					workspaceId={access.workspace.id}
 					clients={projectClients.map((c) => ({ id: c.id, name: c.name }))}

@@ -1035,10 +1035,6 @@ importers:
         version: 5.9.3
 
   packages/sdk:
-    dependencies:
-      '@quickengine/types':
-        specifier: workspace:*
-        version: link:../types
     devDependencies:
       '@quickengine/config':
         specifier: workspace:*
@@ -1049,6 +1045,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
 
   packages/search:
     dependencies:

@@ -23,13 +23,18 @@ const BUILD = [
 	{ name: "CLI", desc: "Manage it all from the terminal.", href: "/docs/cli" },
 ];
 
-const SNIPPET = `import { QuickEngine } from "@quickengine/sdk";
+const SNIPPET = `import { createQuickServer } from "@quickengine/quick";
 
-const qe = new QuickEngine(process.env.QE_API_KEY);
+const quick = createQuickServer({
+  baseUrl: process.env.QUICKENGINE_API_URL,
+  workspaceId: process.env.QUICKENGINE_WORKSPACE_ID,
+  credential: {
+    type: "secret",
+    token: process.env.QUICKENGINE_SECRET_KEY,
+  },
+});
 
-// Spin up a backend shaped for the business type.
-const workspace = await qe.workspaces.create({ type: "saas" });
-await workspace.modules.enable("billing");`;
+// Typed module clients arrive as their QuickDash APIs stabilize.`;
 
 export default function DevelopersPage() {
 	return (

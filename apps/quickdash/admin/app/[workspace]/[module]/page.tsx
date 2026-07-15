@@ -32,6 +32,11 @@ import {
 	listProductVariants,
 	productsServicesSettingsSchema,
 } from "@quickengine/mod-products-services";
+import {
+	getShipment,
+	listShipments,
+	shippingSettingsSchema,
+} from "@quickengine/mod-shipping";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
@@ -43,6 +48,7 @@ import { InvoicesView } from "../../_components/invoices-view";
 import { ModuleIcon } from "../../_components/module-icon";
 import { OrdersView } from "../../_components/orders-view";
 import { PaymentsView } from "../../_components/payments-view";
+import { ShippingView } from "../../_components/shipping-view";
 import { getModuleNavigation } from "../../_lib/module-navigation";
 import { requireWorkspaceAccess } from "../../_lib/workspace-access";
 
@@ -187,6 +193,28 @@ export default async function Page({
 		? await Promise.all(
 				inventoryCatalog.map((item) =>
 					listProductVariants(access.workspace.id, item.id),
+				),
+			)
+		: null;
+	const shippingSettings =
+		moduleId === "shipping"
+			? shippingSettingsSchema.parse(enabledModule.settings)
+			: null;
+	const shipmentRows =
+		moduleId === "shipping" ? await listShipments(access.workspace.id) : null;
+	const shipmentDetails = shipmentRows
+		? await Promise.all(
+				shipmentRows.map((shipment) =>
+					getShipment(access.workspace.id, shipment.id),
+				),
+			)
+		: null;
+	const shippingOrderRows =
+		moduleId === "shipping" ? await listOrders(access.workspace.id) : null;
+	const shippingOrders = shippingOrderRows
+		? await Promise.all(
+				shippingOrderRows.map((order) =>
+					getOrder(access.workspace.id, order.id),
 				),
 			)
 		: null;
@@ -584,6 +612,76 @@ export default async function Page({
 								createdAt: movement.createdAt.toISOString(),
 							})),
 						};
+					})}
+				/>
+			) : shipmentDetails && shippingOrders && shippingSettings ? (
+				<ShippingView
+					workspaceId={access.workspace.id}
+					defaultCountry={shippingSettings.defaultOriginCountry}
+					defaultCarrier={shippingSettings.defaultCarrier}
+					shippableLines={shippingOrders.flatMap((order) => {
+						if (
+							!order ||
+							(order.status !== "confirmed" && order.status !== "processing")
+						)
+							return [];
+						return order.lines.flatMap((line) => {
+							if (line.type !== "physical" && line.type !== "rental") return [];
+							const allocated = shipmentDetails.reduce((total, shipment) => {
+								if (!shipment || shipment.status === "cancelled") return total;
+								return (
+									total +
+									shipment.lines
+										.filter((item) => item.orderLineItemId === line.id)
+										.reduce((sum, item) => sum + item.quantity, 0)
+								);
+							}, 0);
+							const remaining = line.quantity - allocated;
+							return remaining > 0
+								? [
+										{
+											orderId: order.id,
+											orderNumber: order.number,
+											lineId: line.id,
+											label: line.sku
+												? `${line.name} (${line.sku})`
+												: line.name,
+											remaining,
+											recipientName: order.clientName,
+											recipientEmail: order.clientEmail,
+										},
+									]
+								: [];
+						});
+					})}
+					shipments={shipmentDetails.flatMap((shipment) => {
+						if (!shipment) return [];
+						const order = shippingOrders.find(
+							(candidate) => candidate?.id === shipment.orderId,
+						);
+						return [
+							{
+								id: shipment.id,
+								orderNumber: order?.number ?? "Archived order",
+								status: shipment.status,
+								destination: shipment.destination,
+								carrier: shipment.carrier,
+								serviceLevel: shipment.serviceLevel,
+								trackingNumber: shipment.trackingNumber,
+								trackingUrl: shipment.trackingUrl,
+								createdAt: shipment.createdAt.toISOString(),
+								lines: shipment.lines.map((shipmentLine) => ({
+									label:
+										order?.lines.find(
+											(line) => line.id === shipmentLine.orderLineItemId,
+										)?.name ?? "Archived order line",
+									quantity: shipmentLine.quantity,
+								})),
+								parcels: shipment.parcels.map((parcel) => ({
+									weightGrams: parcel.weightGrams,
+								})),
+							},
+						];
 					})}
 				/>
 			) : (

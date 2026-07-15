@@ -1,6 +1,7 @@
 import {
 	and,
 	db,
+	desc,
 	eq,
 	ne,
 	orderLineItems,
@@ -173,7 +174,8 @@ export async function listShipments(workspaceId: string, orderId?: string) {
 						eq(shipments.orderId, orderId),
 					)
 				: eq(shipments.workspaceId, workspaceId),
-		);
+		)
+		.orderBy(desc(shipments.createdAt), desc(shipments.id));
 }
 
 export async function getShipment(workspaceId: string, id: string) {

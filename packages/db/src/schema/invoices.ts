@@ -51,6 +51,11 @@ export const invoices = pgTable(
 		clientId: uuid("client_id").references(() => clientRecords.id, {
 			onDelete: "set null",
 		}),
+		// Historical billing identity. Client Records remains the live relationship,
+		// while these snapshots preserve who the invoice was prepared for.
+		clientName: text("client_name"),
+		clientEmail: text("client_email"),
+		clientCompany: text("client_company"),
 		// Human-facing invoice number, unique per workspace (INV-0001…). Assigned by
 		// the module, not the DB default, so workspaces get a clean per-workspace run.
 		number: text("number").notNull(),

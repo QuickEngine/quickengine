@@ -136,6 +136,9 @@ importers:
       '@quickengine/mod-payments':
         specifier: workspace:*
         version: link:../../../packages/modules/payments
+      '@quickengine/mod-products-services':
+        specifier: workspace:*
+        version: link:../../../packages/modules/products-services
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../../packages/module-registry

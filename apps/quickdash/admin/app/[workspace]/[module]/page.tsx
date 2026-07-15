@@ -17,9 +17,15 @@ import {
 	listPayments,
 	paymentsSettingsSchema,
 } from "@quickengine/mod-payments";
+import {
+	listCatalogItems,
+	listProductVariants,
+	productsServicesSettingsSchema,
+} from "@quickengine/mod-products-services";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { CatalogView } from "../../_components/catalog-view";
 import { ClientRecordsView } from "../../_components/client-records-view";
 import { FulfillmentsView } from "../../_components/fulfillments-view";
 import { InvoicesView } from "../../_components/invoices-view";
@@ -105,6 +111,21 @@ export default async function Page({
 		moduleId === "fulfillment"
 			? await listClientRecords(access.workspace.id)
 			: null;
+	const catalogSettings =
+		moduleId === "products-services"
+			? productsServicesSettingsSchema.parse(enabledModule.settings)
+			: null;
+	const catalogRows =
+		moduleId === "products-services"
+			? await listCatalogItems(access.workspace.id)
+			: null;
+	const catalogVariants = catalogRows
+		? await Promise.all(
+				catalogRows.map((item) =>
+					listProductVariants(access.workspace.id, item.id),
+				),
+			)
+		: null;
 	const today = new Date();
 	const defaultDueDate = invoicingSettings
 		? new Date(
@@ -325,6 +346,33 @@ export default async function Page({
 							createdAt: item.createdAt.toISOString(),
 						};
 					})}
+				/>
+			) : catalogRows && catalogVariants && catalogSettings ? (
+				<CatalogView
+					workspaceId={access.workspace.id}
+					defaultCurrency={catalogSettings.defaultCurrency}
+					productLabel={catalogSettings.productLabelPlural}
+					serviceLabel={catalogSettings.serviceLabelPlural}
+					items={catalogRows.map((item, index) => ({
+						id: item.id,
+						name: item.name,
+						description: item.description,
+						type: item.type,
+						status: item.status,
+						sku: item.sku,
+						pricingModel: item.pricingModel,
+						priceCents: item.priceCents,
+						currency: item.currency,
+						unitLabel: item.unitLabel,
+						variants:
+							catalogVariants[index]?.map((variant) => ({
+								id: variant.id,
+								options: variant.options,
+								status: variant.status,
+								sku: variant.sku,
+								priceCentsOverride: variant.priceCentsOverride,
+							})) ?? [],
+					}))}
 				/>
 			) : (
 				<section className="mt-8 rounded-xl border border-dashed p-8">

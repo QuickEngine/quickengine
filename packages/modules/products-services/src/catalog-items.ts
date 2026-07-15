@@ -3,6 +3,7 @@ import {
 	catalogItems,
 	catalogItemVariants,
 	db,
+	desc,
 	eq,
 	quickengineWorkspaces,
 } from "@quickengine/db";
@@ -67,7 +68,8 @@ export async function listCatalogItems(
 						eq(catalogItems.status, status),
 					)
 				: eq(catalogItems.workspaceId, workspaceId),
-		);
+		)
+		.orderBy(desc(catalogItems.createdAt));
 }
 
 export async function getCatalogItem(workspaceId: string, id: string) {
@@ -142,32 +144,45 @@ export async function setCatalogItemStatus(
 	id: string,
 	status: CatalogItemStatus,
 ) {
-	const current = await getCatalogItem(workspaceId, id);
-	if (!current) {
-		throw new Error("CATALOG_ITEM_NOT_FOUND");
-	}
-	if (current.status === status) {
-		throw new Error("CATALOG_ITEM_STATUS_UNCHANGED");
-	}
-	if (!canTransitionCatalogItem(current.status, status)) {
-		throw new Error("CATALOG_ITEM_ILLEGAL_TRANSITION");
-	}
-
-	const [updated] = await db
-		.update(catalogItems)
-		.set({ status, updatedAt: new Date() })
-		.where(
-			and(
-				eq(catalogItems.workspaceId, workspaceId),
-				eq(catalogItems.id, id),
-				eq(catalogItems.status, current.status),
-			),
-		)
-		.returning();
-	if (!updated) {
-		throw new Error("CATALOG_ITEM_CONCURRENT_UPDATE");
-	}
-	return updated;
+	return db.transaction(async (tx) => {
+		const [current] = await tx
+			.select()
+			.from(catalogItems)
+			.where(
+				and(eq(catalogItems.workspaceId, workspaceId), eq(catalogItems.id, id)),
+			)
+			.limit(1)
+			.for("update");
+		if (!current) throw new Error("CATALOG_ITEM_NOT_FOUND");
+		if (current.status === status)
+			throw new Error("CATALOG_ITEM_STATUS_UNCHANGED");
+		if (!canTransitionCatalogItem(current.status, status))
+			throw new Error("CATALOG_ITEM_ILLEGAL_TRANSITION");
+		const [updated] = await tx
+			.update(catalogItems)
+			.set({ status, updatedAt: new Date() })
+			.where(
+				and(
+					eq(catalogItems.workspaceId, workspaceId),
+					eq(catalogItems.id, id),
+					eq(catalogItems.status, current.status),
+				),
+			)
+			.returning();
+		if (!updated) throw new Error("CATALOG_ITEM_CONCURRENT_UPDATE");
+		if (status === "archived") {
+			await tx
+				.update(catalogItemVariants)
+				.set({ status: "archived", updatedAt: new Date() })
+				.where(
+					and(
+						eq(catalogItemVariants.workspaceId, workspaceId),
+						eq(catalogItemVariants.catalogItemId, id),
+					),
+				);
+		}
+		return updated;
+	});
 }
 
 export async function deleteCatalogItem(workspaceId: string, id: string) {

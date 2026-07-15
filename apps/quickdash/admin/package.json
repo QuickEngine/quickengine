@@ -23,6 +23,7 @@
 		"@quickengine/mod-orders": "workspace:*",
 		"@quickengine/mod-payments": "workspace:*",
 		"@quickengine/mod-products-services": "workspace:*",
+		"@quickengine/mod-shipping": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/ui": "workspace:*",
 		"@sentry/nextjs": "^10.65.0",

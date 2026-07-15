@@ -34,85 +34,6 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
-  packages/agent-core:
-    dependencies:
-      zod:
-        specifier: ^4.3.6
-        version: 4.4.3
-    devDependencies:
-      '@quickengine/config':
-        specifier: workspace:*
-        version: link:../config
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.6
-        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
-
-  packages/agent-providers:
-    dependencies:
-      '@quickengine/agent-core':
-        specifier: workspace:*
-        version: link:../agent-core
-    devDependencies:
-      '@quickengine/config':
-        specifier: workspace:*
-        version: link:../config
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.6
-        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
-
-  packages/agent-runtime:
-    dependencies:
-      '@quickengine/agent-core':
-        specifier: workspace:*
-        version: link:../agent-core
-    devDependencies:
-      '@quickengine/agent-providers':
-        specifier: workspace:*
-        version: link:../agent-providers
-      '@quickengine/config':
-        specifier: workspace:*
-        version: link:../config
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.6
-        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
-      zod:
-        specifier: ^4.3.6
-        version: 4.4.3
-
-  packages/agent-tools-quickdash:
-    dependencies:
-      '@quickengine/agent-core':
-        specifier: workspace:*
-        version: link:../agent-core
-      '@quickengine/db':
-        specifier: workspace:*
-        version: link:../db
-      '@quickengine/module-registry':
-        specifier: workspace:*
-        version: link:../module-registry
-      zod:
-        specifier: ^4.3.6
-        version: 4.4.3
-    devDependencies:
-      '@quickengine/config':
-        specifier: workspace:*
-        version: link:../config
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.6
-        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
-
   apps/quickdash/admin:
     dependencies:
       '@phosphor-icons/react':
@@ -130,12 +51,12 @@ importers:
       '@quickengine/mod-fulfillment':
         specifier: workspace:*
         version: link:../../../packages/modules/fulfillment
-      '@quickengine/mod-invoicing':
-        specifier: workspace:*
-        version: link:../../../packages/modules/invoicing
       '@quickengine/mod-inventory':
         specifier: workspace:*
         version: link:../../../packages/modules/inventory
+      '@quickengine/mod-invoicing':
+        specifier: workspace:*
+        version: link:../../../packages/modules/invoicing
       '@quickengine/mod-orders':
         specifier: workspace:*
         version: link:../../../packages/modules/orders
@@ -145,6 +66,9 @@ importers:
       '@quickengine/mod-products-services':
         specifier: workspace:*
         version: link:../../../packages/modules/products-services
+      '@quickengine/mod-shipping':
+        specifier: workspace:*
+        version: link:../../../packages/modules/shipping
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../../packages/module-registry
@@ -449,6 +373,85 @@ importers:
       tailwindcss:
         specifier: ^4
         version: 4.3.2
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/agent-core:
+    dependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/agent-providers:
+    dependencies:
+      '@quickengine/agent-core':
+        specifier: workspace:*
+        version: link:../agent-core
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/agent-runtime:
+    dependencies:
+      '@quickengine/agent-core':
+        specifier: workspace:*
+        version: link:../agent-core
+    devDependencies:
+      '@quickengine/agent-providers':
+        specifier: workspace:*
+        version: link:../agent-providers
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.0)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+
+  packages/agent-tools-quickdash:
+    dependencies:
+      '@quickengine/agent-core':
+        specifier: workspace:*
+        version: link:../agent-core
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../db
+      '@quickengine/module-registry':
+        specifier: workspace:*
+        version: link:../module-registry
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: ^5
         version: 5.9.3

@@ -21,10 +21,9 @@ export const inventoryItems = pgTable(
 			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
 		catalogItemId: uuid("catalog_item_id")
 			.notNull()
-			.references(() => catalogItems.id, { onDelete: "cascade" }),
+			.references(() => catalogItems.id),
 		catalogItemVariantId: uuid("catalog_item_variant_id").references(
 			() => catalogItemVariants.id,
-			{ onDelete: "cascade" },
 		),
 		status: text("status", { enum: ["active", "archived"] })
 			.notNull()

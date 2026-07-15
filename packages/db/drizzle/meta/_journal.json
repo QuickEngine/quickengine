@@ -197,6 +197,13 @@
 			"when": 1784079134834,
 			"tag": "0027_naive_photon",
 			"breakpoints": true
+		},
+		{
+			"idx": 28,
+			"version": "7",
+			"when": 1784081658768,
+			"tag": "0028_large_naoko",
+			"breakpoints": true
 		}
 	]
 }

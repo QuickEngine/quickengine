@@ -65,17 +65,31 @@ export const payments = pgTable(
 		clientId: uuid("client_id").references(() => clientRecords.id, {
 			onDelete: "set null",
 		}),
+		clientName: text("client_name"),
+		clientEmail: text("client_email"),
+		clientCompany: text("client_company"),
 		amountCents: integer("amount_cents").notNull(),
 		// QuickEngine's optional platform share of this payment, in cents (default 0).
 		applicationFeeCents: integer("application_fee_cents").notNull().default(0),
 		currency: text("currency").notNull().default("USD"),
 		status: text("status", {
-			enum: ["pending", "processing", "succeeded", "failed", "refunded"],
+			enum: [
+				"pending",
+				"processing",
+				"succeeded",
+				"failed",
+				"disputed",
+				"refunded",
+			],
 		})
 			.notNull()
 			.default("pending"),
 		provider: text("provider").notNull().default("stripe"),
+		paymentMethod: text("payment_method").notNull().default("card"),
+		externalPaymentId: text("external_payment_id"),
 		stripePaymentIntentId: text("stripe_payment_intent_id"),
+		reference: text("reference"),
+		notes: text("notes"),
 		succeededAt: timestamp("succeeded_at", { withTimezone: true }),
 		failedAt: timestamp("failed_at", { withTimezone: true }),
 		refundedAt: timestamp("refunded_at", { withTimezone: true }),
@@ -89,5 +103,39 @@ export const payments = pgTable(
 	(table) => [
 		index("payments_workspace_idx").on(table.workspaceId),
 		index("payments_invoice_idx").on(table.invoiceId),
+		uniqueIndex("payments_provider_external_unique").on(
+			table.provider,
+			table.externalPaymentId,
+		),
+	],
+);
+
+// Refunds are append-only money movements. Keeping them separate preserves partial
+// refund history instead of overwriting a payment with one terminal boolean.
+export const paymentRefunds = pgTable(
+	"payment_refunds",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
+		paymentId: uuid("payment_id")
+			.notNull()
+			.references(() => payments.id, { onDelete: "restrict" }),
+		amountCents: integer("amount_cents").notNull(),
+		provider: text("provider").notNull(),
+		externalRefundId: text("external_refund_id"),
+		reason: text("reason"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("payment_refunds_workspace_idx").on(table.workspaceId),
+		index("payment_refunds_payment_idx").on(table.paymentId),
+		uniqueIndex("payment_refunds_provider_external_unique").on(
+			table.provider,
+			table.externalRefundId,
+		),
 	],
 );

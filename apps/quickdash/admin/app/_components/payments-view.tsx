@@ -116,6 +116,7 @@ function RecordPaymentDialog({
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [invoiceId, setInvoiceId] = useState("");
+	const [amount, setAmount] = useState("");
 	const [state, action] = useActionState(
 		recordOfflinePaymentAction,
 		INITIAL_STATE,
@@ -125,13 +126,23 @@ function RecordPaymentDialog({
 		if (!state.completionId) return;
 		setOpen(false);
 		setInvoiceId("");
+		setAmount("");
 		router.refresh();
 	}, [state.completionId, router]);
 	const remaining = selected
 		? Math.max(0, selected.totalCents - selected.netPaidCents)
 		: null;
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
+		<Dialog
+			open={open}
+			onOpenChange={(nextOpen) => {
+				setOpen(nextOpen);
+				if (!nextOpen) {
+					setInvoiceId("");
+					setAmount("");
+				}
+			}}
+		>
 			<DialogTrigger asChild>
 				<Button>
 					<Plus className="size-4" />
@@ -154,7 +165,10 @@ function RecordPaymentDialog({
 							id="payment-invoice"
 							name="invoiceId"
 							value={invoiceId}
-							onChange={(event) => setInvoiceId(event.target.value)}
+							onChange={(event) => {
+								setInvoiceId(event.target.value);
+								setAmount("");
+							}}
 							className="w-full"
 						>
 							<option value="">No invoice</option>
@@ -201,10 +215,17 @@ function RecordPaymentDialog({
 								id="payment-amount"
 								name="amount"
 								inputMode="decimal"
-								defaultValue={remaining ? (remaining / 100).toFixed(2) : ""}
-								key={selected?.id ?? "standalone"}
+								placeholder="0.00"
+								value={amount}
+								onChange={(event) => setAmount(event.target.value)}
 								required
 							/>
+							{selected && remaining !== null ? (
+								<p className="text-muted-foreground text-xs">
+									{money(remaining, selected.currency)} remains on this invoice.
+									Enter the amount actually received.
+								</p>
+							) : null}
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="payment-currency">Currency</Label>

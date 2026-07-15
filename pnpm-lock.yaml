@@ -124,6 +124,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../../packages/db
+      '@quickengine/mod-client-records':
+        specifier: workspace:*
+        version: link:../../../packages/modules/client-records
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../../packages/module-registry

@@ -127,6 +127,9 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../../../packages/modules/client-records
+      '@quickengine/mod-fulfillment':
+        specifier: workspace:*
+        version: link:../../../packages/modules/fulfillment
       '@quickengine/mod-invoicing':
         specifier: workspace:*
         version: link:../../../packages/modules/invoicing

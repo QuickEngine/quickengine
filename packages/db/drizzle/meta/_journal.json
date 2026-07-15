@@ -204,6 +204,13 @@
 			"when": 1784081658768,
 			"tag": "0028_large_naoko",
 			"breakpoints": true
+		},
+		{
+			"idx": 29,
+			"version": "7",
+			"when": 1784085572287,
+			"tag": "0029_old_black_queen",
+			"breakpoints": true
 		}
 	]
 }

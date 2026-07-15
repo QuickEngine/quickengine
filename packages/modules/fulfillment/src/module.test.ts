@@ -21,9 +21,15 @@ describe("fulfillment status machine", () => {
 		expect(canTransition("in_progress", "cancelled")).toBe(true);
 	});
 
-	it("treats fulfilled and cancelled records as terminal", () => {
+	it("allows an attempted delivery to fail", () => {
+		expect(canTransition("pending", "failed")).toBe(true);
+		expect(canTransition("in_progress", "failed")).toBe(true);
+	});
+
+	it("treats fulfilled, failed, and cancelled records as terminal", () => {
 		expect(canTransition("fulfilled", "pending")).toBe(false);
 		expect(canTransition("cancelled", "in_progress")).toBe(false);
+		expect(canTransition("failed", "fulfilled")).toBe(false);
 	});
 
 	it("has no self-loops", () => {

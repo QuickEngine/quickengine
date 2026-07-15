@@ -340,7 +340,7 @@ export async function ensureOrderFulfillment(workspaceId: string, id: string) {
 		)
 		.returning({ fulfillmentId: orders.fulfillmentId });
 	if (!linked?.fulfillmentId) {
-		await deleteFulfillment(fulfillment.id);
+		await deleteFulfillment(workspaceId, fulfillment.id);
 		const latest = await getOrder(workspaceId, id);
 		if (!latest?.fulfillmentId) {
 			throw new Error("ORDER_FULFILLMENT_LINK_FAILED");

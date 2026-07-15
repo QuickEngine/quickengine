@@ -4,6 +4,7 @@ import {
 	pgTable,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
 import { clientRecords } from "./client-records";
@@ -30,14 +31,21 @@ export const fulfillments = pgTable(
 		paymentId: uuid("payment_id").references(() => payments.id, {
 			onDelete: "set null",
 		}),
+		clientName: text("client_name"),
+		clientEmail: text("client_email"),
+		clientCompany: text("client_company"),
+		invoiceNumber: text("invoice_number"),
+		sourceModule: text("source_module"),
+		sourceRecordId: uuid("source_record_id"),
 		title: text("title").notNull(),
+		instructions: text("instructions"),
 		kind: text("kind", {
-			enum: ["physical", "digital", "service", "other"],
+			enum: ["physical", "digital", "service", "pickup", "other"],
 		})
 			.notNull()
 			.default("other"),
 		status: text("status", {
-			enum: ["pending", "in_progress", "fulfilled", "cancelled"],
+			enum: ["pending", "in_progress", "fulfilled", "failed", "cancelled"],
 		})
 			.notNull()
 			.default("pending"),
@@ -48,6 +56,8 @@ export const fulfillments = pgTable(
 			.default({}),
 		dueAt: timestamp("due_at", { withTimezone: true }),
 		fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),
+		failedAt: timestamp("failed_at", { withTimezone: true }),
+		cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
@@ -60,5 +70,10 @@ export const fulfillments = pgTable(
 		index("fulfillments_client_idx").on(table.clientId),
 		index("fulfillments_invoice_idx").on(table.invoiceId),
 		index("fulfillments_payment_idx").on(table.paymentId),
+		uniqueIndex("fulfillments_source_unique").on(
+			table.workspaceId,
+			table.sourceModule,
+			table.sourceRecordId,
+		),
 	],
 );

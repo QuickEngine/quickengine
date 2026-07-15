@@ -285,11 +285,26 @@ export async function setShipmentStatus(
 			.returning();
 		if (!updated) throw new Error("SHIPMENT_CONCURRENT_UPDATE");
 		if (status === "shipped") {
-			await setFulfillmentStatus(current.fulfillmentId, "in_progress", tx);
+			await setFulfillmentStatus(
+				workspaceId,
+				current.fulfillmentId,
+				"in_progress",
+				tx,
+			);
 		} else if (status === "delivered") {
-			await setFulfillmentStatus(current.fulfillmentId, "fulfilled", tx);
+			await setFulfillmentStatus(
+				workspaceId,
+				current.fulfillmentId,
+				"fulfilled",
+				tx,
+			);
 		} else if (status === "cancelled") {
-			await setFulfillmentStatus(current.fulfillmentId, "cancelled", tx);
+			await setFulfillmentStatus(
+				workspaceId,
+				current.fulfillmentId,
+				"cancelled",
+				tx,
+			);
 		}
 		return updated;
 	});
@@ -340,7 +355,7 @@ export async function deleteShipment(workspaceId: string, id: string) {
 			.delete(shipments)
 			.where(and(eq(shipments.workspaceId, workspaceId), eq(shipments.id, id)))
 			.returning();
-		await deleteFulfillment(current.fulfillmentId, tx);
+		await deleteFulfillment(workspaceId, current.fulfillmentId, tx);
 		return deleted;
 	});
 }

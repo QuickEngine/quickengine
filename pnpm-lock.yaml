@@ -69,6 +69,9 @@ importers:
       '@quickengine/mod-products-services':
         specifier: workspace:*
         version: link:../../../packages/modules/products-services
+      '@quickengine/mod-projects-tasks':
+        specifier: workspace:*
+        version: link:../../../packages/modules/projects-tasks
       '@quickengine/mod-shipping':
         specifier: workspace:*
         version: link:../../../packages/modules/shipping

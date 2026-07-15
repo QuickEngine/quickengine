@@ -37,6 +37,10 @@ import {
 	productsServicesSettingsSchema,
 } from "@quickengine/mod-products-services";
 import {
+	listProjects,
+	listProjectTasks,
+} from "@quickengine/mod-projects-tasks";
+import {
 	getShipment,
 	listShipments,
 	shippingSettingsSchema,
@@ -53,6 +57,7 @@ import { InvoicesView } from "../../_components/invoices-view";
 import { ModuleIcon } from "../../_components/module-icon";
 import { OrdersView } from "../../_components/orders-view";
 import { PaymentsView } from "../../_components/payments-view";
+import { ProjectsView } from "../../_components/projects-view";
 import { ShippingView } from "../../_components/shipping-view";
 import { getModuleNavigation } from "../../_lib/module-navigation";
 import { requireWorkspaceAccess } from "../../_lib/workspace-access";
@@ -234,6 +239,19 @@ export default async function Page({
 			? await listClientRecords(access.workspace.id)
 			: null;
 	const today = new Date();
+	const projectRows =
+		moduleId === "projects-tasks"
+			? await listProjects(access.workspace.id)
+			: null;
+	const projectTasks = projectRows
+		? await Promise.all(
+				projectRows.map((p) => listProjectTasks(access.workspace.id, p.id)),
+			)
+		: null;
+	const projectClients =
+		moduleId === "projects-tasks"
+			? await listClientRecords(access.workspace.id)
+			: null;
 	const defaultDueDate = invoicingSettings
 		? new Date(
 				today.getTime() + invoicingSettings.defaultDueInDays * 86_400_000,
@@ -257,7 +275,18 @@ export default async function Page({
 					</p>
 				</div>
 			</div>
-			{clientRecords && clientSettings ? (
+			{projectRows && projectTasks && projectClients ? (
+				<ProjectsView
+					workspaceId={access.workspace.id}
+					clients={projectClients.map((c) => ({ id: c.id, name: c.name }))}
+					projects={projectRows.map((p, i) => ({
+						...p,
+						startDate: p.startDate,
+						dueDate: p.dueDate,
+						tasks: projectTasks[i],
+					}))}
+				/>
+			) : clientRecords && clientSettings ? (
 				<ClientRecordsView
 					workspaceId={access.workspace.id}
 					records={clientRecords.map((record) => ({

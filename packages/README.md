@@ -14,7 +14,7 @@ packages/
   config/   shared TypeScript and tooling config
   apps/     canonical suite app roster and app metadata
   types/    shared TypeScript contracts
-  sdk/      future public SDK package
+  sdk/      Quick.js typed client foundation (`@quickengine/quick`)
   env/      shared environment validation helpers
   billing/  subscription and entitlement boundary
   cache/    Redis-compatible cache boundary

@@ -8,6 +8,11 @@ import {
 	listClientRecords,
 } from "@quickengine/mod-client-records";
 import {
+	getFileDocument,
+	listFileDocuments,
+	listFileFolders,
+} from "@quickengine/mod-files";
+import {
 	fulfillmentSettingsSchema,
 	listFulfillments,
 } from "@quickengine/mod-fulfillment";
@@ -55,6 +60,7 @@ import { notFound } from "next/navigation";
 import { BookingsView } from "../../_components/bookings-view";
 import { CatalogView } from "../../_components/catalog-view";
 import { ClientRecordsView } from "../../_components/client-records-view";
+import { FilesView } from "../../_components/files-view";
 import { FulfillmentsView } from "../../_components/fulfillments-view";
 import { InventoryView } from "../../_components/inventory-view";
 import { InvoicesView } from "../../_components/invoices-view";
@@ -244,6 +250,22 @@ export default async function Page({
 			? await listClientRecords(access.workspace.id)
 			: null;
 	const today = new Date();
+	const fileFolders =
+		moduleId === "files" ? await listFileFolders(access.workspace.id) : null;
+	const fileRows =
+		moduleId === "files"
+			? await listFileDocuments(access.workspace.id, {
+					includeArchived: true,
+					includeTrashed: true,
+				})
+			: null;
+	const fileDetails = fileRows
+		? await Promise.all(
+				fileRows.map((document) =>
+					getFileDocument(access.workspace.id, document.id),
+				),
+			)
+		: null;
 	const timeSettings =
 		moduleId === "time-tracking"
 			? timeTrackingSettingsSchema.parse(enabledModule.settings)
@@ -299,7 +321,37 @@ export default async function Page({
 					</p>
 				</div>
 			</div>
-			{timeRows && timeProjects && timeTasks && timeSettings ? (
+			{fileFolders && fileDetails ? (
+				<FilesView
+					workspaceId={access.workspace.id}
+					folders={fileFolders.map((folder) => ({
+						id: folder.id,
+						name: folder.name,
+						parentId: folder.parentId,
+					}))}
+					documents={fileDetails.flatMap((document) => {
+						if (!document) return [];
+						const version = document.versions.find(
+							(candidate) =>
+								candidate.versionNumber === document.currentVersionNumber,
+						);
+						return [
+							{
+								id: document.id,
+								title: document.title,
+								description: document.description,
+								folderId: document.folderId,
+								status: document.status as "active" | "archived" | "trashed",
+								tags: document.tags,
+								version: version?.versionNumber ?? null,
+								fileName: version?.originalName ?? null,
+								category: version?.category ?? null,
+								sizeBytes: version?.sizeBytes ?? null,
+							},
+						];
+					})}
+				/>
+			) : timeRows && timeProjects && timeTasks && timeSettings ? (
 				<TimeTrackingView
 					workspaceId={access.workspace.id}
 					defaultBillable={timeSettings.defaultBillable}

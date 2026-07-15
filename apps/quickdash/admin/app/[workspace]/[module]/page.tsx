@@ -13,6 +13,11 @@ import {
 	listInvoices,
 } from "@quickengine/mod-invoicing";
 import {
+	getOrder,
+	listOrders,
+	ordersSettingsSchema,
+} from "@quickengine/mod-orders";
+import {
 	getPayment,
 	listPayments,
 	paymentsSettingsSchema,
@@ -30,6 +35,7 @@ import { ClientRecordsView } from "../../_components/client-records-view";
 import { FulfillmentsView } from "../../_components/fulfillments-view";
 import { InvoicesView } from "../../_components/invoices-view";
 import { ModuleIcon } from "../../_components/module-icon";
+import { OrdersView } from "../../_components/orders-view";
 import { PaymentsView } from "../../_components/payments-view";
 import { getModuleNavigation } from "../../_lib/module-navigation";
 import { requireWorkspaceAccess } from "../../_lib/workspace-access";
@@ -122,6 +128,32 @@ export default async function Page({
 	const catalogVariants = catalogRows
 		? await Promise.all(
 				catalogRows.map((item) =>
+					listProductVariants(access.workspace.id, item.id),
+				),
+			)
+		: null;
+	const orderSettings =
+		moduleId === "orders"
+			? ordersSettingsSchema.parse(enabledModule.settings)
+			: null;
+	const orderRows =
+		moduleId === "orders" ? await listOrders(access.workspace.id) : null;
+	const orderDetails = orderRows
+		? await Promise.all(
+				orderRows.map((order) => getOrder(access.workspace.id, order.id)),
+			)
+		: null;
+	const orderClients =
+		moduleId === "orders" ? await listClientRecords(access.workspace.id) : null;
+	const orderCatalog =
+		moduleId === "orders"
+			? (await listCatalogItems(access.workspace.id, "active")).filter(
+					(item) => item.currency === orderSettings?.defaultCurrency,
+				)
+			: null;
+	const orderCatalogVariants = orderCatalog
+		? await Promise.all(
+				orderCatalog.map((item) =>
 					listProductVariants(access.workspace.id, item.id),
 				),
 			)
@@ -373,6 +405,74 @@ export default async function Page({
 								priceCentsOverride: variant.priceCentsOverride,
 							})) ?? [],
 					}))}
+				/>
+			) : orderDetails &&
+				orderClients &&
+				orderCatalog &&
+				orderCatalogVariants &&
+				orderSettings ? (
+				<OrdersView
+					workspaceId={access.workspace.id}
+					defaultCurrency={orderSettings.defaultCurrency}
+					clients={orderClients.map((client) => ({
+						id: client.id,
+						name: client.name,
+						company: client.company,
+					}))}
+					catalog={orderCatalog.flatMap((item, index) => {
+						const base = {
+							value: `${item.id}::`,
+							label: item.name,
+							priceCents: item.priceCents,
+							currency: item.currency,
+							type: item.type,
+							sku: item.sku,
+						};
+						const variants = (orderCatalogVariants[index] ?? [])
+							.filter((variant) => variant.status === "active")
+							.map((variant) => ({
+								value: `${item.id}::${variant.id}`,
+								label: `${item.name} — ${variant.options
+									.map((option) => `${option.name}: ${option.value}`)
+									.join(" / ")}`,
+								priceCents: variant.priceCentsOverride ?? item.priceCents,
+								currency: item.currency,
+								type: item.type,
+								sku: variant.sku ?? item.sku,
+							}));
+						return [base, ...variants];
+					})}
+					orders={orderDetails.flatMap((order) =>
+						order
+							? [
+									{
+										id: order.id,
+										number: order.number,
+										status: order.status,
+										clientId: order.clientId,
+										clientName: order.clientName,
+										clientEmail: order.clientEmail,
+										currency: order.currency,
+										totalCents: order.totalCents,
+										notes: order.notes,
+										fulfillmentId: order.fulfillmentId,
+										createdAt: order.createdAt.toISOString(),
+										lines: order.lines.map((line) => ({
+											id: line.id,
+											catalogItemId: line.catalogItemId,
+											catalogItemVariantId: line.catalogItemVariantId,
+											name: line.name,
+											type: line.type,
+											sku: line.sku,
+											quantity: line.quantity,
+											unitPriceCents: line.unitPriceCents,
+											lineTotalCents: line.lineTotalCents,
+											variantOptions: line.variantOptions,
+										})),
+									},
+								]
+							: [],
+					)}
 				/>
 			) : (
 				<section className="mt-8 rounded-xl border border-dashed p-8">

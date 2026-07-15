@@ -1,7 +1,12 @@
 import { getSession } from "@quickengine/auth/server";
+import {
+	clientRecordsSettingsSchema,
+	listClientRecords,
+} from "@quickengine/mod-client-records";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { ClientRecordsView } from "../../_components/client-records-view";
 import { ModuleIcon } from "../../_components/module-icon";
 import { getModuleNavigation } from "../../_lib/module-navigation";
 import { requireWorkspaceAccess } from "../../_lib/workspace-access";
@@ -25,6 +30,14 @@ export default async function Page({
 	if (!enabledModule || !navigation) {
 		notFound();
 	}
+	const clientRecords =
+		moduleId === "client-records"
+			? await listClientRecords(access.workspace.id)
+			: null;
+	const clientSettings =
+		moduleId === "client-records"
+			? clientRecordsSettingsSchema.parse(enabledModule.settings)
+			: null;
 	return (
 		<main className="p-6">
 			<div className="flex items-start gap-4">
@@ -41,14 +54,32 @@ export default async function Page({
 					</p>
 				</div>
 			</div>
-			<section className="mt-8 rounded-xl border border-dashed p-8">
-				<h2 className="font-medium">Module connected</h2>
-				<p className="mt-2 max-w-xl text-muted-foreground text-sm">
-					QuickDash resolved this module from the workspace registry and
-					enforced workspace ownership before rendering it. Its operational
-					interface is the next layer to build.
-				</p>
-			</section>
+			{clientRecords && clientSettings ? (
+				<ClientRecordsView
+					workspaceId={access.workspace.id}
+					records={clientRecords.map((record) => ({
+						id: record.id,
+						name: record.name,
+						email: record.email,
+						phone: record.phone,
+						company: record.company,
+						notes: record.notes,
+						createdAt: record.createdAt.toISOString(),
+					}))}
+					labelSingular={clientSettings.recordLabelSingular}
+					labelPlural={clientSettings.recordLabelPlural}
+					fields={clientSettings.fields}
+				/>
+			) : (
+				<section className="mt-8 rounded-xl border border-dashed p-8">
+					<h2 className="font-medium">Module connected</h2>
+					<p className="mt-2 max-w-xl text-muted-foreground text-sm">
+						QuickDash resolved this module from the workspace registry and
+						enforced workspace ownership before rendering it. Its operational
+						interface is the next layer to build.
+					</p>
+				</section>
+			)}
 		</main>
 	);
 }

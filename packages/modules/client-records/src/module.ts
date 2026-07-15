@@ -4,8 +4,8 @@ import { z } from "zod";
 // defines its own settings schema (Development Standards §5).
 export const clientRecordsSettingsSchema = z.object({
 	// What this workspace calls a record — Customer / Client / Student / …
-	recordLabelSingular: z.string().min(1).default("Customer"),
-	recordLabelPlural: z.string().min(1).default("Customers"),
+	recordLabelSingular: z.string().trim().min(1).max(40).default("Customer"),
+	recordLabelPlural: z.string().trim().min(1).max(40).default("Customers"),
 	// Optional fields to surface on the record form.
 	fields: z
 		.object({

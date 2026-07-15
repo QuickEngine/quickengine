@@ -6,6 +6,7 @@ export const PAYMENT_STATUSES = [
 	"processing",
 	"succeeded",
 	"failed",
+	"disputed",
 	"refunded",
 ] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
@@ -16,8 +17,9 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 const ALLOWED_TRANSITIONS: Record<PaymentStatus, PaymentStatus[]> = {
 	pending: ["processing", "succeeded", "failed"],
 	processing: ["succeeded", "failed"],
-	succeeded: ["refunded"],
+	succeeded: ["disputed", "refunded"],
 	failed: [],
+	disputed: ["succeeded", "refunded"],
 	refunded: [],
 };
 

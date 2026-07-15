@@ -55,6 +55,12 @@ describe("payment status machine", () => {
 		expect(canTransition("failed", "refunded")).toBe(false);
 	});
 
+	it("models dispute opening and resolution", () => {
+		expect(canTransition("succeeded", "disputed")).toBe(true);
+		expect(canTransition("disputed", "succeeded")).toBe(true);
+		expect(canTransition("disputed", "refunded")).toBe(true);
+	});
+
 	it("treats failed and refunded as terminal", () => {
 		expect(canTransition("failed", "succeeded")).toBe(false);
 		expect(canTransition("refunded", "succeeded")).toBe(false);

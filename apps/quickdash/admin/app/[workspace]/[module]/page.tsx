@@ -8,12 +8,18 @@ import {
 	invoicingSettingsSchema,
 	listInvoices,
 } from "@quickengine/mod-invoicing";
+import {
+	getPayment,
+	listPayments,
+	paymentsSettingsSchema,
+} from "@quickengine/mod-payments";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ClientRecordsView } from "../../_components/client-records-view";
 import { InvoicesView } from "../../_components/invoices-view";
 import { ModuleIcon } from "../../_components/module-icon";
+import { PaymentsView } from "../../_components/payments-view";
 import { getModuleNavigation } from "../../_lib/module-navigation";
 import { requireWorkspaceAccess } from "../../_lib/workspace-access";
 
@@ -59,6 +65,25 @@ export default async function Page({
 		: null;
 	const invoiceClients =
 		moduleId === "invoicing"
+			? await listClientRecords(access.workspace.id)
+			: null;
+	const paymentsSettings =
+		moduleId === "payments"
+			? paymentsSettingsSchema.parse(enabledModule.settings)
+			: null;
+	const paymentRows =
+		moduleId === "payments" ? await listPayments(access.workspace.id) : null;
+	const paymentDetails = paymentRows
+		? await Promise.all(
+				paymentRows.map((payment) =>
+					getPayment(access.workspace.id, payment.id),
+				),
+			)
+		: null;
+	const paymentInvoices =
+		moduleId === "payments" ? await listInvoices(access.workspace.id) : null;
+	const paymentClients =
+		moduleId === "payments"
 			? await listClientRecords(access.workspace.id)
 			: null;
 	const today = new Date();
@@ -151,6 +176,86 @@ export default async function Page({
 					})}
 					defaultCurrency={invoicingSettings.defaultCurrency}
 					defaultDueDate={defaultDueDate}
+				/>
+			) : paymentDetails &&
+				paymentInvoices &&
+				paymentClients &&
+				paymentsSettings ? (
+				<PaymentsView
+					workspaceId={access.workspace.id}
+					defaultCurrency={paymentsSettings.defaultCurrency}
+					clients={paymentClients.map((client) => ({
+						id: client.id,
+						name: client.name,
+						company: client.company,
+					}))}
+					invoices={paymentInvoices
+						.filter(
+							(invoice) =>
+								invoice.status === "sent" || invoice.status === "paid",
+						)
+						.map((invoice) => {
+							const related = paymentDetails.flatMap((payment) =>
+								payment?.invoiceId === invoice.id ? [payment] : [],
+							);
+							const collected = related
+								.filter((payment) =>
+									["succeeded", "refunded"].includes(payment.status),
+								)
+								.reduce((total, payment) => total + payment.amountCents, 0);
+							const refunded = related.reduce(
+								(total, payment) =>
+									total +
+									payment.refunds.reduce(
+										(sum, refund) => sum + refund.amountCents,
+										0,
+									),
+								0,
+							);
+							return {
+								id: invoice.id,
+								number: invoice.number,
+								clientId: invoice.clientId,
+								clientName: invoice.clientName,
+								currency: invoice.currency,
+								totalCents: invoice.totalCents,
+								netPaidCents: collected - refunded,
+							};
+						})
+						.filter((invoice) => invoice.netPaidCents < invoice.totalCents)}
+					payments={paymentDetails.flatMap((payment) => {
+						if (!payment) return [];
+						const invoice = paymentInvoices.find(
+							(item) => item.id === payment.invoiceId,
+						);
+						return [
+							{
+								id: payment.id,
+								invoiceId: payment.invoiceId,
+								invoiceNumber: invoice?.number ?? null,
+								clientName: payment.clientName,
+								clientCompany: payment.clientCompany,
+								amountCents: payment.amountCents,
+								refundedCents: payment.refunds.reduce(
+									(sum, refund) => sum + refund.amountCents,
+									0,
+								),
+								currency: payment.currency,
+								status: payment.status,
+								provider: payment.provider,
+								paymentMethod: payment.paymentMethod,
+								reference: payment.reference,
+								notes: payment.notes,
+								createdAt: payment.createdAt.toISOString(),
+								refunds: payment.refunds.map((refund) => ({
+									id: refund.id,
+									amountCents: refund.amountCents,
+									reason: refund.reason,
+									createdAt: refund.createdAt.toISOString(),
+								})),
+							},
+						];
+					})}
 				/>
 			) : (
 				<section className="mt-8 rounded-xl border border-dashed p-8">

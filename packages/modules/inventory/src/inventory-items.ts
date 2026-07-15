@@ -3,6 +3,7 @@ import {
 	catalogItems,
 	catalogItemVariants,
 	db,
+	desc,
 	eq,
 	inventoryAdjustments,
 	inventoryItems,
@@ -75,7 +76,8 @@ export async function listInventoryItems(workspaceId: string) {
 	return db
 		.select()
 		.from(inventoryItems)
-		.where(eq(inventoryItems.workspaceId, workspaceId));
+		.where(eq(inventoryItems.workspaceId, workspaceId))
+		.orderBy(desc(inventoryItems.createdAt), desc(inventoryItems.id));
 }
 
 export async function getInventoryItem(workspaceId: string, id: string) {
@@ -127,18 +129,37 @@ export async function setInventoryItemStatus(
 	id: string,
 	status: "active" | "archived",
 ) {
-	const [updated] = await db
-		.update(inventoryItems)
-		.set({ status, updatedAt: new Date() })
-		.where(
-			and(
-				eq(inventoryItems.workspaceId, workspaceId),
-				eq(inventoryItems.id, id),
-			),
-		)
-		.returning();
-	if (!updated) throw new Error("INVENTORY_ITEM_NOT_FOUND");
-	return updated;
+	return db.transaction(async (tx) => {
+		const [current] = await tx
+			.select()
+			.from(inventoryItems)
+			.where(
+				and(
+					eq(inventoryItems.workspaceId, workspaceId),
+					eq(inventoryItems.id, id),
+				),
+			)
+			.limit(1)
+			.for("update");
+		if (!current) throw new Error("INVENTORY_ITEM_NOT_FOUND");
+		if (current.status === status)
+			throw new Error("INVENTORY_STATUS_UNCHANGED");
+		if (status === "archived" && current.reserved > 0)
+			throw new Error("INVENTORY_HAS_RESERVATIONS");
+		const [updated] = await tx
+			.update(inventoryItems)
+			.set({ status, updatedAt: new Date() })
+			.where(
+				and(
+					eq(inventoryItems.workspaceId, workspaceId),
+					eq(inventoryItems.id, id),
+					eq(inventoryItems.status, current.status),
+				),
+			)
+			.returning();
+		if (!updated) throw new Error("INVENTORY_CONCURRENT_UPDATE");
+		return updated;
+	});
 }
 
 export async function applyInventoryAdjustment(
@@ -222,23 +243,52 @@ export async function listInventoryAdjustments(
 				eq(inventoryAdjustments.workspaceId, workspaceId),
 				eq(inventoryAdjustments.inventoryItemId, inventoryItemId),
 			),
+		)
+		.orderBy(
+			desc(inventoryAdjustments.createdAt),
+			desc(inventoryAdjustments.id),
 		);
 }
 
 export async function deleteInventoryItem(workspaceId: string, id: string) {
-	const current = await getInventoryItem(workspaceId, id);
-	if (!current) throw new Error("INVENTORY_ITEM_NOT_FOUND");
-	if (current.status !== "archived") {
-		throw new Error("INVENTORY_ITEM_MUST_BE_ARCHIVED");
-	}
-	const [deleted] = await db
-		.delete(inventoryItems)
-		.where(
-			and(
-				eq(inventoryItems.workspaceId, workspaceId),
-				eq(inventoryItems.id, id),
-			),
-		)
-		.returning();
-	return deleted;
+	return db.transaction(async (tx) => {
+		const [current] = await tx
+			.select()
+			.from(inventoryItems)
+			.where(
+				and(
+					eq(inventoryItems.workspaceId, workspaceId),
+					eq(inventoryItems.id, id),
+				),
+			)
+			.limit(1)
+			.for("update");
+		if (!current) throw new Error("INVENTORY_ITEM_NOT_FOUND");
+		if (current.status !== "archived")
+			throw new Error("INVENTORY_ITEM_MUST_BE_ARCHIVED");
+		if (current.onHand !== 0 || current.reserved !== 0)
+			throw new Error("INVENTORY_BALANCE_NOT_ZERO");
+		const [history] = await tx
+			.select({ id: inventoryAdjustments.id })
+			.from(inventoryAdjustments)
+			.where(
+				and(
+					eq(inventoryAdjustments.workspaceId, workspaceId),
+					eq(inventoryAdjustments.inventoryItemId, id),
+				),
+			)
+			.limit(1);
+		if (history) throw new Error("INVENTORY_HISTORY_EXISTS");
+		const [deleted] = await tx
+			.delete(inventoryItems)
+			.where(
+				and(
+					eq(inventoryItems.workspaceId, workspaceId),
+					eq(inventoryItems.id, id),
+					eq(inventoryItems.status, "archived"),
+				),
+			)
+			.returning();
+		return deleted;
+	});
 }

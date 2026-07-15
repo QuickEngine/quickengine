@@ -75,6 +75,9 @@ importers:
       '@quickengine/mod-shipping':
         specifier: workspace:*
         version: link:../../../packages/modules/shipping
+      '@quickengine/mod-time-tracking':
+        specifier: workspace:*
+        version: link:../../../packages/modules/time-tracking
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../../packages/module-registry

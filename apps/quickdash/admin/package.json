@@ -26,6 +26,7 @@
 		"@quickengine/mod-products-services": "workspace:*",
 		"@quickengine/mod-projects-tasks": "workspace:*",
 		"@quickengine/mod-shipping": "workspace:*",
+		"@quickengine/mod-time-tracking": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/ui": "workspace:*",
 		"@sentry/nextjs": "^10.65.0",

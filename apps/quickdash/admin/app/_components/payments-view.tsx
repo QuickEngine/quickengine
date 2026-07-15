@@ -459,6 +459,50 @@ export function PaymentsView({
 					defaultCurrency={defaultCurrency}
 				/>
 			</div>
+			{invoices.length > 0 ? (
+				<div className="rounded-xl border">
+					<div className="border-b px-4 py-3">
+						<h2 className="font-medium text-sm">Open invoice balances</h2>
+						<p className="mt-1 text-muted-foreground text-xs">
+							Successful payments reduce these balances. An invoice becomes paid
+							only when its remaining balance reaches zero.
+						</p>
+					</div>
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Invoice</TableHead>
+								<TableHead>Client</TableHead>
+								<TableHead className="text-right">Total</TableHead>
+								<TableHead className="text-right">Collected</TableHead>
+								<TableHead className="text-right">Remaining</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{invoices.map((invoice) => (
+								<TableRow key={invoice.id}>
+									<TableCell className="font-medium">
+										{invoice.number}
+									</TableCell>
+									<TableCell>{invoice.clientName ?? "No client"}</TableCell>
+									<TableCell className="text-right">
+										{money(invoice.totalCents, invoice.currency)}
+									</TableCell>
+									<TableCell className="text-right">
+										{money(invoice.netPaidCents, invoice.currency)}
+									</TableCell>
+									<TableCell className="text-right font-semibold">
+										{money(
+											Math.max(0, invoice.totalCents - invoice.netPaidCents),
+											invoice.currency,
+										)}
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				</div>
+			) : null}
 			{payments.length === 0 ? (
 				<Empty className="border">
 					<EmptyHeader>

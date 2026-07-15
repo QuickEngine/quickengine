@@ -48,6 +48,9 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../../../packages/modules/client-records
+      '@quickengine/mod-bookings':
+        specifier: workspace:*
+        version: link:../../../packages/modules/bookings
       '@quickengine/mod-fulfillment':
         specifier: workspace:*
         version: link:../../../packages/modules/fulfillment

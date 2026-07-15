@@ -1,5 +1,9 @@
 import { getSession } from "@quickengine/auth/server";
 import {
+	bookingsSettingsSchema,
+	listBookings,
+} from "@quickengine/mod-bookings";
+import {
 	clientRecordsSettingsSchema,
 	listClientRecords,
 } from "@quickengine/mod-client-records";
@@ -40,6 +44,7 @@ import {
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { BookingsView } from "../../_components/bookings-view";
 import { CatalogView } from "../../_components/catalog-view";
 import { ClientRecordsView } from "../../_components/client-records-view";
 import { FulfillmentsView } from "../../_components/fulfillments-view";
@@ -218,6 +223,16 @@ export default async function Page({
 				),
 			)
 		: null;
+	const bookingsSettings =
+		moduleId === "bookings"
+			? bookingsSettingsSchema.parse(enabledModule.settings)
+			: null;
+	const bookingRows =
+		moduleId === "bookings" ? await listBookings(access.workspace.id) : null;
+	const bookingClients =
+		moduleId === "bookings"
+			? await listClientRecords(access.workspace.id)
+			: null;
 	const today = new Date();
 	const defaultDueDate = invoicingSettings
 		? new Date(
@@ -613,6 +628,31 @@ export default async function Page({
 							})),
 						};
 					})}
+				/>
+			) : bookingRows && bookingClients && bookingsSettings ? (
+				<BookingsView
+					workspaceId={access.workspace.id}
+					defaultTimeZone={bookingsSettings.defaultTimeZone}
+					defaultDuration={bookingsSettings.defaultDurationMinutes}
+					clients={bookingClients.map((client) => ({
+						id: client.id,
+						name: client.name,
+						company: client.company,
+					}))}
+					bookings={bookingRows.map((booking) => ({
+						id: booking.id,
+						title: booking.title,
+						clientName: booking.clientName,
+						clientCompany: null,
+						status: booking.status,
+						scheduleKey: booking.scheduleKey,
+						startsAt: booking.startsAt.toISOString(),
+						endsAt: booking.endsAt.toISOString(),
+						timeZone: booking.timeZone,
+						locationKind: booking.locationKind,
+						location: booking.location,
+						notes: booking.notes,
+					}))}
 				/>
 			) : shipmentDetails && shippingOrders && shippingSettings ? (
 				<ShippingView

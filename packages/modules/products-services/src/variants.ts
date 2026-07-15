@@ -3,6 +3,7 @@ import {
 	catalogItems,
 	catalogItemVariants,
 	db,
+	desc,
 	eq,
 	quickengineWorkspaces,
 } from "@quickengine/db";
@@ -99,7 +100,8 @@ export async function listProductVariants(
 				eq(catalogItemVariants.workspaceId, workspaceId),
 				eq(catalogItemVariants.catalogItemId, catalogItemId),
 			),
-		);
+		)
+		.orderBy(desc(catalogItemVariants.createdAt));
 }
 
 export async function getProductVariant(workspaceId: string, id: string) {

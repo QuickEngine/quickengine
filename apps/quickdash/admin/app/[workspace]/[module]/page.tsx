@@ -46,6 +46,11 @@ import {
 	listProjectTasks,
 } from "@quickengine/mod-projects-tasks";
 import {
+	getQuoteEstimate,
+	listQuoteEstimates,
+	quotesEstimatesSettingsSchema,
+} from "@quickengine/mod-quotes-estimates";
+import {
 	getShipment,
 	listShipments,
 	shippingSettingsSchema,
@@ -68,6 +73,7 @@ import { ModuleIcon } from "../../_components/module-icon";
 import { OrdersView } from "../../_components/orders-view";
 import { PaymentsView } from "../../_components/payments-view";
 import { ProjectsView } from "../../_components/projects-view";
+import { QuotesView } from "../../_components/quotes-view";
 import { ShippingView } from "../../_components/shipping-view";
 import { TimeTrackingView } from "../../_components/time-tracking-view";
 import { getModuleNavigation } from "../../_lib/module-navigation";
@@ -250,6 +256,25 @@ export default async function Page({
 			? await listClientRecords(access.workspace.id)
 			: null;
 	const today = new Date();
+	const quotesSettings =
+		moduleId === "quotes-estimates"
+			? quotesEstimatesSettingsSchema.parse(enabledModule.settings)
+			: null;
+	const quoteRows =
+		moduleId === "quotes-estimates"
+			? await listQuoteEstimates(access.workspace.id)
+			: null;
+	const quoteDetails = quoteRows
+		? await Promise.all(
+				quoteRows.map((quote) =>
+					getQuoteEstimate(access.workspace.id, quote.id),
+				),
+			)
+		: null;
+	const quoteClients =
+		moduleId === "quotes-estimates"
+			? await listClientRecords(access.workspace.id)
+			: null;
 	const fileFolders =
 		moduleId === "files" ? await listFileFolders(access.workspace.id) : null;
 	const fileRows =
@@ -301,6 +326,14 @@ export default async function Page({
 	const defaultDueDate = invoicingSettings
 		? new Date(
 				today.getTime() + invoicingSettings.defaultDueInDays * 86_400_000,
+			)
+				.toISOString()
+				.slice(0, 10)
+		: "";
+	const todayString = today.toISOString().slice(0, 10);
+	const defaultValidUntil = quotesSettings
+		? new Date(
+				today.getTime() + quotesSettings.defaultValidityDays * 86_400_000,
 			)
 				.toISOString()
 				.slice(0, 10)
@@ -854,6 +887,57 @@ export default async function Page({
 								})),
 								parcels: shipment.parcels.map((parcel) => ({
 									weightGrams: parcel.weightGrams,
+								})),
+							},
+						];
+					})}
+				/>
+			) : quoteDetails && quoteClients && quotesSettings ? (
+				<QuotesView
+					workspaceId={access.workspace.id}
+					defaultCurrency={quotesSettings.defaultCurrency}
+					defaultValidUntil={defaultValidUntil}
+					today={todayString}
+					clients={quoteClients.map((client) => ({
+						id: client.id,
+						name: client.name,
+						company: client.company,
+					}))}
+					quotes={quoteDetails.flatMap((quote) => {
+						if (!quote) return [];
+						return [
+							{
+								id: quote.id,
+								number: quote.number,
+								kind: quote.kind,
+								status: quote.status,
+								title: quote.title,
+								clientId: quote.clientId,
+								clientName: quote.clientName,
+								clientEmail: quote.clientEmail,
+								clientCompany: quote.clientCompany,
+								currency: quote.currency,
+								subtotalCents: quote.subtotalCents,
+								taxCents: quote.taxCents,
+								totalCents: quote.totalCents,
+								validUntil: quote.validUntil,
+								notes: quote.notes,
+								terms: quote.terms,
+								acceptedByName: quote.acceptedByName,
+								acceptedByEmail: quote.acceptedByEmail,
+								acceptanceNote: quote.acceptanceNote,
+								convertedInvoiceId: quote.convertedInvoiceId,
+								convertedOrderId: quote.convertedOrderId,
+								revision: quote.revision,
+								createdAt: quote.createdAt.toISOString(),
+								lines: quote.lines.map((line) => ({
+									id: line.id,
+									name: line.name,
+									description: line.description,
+									quantity: String(line.quantity),
+									unitPriceCents: line.unitPriceCents,
+									lineTotalCents: line.lineTotalCents,
+									position: line.position,
 								})),
 							},
 						];

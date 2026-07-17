@@ -10,3 +10,7 @@ Likely future services:
 - `workers/` - background processing services if Inngest/package-level jobs are not enough.
 
 Do not add a Cargo workspace until the first Rust service is actually started.
+
+Current QuickEngine and QuickDash workloads remain inside the Next.js applications,
+shared packages, and provider-backed job boundaries. This directory is intentionally
+empty; ecosystem growth alone is not a reason to introduce another network boundary.

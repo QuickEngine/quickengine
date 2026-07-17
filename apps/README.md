@@ -1,19 +1,26 @@
-# Apps
+# Applications
 
-All QuickEngine products live under `apps/`.
+Deployable product surfaces live under `apps/`. Shared business logic belongs in
+`packages/`; applications compose those boundaries into public or authenticated user
+experiences.
 
-Each product follows a two-app pattern:
-
-- `web` is public-facing: marketing, landing pages, public tools, signup entry points.
-- `admin` is authenticated: dashboards, account screens, billing flows, and app-specific workspaces.
-
-## Current Apps
+## Current Applications
 
 ```txt
 apps/
   quickengine/
-    web/      company site, suite landing, auth entry
-    admin/    account, billing, subscriptions, app access
+    web/       public company and product site (port 3000)
+    account/   onboarding, account, organization, and workspace management (port 3001)
+    auth/      shared authentication authority (port 3002)
+  quickdash/
+    admin/     multitenant workspace operations (port 3011)
 ```
 
-`quickengine` is the umbrella shell and the front door to the suite. Product apps will be added back here when they are ready to build.
+QuickEngine is the ecosystem account layer. QuickDash is one multitenant application,
+not a separate deployment for every workspace. Its route selects a workspace and loads
+that workspace's authorized registry configuration and module navigation.
+
+Most new business capabilities should be modules under `packages/modules/`, and most
+new business types should be workspace recipes. Add another application only when the
+capability has an independent product boundary that cannot reasonably remain a module,
+shared package, or native client surface.

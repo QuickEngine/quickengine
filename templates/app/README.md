@@ -31,9 +31,9 @@ apps/[app-name]/
 ## Port Convention
 
 ```txt
-quickengine web/admin  3000 / 3001
-quickengine auth       3002
-quickdash web/admin    3010 / 3011
+quickengine web/account  3000 / 3001
+quickengine auth         3002
+quickdash web/admin      3010 / 3011
 next app pair          +10 from the previous pair
 ```
 

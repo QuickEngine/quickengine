@@ -15,6 +15,12 @@ packages/
   apps/     canonical suite app roster and app metadata
   types/    shared TypeScript contracts
   sdk/      Quick.js typed client foundation (`@quickengine/quick`)
+  module-registry/ canonical module catalog, dependency resolver, and workspace config
+  modules/  one package per QuickDash business capability
+  agent-core/ bounded execution contracts, grants, budgets, approvals, and audit events
+  agent-runtime/ provider-neutral execution loop
+  agent-providers/ model-provider adapter boundary and deterministic test provider
+  agent-tools-quickdash/ authorized QuickDash tool boundary
   env/      shared environment validation helpers
   billing/  subscription and entitlement boundary
   cache/    Redis-compatible cache boundary
@@ -28,3 +34,7 @@ packages/
 ```
 
 App-specific code should stay inside the app until it becomes reusable across the suite.
+
+Module packages own their manifest, settings schema, persistence schema, and service
+contracts. Applications authorize the actor and workspace before invoking them. Shared
+packages never grant access merely because a caller knows a database identifier.

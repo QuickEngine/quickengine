@@ -17,7 +17,10 @@ import { WorkspaceLifecycleForm } from "./workspace-lifecycle-form";
 import { WorkspaceNameForm } from "./workspace-name-form";
 
 const QUICKDASH_URL =
-	process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ?? "http://localhost:3011";
+	process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ??
+	(process.env.NODE_ENV === "production"
+		? "https://dash.quickengine.xyz"
+		: "http://localhost:3011");
 
 export const metadata: Metadata = { title: "Workspace" };
 

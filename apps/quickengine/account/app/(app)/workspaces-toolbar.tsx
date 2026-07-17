@@ -27,7 +27,10 @@ import { useState } from "react";
 import { getBusinessType } from "../_lib/workspace-catalog";
 
 const QUICKDASH_URL =
-	process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ?? "http://localhost:3011";
+	process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ??
+	(process.env.NODE_ENV === "production"
+		? "https://dash.quickengine.xyz"
+		: "http://localhost:3011");
 
 type View = "cards" | "table";
 type StatusFilter = "active" | "archived" | "all";

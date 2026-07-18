@@ -1,3 +1,4 @@
+import { API_CAPABILITIES, listApiKeys } from "@quickengine/auth/api-keys";
 import { getSession } from "@quickengine/auth/server";
 import { and, db, eq } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
@@ -13,6 +14,7 @@ import { notFound } from "next/navigation";
 import { getBusinessType } from "../../../_lib/workspace-catalog";
 import { DeleteWorkspaceForm } from "./delete-workspace-form";
 import { ModuleToggleForm } from "./module-toggle-form";
+import { type ApiKeyRow, WorkspaceApiKeys } from "./workspace-api-keys";
 import { WorkspaceLifecycleForm } from "./workspace-lifecycle-form";
 import { WorkspaceNameForm } from "./workspace-name-form";
 
@@ -76,6 +78,25 @@ export default async function Page({
 	const modules = await getWorkspaceModuleCatalog(workspace.id);
 	const businessType = getBusinessType(workspace.businessType);
 	const foundationIds = new Set<string>(FOUNDATION_MODULE_IDS);
+
+	const now = Date.now();
+	const apiKeyRows: ApiKeyRow[] = (await listApiKeys(workspace.id)).map(
+		(key) => ({
+			id: key.id,
+			name: key.name,
+			type: key.type,
+			prefix: key.prefix,
+			capabilities: key.capabilities,
+			status: key.revokedAt
+				? "revoked"
+				: key.expiresAt && key.expiresAt.getTime() <= now
+					? "expired"
+					: "active",
+			createdLabel: createdDate(key.createdAt),
+			lastUsedLabel: key.lastUsedAt ? createdDate(key.lastUsedAt) : "Never",
+			expiresLabel: key.expiresAt ? createdDate(key.expiresAt) : "Never",
+		}),
+	);
 
 	return (
 		<div className="space-y-8 p-6">
@@ -206,6 +227,14 @@ export default async function Page({
 					})}
 				</div>
 			</section>
+
+			<WorkspaceApiKeys
+				workspaceId={workspace.id}
+				slug={workspace.slug ?? slug}
+				archived={workspace.archivedAt !== null}
+				availableCapabilities={[...API_CAPABILITIES]}
+				keys={apiKeyRows}
+			/>
 		</div>
 	);
 }

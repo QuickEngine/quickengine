@@ -1,5 +1,6 @@
 import { readApiError } from "./error";
 import { CatalogResource } from "./resources/catalog";
+import { EventsResource } from "./resources/events";
 import type {
 	QuickClientOptions,
 	QuickCredential,
@@ -57,6 +58,8 @@ export class QuickClient {
 	readonly apiVersion: string;
 	/** Published catalog for the scoped workspace. */
 	readonly catalog: CatalogResource;
+	/** Privacy-minimal site telemetry for the scoped workspace. */
+	readonly events: EventsResource;
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
@@ -67,6 +70,7 @@ export class QuickClient {
 		this.credential = options.credential;
 		this.fetcher = options.fetcher ?? fetch;
 		this.catalog = new CatalogResource(this);
+		this.events = new EventsResource(this);
 	}
 
 	/**

@@ -86,3 +86,25 @@ export type QuickCatalogVariant = {
 export type QuickCatalogItemDetail = QuickCatalogItem & {
 	variants: QuickCatalogVariant[];
 };
+
+/**
+ * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
+ * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`
+ * must not include a query string; `referrerHost` is a host only, never a full URL.
+ */
+export type QuickTrafficEventInput = {
+	/** A client-generated unique id; the ingest is idempotent on it. */
+	eventId: string;
+	siteKey: string;
+	visitorId: string;
+	sessionId: string;
+	path: string;
+	referrerHost?: string | null;
+	occurredAt: Date | string;
+};
+
+export type QuickTrafficEventResult = {
+	/** False when this eventId was already recorded (idempotent no-op). */
+	accepted: boolean;
+	eventId: string;
+};

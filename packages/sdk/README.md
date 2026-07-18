@@ -57,8 +57,9 @@ but the server is always the real security boundary.
 | `createQuickServer` | `{ type: "secret", token }` | Trusted servers. **Never** ship in browser/mobile/public code, logs, or repos. |
 | `createQuickServer` | `{ type: "scoped", token }` | A least-privilege server credential for one integration. |
 
-A publishable key can never carry a write or admin capability, even if you try — the
-server clamps it to a read-only allowlist.
+A publishable key is **website-safe**: it can read, and it can send privacy-minimal
+telemetry (traffic events a site reports about itself), but the server clamps it so it can
+never carry a business-data write or admin capability — no orders, records, or money.
 
 ## Errors
 
@@ -82,9 +83,26 @@ Common codes: `unauthorized` (bad/expired/revoked key), `workspace_mismatch` (ke
 scoped to that workspace), `capability_denied` (key lacks the needed capability),
 `module_disabled` (the workspace hasn't enabled that module), `not_found`.
 
+## Recording site telemetry
+
+A site can report its own page views with the same publishable key — the server hashes
+visitor/session ids and is idempotent on `eventId`:
+
+```ts
+await quick.events.record({
+  eventId: crypto.randomUUID(),        // idempotency key
+  siteKey: "gemsutopia",
+  visitorId,                           // a stable opaque id — never PII
+  sessionId,
+  path: "/products/aurora",            // no query string
+  occurredAt: new Date(),
+});
+```
+
 ## What exists today
 
 - `quick.catalog.list()` → active catalog items.
 - `quick.catalog.get(id)` → one active item with its active variants.
+- `quick.events.record({ … })` → record one privacy-minimal traffic event (publishable-safe).
 
-That's the honest surface. Orders, events, and other resources arrive with their routes.
+That's the honest surface. Orders and other resources arrive with their routes.

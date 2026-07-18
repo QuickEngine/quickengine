@@ -73,3 +73,16 @@ export type QuickCatalogItem = {
 	currency: string;
 	unitLabel: string | null;
 };
+
+/** An active variant of a catalog item, as returned by `GET /v1/catalog/:id`. */
+export type QuickCatalogVariant = {
+	id: string;
+	options: { name: string; value: string }[];
+	sku: string | null;
+	priceCentsOverride: number | null;
+};
+
+/** A single catalog item with its active variants — the storefront product-detail shape. */
+export type QuickCatalogItemDetail = QuickCatalogItem & {
+	variants: QuickCatalogVariant[];
+};

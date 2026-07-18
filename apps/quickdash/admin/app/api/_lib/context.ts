@@ -9,8 +9,11 @@ import {
 } from "../../_lib/workspace-access";
 import { fail } from "./respond";
 
+// The common workspace-access shape shared by both principals. Based on the API-key loader
+// (which has no user role); a session's richer result (which also carries a role) is
+// assignable to it.
 type WorkspaceAccess = NonNullable<
-	Awaited<ReturnType<typeof requireWorkspaceAccess>>
+	Awaited<ReturnType<typeof loadWorkspaceForKey>>
 >;
 
 // Who made the request. Either a signed-in operator (full workspace access) or an API

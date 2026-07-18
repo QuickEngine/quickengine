@@ -1,4 +1,4 @@
-import { and, db, eq, isNull } from "@quickengine/db";
+import { and, db, eq, isNull, resolveWorkspaceRole } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import { getWorkspaceModules } from "@quickengine/module-registry";
 
@@ -10,9 +10,10 @@ export type QuickDashWorkspace = {
 };
 
 /**
- * The single authorization seam for QuickDash workspace reads. Owner-only is the
- * truthful policy today; workspace memberships and RBAC will extend this function
- * instead of scattering access checks across module pages.
+ * The single authorization seam for QuickDash workspace reads. Access is now membership-based:
+ * the caller must have a role on the workspace's org (the owner is always "owner"). The role is
+ * returned so callers can gate manage-vs-operate via `@quickengine/auth/rbac`'s capability
+ * checks, instead of scattering access logic across module pages.
  */
 const WORKSPACE_ID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -34,12 +35,13 @@ export async function requireWorkspaceAccess(
 			name: quickengineWorkspaces.name,
 			slug: quickengineWorkspaces.slug,
 			businessType: quickengineWorkspaces.businessType,
+			ownerId: quickengineWorkspaces.ownerId,
+			organizationId: quickengineWorkspaces.organizationId,
 		})
 		.from(quickengineWorkspaces)
 		.where(
 			and(
 				eq(quickengineWorkspaces.id, workspaceId),
-				eq(quickengineWorkspaces.ownerId, userId),
 				isNull(quickengineWorkspaces.archivedAt),
 			),
 		)
@@ -49,10 +51,24 @@ export async function requireWorkspaceAccess(
 		return null;
 	}
 
+	const role = await resolveWorkspaceRole(userId, {
+		ownerId: workspace.ownerId,
+		organizationId: workspace.organizationId,
+	});
+	if (!role) {
+		return null;
+	}
+
 	const modules = await getWorkspaceModules(workspace.id);
 	return {
-		workspace,
+		workspace: {
+			id: workspace.id,
+			name: workspace.name,
+			slug: workspace.slug,
+			businessType: workspace.businessType,
+		},
 		modules: modules.filter((module) => module.enabled),
+		role,
 	};
 }
 

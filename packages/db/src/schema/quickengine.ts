@@ -42,6 +42,13 @@ export type QuickEngineOrgRole = "owner" | "admin" | "member";
 // union. Publishable is website-safe and read-only; secret/scoped are server-only.
 export type QuickEngineApiKeyType = "publishable" | "secret" | "scoped";
 
+// Lifecycle of an org invitation: created → accepted, or revoked/expired without use.
+export type QuickEngineInvitationStatus =
+	| "pending"
+	| "accepted"
+	| "revoked"
+	| "expired";
+
 export const quickengineUsers = pgTable("quickengine_users", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
@@ -367,5 +374,45 @@ export const quickengineApiKeys = pgTable(
 	},
 	(table) => [
 		index("quickengine_api_keys_workspace_idx").on(table.workspaceId),
+	],
+);
+
+// Pending invitations to join an organization with a given role. The accept link carries a
+// one-time token; only its sha256 hash is stored (never the raw token), mirroring the API-key
+// and contracts signer-token pattern. Redeeming a valid token creates the membership row.
+// A shared "redeemable link" primitive (referrals/affiliates) may be extracted from this
+// later — see docs/planning/BACKLOG.md.
+export const quickengineOrganizationInvitations = pgTable(
+	"quickengine_organization_invitations",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		organizationId: uuid("organization_id")
+			.notNull()
+			.references(() => quickengineOrganizations.id, { onDelete: "cascade" }),
+		email: text("email").notNull(),
+		role: text("role").$type<QuickEngineOrgRole>().notNull().default("member"),
+		invitedByUserId: text("invited_by_user_id")
+			.notNull()
+			.references(() => quickengineUsers.id),
+		tokenHash: text("token_hash").notNull().unique(),
+		status: text("status")
+			.$type<QuickEngineInvitationStatus>()
+			.notNull()
+			.default("pending"),
+		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+		acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+		acceptedByUserId: text("accepted_by_user_id").references(
+			() => quickengineUsers.id,
+		),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("quickengine_org_invitations_org_idx").on(table.organizationId),
+		index("quickengine_org_invitations_email_idx").on(table.email),
 	],
 );

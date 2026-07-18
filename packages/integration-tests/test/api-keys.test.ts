@@ -68,6 +68,20 @@ describe("API key issuance + verification", () => {
 		expect(issued.capabilities).toEqual(["catalog:read"]);
 	});
 
+	it("lets a publishable key hold website-safe writes (events:write)", async () => {
+		const issued = await issueApiKey({
+			workspaceId,
+			createdByUserId: ownerId,
+			name: "Storefront telemetry",
+			type: "publishable",
+			capabilities: ["catalog:read", "events:write"],
+		});
+		expect(issued.capabilities).toEqual(["catalog:read", "events:write"]);
+
+		const verified = await verifyApiKey(issued.plaintext);
+		expect(verified?.capabilities).toEqual(["catalog:read", "events:write"]);
+	});
+
 	it("rejects an unknown key", async () => {
 		expect(await verifyApiKey("qpk_does_not_exist")).toBeNull();
 		expect(await verifyApiKey("   ")).toBeNull();

@@ -11,13 +11,17 @@ import { quickengineApiKeys } from "@quickengine/db/schema/quickengine";
 // Single source of truth for API capabilities. A route declares the capability it
 // requires; a key must hold it. Grow this one string per new route so the gate, the
 // Account UI, and the docs never drift.
-export const API_CAPABILITIES = ["catalog:read"] as const;
+export const API_CAPABILITIES = ["catalog:read", "events:write"] as const;
 export type ApiCapability = (typeof API_CAPABILITIES)[number];
 
-// Publishable keys ship in public websites, so they may only ever carry read-only
-// capabilities from this allowlist — never a write/admin capability, even if requested.
+// Publishable keys ship in public websites, so they may only carry WEBSITE-SAFE
+// operations from this allowlist: reads, plus privacy-minimal telemetry writes (traffic
+// events a site reports about itself). Never business-data mutations — orders, records,
+// or money — even if requested. (This is how Stripe publishable keys work: a few safe
+// writes, not pure read-only.)
 export const PUBLISHABLE_CAPABILITIES: readonly ApiCapability[] = [
 	"catalog:read",
+	"events:write",
 ];
 
 const KEY_PREFIX: Record<QuickEngineApiKeyType, string> = {

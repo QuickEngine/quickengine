@@ -8,6 +8,7 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@quickengine/auth": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/mod-fulfillment": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",

@@ -5,6 +5,7 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
+		"./api-keys": "./src/api-keys.ts",
 		"./client": "./src/client.ts",
 		"./server": "./src/server.ts"
 	},

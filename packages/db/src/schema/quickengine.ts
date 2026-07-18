@@ -38,6 +38,10 @@ export type QuickEngineSubscriptionStatus =
 // expandable. Workspace-level roles are a later refinement.
 export type QuickEngineOrgRole = "owner" | "admin" | "member";
 
+// Public API credential categories, fixed by the Quick.js SDK's QuickCredential
+// union. Publishable is website-safe and read-only; secret/scoped are server-only.
+export type QuickEngineApiKeyType = "publishable" | "secret" | "scoped";
+
 export const quickengineUsers = pgTable("quickengine_users", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
@@ -327,5 +331,41 @@ export const quickengineUsage = pgTable(
 			table.meter,
 			table.periodStart,
 		),
+	],
+);
+
+// Workspace-scoped credentials for the public QuickDash API + Quick.js. Only the
+// sha256 hash of the full key is stored — never the raw secret — mirroring the
+// contracts signer-token pattern. `prefix` holds the non-secret leading chars shown
+// in Account so operators can tell keys apart. `capabilities` narrows what the key
+// may do (e.g. ["catalog:read"]); publishable keys are further limited to a read-only
+// allowlist in the verification layer. See docs/product/API_KEYS.md.
+export const quickengineApiKeys = pgTable(
+	"quickengine_api_keys",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
+		createdByUserId: text("created_by_user_id")
+			.notNull()
+			.references(() => quickengineUsers.id),
+		name: text("name").notNull(),
+		type: text("type").$type<QuickEngineApiKeyType>().notNull(),
+		prefix: text("prefix").notNull(),
+		keyHash: text("key_hash").notNull().unique(),
+		capabilities: jsonb("capabilities").$type<string[]>().notNull().default([]),
+		lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+		expiresAt: timestamp("expires_at", { withTimezone: true }),
+		revokedAt: timestamp("revoked_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("quickengine_api_keys_workspace_idx").on(table.workspaceId),
 	],
 );

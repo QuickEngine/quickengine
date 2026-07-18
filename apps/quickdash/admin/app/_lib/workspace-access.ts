@@ -56,6 +56,44 @@ export async function requireWorkspaceAccess(
 	};
 }
 
+/**
+ * Load a workspace and its enabled modules WITHOUT an owner check — for public-API
+ * requests authenticated by an API key, whose authorization is the key itself (already
+ * scoped to this workspace) rather than a signed-in user. Returns null for a non-UUID or
+ * missing/archived workspace. The key layer is responsible for authenticating the caller;
+ * this only resolves the workspace + module state the key is scoped to.
+ */
+export async function loadWorkspaceForKey(workspaceId: string) {
+	if (!WORKSPACE_ID_PATTERN.test(workspaceId)) {
+		return null;
+	}
+	const [workspace] = await db
+		.select({
+			id: quickengineWorkspaces.id,
+			name: quickengineWorkspaces.name,
+			slug: quickengineWorkspaces.slug,
+			businessType: quickengineWorkspaces.businessType,
+		})
+		.from(quickengineWorkspaces)
+		.where(
+			and(
+				eq(quickengineWorkspaces.id, workspaceId),
+				isNull(quickengineWorkspaces.archivedAt),
+			),
+		)
+		.limit(1);
+
+	if (!workspace) {
+		return null;
+	}
+
+	const modules = await getWorkspaceModules(workspace.id);
+	return {
+		workspace,
+		modules: modules.filter((module) => module.enabled),
+	};
+}
+
 export async function listAccessibleWorkspaces(
 	userId: string,
 ): Promise<QuickDashWorkspace[]> {

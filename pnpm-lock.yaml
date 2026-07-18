@@ -654,6 +654,9 @@ importers:
 
   packages/integration-tests:
     dependencies:
+      '@quickengine/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@quickengine/db':
         specifier: workspace:*
         version: link:../db

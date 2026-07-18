@@ -27,6 +27,7 @@ const MODULE_PAGES: Record<
 	() => Promise<{ default: ModulePageComponent }>
 > = {
 	"client-records": () => import("../../_modules/client-records-page"),
+	"contracts-esign": () => import("../../_modules/contracts-page"),
 	invoicing: () => import("../../_modules/invoicing-page"),
 	payments: () => import("../../_modules/payments-page"),
 	fulfillment: () => import("../../_modules/fulfillment-page"),

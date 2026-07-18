@@ -12,7 +12,9 @@
 		"@quickengine/mod-fulfillment": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",
 		"@quickengine/mod-payments": "workspace:*",
-		"@quickengine/mod-quotes-estimates": "workspace:*"
+		"@quickengine/mod-projects-tasks": "workspace:*",
+		"@quickengine/mod-quotes-estimates": "workspace:*",
+		"@quickengine/mod-time-tracking": "workspace:*"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",

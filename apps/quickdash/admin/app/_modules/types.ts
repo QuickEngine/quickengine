@@ -7,4 +7,7 @@ export type ModulePageProps = {
 	// its own settingsSchema.
 	settings: unknown;
 	today: Date;
+	// The route's URL search params (e.g. Reporting reads its date range from here).
+	// Most module pages ignore it.
+	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };

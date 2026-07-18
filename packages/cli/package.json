@@ -1,0 +1,32 @@
+{
+	"name": "@quickengine/cli",
+	"version": "0.1.0",
+	"description": "The `quick` command-line tool for QuickEngine and QuickDash",
+	"private": true,
+	"type": "module",
+	"bin": {
+		"quick": "./dist/index.js"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup src/index.ts --format esm --clean",
+		"dev": "tsup src/index.ts --format esm --watch",
+		"clean": "rm -rf dist",
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@quickengine/quick": "workspace:*",
+		"commander": "^12.1.0"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"tsup": "^8.4.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.6"
+	}
+}

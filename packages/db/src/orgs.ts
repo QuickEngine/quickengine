@@ -92,3 +92,31 @@ export async function listOrganizationMembers(
 		.where(eq(quickengineOrganizationMembers.organizationId, organizationId))
 		.orderBy(quickengineOrganizationMembers.createdAt);
 }
+
+/**
+ * Remove a member from an org. The org owner can never be removed. Returns false if the
+ * target is the owner or is not a member.
+ */
+export async function removeOrganizationMember(
+	organizationId: string,
+	userId: string,
+): Promise<boolean> {
+	const [org] = await db
+		.select({ ownerId: quickengineOrganizations.ownerId })
+		.from(quickengineOrganizations)
+		.where(eq(quickengineOrganizations.id, organizationId))
+		.limit(1);
+	if (!org || org.ownerId === userId) {
+		return false;
+	}
+	const [removed] = await db
+		.delete(quickengineOrganizationMembers)
+		.where(
+			and(
+				eq(quickengineOrganizationMembers.organizationId, organizationId),
+				eq(quickengineOrganizationMembers.userId, userId),
+			),
+		)
+		.returning({ userId: quickengineOrganizationMembers.userId });
+	return Boolean(removed);
+}

@@ -6,6 +6,7 @@ import {
 	acceptOrganizationInvitation,
 	createOrganizationInvitation,
 	getPersonalOrg,
+	removeOrganizationMember,
 	resolveOrgRole,
 	revokeOrganizationInvitation,
 } from "@quickengine/db";
@@ -26,6 +27,7 @@ export type InviteMemberState = {
 
 export type RevokeInviteState = { error: string | null };
 export type AcceptInviteState = { error: string | null; success: boolean };
+export type RemoveMemberState = { error: string | null };
 
 // Resolve the caller's own org + confirm they may manage members, or return an error message.
 async function requireMemberManager(): Promise<
@@ -84,6 +86,27 @@ export async function revokeInviteAction(
 		invitationId,
 	);
 	if (!revoked) return { error: "That invitation is no longer pending." };
+
+	revalidatePath("/team");
+	return { error: null };
+}
+
+export async function removeMemberAction(
+	_previous: RemoveMemberState,
+	formData: FormData,
+): Promise<RemoveMemberState> {
+	const gate = await requireMemberManager();
+	if ("error" in gate) return { error: gate.error };
+
+	const userId = String(formData.get("userId") ?? "");
+	if (!userId) return { error: "No member was specified." };
+
+	const removed = await removeOrganizationMember(gate.organizationId, userId);
+	if (!removed) {
+		return {
+			error: "The owner can't be removed, or that member has already left.",
+		};
+	}
 
 	revalidatePath("/team");
 	return { error: null };

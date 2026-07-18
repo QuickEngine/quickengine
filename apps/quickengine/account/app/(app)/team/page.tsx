@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Panel, PanelLabel, StatCard } from "../../_components/surface";
 import { InviteForm } from "./invite-form";
+import { RemoveMemberButton } from "./remove-member-button";
 import { RevokeInviteButton } from "./revoke-invite-button";
 
 export const metadata: Metadata = { title: "Team" };
@@ -76,9 +77,14 @@ export default async function Page() {
 									{member.email}
 								</span>
 							</div>
-							<span className="text-muted-foreground">
-								{ROLE_LABEL[member.role] ?? member.role}
-							</span>
+							<div className="flex items-center gap-3">
+								<span className="text-muted-foreground">
+									{ROLE_LABEL[member.role] ?? member.role}
+								</span>
+								{canManage && member.role !== "owner" && (
+									<RemoveMemberButton userId={member.userId} />
+								)}
+							</div>
 						</div>
 					))}
 				</div>

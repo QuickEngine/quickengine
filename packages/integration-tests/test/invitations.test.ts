@@ -3,6 +3,8 @@ import {
 	createOrganizationInvitation,
 	getInvitationByToken,
 	listOrganizationInvitations,
+	removeOrganizationMember,
+	resolveOrgRole,
 	resolveWorkspaceRole,
 	revokeOrganizationInvitation,
 } from "@quickengine/db";
@@ -109,5 +111,22 @@ describe("organization invitations", () => {
 		for (const row of rows) {
 			expect(Object.hasOwn(row, "tokenHash")).toBe(false);
 		}
+	});
+
+	it("removes a member but never the org owner", async () => {
+		const { token } = await invite();
+		await acceptOrganizationInvitation(token, inviteeId);
+		expect(await resolveOrgRole(inviteeId, orgId)).toBe("member");
+
+		// The owner can never be removed.
+		expect(await removeOrganizationMember(orgId, inviterId)).toBe(false);
+		expect(await resolveOrgRole(inviterId, orgId)).toBe("owner");
+
+		// A member can be removed; afterward they have no role.
+		expect(await removeOrganizationMember(orgId, inviteeId)).toBe(true);
+		expect(await resolveOrgRole(inviteeId, orgId)).toBeNull();
+
+		// Removing a non-member is a no-op.
+		expect(await removeOrganizationMember(orgId, inviteeId)).toBe(false);
 	});
 });

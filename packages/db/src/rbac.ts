@@ -34,3 +34,21 @@ export async function resolveWorkspaceRole(
 		.limit(1);
 	return member?.role ?? null;
 }
+
+/** A user's role directly on an organization, or null if they are not a member. */
+export async function resolveOrgRole(
+	userId: string,
+	organizationId: string,
+): Promise<QuickEngineOrgRole | null> {
+	const [member] = await db
+		.select({ role: quickengineOrganizationMembers.role })
+		.from(quickengineOrganizationMembers)
+		.where(
+			and(
+				eq(quickengineOrganizationMembers.organizationId, organizationId),
+				eq(quickengineOrganizationMembers.userId, userId),
+			),
+		)
+		.limit(1);
+	return member?.role ?? null;
+}

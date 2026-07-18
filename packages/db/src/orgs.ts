@@ -1,8 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "./client";
+import type { QuickEngineOrgRole } from "./schema/quickengine";
 import {
 	quickengineOrganizationMembers,
 	quickengineOrganizations,
+	quickengineUsers,
 } from "./schema/quickengine";
 
 // URL-safe org slug from a name + a short random suffix. Org slugs are globally
@@ -60,4 +62,33 @@ export async function ensurePersonalOrg(
 		role: "owner",
 	});
 	return org.id;
+}
+
+export type OrganizationMember = {
+	userId: string;
+	name: string;
+	email: string;
+	role: QuickEngineOrgRole;
+	joinedAt: Date;
+};
+
+/** The members of an org with their identity + role, oldest first (owner is typically first). */
+export async function listOrganizationMembers(
+	organizationId: string,
+): Promise<OrganizationMember[]> {
+	return db
+		.select({
+			userId: quickengineOrganizationMembers.userId,
+			name: quickengineUsers.name,
+			email: quickengineUsers.email,
+			role: quickengineOrganizationMembers.role,
+			joinedAt: quickengineOrganizationMembers.createdAt,
+		})
+		.from(quickengineOrganizationMembers)
+		.innerJoin(
+			quickengineUsers,
+			eq(quickengineOrganizationMembers.userId, quickengineUsers.id),
+		)
+		.where(eq(quickengineOrganizationMembers.organizationId, organizationId))
+		.orderBy(quickengineOrganizationMembers.createdAt);
 }

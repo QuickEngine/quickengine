@@ -1,4 +1,5 @@
 import { readApiError } from "./error";
+import { CatalogResource } from "./resources/catalog";
 import type {
 	QuickClientOptions,
 	QuickCredential,
@@ -43,7 +44,7 @@ const credentialHeaders = (credential: QuickCredential): HeadersInit => {
 			};
 		case "publishable":
 			return {
-				"X-QuickEngine-Publishable-Key": cleanSegment(credential.key, "key"),
+				"QuickEngine-Publishable-Key": cleanSegment(credential.key, "key"),
 			};
 		case "session":
 			return {};
@@ -54,6 +55,8 @@ export class QuickClient {
 	readonly baseUrl: string;
 	readonly workspaceId: string;
 	readonly apiVersion: string;
+	/** Published catalog for the scoped workspace. */
+	readonly catalog: CatalogResource;
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
@@ -63,6 +66,7 @@ export class QuickClient {
 		this.apiVersion = cleanSegment(options.apiVersion ?? "v1", "apiVersion");
 		this.credential = options.credential;
 		this.fetcher = options.fetcher ?? fetch;
+		this.catalog = new CatalogResource(this);
 	}
 
 	/**
@@ -81,7 +85,7 @@ export class QuickClient {
 		} = options;
 		const headers = new Headers(requestInit.headers);
 		headers.set("Accept", "application/json");
-		headers.set("X-QuickEngine-Workspace", this.workspaceId);
+		headers.set("QuickEngine-Workspace", this.workspaceId);
 
 		for (const [name, value] of new Headers(
 			credentialHeaders(this.credential),
@@ -116,7 +120,7 @@ export class QuickClient {
 			},
 		);
 
-		const requestId = response.headers.get("X-Request-Id");
+		const requestId = response.headers.get("Request-Id");
 		if (!response.ok) {
 			throw await readApiError(response, requestId);
 		}

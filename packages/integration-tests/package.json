@@ -11,6 +11,7 @@
 		"@quickengine/db": "workspace:*",
 		"@quickengine/mod-fulfillment": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",
+		"@quickengine/mod-orders": "workspace:*",
 		"@quickengine/mod-payments": "workspace:*",
 		"@quickengine/mod-projects-tasks": "workspace:*",
 		"@quickengine/mod-quotes-estimates": "workspace:*",

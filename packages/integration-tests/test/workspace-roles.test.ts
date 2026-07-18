@@ -1,4 +1,8 @@
-import { resolveWorkspaceRole } from "@quickengine/db";
+import {
+	listOrganizationMembers,
+	resolveOrgRole,
+	resolveWorkspaceRole,
+} from "@quickengine/db";
 import { testDbClient } from "@quickengine/db/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -51,5 +55,18 @@ describe("resolveWorkspaceRole", () => {
 				organizationId: otherOrgId,
 			}),
 		).toBeNull();
+	});
+
+	it("resolveOrgRole returns the org membership role, or null", async () => {
+		expect(await resolveOrgRole(ownerId, orgId)).toBe("owner");
+		expect(await resolveOrgRole(memberId, orgId)).toBe("member");
+		expect(await resolveOrgRole(strangerId, orgId)).toBeNull();
+	});
+
+	it("listOrganizationMembers returns members with identity + role", async () => {
+		const members = await listOrganizationMembers(orgId);
+		expect(members.map((m) => m.role).sort()).toEqual(["member", "owner"]);
+		const owner = members.find((m) => m.role === "owner");
+		expect(owner?.email).toBe("owner-role@example.com");
 	});
 });

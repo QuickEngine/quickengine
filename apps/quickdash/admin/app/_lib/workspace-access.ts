@@ -14,10 +14,20 @@ export type QuickDashWorkspace = {
  * truthful policy today; workspace memberships and RBAC will extend this function
  * instead of scattering access checks across module pages.
  */
+const WORKSPACE_ID_PATTERN =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function requireWorkspaceAccess(
 	userId: string,
 	workspaceId: string,
 ) {
+	// A non-UUID path segment (e.g. a request for `/logo.svg` that falls through to
+	// the `[workspace]` route) must not reach the UUID-typed query — Postgres throws
+	// `invalid input syntax for type uuid` and crashes the request. Treat it as a
+	// missing workspace so the page renders notFound() instead.
+	if (!WORKSPACE_ID_PATTERN.test(workspaceId)) {
+		return null;
+	}
 	const [workspace] = await db
 		.select({
 			id: quickengineWorkspaces.id,

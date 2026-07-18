@@ -36,6 +36,7 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Non-UUID paths on QuickDash no longer crash the workspace route.** A request such as `/logo.svg` fell through to the `[workspace]` route, which fed the segment into a UUID-typed query and threw a Postgres `invalid input syntax for type uuid` error. `requireWorkspaceAccess` now rejects any non-UUID workspace id up front and renders `notFound()` instead of crashing the request.
 - **Production workspace links no longer fall back to localhost.** QuickEngine Account now uses the canonical `https://dash.quickengine.xyz` origin when a production build is missing `NEXT_PUBLIC_QUICKDASH_ADMIN_URL`, while retaining `http://localhost:3011` for local development. This prevents a live workspace link from leaving the shared cookie domain and incorrectly forcing a fresh QuickDash sign-in. The environment variable remains the explicit deployment configuration and must still be added to sibling projects.
 
 - **Partial-payment entry and balances are now explicit.** Selecting an invoice clears the payment amount, displays the remaining balance only as guidance, and requires the operator to enter what was actually received. Changing or closing the form clears the amount again; the existing server-side balance guard still rejects overpayment. The Payments page now also keeps every open invoice's total, net collected amount, and remaining balance visible outside the entry dialog, so partial-payment state is not hidden behind another action.

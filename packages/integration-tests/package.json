@@ -15,6 +15,7 @@
 		"@quickengine/mod-payments": "workspace:*",
 		"@quickengine/mod-projects-tasks": "workspace:*",
 		"@quickengine/mod-quotes-estimates": "workspace:*",
+		"@quickengine/mod-shipping": "workspace:*",
 		"@quickengine/mod-time-tracking": "workspace:*"
 	},
 	"devDependencies": {

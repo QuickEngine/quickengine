@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { and, db, eq, fileDocuments } from "@quickengine/db";
+import { db, eq, fileDocuments } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import {
 	disableWorkspaceModule,
@@ -10,6 +10,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { authorizeWorkspace } from "./workspace-authz";
 import { getBusinessType } from "./workspace-catalog";
 import { normalizeWorkspaceName } from "./workspace-input";
 import { createWorkspaceForUser } from "./workspaces";
@@ -79,6 +80,15 @@ export async function renameWorkspaceAction(
 
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const slug = String(formData.get("slug") ?? "");
+	const authz = await authorizeWorkspace(
+		session.user.id,
+		workspaceId,
+		slug,
+		"workspace.manage",
+	);
+	if (!authz.ok) {
+		return { error: authz.message, success: false };
+	}
 	let name: string;
 	try {
 		name = normalizeWorkspaceName(String(formData.get("name") ?? ""));
@@ -92,20 +102,10 @@ export async function renameWorkspaceAction(
 		};
 	}
 
-	const [updated] = await db
+	await db
 		.update(quickengineWorkspaces)
 		.set({ name, updatedAt: new Date() })
-		.where(
-			and(
-				eq(quickengineWorkspaces.id, workspaceId),
-				eq(quickengineWorkspaces.slug, slug),
-				eq(quickengineWorkspaces.ownerId, session.user.id),
-			),
-		)
-		.returning({ id: quickengineWorkspaces.id });
-	if (!updated) {
-		return { error: "Workspace not found.", success: false };
-	}
+		.where(eq(quickengineWorkspaces.id, authz.workspace.id));
 
 	revalidatePath("/");
 	revalidatePath(`/workspaces/${slug}`);
@@ -130,24 +130,23 @@ export async function setWorkspaceArchivedAction(
 	if (archivedValue !== "true" && archivedValue !== "false") {
 		return { error: "Invalid workspace status.", success: false };
 	}
+	const authz = await authorizeWorkspace(
+		session.user.id,
+		workspaceId,
+		slug,
+		"workspace.manage",
+	);
+	if (!authz.ok) {
+		return { error: authz.message, success: false };
+	}
 
-	const [updated] = await db
+	await db
 		.update(quickengineWorkspaces)
 		.set({
 			archivedAt: archivedValue === "true" ? new Date() : null,
 			updatedAt: new Date(),
 		})
-		.where(
-			and(
-				eq(quickengineWorkspaces.id, workspaceId),
-				eq(quickengineWorkspaces.slug, slug),
-				eq(quickengineWorkspaces.ownerId, session.user.id),
-			),
-		)
-		.returning({ id: quickengineWorkspaces.id });
-	if (!updated) {
-		return { error: "Workspace not found.", success: false };
-	}
+		.where(eq(quickengineWorkspaces.id, authz.workspace.id));
 
 	revalidatePath("/");
 	revalidatePath(`/workspaces/${slug}`);
@@ -166,24 +165,16 @@ export async function deleteWorkspaceAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const slug = String(formData.get("slug") ?? "");
 	const confirmation = String(formData.get("confirmation") ?? "");
-	const [workspace] = await db
-		.select({
-			id: quickengineWorkspaces.id,
-			name: quickengineWorkspaces.name,
-			archivedAt: quickengineWorkspaces.archivedAt,
-		})
-		.from(quickengineWorkspaces)
-		.where(
-			and(
-				eq(quickengineWorkspaces.id, workspaceId),
-				eq(quickengineWorkspaces.slug, slug),
-				eq(quickengineWorkspaces.ownerId, session.user.id),
-			),
-		)
-		.limit(1);
-	if (!workspace) {
-		return { error: "Workspace not found." };
+	const authz = await authorizeWorkspace(
+		session.user.id,
+		workspaceId,
+		slug,
+		"workspace.delete",
+	);
+	if (!authz.ok) {
+		return { error: authz.message };
 	}
+	const workspace = authz.workspace;
 	if (!workspace.archivedAt) {
 		return { error: "Archive this workspace before permanently deleting it." };
 	}
@@ -204,12 +195,7 @@ export async function deleteWorkspaceAction(
 
 	const [deleted] = await db
 		.delete(quickengineWorkspaces)
-		.where(
-			and(
-				eq(quickengineWorkspaces.id, workspace.id),
-				eq(quickengineWorkspaces.ownerId, session.user.id),
-			),
-		)
+		.where(eq(quickengineWorkspaces.id, workspace.id))
 		.returning({ id: quickengineWorkspaces.id });
 	if (!deleted) {
 		return { error: "Workspace deletion failed. Nothing was removed." };
@@ -239,23 +225,16 @@ export async function setWorkspaceModuleEnabledAction(
 		return { error: "Invalid module status.", success: false };
 	}
 
-	const [workspace] = await db
-		.select({
-			id: quickengineWorkspaces.id,
-			archivedAt: quickengineWorkspaces.archivedAt,
-		})
-		.from(quickengineWorkspaces)
-		.where(
-			and(
-				eq(quickengineWorkspaces.id, workspaceId),
-				eq(quickengineWorkspaces.slug, slug),
-				eq(quickengineWorkspaces.ownerId, session.user.id),
-			),
-		)
-		.limit(1);
-	if (!workspace) {
-		return { error: "Workspace not found.", success: false };
+	const authz = await authorizeWorkspace(
+		session.user.id,
+		workspaceId,
+		slug,
+		"modules.manage",
+	);
+	if (!authz.ok) {
+		return { error: authz.message, success: false };
 	}
+	const workspace = authz.workspace;
 	if (workspace.archivedAt) {
 		return {
 			error: "Restore this workspace before changing its modules.",

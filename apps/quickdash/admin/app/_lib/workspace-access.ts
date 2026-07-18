@@ -1,5 +1,16 @@
-import { and, db, eq, isNull, resolveWorkspaceRole } from "@quickengine/db";
-import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
+import {
+	and,
+	db,
+	eq,
+	isNotNull,
+	isNull,
+	or,
+	resolveWorkspaceRole,
+} from "@quickengine/db";
+import {
+	quickengineOrganizationMembers,
+	quickengineWorkspaces,
+} from "@quickengine/db/schema/quickengine";
 import { getWorkspaceModules } from "@quickengine/module-registry";
 
 export type QuickDashWorkspace = {
@@ -121,10 +132,23 @@ export async function listAccessibleWorkspaces(
 			businessType: quickengineWorkspaces.businessType,
 		})
 		.from(quickengineWorkspaces)
+		.leftJoin(
+			quickengineOrganizationMembers,
+			and(
+				eq(
+					quickengineOrganizationMembers.organizationId,
+					quickengineWorkspaces.organizationId,
+				),
+				eq(quickengineOrganizationMembers.userId, userId),
+			),
+		)
 		.where(
 			and(
-				eq(quickengineWorkspaces.ownerId, userId),
 				isNull(quickengineWorkspaces.archivedAt),
+				or(
+					eq(quickengineWorkspaces.ownerId, userId),
+					isNotNull(quickengineOrganizationMembers.userId),
+				),
 			),
 		)
 		.orderBy(quickengineWorkspaces.createdAt);

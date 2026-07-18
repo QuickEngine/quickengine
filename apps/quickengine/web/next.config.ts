@@ -15,6 +15,15 @@ const nextConfig: NextConfig = {
 	// Without this, Next blocks cross-origin dev resources (HMR + client bundle),
 	// so the page never hydrates and nothing interactive works.
 	allowedDevOrigins: ["192.168.3.155"],
+	// Rewrites barrel imports (icon sets, radix) to direct per-module imports so
+	// dev/compile only touches the icons actually used. Biggest local-dev speed lever.
+	experimental: {
+		optimizePackageImports: [
+			"@phosphor-icons/react",
+			"lucide-react",
+			"radix-ui",
+		],
+	},
 };
 
 // Wrap with Sentry — uploads source maps at build (when org/project/token are

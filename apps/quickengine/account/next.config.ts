@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
 		"@quickengine/types",
 		"@quickengine/ui",
 	],
+	// Rewrites barrel imports (icon sets, radix) to direct per-module imports so
+	// dev/compile only touches the icons actually used. Biggest local-dev speed lever.
+	experimental: {
+		optimizePackageImports: [
+			"@phosphor-icons/react",
+			"lucide-react",
+			"radix-ui",
+		],
+	},
 };
 
 // Wrap with Sentry — uploads source maps at build (when org/project/token are

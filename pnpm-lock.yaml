@@ -675,6 +675,9 @@ importers:
       '@quickengine/mod-quotes-estimates':
         specifier: workspace:*
         version: link:../modules/quotes-estimates
+      '@quickengine/mod-shipping':
+        specifier: workspace:*
+        version: link:../modules/shipping
       '@quickengine/mod-time-tracking':
         specifier: workspace:*
         version: link:../modules/time-tracking

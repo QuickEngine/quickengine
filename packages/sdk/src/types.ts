@@ -57,3 +57,19 @@ export type QuickApiErrorBody = {
 	message?: string;
 	details?: unknown;
 };
+
+/**
+ * A published catalog item as returned by `GET /v1/catalog`. This is the public
+ * storefront shape — internal columns (status, workspace, timestamps) are not exposed.
+ */
+export type QuickCatalogItem = {
+	id: string;
+	name: string;
+	description: string | null;
+	type: "physical" | "digital" | "service" | "package" | "rental";
+	sku: string | null;
+	pricingModel: "fixed" | "starting_at" | "hourly" | "custom_quote" | "free";
+	priceCents: number | null;
+	currency: string;
+	unitLabel: string | null;
+};

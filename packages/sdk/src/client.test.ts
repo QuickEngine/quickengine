@@ -6,7 +6,7 @@ describe("Quick.js client", () => {
 		const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
 			new Response(JSON.stringify({ items: [] }), {
 				status: 200,
-				headers: { "X-Request-Id": "req_123" },
+				headers: { "Request-Id": "req_123" },
 			}),
 		);
 		const quick = createQuickServer({
@@ -19,7 +19,7 @@ describe("Quick.js client", () => {
 		const result = await quick.request<{ items: unknown[] }>("/clients", {
 			headers: {
 				Authorization: "Bearer attacker",
-				"X-QuickEngine-Workspace": "another_workspace",
+				"QuickEngine-Workspace": "another_workspace",
 			},
 		});
 
@@ -28,7 +28,7 @@ describe("Quick.js client", () => {
 		expect(url).toBe("https://api.quickengine.test/v1/clients");
 		const headers = new Headers(init?.headers);
 		expect(headers.get("Authorization")).toBe("Bearer secret_123");
-		expect(headers.get("X-QuickEngine-Workspace")).toBe("workspace_123");
+		expect(headers.get("QuickEngine-Workspace")).toBe("workspace_123");
 	});
 
 	it("uses publishable keys without exposing a bearer credential", async () => {
@@ -51,7 +51,7 @@ describe("Quick.js client", () => {
 		const [, init] = fetcher.mock.calls[0] ?? [];
 		const headers = new Headers(init?.headers);
 		expect(headers.get("Authorization")).toBeNull();
-		expect(headers.get("X-QuickEngine-Publishable-Key")).toBe("pk_123");
+		expect(headers.get("QuickEngine-Publishable-Key")).toBe("pk_123");
 		expect(headers.get("Idempotency-Key")).toBe("event_123");
 		expect(init?.body).toBe(JSON.stringify({ name: "page_view" }));
 	});
@@ -83,7 +83,7 @@ describe("Quick.js client", () => {
 				{
 					status: 403,
 					statusText: "Forbidden",
-					headers: { "X-Request-Id": "req_denied" },
+					headers: { "Request-Id": "req_denied" },
 				},
 			),
 		);

@@ -40,12 +40,15 @@ const MODULE_PAGES: Record<
 	"time-tracking": () => import("../../_modules/time-tracking-page"),
 	files: () => import("../../_modules/files-page"),
 	"quotes-estimates": () => import("../../_modules/quotes-page"),
+	"reporting-analytics": () => import("../../_modules/reporting-page"),
 };
 
 export default async function Page({
 	params,
+	searchParams,
 }: {
 	params: Promise<{ workspace: string; module: string }>;
+	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
 	const session = await getSession(await headers());
 	if (!session) {
@@ -69,6 +72,7 @@ export default async function Page({
 			workspaceId: access.workspace.id,
 			settings: enabledModule.settings,
 			today: new Date(),
+			searchParams,
 		});
 	} else {
 		content = (

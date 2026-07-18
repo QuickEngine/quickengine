@@ -81,6 +81,9 @@ importers:
       '@quickengine/mod-quotes-estimates':
         specifier: workspace:*
         version: link:../../../packages/modules/quotes-estimates
+      '@quickengine/mod-reporting-analytics':
+        specifier: workspace:*
+        version: link:../../../packages/modules/reporting-analytics
       '@quickengine/mod-shipping':
         specifier: workspace:*
         version: link:../../../packages/modules/shipping

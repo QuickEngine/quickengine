@@ -1,0 +1,22 @@
+{
+	"name": "@quickengine/integration-tests",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@quickengine/db": "workspace:*",
+		"@quickengine/mod-fulfillment": "workspace:*",
+		"@quickengine/mod-invoicing": "workspace:*",
+		"@quickengine/mod-payments": "workspace:*",
+		"@quickengine/mod-quotes-estimates": "workspace:*"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"typescript": "^5",
+		"vitest": "^3.2.6"
+	}
+}

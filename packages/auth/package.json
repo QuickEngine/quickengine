@@ -7,6 +7,7 @@
 		".": "./src/index.ts",
 		"./api-keys": "./src/api-keys.ts",
 		"./client": "./src/client.ts",
+		"./rbac": "./src/rbac.ts",
 		"./server": "./src/server.ts"
 	},
 	"scripts": {

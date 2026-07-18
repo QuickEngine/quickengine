@@ -1,6 +1,9 @@
 import { getSession } from "@quickengine/auth/server";
-import { db, desc, eq } from "@quickengine/db";
-import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
+import { and, db, desc, eq, isNotNull, or } from "@quickengine/db";
+import {
+	quickengineOrganizationMembers,
+	quickengineWorkspaces,
+} from "@quickengine/db/schema/quickengine";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { WorkspacesToolbar } from "./workspaces-toolbar";
@@ -15,6 +18,9 @@ export default async function Page() {
 		return null; // The parent account layout owns the unauthenticated redirect.
 	}
 
+	// Show workspaces the user owns OR is an org member of. The left join matches at most one
+	// membership row per workspace (unique per org+user), so no duplicates; the owner branch
+	// covers legacy rows without an organization membership.
 	const rows = await db
 		.select({
 			id: quickengineWorkspaces.id,
@@ -26,7 +32,22 @@ export default async function Page() {
 			createdAt: quickengineWorkspaces.createdAt,
 		})
 		.from(quickengineWorkspaces)
-		.where(eq(quickengineWorkspaces.ownerId, session.user.id))
+		.leftJoin(
+			quickengineOrganizationMembers,
+			and(
+				eq(
+					quickengineOrganizationMembers.organizationId,
+					quickengineWorkspaces.organizationId,
+				),
+				eq(quickengineOrganizationMembers.userId, session.user.id),
+			),
+		)
+		.where(
+			or(
+				eq(quickengineWorkspaces.ownerId, session.user.id),
+				isNotNull(quickengineOrganizationMembers.userId),
+			),
+		)
 		.orderBy(desc(quickengineWorkspaces.createdAt));
 
 	const workspaces = rows.map((workspace) => ({

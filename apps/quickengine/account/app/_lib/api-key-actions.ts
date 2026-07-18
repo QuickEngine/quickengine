@@ -6,11 +6,10 @@ import {
 	revokeApiKey,
 } from "@quickengine/auth/api-keys";
 import { getSession } from "@quickengine/auth/server";
-import { and, db, eq } from "@quickengine/db";
 import type { QuickEngineApiKeyType } from "@quickengine/db/schema/quickengine";
-import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { authorizeWorkspace } from "./workspace-authz";
 
 export type CreatedApiKey = {
 	name: string;
@@ -44,29 +43,6 @@ const EXPIRY_DAYS: Record<string, number | null> = {
 
 const isKnownCapability = (value: string): boolean =>
 	(API_CAPABILITIES as readonly string[]).includes(value);
-
-// Owner-only workspace lookup, mirroring the other workspace actions.
-async function ownedWorkspace(
-	userId: string,
-	workspaceId: string,
-	slug: string,
-) {
-	const [workspace] = await db
-		.select({
-			id: quickengineWorkspaces.id,
-			archivedAt: quickengineWorkspaces.archivedAt,
-		})
-		.from(quickengineWorkspaces)
-		.where(
-			and(
-				eq(quickengineWorkspaces.id, workspaceId),
-				eq(quickengineWorkspaces.slug, slug),
-				eq(quickengineWorkspaces.ownerId, userId),
-			),
-		)
-		.limit(1);
-	return workspace ?? null;
-}
 
 export async function createApiKeyAction(
 	_previous: CreateApiKeyState,
@@ -104,9 +80,14 @@ export async function createApiKeyAction(
 		return { error: "Select at least one capability.", created: null };
 	}
 
-	const workspace = await ownedWorkspace(session.user.id, workspaceId, slug);
-	if (!workspace) return { error: "Workspace not found.", created: null };
-	if (workspace.archivedAt) {
+	const authz = await authorizeWorkspace(
+		session.user.id,
+		workspaceId,
+		slug,
+		"apikeys.manage",
+	);
+	if (!authz.ok) return { error: authz.message, created: null };
+	if (authz.workspace.archivedAt) {
 		return {
 			error: "Restore this workspace before creating API keys.",
 			created: null,
@@ -120,7 +101,7 @@ export async function createApiKeyAction(
 
 	// issueApiKey clamps capabilities to what the key type may hold and stores only a hash.
 	const issued = await issueApiKey({
-		workspaceId: workspace.id,
+		workspaceId: authz.workspace.id,
 		createdByUserId: session.user.id,
 		name,
 		type,
@@ -148,10 +129,15 @@ export async function revokeApiKeyAction(
 	const slug = String(formData.get("slug") ?? "");
 	const keyId = String(formData.get("keyId") ?? "");
 
-	const workspace = await ownedWorkspace(session.user.id, workspaceId, slug);
-	if (!workspace) return { error: "Workspace not found." };
+	const authz = await authorizeWorkspace(
+		session.user.id,
+		workspaceId,
+		slug,
+		"apikeys.manage",
+	);
+	if (!authz.ok) return { error: authz.message };
 
-	const revoked = await revokeApiKey(workspace.id, keyId);
+	const revoked = await revokeApiKey(authz.workspace.id, keyId);
 	if (!revoked) {
 		return { error: "That key was already revoked or no longer exists." };
 	}

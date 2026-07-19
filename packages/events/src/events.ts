@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createInMemoryJobQueue, type JobQueue } from "@quickengine/jobs";
+import { getJobQueue, type JobQueue } from "@quickengine/jobs";
 import {
 	createNoopRealtimeProvider,
 	type RealtimeProvider,
@@ -147,16 +147,17 @@ export function createEventBus(options: CreateEventBusOptions): EventBus {
 	};
 }
 
-// The process-wide default bus. Providers are the no-op realtime + in-memory queue
-// for now; the Pusher and Inngest branches swap these in (behind env) without touching
-// any producer, since modules only ever see `emit()`.
+// The process-wide default bus. The durable side is now the env-selected job queue
+// (Inngest when configured, in-memory offline otherwise); realtime is still the no-op
+// provider until the Pusher branch. Providers swap in behind these without touching any
+// producer, since modules only ever see `emit()`.
 let defaultBus: EventBus | undefined;
 
 export function getEventBus(): EventBus {
 	if (!defaultBus) {
 		defaultBus = createEventBus({
 			realtime: createNoopRealtimeProvider(),
-			jobs: createInMemoryJobQueue(),
+			jobs: getJobQueue(),
 		});
 	}
 	return defaultBus;

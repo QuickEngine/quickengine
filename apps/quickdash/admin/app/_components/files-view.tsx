@@ -11,7 +11,7 @@ import { Button } from "@quickengine/ui/components/ui/button";
 import { Input } from "@quickengine/ui/components/ui/input";
 import { NativeSelect } from "@quickengine/ui/components/ui/native-select";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
 	createFolderAction,
 	downloadFileAction,
@@ -48,11 +48,20 @@ function Form({
 	children: React.ReactNode;
 }) {
 	const [state, formAction] = useActionState(action, INITIAL);
+	// A per-submit idempotency key so a double-fire creates only one folder / stores one copy
+	// of an upload; a fresh key is minted after each success.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
+	useEffect(() => {
+		if (state.completionId) setIdempotencyKey(crypto.randomUUID());
+	}, [state.completionId]);
 	return (
 		<form action={formAction} className="flex flex-wrap items-center gap-2">
 			{Object.entries(hidden).map(([name, value]) => (
 				<input key={name} type="hidden" name={name} value={value} />
 			))}
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			{children}
 			{state.error && (
 				<span className="text-destructive text-xs">{state.error}</span>

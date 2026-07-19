@@ -345,9 +345,16 @@ function ContractEditor({
 		contract ? updateContractAction : createContractAction,
 		INITIAL_STATE,
 	);
+	// A per-submit idempotency key so a double-fire creates only one agreement; a fresh key
+	// is minted after each success. Sent only when creating — an update is naturally
+	// idempotent (same contractId + input → same result).
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [router, state.completionId]);
@@ -357,8 +364,10 @@ function ContractEditor({
 			<DialogContent className="sm:max-w-3xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{contract && (
+					{contract ? (
 						<input type="hidden" name="contractId" value={contract.id} />
+					) : (
+						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					)}
 					<DialogHeader>
 						<DialogTitle>

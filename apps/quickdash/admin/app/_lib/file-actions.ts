@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	createFileDocument,
 	createFileDownloadAccess,
@@ -64,12 +65,23 @@ export async function createFolderAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return fail(authorization.error);
+
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	const idempotencyScope = `files.folder.create:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
+		revalidatePath(`/${workspaceId}/files`);
+		return ok();
+	}
+
 	try {
 		await createFileFolder(workspaceId, {
 			name: String(formData.get("name") ?? ""),
 			parentId: String(formData.get("parentId") ?? "") || null,
 		});
 	} catch {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return fail("Check the folder name and parent.");
 	}
 	revalidatePath(`/${workspaceId}/files`);
@@ -85,6 +97,17 @@ export async function uploadFileAction(
 	const file = formData.get("file");
 	if (!(file instanceof File) || file.size === 0)
 		return fail("Choose a nonempty file.");
+
+	// Claimed after the file check so a missing file doesn't burn the key. A duplicate upload
+	// is the one create that costs real infrastructure — it stores the bytes twice and meters
+	// the org's storage allowance twice — so this guard is doing more than deduping a row.
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	const idempotencyScope = `files.upload:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
+		revalidatePath(`/${workspaceId}/files`);
+		return ok();
+	}
+
 	try {
 		await createFileDocument(
 			workspaceId,
@@ -107,6 +130,9 @@ export async function uploadFileAction(
 			provider(),
 		);
 	} catch {
+		// Storage/verification failure is one of the likeliest failures in the app, and the
+		// retry must actually upload — so the key goes back.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return fail(
 			"The file could not be verified and stored. Check its size, type, and storage configuration.",
 		);

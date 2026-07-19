@@ -112,11 +112,15 @@ function CreateDialog({
 	const [open, setOpen] = useState(false);
 	const [startsLocal, setStartsLocal] = useState("");
 	const [endsLocal, setEndsLocal] = useState("");
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	const [state, action] = useActionState(createBookingAction, INITIAL);
 	const router = useRouter();
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [state.completionId, router]);
@@ -140,6 +144,7 @@ function CreateDialog({
 			<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<input
 						type="hidden"
 						name="startsAt"

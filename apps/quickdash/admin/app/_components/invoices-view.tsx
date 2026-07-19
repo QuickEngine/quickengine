@@ -307,6 +307,9 @@ function InvoiceEditor({
 }) {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	const [state, action] = useActionState(
 		invoice ? updateInvoiceAction : createInvoiceAction,
 		INITIAL_STATE,
@@ -314,6 +317,7 @@ function InvoiceEditor({
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [router, state.completionId]);
@@ -323,8 +327,10 @@ function InvoiceEditor({
 			<DialogContent className="sm:max-w-3xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{invoice && (
+					{invoice ? (
 						<input type="hidden" name="invoiceId" value={invoice.id} />
+					) : (
+						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					)}
 					<DialogHeader>
 						<DialogTitle>

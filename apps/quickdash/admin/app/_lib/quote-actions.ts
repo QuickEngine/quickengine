@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey } from "@quickengine/db";
 import {
 	acceptQuoteEstimate,
 	convertQuoteEstimateToInvoice,
@@ -165,6 +166,15 @@ export async function createQuoteAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	if (
+		!(await claimIdempotencyKey(idempotencyKey, `quotes.create:${workspaceId}`))
+	) {
+		revalidatePath(`/${workspaceId}/quotes-estimates`);
+		return success();
+	}
+
 	try {
 		const input = readQuoteInput(formData);
 		await createQuoteEstimate(workspaceId, {

@@ -45,6 +45,7 @@ async function authorize(workspaceId: string) {
 	return {
 		ok: true,
 		access,
+		actorId: session.user.id,
 		settings: clientRecordsSettingsSchema.parse(module.settings),
 	} as const;
 }
@@ -81,6 +82,7 @@ export async function createClientRecordAction(
 		await createClientRecord(
 			workspaceId,
 			inputFrom(formData, authorization.settings.fields),
+			{ actorId: authorization.actorId },
 		);
 	} catch (error) {
 		return failure(friendlyFailure(error));
@@ -106,6 +108,7 @@ export async function updateClientRecordAction(
 			workspaceId,
 			recordId,
 			inputFrom(formData, authorization.settings.fields),
+			{ actorId: authorization.actorId },
 		);
 		if (!updated) {
 			return failure("This client no longer exists in this workspace.");
@@ -130,7 +133,9 @@ export async function deleteClientRecordAction(
 	}
 
 	try {
-		const deleted = await deleteClientRecord(workspaceId, recordId);
+		const deleted = await deleteClientRecord(workspaceId, recordId, {
+			actorId: authorization.actorId,
+		});
 		if (!deleted) {
 			return failure("This client no longer exists in this workspace.");
 		}

@@ -674,6 +674,25 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/events:
+    dependencies:
+      '@quickengine/jobs':
+        specifier: workspace:*
+        version: link:../jobs
+      '@quickengine/realtime':
+        specifier: workspace:*
+        version: link:../realtime
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)
+
   packages/integration-tests:
     dependencies:
       '@quickengine/auth':
@@ -818,6 +837,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
+      '@quickengine/events':
+        specifier: workspace:*
+        version: link:../../events
       zod:
         specifier: ^4.3.6
         version: 4.4.3

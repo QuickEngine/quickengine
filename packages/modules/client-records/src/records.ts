@@ -5,7 +5,12 @@ import {
 	eq,
 	quickengineWorkspaces,
 } from "@quickengine/db";
+import { getEventBus } from "@quickengine/events";
 import { z } from "zod";
+
+// The actor (user id or api-key id) behind a write, threaded from the caller so the
+// emitted domain event — and therefore the audit log — can answer "who did it".
+export type WriteContext = { actorId?: string };
 
 const optionalText = (maximum: number) =>
 	z.preprocess(
@@ -46,6 +51,7 @@ export type ClientRecordPatch = z.input<typeof clientRecordPatchSchema>;
 export async function createClientRecord(
 	workspaceId: string,
 	input: ClientRecordInput,
+	context?: WriteContext,
 ) {
 	const values = clientRecordInputSchema.parse(input);
 	const [workspace] = await db
@@ -69,6 +75,15 @@ export async function createClientRecord(
 			fields: values.fields ?? {},
 		})
 		.returning();
+
+	// Post-commit domain event. Best-effort by contract (emit never throws), so a
+	// realtime/job hiccup can't fail a persisted write.
+	await getEventBus().emit({
+		workspaceId,
+		name: "client_records.record.created",
+		recordId: record.id,
+		actorId: context?.actorId,
+	});
 	return record;
 }
 
@@ -95,6 +110,7 @@ export async function updateClientRecord(
 	workspaceId: string,
 	id: string,
 	patch: ClientRecordPatch,
+	context?: WriteContext,
 ) {
 	const values = clientRecordPatchSchema.parse(patch);
 	const [record] = await db
@@ -104,15 +120,39 @@ export async function updateClientRecord(
 			and(eq(clientRecords.workspaceId, workspaceId), eq(clientRecords.id, id)),
 		)
 		.returning();
+
+	// Only emit when a row in this workspace actually changed.
+	if (record) {
+		await getEventBus().emit({
+			workspaceId,
+			name: "client_records.record.updated",
+			recordId: record.id,
+			actorId: context?.actorId,
+		});
+	}
 	return record;
 }
 
-export async function deleteClientRecord(workspaceId: string, id: string) {
+export async function deleteClientRecord(
+	workspaceId: string,
+	id: string,
+	context?: WriteContext,
+) {
 	const [record] = await db
 		.delete(clientRecords)
 		.where(
 			and(eq(clientRecords.workspaceId, workspaceId), eq(clientRecords.id, id)),
 		)
 		.returning({ id: clientRecords.id });
+
+	// Only emit when a row in this workspace was actually removed.
+	if (record) {
+		await getEventBus().emit({
+			workspaceId,
+			name: "client_records.record.deleted",
+			recordId: record.id,
+			actorId: context?.actorId,
+		});
+	}
 	return record;
 }

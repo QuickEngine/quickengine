@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ModuleIcon } from "../_components/module-icon";
+import { WorkspaceActivityFeed } from "../_components/workspace-activity-feed";
 import { getModuleNavigation } from "../_lib/module-navigation";
 import { requireWorkspaceAccess } from "../_lib/workspace-access";
 
@@ -68,6 +69,7 @@ export default async function Page({
 					})}
 				</div>
 			</section>
+			<WorkspaceActivityFeed workspaceId={workspaceId} />
 		</main>
 	);
 }

@@ -18,6 +18,8 @@ export type CreateWorkspaceInput = {
 	businessType: string;
 	/** Only the first-workspace onboarding path may set this. */
 	completeOnboarding?: boolean;
+	/** The org to create the workspace in. Defaults to the user's personal org (onboarding). */
+	organizationId?: string;
 };
 
 export type CreatedWorkspace = {
@@ -40,7 +42,9 @@ export async function createWorkspaceForUser(
 	const businessType = normalizeBusinessType(input.businessType);
 	const foundation = resolveFoundationModules();
 	const moduleIds = foundation.map((module) => module.id);
-	const organizationId = await ensurePersonalOrg(input.userId, input.userLabel);
+	const organizationId =
+		input.organizationId ??
+		(await ensurePersonalOrg(input.userId, input.userLabel));
 
 	return db.transaction(async (tx) => {
 		// Lock the owning user: slug generation and first-workspace idempotency must

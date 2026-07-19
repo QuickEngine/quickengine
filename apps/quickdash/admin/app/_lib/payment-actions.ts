@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey } from "@quickengine/db";
 import {
 	getPayment,
 	paymentsSettingsSchema,
@@ -64,6 +65,21 @@ export async function recordOfflinePaymentAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+
+	// Idempotency: a double-fire or retry can't record the same payment twice
+	// (a duplicate payment would mis-count money against the invoice).
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	if (
+		!(await claimIdempotencyKey(
+			idempotencyKey,
+			`payments.record:${workspaceId}`,
+		))
+	) {
+		revalidatePath(`/${workspaceId}/payments`);
+		revalidatePath(`/${workspaceId}/invoicing`);
+		return { error: null, completionId: crypto.randomUUID() };
+	}
+
 	try {
 		await recordPayment(workspaceId, {
 			invoiceId: String(formData.get("invoiceId") ?? "") || null,

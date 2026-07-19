@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey } from "@quickengine/db";
 import {
 	createOrder,
 	deleteOrder,
@@ -143,13 +144,24 @@ export async function saveOrderAction(
 	try {
 		const input = await orderInput(workspaceId, formData);
 		const orderId = String(formData.get("orderId") ?? "");
-		if (orderId) await updateDraftOrder(workspaceId, orderId, input);
-		else {
-			const prefix =
-				typeof authorization.settings.numberPrefix === "string"
-					? authorization.settings.numberPrefix
-					: "ORD";
-			await createOrder(workspaceId, { ...input, numberPrefix: prefix });
+		if (orderId) {
+			// Updates are naturally idempotent (same orderId + input → same result).
+			await updateDraftOrder(workspaceId, orderId, input);
+		} else {
+			// Guard create against double-fire: only the first request with this key creates.
+			const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+			if (
+				await claimIdempotencyKey(
+					idempotencyKey,
+					`orders.create:${workspaceId}`,
+				)
+			) {
+				const prefix =
+					typeof authorization.settings.numberPrefix === "string"
+						? authorization.settings.numberPrefix
+						: "ORD";
+				await createOrder(workspaceId, { ...input, numberPrefix: prefix });
+			}
 		}
 	} catch (error) {
 		return failure(message(error));

@@ -117,6 +117,10 @@ function RecordPaymentDialog({
 	const [open, setOpen] = useState(false);
 	const [invoiceId, setInvoiceId] = useState("");
 	const [amount, setAmount] = useState("");
+	// Per-submit idempotency key so a double-fire records the payment once; fresh after success.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	const [state, action] = useActionState(
 		recordOfflinePaymentAction,
 		INITIAL_STATE,
@@ -127,6 +131,7 @@ function RecordPaymentDialog({
 		setOpen(false);
 		setInvoiceId("");
 		setAmount("");
+		setIdempotencyKey(crypto.randomUUID());
 		router.refresh();
 	}, [state.completionId, router]);
 	const remaining = selected
@@ -152,6 +157,7 @@ function RecordPaymentDialog({
 			<DialogContent className="sm:max-w-xl">
 				<form action={action} className="space-y-5">
 					<input type="hidden" name="workspaceId" value={workspaceId} />
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>Record an offline payment</DialogTitle>
 						<DialogDescription>

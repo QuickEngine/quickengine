@@ -36,7 +36,7 @@ const mainNav: NavItem[] = [
 	{ href: "/revenue", label: "Revenue", icon: CurrencyDollar },
 	{ href: "/analytics", label: "Analytics", icon: ChartLine },
 	{ href: "/team", label: "Team", icon: UsersThree },
-	{ href: "/integrations", label: "Integrations", icon: PuzzlePiece },
+	{ href: "/integrations", label: "Products", icon: PuzzlePiece },
 	{ href: "/activity", label: "Activity", icon: Pulse },
 ];
 

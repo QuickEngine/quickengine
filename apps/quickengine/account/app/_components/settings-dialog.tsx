@@ -33,6 +33,7 @@ import {
 } from "@quickengine/ui/components/ui/sidebar";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { ActiveSessions } from "./active-sessions";
 import { BillingSettings } from "./billing-settings";
 import { ProfileSettings } from "./profile-settings";
 import { SecuritySettings } from "./security-settings";
@@ -113,7 +114,10 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
 							{active === "Profile" ? (
 								<ProfileSettings />
 							) : active === "Security" ? (
-								<SecuritySettings />
+								<div className="flex flex-col gap-8">
+									<SecuritySettings />
+									<ActiveSessions />
+								</div>
 							) : active === "Billing" ? (
 								<BillingSettings />
 							) : active === "Appearance" ? (

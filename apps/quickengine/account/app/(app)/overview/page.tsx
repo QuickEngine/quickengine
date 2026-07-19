@@ -1,71 +1,135 @@
+import { getSession } from "@quickengine/auth/server";
+import {
+	and,
+	db,
+	desc,
+	eq,
+	isNull,
+	listOrganizationInvitations,
+	listOrganizationMembers,
+	or,
+} from "@quickengine/db";
+import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import Link from "next/link";
 import { Panel, PanelLabel, StatCard } from "../../_components/surface";
+import { resolveActiveOrg } from "../../_lib/active-org";
+import { getBusinessType } from "../../_lib/workspace-catalog";
 
 export const metadata: Metadata = { title: "Overview" };
 
-// Placeholder rollups — the umbrella view across every workspace (read-only).
-// Real aggregates (and real series) wire in once workspaces + billing connect.
-const stats = [
-	{
-		label: "Total revenue",
-		value: "$48,250",
-		delta: { text: "12.4%", dir: "up" as const },
-		hint: "vs last cycle",
-		data: [18, 22, 20, 27, 25, 33, 41],
-	},
-	{
-		label: "Active workspaces",
-		value: "3",
-		delta: { text: "1", dir: "up" as const },
-		hint: "of 5 on your plan",
-		data: [1, 1, 2, 2, 2, 3, 3],
-	},
-	{
-		label: "Actions this cycle",
-		value: "128.4K",
-		delta: { text: "8.1%", dir: "up" as const },
-		hint: "64% of 200K",
-		data: [70, 82, 96, 90, 108, 120, 128],
-	},
-	{
-		label: "Seats used",
-		value: "7",
-		delta: { text: "1", dir: "down" as const },
-		hint: "2 pending invites",
-		data: [9, 9, 8, 8, 7, 7, 7],
-	},
-];
+// The cross-workspace umbrella for the active organization (read-only). Aggregates are the
+// honest, cheap ones — structure and configuration across the org's workspaces. Money/usage
+// roll-ups and an activity feed wire in with the billing, usage, and audit-log slices.
+export default async function Page() {
+	const session = await getSession(await headers());
+	if (!session) return null;
+	const active = await resolveActiveOrg(session.user.id);
+	if (!active) return null;
 
-export default function Page() {
+	const scope = active.isPersonal
+		? or(
+				eq(quickengineWorkspaces.organizationId, active.id),
+				and(
+					eq(quickengineWorkspaces.ownerId, session.user.id),
+					isNull(quickengineWorkspaces.organizationId),
+				),
+			)
+		: eq(quickengineWorkspaces.organizationId, active.id);
+
+	const [workspaces, members, invitations] = await Promise.all([
+		db
+			.select({
+				id: quickengineWorkspaces.id,
+				name: quickengineWorkspaces.name,
+				slug: quickengineWorkspaces.slug,
+				businessType: quickengineWorkspaces.businessType,
+				modules: quickengineWorkspaces.modules,
+				archivedAt: quickengineWorkspaces.archivedAt,
+			})
+			.from(quickengineWorkspaces)
+			.where(scope)
+			.orderBy(desc(quickengineWorkspaces.createdAt)),
+		listOrganizationMembers(active.id),
+		listOrganizationInvitations(active.id),
+	]);
+
+	const activeWorkspaces = workspaces.filter(
+		(workspace) => !workspace.archivedAt,
+	);
+	const modulesEnabled = activeWorkspaces.reduce(
+		(sum, workspace) => sum + workspace.modules.length,
+		0,
+	);
+	const pending = invitations.filter(
+		(invite) => invite.status === "pending",
+	).length;
+
 	return (
 		<div className="space-y-4 p-6">
 			<section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				{stats.map(({ label, value, hint, delta, data }) => (
-					<StatCard
-						key={label}
-						label={label}
-						value={value}
-						hint={hint}
-						delta={delta}
-						data={data}
-					/>
-				))}
+				<StatCard
+					label="Active workspaces"
+					value={String(activeWorkspaces.length)}
+					hint={
+						workspaces.length > activeWorkspaces.length
+							? `${workspaces.length} total incl. archived`
+							: "in this organization"
+					}
+				/>
+				<StatCard
+					label="Members"
+					value={String(members.length)}
+					hint="in this organization"
+				/>
+				<StatCard
+					label="Pending invites"
+					value={String(pending)}
+					hint="awaiting acceptance"
+				/>
+				<StatCard
+					label="Modules enabled"
+					value={String(modulesEnabled)}
+					hint={`across ${activeWorkspaces.length} workspace${
+						activeWorkspaces.length === 1 ? "" : "s"
+					}`}
+				/>
 			</section>
 
-			<section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-				<Panel className="lg:col-span-2">
-					<PanelLabel>Revenue across workspaces</PanelLabel>
-					<div className="flex h-56 items-center justify-center text-muted-foreground text-sm">
-						Chart coming soon
+			<Panel>
+				<PanelLabel>Workspaces</PanelLabel>
+				{workspaces.length === 0 ? (
+					<p className="mt-3 text-muted-foreground text-sm">
+						No workspaces in this organization yet.
+					</p>
+				) : (
+					<div className="mt-3 divide-y divide-foreground/[0.06]">
+						{workspaces.map((workspace) => {
+							const type = getBusinessType(workspace.businessType);
+							const moduleCount = workspace.modules.length;
+							return (
+								<Link
+									key={workspace.id}
+									href={`/workspaces/${workspace.slug}`}
+									className="flex items-center justify-between py-3 text-sm transition-opacity hover:opacity-70"
+								>
+									<div>
+										<span className="text-foreground">{workspace.name}</span>
+										<span className="ml-2 text-muted-foreground text-xs">
+											{type?.name ?? workspace.businessType}
+											{workspace.archivedAt ? " · archived" : ""}
+										</span>
+									</div>
+									<span className="text-muted-foreground text-xs">
+										{moduleCount} module{moduleCount === 1 ? "" : "s"}
+									</span>
+								</Link>
+							);
+						})}
 					</div>
-				</Panel>
-				<Panel>
-					<PanelLabel>Recent activity</PanelLabel>
-					<div className="flex h-56 items-center justify-center text-muted-foreground text-sm">
-						Nothing yet
-					</div>
-				</Panel>
-			</section>
+				)}
+			</Panel>
 		</div>
 	);
 }

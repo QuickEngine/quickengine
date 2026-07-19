@@ -182,3 +182,18 @@ export const setStatusForCustomer = async (
 /** Read a user's current subscription (for UI / entitlement checks). */
 export const getSubscriptionForUser = async (userId: string) =>
 	firstRowForUser(userId);
+
+/**
+ * Read an organization's current subscription. Billing is org-scoped — the personal org is
+ * an individual's billing entity, a shared org is a team's — so this is the read the billing
+ * UI and entitlement checks use. The checkout/webhook write-path is being migrated from
+ * user-scope to org-scope alongside this; until it is, an org with no row reads as `free`.
+ */
+export const getSubscriptionForOrg = async (organizationId: string) => {
+	const rows = await db
+		.select()
+		.from(quickengineSubscriptions)
+		.where(eq(quickengineSubscriptions.organizationId, organizationId))
+		.limit(1);
+	return rows[0];
+};

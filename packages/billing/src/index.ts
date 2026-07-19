@@ -24,6 +24,7 @@ export {
 export { getStripe, isStripeConfigured } from "./stripe";
 export {
 	findOrCreateStripeCustomer,
+	getSubscriptionForOrg,
 	getSubscriptionForUser,
 	markSubscriptionCanceled,
 	setStatusForCustomer,

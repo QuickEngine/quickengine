@@ -36,3 +36,13 @@ export const createInMemoryJobQueue = (): JobQueue => ({
 		};
 	},
 });
+
+// Inngest client, its durable functions, and the env-based provider selector. Kept
+// below the in-memory queue so the runtime re-export cycle resolves cleanly.
+export {
+	createInngestJobQueue,
+	eventDispatch,
+	inngest,
+	inngestFunctions,
+} from "./inngest";
+export { getJobQueue, resetJobQueueForTests } from "./queue";

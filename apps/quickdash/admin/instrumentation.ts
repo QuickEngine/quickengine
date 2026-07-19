@@ -10,7 +10,14 @@ export async function register() {
 		// on event id, so this is safe even if a durable backstop is added later.
 		const { getEventBus } = await import("@quickengine/events");
 		const { recordActivity } = await import("@quickengine/db");
-		getEventBus().subscribe((event) => recordActivity(event));
+		const { configureSearchIndex, indexEventForSearch } = await import(
+			"./app/_lib/search-indexer"
+		);
+		const bus = getEventBus();
+		bus.subscribe((event) => recordActivity(event));
+		// Keep the search index in sync with committed record events (best-effort).
+		bus.subscribe((event) => indexEventForSearch(event));
+		await configureSearchIndex();
 	}
 	if (process.env.NEXT_RUNTIME === "edge") {
 		await import("./sentry.edge.config");

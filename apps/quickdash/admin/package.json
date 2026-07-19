@@ -35,6 +35,7 @@
 		"@quickengine/mod-time-tracking": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/realtime": "workspace:*",
+		"@quickengine/search": "workspace:*",
 		"@quickengine/storage": "workspace:*",
 		"@quickengine/ui": "workspace:*",
 		"@sentry/nextjs": "^10.65.0",

@@ -7,6 +7,7 @@ import {
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
+import { CommandPalette } from "../_components/command-palette";
 import { ModuleNav } from "../_components/module-nav";
 import { ProfileMenu } from "../_components/profile-menu";
 import { WorkspaceSwitcher } from "../_components/workspace-switcher";
@@ -61,11 +62,14 @@ export default async function WorkspaceLayout({
 							QuickDash workspace
 						</p>
 					</div>
-					<ProfileMenu
-						seed={session.user.id}
-						name={session.user.name ?? ""}
-						email={session.user.email}
-					/>
+					<div className="flex items-center gap-3">
+						<CommandPalette workspaceId={access.workspace.id} />
+						<ProfileMenu
+							seed={session.user.id}
+							name={session.user.name ?? ""}
+							email={session.user.email}
+						/>
+					</div>
 				</div>
 			</header>
 			<Sidebar>

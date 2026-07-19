@@ -1,4 +1,5 @@
 import { testDbClient } from "@quickengine/db/testing";
+import { type DomainEvent, getEventBus } from "@quickengine/events";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	createClientRecord,
@@ -96,5 +97,81 @@ describe("Client Records persistence", () => {
 				),
 			}),
 		).rejects.toThrow("at most 50 custom fields");
+	});
+});
+
+describe("Client Records domain events", () => {
+	// Capture whatever the module emits through the process-wide bus for the duration
+	// of a single test, then unsubscribe so the singleton doesn't leak across tests.
+	async function capture(run: () => Promise<void>): Promise<DomainEvent[]> {
+		const events: DomainEvent[] = [];
+		const unsubscribe = getEventBus().subscribe((event) => {
+			events.push(event);
+		});
+		try {
+			await run();
+		} finally {
+			unsubscribe();
+		}
+		return events;
+	}
+
+	it("emits created / updated / deleted with recordId + actor", async () => {
+		let recordId = "";
+
+		const created = await capture(async () => {
+			const record = await createClientRecord(
+				workspaceId,
+				{ name: "Event Source" },
+				{ actorId: ownerId },
+			);
+			recordId = record.id;
+		});
+		expect(created).toEqual([
+			expect.objectContaining({
+				workspaceId,
+				name: "client_records.record.created",
+				recordId,
+				actorId: ownerId,
+			}),
+		]);
+
+		const updated = await capture(async () => {
+			await updateClientRecord(
+				workspaceId,
+				recordId,
+				{ name: "Renamed" },
+				{ actorId: ownerId },
+			);
+		});
+		expect(updated).toEqual([
+			expect.objectContaining({
+				name: "client_records.record.updated",
+				recordId,
+				actorId: ownerId,
+			}),
+		]);
+
+		const deleted = await capture(async () => {
+			await deleteClientRecord(workspaceId, recordId, { actorId: ownerId });
+		});
+		expect(deleted).toEqual([
+			expect.objectContaining({
+				name: "client_records.record.deleted",
+				recordId,
+				actorId: ownerId,
+			}),
+		]);
+	});
+
+	it("does not emit when a write touches no row in the workspace", async () => {
+		const record = await createClientRecord(workspaceId, { name: "Owned" });
+
+		const events = await capture(async () => {
+			// Wrong workspace → no row updated/deleted → no event.
+			await updateClientRecord(otherWorkspaceId, record.id, { name: "Nope" });
+			await deleteClientRecord(otherWorkspaceId, record.id);
+		});
+		expect(events).toEqual([]);
 	});
 });

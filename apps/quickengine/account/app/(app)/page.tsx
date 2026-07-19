@@ -1,26 +1,38 @@
 import { getSession } from "@quickengine/auth/server";
-import { and, db, desc, eq, isNotNull, or } from "@quickengine/db";
-import {
-	quickengineOrganizationMembers,
-	quickengineWorkspaces,
-} from "@quickengine/db/schema/quickengine";
+import { and, db, desc, eq, isNull, or } from "@quickengine/db";
+import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { resolveActiveOrg } from "../_lib/active-org";
 import { WorkspacesToolbar } from "./workspaces-toolbar";
 
 export const metadata: Metadata = { title: "Workspaces" };
 
-// Workspaces is the account home — the first thing you land on. The cross-workspace
-// Overview lives at /overview.
+// Workspaces is the account home — the first thing you land on, scoped to the active
+// organization. The cross-workspace Overview lives at /overview.
 export default async function Page() {
 	const session = await getSession(await headers());
 	if (!session) {
 		return null; // The parent account layout owns the unauthenticated redirect.
 	}
 
-	// Show workspaces the user owns OR is an org member of. The left join matches at most one
-	// membership row per workspace (unique per org+user), so no duplicates; the owner branch
-	// covers legacy rows without an organization membership.
+	const active = await resolveActiveOrg(session.user.id);
+	if (!active) {
+		return <WorkspacesToolbar workspaces={[]} />;
+	}
+
+	// Workspaces in the active org. On the personal org, also include any legacy workspaces the
+	// user owns that predate the organizationId column (null org) so nothing disappears.
+	const scope = active.isPersonal
+		? or(
+				eq(quickengineWorkspaces.organizationId, active.id),
+				and(
+					eq(quickengineWorkspaces.ownerId, session.user.id),
+					isNull(quickengineWorkspaces.organizationId),
+				),
+			)
+		: eq(quickengineWorkspaces.organizationId, active.id);
+
 	const rows = await db
 		.select({
 			id: quickengineWorkspaces.id,
@@ -32,22 +44,7 @@ export default async function Page() {
 			createdAt: quickengineWorkspaces.createdAt,
 		})
 		.from(quickengineWorkspaces)
-		.leftJoin(
-			quickengineOrganizationMembers,
-			and(
-				eq(
-					quickengineOrganizationMembers.organizationId,
-					quickengineWorkspaces.organizationId,
-				),
-				eq(quickengineOrganizationMembers.userId, session.user.id),
-			),
-		)
-		.where(
-			or(
-				eq(quickengineWorkspaces.ownerId, session.user.id),
-				isNotNull(quickengineOrganizationMembers.userId),
-			),
-		)
+		.where(scope)
 		.orderBy(desc(quickengineWorkspaces.createdAt));
 
 	const workspaces = rows.map((workspace) => ({

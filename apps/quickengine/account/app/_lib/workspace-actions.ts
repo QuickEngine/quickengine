@@ -1,5 +1,6 @@
 "use server";
 
+import { can } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
 import { db, eq, fileDocuments } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
@@ -10,6 +11,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { resolveActiveOrg } from "./active-org";
 import { authorizeWorkspace } from "./workspace-authz";
 import { getBusinessType } from "./workspace-catalog";
 import { normalizeWorkspaceName } from "./workspace-input";
@@ -43,12 +45,24 @@ export async function createWorkspaceAction(
 		return { error: "Choose preset or custom configuration." };
 	}
 
+	const activeOrg = await resolveActiveOrg(session.user.id);
+	if (!activeOrg) {
+		return { error: "No active organization was found." };
+	}
+	if (!can(activeOrg.role, "workspace.manage")) {
+		return {
+			error:
+				"You do not have permission to create a workspace in this organization.",
+		};
+	}
+
 	try {
 		await createWorkspaceForUser({
 			userId: session.user.id,
 			userLabel: session.user.name ?? session.user.email,
 			name,
 			businessType,
+			organizationId: activeOrg.id,
 		});
 	} catch (error) {
 		if (error instanceof Error) {

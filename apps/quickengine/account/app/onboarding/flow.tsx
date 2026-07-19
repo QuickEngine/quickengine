@@ -14,11 +14,9 @@ import {
 	businessTypeName,
 	modulesForType,
 } from "../_lib/modules";
-import { monthlyPrice, PLANS } from "../_lib/plans";
 import { completeOnboarding } from "./actions";
-import { TwoFactorStep } from "./two-factor-step";
 
-type Step = "2fa" | "choose" | "name" | "type" | "modules" | "plan" | "success";
+type Step = "choose" | "name" | "type" | "modules" | "success";
 
 // Centered, shell-free canvas shared by every onboarding step.
 function Canvas({
@@ -58,16 +56,11 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 	);
 }
 
-export function OnboardingFlow({
-	offerTwoFactor,
-}: {
-	offerTwoFactor: boolean;
-}) {
+export function OnboardingFlow() {
 	const router = useRouter();
-	const [step, setStep] = useState<Step>(offerTwoFactor ? "2fa" : "choose");
+	const [step, setStep] = useState<Step>("choose");
 	const [typeId, setTypeId] = useState<string | null>(null);
 	const [enabled, setEnabled] = useState<Set<string>>(new Set());
-	const [annual, setAnnual] = useState(true);
 	const [businessName, setBusinessName] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
@@ -122,15 +115,6 @@ export function OnboardingFlow({
 			);
 			setSubmitting(false);
 		}
-	}
-
-	// Step 0 — Optional 2FA setup, first thing for email/password sign-ups.
-	if (step === "2fa") {
-		return (
-			<Canvas>
-				<TwoFactorStep onDone={() => setStep("choose")} />
-			</Canvas>
-		);
 	}
 
 	// Step 1 — Guided vs Manual
@@ -295,121 +279,17 @@ export function OnboardingFlow({
 
 				<button
 					type="button"
-					onClick={() => setStep("plan")}
-					className="mt-8 w-fit rounded-lg bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90"
+					disabled={submitting}
+					onClick={finish}
+					className="mt-8 w-fit rounded-lg bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
 				>
-					Continue
+					{submitting ? "Creating…" : "Create workspace"}
 				</button>
-			</Canvas>
-		);
-	}
-
-	// Step 3 — Soft upgrade (plan cards; annual-first). Payment handoff to Stripe
-	// Checkout is wired once prices/price IDs are set — for now both paths proceed.
-	if (step === "plan") {
-		return (
-			<Canvas onBack={() => setStep("modules")}>
-				<h1 className={headingClass}>Start free, or unlock more.</h1>
-				<p className="mt-3 text-muted-foreground">
-					You can run on Free forever. Upgrade any time — nothing's locked in.
-				</p>
-
-				{/* Annual-first cadence toggle */}
-				<div className="mt-6 inline-flex items-center gap-1 rounded-lg border border-foreground/10 p-1">
-					<button
-						type="button"
-						onClick={() => setAnnual(true)}
-						className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium text-sm transition-colors ${
-							annual ? "bg-foreground text-background" : "text-muted-foreground"
-						}`}
-					>
-						Annual
-						<span
-							className={`rounded-full px-1.5 py-0.5 text-[10px] ${annual ? "bg-background/15" : "bg-foreground/10"}`}
-						>
-							Save 15%
-						</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => setAnnual(false)}
-						className={`rounded-md px-3 py-1.5 font-medium text-sm transition-colors ${
-							!annual
-								? "bg-foreground text-background"
-								: "text-muted-foreground"
-						}`}
-					>
-						Monthly
-					</button>
-				</div>
-
-				<div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-					{PLANS.map((plan) => {
-						const price = monthlyPrice(plan, annual);
-						const isFree = plan.monthly === 0;
-						return (
-							<div
-								key={plan.id}
-								className={`flex flex-col rounded-xl border p-5 ${
-									plan.highlight
-										? "border-foreground/30 bg-foreground/[0.04]"
-										: "border-foreground/[0.06] bg-foreground/[0.02]"
-								}`}
-							>
-								<div className="flex items-center justify-between">
-									<span className="font-medium text-foreground">
-										{plan.name}
-									</span>
-									{plan.highlight ? (
-										<span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
-											Popular
-										</span>
-									) : null}
-								</div>
-								<div className="mt-3 flex items-baseline gap-1">
-									<span className="font-display text-3xl text-foreground tabular-nums">
-										${price}
-									</span>
-									<span className="text-muted-foreground text-sm">/mo</span>
-								</div>
-								<p className="mt-1 h-4 text-muted-foreground text-xs">
-									{!isFree && annual ? "billed annually" : " "}
-								</p>
-								<ul className="mt-4 flex-1 space-y-2">
-									{plan.features.map((f) => (
-										<li
-											key={f}
-											className="flex items-start gap-2 text-muted-foreground text-sm"
-										>
-											<Check className="mt-0.5 size-3.5 shrink-0 text-foreground" />
-											{f}
-										</li>
-									))}
-								</ul>
-								<button
-									type="button"
-									disabled={submitting}
-									onClick={finish}
-									className={`mt-5 rounded-lg px-4 py-2 font-medium text-sm transition-colors disabled:opacity-50 ${
-										isFree
-											? "border border-foreground/15 text-foreground hover:bg-foreground/5"
-											: "bg-foreground text-background hover:opacity-90"
-									}`}
-								>
-									{isFree ? "Continue on Free" : `Choose ${plan.name}`}
-								</button>
-							</div>
-						);
-					})}
-				</div>
 				{submitError ? (
 					<p role="alert" className="mt-4 text-destructive text-sm">
 						{submitError}
 					</p>
 				) : null}
-				<p className="mt-4 text-[11px] text-muted-foreground">
-					Prices are placeholders pending final pricing.
-				</p>
 			</Canvas>
 		);
 	}

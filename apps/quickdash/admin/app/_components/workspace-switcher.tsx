@@ -27,20 +27,26 @@ const ACCOUNT_URL =
 export function WorkspaceSwitcher({
 	active,
 	workspaces,
+	organizationId,
 }: {
 	active: QuickDashWorkspace;
 	workspaces: QuickDashWorkspace[];
+	organizationId: string | null;
 }) {
 	const [open, setOpen] = useState(false);
 	const router = useRouter();
 
+	// Org avatar — seeded by org id in the SAME format as QuickEngine's account switcher, so
+	// it's identical across apps and persistent across a workspace switch. Legacy workspaces
+	// with no org fall back to a stable per-workspace seed.
+	const avatarSeed = organizationId
+		? `account:${organizationId}`
+		: `workspace:${active.id}`;
+
 	return (
 		<div className="flex w-full items-center gap-2">
 			<Avatar className="size-8 shrink-0">
-				<GeneratedAvatar
-					seed={`workspace:${active.id}`}
-					className="size-full"
-				/>
+				<GeneratedAvatar seed={avatarSeed} className="size-full" />
 			</Avatar>
 			<span className="min-w-0 flex-1 truncate font-normal text-[15px]">
 				{active.name}

@@ -58,6 +58,7 @@ async function getWorkspace(
 		.select({
 			id: quickengineWorkspaces.id,
 			ownerId: quickengineWorkspaces.ownerId,
+			organizationId: quickengineWorkspaces.organizationId,
 			archivedAt: quickengineWorkspaces.archivedAt,
 		})
 		.from(quickengineWorkspaces)
@@ -233,7 +234,9 @@ export async function deleteFileFolder(workspaceId: string, id: string) {
 	});
 }
 
-async function accountStorageBytes(ownerId: string): Promise<number> {
+// Total file storage across an organization's workspaces. Billing is org-scoped, so storage
+// meters against the org — the sum of every workspace it owns.
+async function orgStorageBytes(organizationId: string): Promise<number> {
 	const [result] = await db
 		.select({
 			value: sql<string>`coalesce(sum(${fileVersions.sizeBytes}), 0)::bigint`,
@@ -245,7 +248,7 @@ async function accountStorageBytes(ownerId: string): Promise<number> {
 		)
 		.where(
 			and(
-				eq(quickengineWorkspaces.ownerId, ownerId),
+				eq(quickengineWorkspaces.organizationId, organizationId),
 				inArray(fileVersions.status, ["available", "quarantined"]),
 			),
 		);
@@ -256,23 +259,33 @@ async function accountStorageBytes(ownerId: string): Promise<number> {
 	return total;
 }
 
-export async function syncAccountFileStorageUsage(ownerId: string) {
-	const total = await accountStorageBytes(ownerId);
-	await meter({ scopeId: ownerId, meter: "storageBytes", amount: total });
+/** Recompute + meter an organization's total file storage (no-op for a legacy null-org row). */
+export async function syncOrgFileStorageUsage(
+	organizationId: string | null,
+): Promise<number> {
+	if (!organizationId) return 0;
+	const total = await orgStorageBytes(organizationId);
+	await meter({
+		scopeId: organizationId,
+		meter: "storageBytes",
+		amount: total,
+	});
 	return total;
 }
 
 async function assertStorageUploadAllowed(
-	ownerId: string,
+	organizationId: string | null,
 	incomingBytes: number,
 ) {
-	const total = await syncAccountFileStorageUsage(ownerId);
+	// A legacy workspace with no org has no org storage plan to enforce against.
+	if (!organizationId) return;
+	const total = await syncOrgFileStorageUsage(organizationId);
 	const proposedTotal = total + incomingBytes;
 	if (!Number.isSafeInteger(proposedTotal)) {
 		throw new Error("FILE_STORAGE_TOTAL_INVALID");
 	}
 	const gate = await checkAllowance({
-		scopeId: ownerId,
+		scopeId: organizationId,
 		meter: "storageBytes",
 		amount: proposedTotal,
 	});
@@ -449,7 +462,7 @@ export async function createFileDocument(
 	const document = documentInputSchema.parse(documentInput);
 	const version = fileVersionInputSchema.parse(versionInput);
 	const workspace = await getWorkspace(db, workspaceId);
-	await assertStorageUploadAllowed(workspace.ownerId, version.sizeBytes);
+	await assertStorageUploadAllowed(workspace.organizationId, version.sizeBytes);
 	const documentId = crypto.randomUUID();
 	const versionId = crypto.randomUUID();
 	await db.transaction(async (tx) => {
@@ -480,7 +493,7 @@ export async function createFileDocument(
 		provider,
 		options.quarantine ?? false,
 	);
-	await syncAccountFileStorageUsage(workspace.ownerId);
+	await syncOrgFileStorageUsage(workspace.organizationId);
 	const createdDocument = await getFileDocument(workspaceId, documentId);
 	return { document: createdDocument, version: storedVersion };
 }
@@ -495,7 +508,7 @@ export async function addFileDocumentVersion(
 ) {
 	const version = fileVersionInputSchema.parse(versionInput);
 	const workspace = await getWorkspace(db, workspaceId);
-	await assertStorageUploadAllowed(workspace.ownerId, version.sizeBytes);
+	await assertStorageUploadAllowed(workspace.organizationId, version.sizeBytes);
 	const versionId = crypto.randomUUID();
 	await db.transaction(async (tx) => {
 		const document = await getDocumentReference(tx, workspaceId, documentId);
@@ -527,7 +540,7 @@ export async function addFileDocumentVersion(
 		provider,
 		options.quarantine ?? false,
 	);
-	await syncAccountFileStorageUsage(workspace.ownerId);
+	await syncOrgFileStorageUsage(workspace.organizationId);
 	return stored;
 }
 
@@ -550,7 +563,10 @@ export async function retryFailedFileVersion(
 		)
 		.limit(1);
 	if (!candidate) throw new Error("FILE_VERSION_NOT_FOUND");
-	await assertStorageUploadAllowed(workspace.ownerId, candidate.sizeBytes);
+	await assertStorageUploadAllowed(
+		workspace.organizationId,
+		candidate.sizeBytes,
+	);
 	await db.transaction(async (tx) => {
 		const [version] = await tx
 			.select()
@@ -590,7 +606,7 @@ export async function retryFailedFileVersion(
 		provider,
 		options.quarantine ?? false,
 	);
-	await syncAccountFileStorageUsage(workspace.ownerId);
+	await syncOrgFileStorageUsage(workspace.organizationId);
 	return stored;
 }
 
@@ -874,7 +890,7 @@ export async function purgeDeletingFileDocument(
 			.returning({ id: fileDocuments.id });
 		return Boolean(removed);
 	});
-	await syncAccountFileStorageUsage(workspace.ownerId);
+	await syncOrgFileStorageUsage(workspace.organizationId);
 	return deleted;
 }
 

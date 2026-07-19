@@ -16,6 +16,7 @@
 		"@phosphor-icons/react": "^2.1.10",
 		"@quickengine/auth": "workspace:*",
 		"@quickengine/db": "workspace:*",
+		"@quickengine/events": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-contracts-esign": "workspace:*",
 		"@quickengine/mod-bookings": "workspace:*",

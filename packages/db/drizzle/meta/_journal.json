@@ -239,6 +239,13 @@
 			"when": 1784433567988,
 			"tag": "0033_sad_grim_reaper",
 			"breakpoints": true
+		},
+		{
+			"idx": 34,
+			"version": "7",
+			"when": 1784453220049,
+			"tag": "0034_right_outlaw_kid",
+			"breakpoints": true
 		}
 	]
 }

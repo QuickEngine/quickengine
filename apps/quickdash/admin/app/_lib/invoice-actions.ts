@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey } from "@quickengine/db";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	createInvoice,
 	deleteInvoice,
@@ -119,12 +119,8 @@ export async function createInvoiceAction(
 	if (!authorization.ok) return failure(authorization.error);
 
 	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	if (
-		!(await claimIdempotencyKey(
-			idempotencyKey,
-			`invoices.create:${workspaceId}`,
-		))
-	) {
+	const idempotencyScope = `invoices.create:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
 		revalidatePath(`/${workspaceId}/invoicing`);
 		return { error: null, completionId: crypto.randomUUID() };
 	}
@@ -137,6 +133,9 @@ export async function createInvoiceAction(
 			numberPrefix: authorization.settings.numberPrefix,
 		});
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/invoicing`);

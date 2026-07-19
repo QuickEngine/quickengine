@@ -6,6 +6,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **A failed create no longer swallows the user's retry (idempotency correctness).** The idempotency guard claimed its key *before* doing the work, and the create forms only mint a fresh key after a **success** — so a first attempt that failed for an ordinary reason (a mistyped payment amount, a bad invoice line, a booking that collides with another) burned the key permanently. When the user corrected the form and resubmitted, the retry carried the same key, lost the claim, and was treated as a duplicate: the dialog closed and reported success while **nothing was ever created**. Silent data loss on invoices, payments, and every other guarded create. A claim now means "this caller is doing the work", not "the work happened" — the new `releaseIdempotencyKey` gives the key back whenever the work fails, so the corrected retry goes through, while a genuine duplicate of a *successful* create stays blocked exactly as before. Wired into all six guarded paths (Client Records, Payments, Orders, Invoicing, Quotes & Estimates, Bookings). Covered by four new integration tests, including the fail-then-retry sequence that regressed. One narrower window remains and is tracked, not fixed here: two *concurrent* identical submits where the winner then fails — the loser has already returned success. Closing that requires the claim row to carry the outcome so the loser waits on it; it needs a genuine double-fire, which the client-side pending-disable already guards. No database migration is required.
+
 ### Changed
 
 - **Onboarding is shorter — removed the 2FA and plan-selection steps.** First-run onboarding no longer asks the user to set up two-factor auth or pick a billing tier; it goes straight from "what are you building" → modules → create workspace. Faster time-to-value; 2FA lives in Account → Security and upgrading lives in the dedicated `/billing/plans` page, both opt-in later. (A fuller onboarding rework is planned separately.)

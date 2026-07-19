@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey } from "@quickengine/db";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	acceptQuoteEstimate,
 	convertQuoteEstimateToInvoice,
@@ -168,9 +168,8 @@ export async function createQuoteAction(
 	if (!authorization.ok) return failure(authorization.error);
 
 	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	if (
-		!(await claimIdempotencyKey(idempotencyKey, `quotes.create:${workspaceId}`))
-	) {
+	const idempotencyScope = `quotes.create:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
 		revalidatePath(`/${workspaceId}/quotes-estimates`);
 		return success();
 	}
@@ -183,6 +182,9 @@ export async function createQuoteAction(
 			numberPrefix: prefixFor(authorization.settings, input.kind),
 		});
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/quotes-estimates`);

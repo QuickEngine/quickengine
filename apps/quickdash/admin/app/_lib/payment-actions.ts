@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey } from "@quickengine/db";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	getPayment,
 	paymentsSettingsSchema,
@@ -69,12 +69,8 @@ export async function recordOfflinePaymentAction(
 	// Idempotency: a double-fire or retry can't record the same payment twice
 	// (a duplicate payment would mis-count money against the invoice).
 	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	if (
-		!(await claimIdempotencyKey(
-			idempotencyKey,
-			`payments.record:${workspaceId}`,
-		))
-	) {
+	const idempotencyScope = `payments.record:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
 		revalidatePath(`/${workspaceId}/payments`);
 		revalidatePath(`/${workspaceId}/invoicing`);
 		return { error: null, completionId: crypto.randomUUID() };
@@ -95,6 +91,10 @@ export async function recordOfflinePaymentAction(
 			status: "succeeded",
 		});
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate. This matters most
+		// here: a mistyped amount is a routine failure, and the retry must actually record.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		if (error instanceof Error) {
 			if (error.message === "INVOICE_NOT_PAYABLE")
 				return failure("Only issued invoices can receive payments.");

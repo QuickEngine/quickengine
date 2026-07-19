@@ -1,7 +1,6 @@
 import { can } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
 import {
-	getPersonalOrg,
 	listOrganizationInvitations,
 	listOrganizationMembers,
 	resolveOrgRole,
@@ -9,7 +8,9 @@ import {
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Panel, PanelLabel, StatCard } from "../../_components/surface";
+import { resolveActiveOrg } from "../../_lib/active-org";
 import { InviteForm } from "./invite-form";
+import { RemoveMemberButton } from "./remove-member-button";
 import { RevokeInviteButton } from "./revoke-invite-button";
 
 export const metadata: Metadata = { title: "Team" };
@@ -31,7 +32,7 @@ function formatDate(value: Date): string {
 export default async function Page() {
 	const session = await getSession(await headers());
 	if (!session) return null;
-	const org = await getPersonalOrg(session.user.id);
+	const org = await resolveActiveOrg(session.user.id);
 	if (!org) return null;
 
 	const [members, invitations, role] = await Promise.all([
@@ -76,9 +77,14 @@ export default async function Page() {
 									{member.email}
 								</span>
 							</div>
-							<span className="text-muted-foreground">
-								{ROLE_LABEL[member.role] ?? member.role}
-							</span>
+							<div className="flex items-center gap-3">
+								<span className="text-muted-foreground">
+									{ROLE_LABEL[member.role] ?? member.role}
+								</span>
+								{canManage && member.role !== "owner" && (
+									<RemoveMemberButton userId={member.userId} />
+								)}
+							</div>
 						</div>
 					))}
 				</div>

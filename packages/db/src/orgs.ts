@@ -18,6 +18,65 @@ function orgSlug(name: string): string {
 	return `${base}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export type UserOrganization = {
+	id: string;
+	name: string;
+	slug: string;
+	isPersonal: boolean;
+	role: QuickEngineOrgRole;
+};
+
+/** Every org the user is a member of, personal first (it is created earliest at signup). */
+export async function listOrganizationsForUser(
+	userId: string,
+): Promise<UserOrganization[]> {
+	return db
+		.select({
+			id: quickengineOrganizations.id,
+			name: quickengineOrganizations.name,
+			slug: quickengineOrganizations.slug,
+			isPersonal: quickengineOrganizations.isPersonal,
+			role: quickengineOrganizationMembers.role,
+		})
+		.from(quickengineOrganizationMembers)
+		.innerJoin(
+			quickengineOrganizations,
+			eq(
+				quickengineOrganizations.id,
+				quickengineOrganizationMembers.organizationId,
+			),
+		)
+		.where(eq(quickengineOrganizationMembers.userId, userId))
+		.orderBy(quickengineOrganizations.createdAt);
+}
+
+/** Create a shared organization with the creator as its owner member. */
+export async function createOrganization(
+	name: string,
+	ownerId: string,
+): Promise<{ id: string; name: string; slug: string }> {
+	const trimmed = name.trim() || "Organization";
+	const [org] = await db
+		.insert(quickengineOrganizations)
+		.values({
+			name: trimmed,
+			slug: orgSlug(trimmed),
+			isPersonal: false,
+			ownerId,
+		})
+		.returning({
+			id: quickengineOrganizations.id,
+			name: quickengineOrganizations.name,
+			slug: quickengineOrganizations.slug,
+		});
+	await db.insert(quickengineOrganizationMembers).values({
+		organizationId: org.id,
+		userId: ownerId,
+		role: "owner",
+	});
+	return org;
+}
+
 /** The user's personal (auto-created solo) org, or undefined if none exists yet. */
 export async function getPersonalOrg(userId: string) {
 	const [org] = await db
@@ -91,4 +150,32 @@ export async function listOrganizationMembers(
 		)
 		.where(eq(quickengineOrganizationMembers.organizationId, organizationId))
 		.orderBy(quickengineOrganizationMembers.createdAt);
+}
+
+/**
+ * Remove a member from an org. The org owner can never be removed. Returns false if the
+ * target is the owner or is not a member.
+ */
+export async function removeOrganizationMember(
+	organizationId: string,
+	userId: string,
+): Promise<boolean> {
+	const [org] = await db
+		.select({ ownerId: quickengineOrganizations.ownerId })
+		.from(quickengineOrganizations)
+		.where(eq(quickengineOrganizations.id, organizationId))
+		.limit(1);
+	if (!org || org.ownerId === userId) {
+		return false;
+	}
+	const [removed] = await db
+		.delete(quickengineOrganizationMembers)
+		.where(
+			and(
+				eq(quickengineOrganizationMembers.organizationId, organizationId),
+				eq(quickengineOrganizationMembers.userId, userId),
+			),
+		)
+		.returning({ userId: quickengineOrganizationMembers.userId });
+	return Boolean(removed);
 }

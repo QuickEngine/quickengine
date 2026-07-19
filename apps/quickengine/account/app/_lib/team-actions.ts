@@ -5,12 +5,13 @@ import { getSession } from "@quickengine/auth/server";
 import {
 	acceptOrganizationInvitation,
 	createOrganizationInvitation,
-	getPersonalOrg,
+	removeOrganizationMember,
 	resolveOrgRole,
 	revokeOrganizationInvitation,
 } from "@quickengine/db";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { resolveActiveOrg } from "./active-org";
 
 // Roles that can be invited. "owner" is the org creator and is never handed out via invite.
 const INVITABLE_ROLES = ["admin", "member"] as const;
@@ -26,6 +27,7 @@ export type InviteMemberState = {
 
 export type RevokeInviteState = { error: string | null };
 export type AcceptInviteState = { error: string | null; success: boolean };
+export type RemoveMemberState = { error: string | null };
 
 // Resolve the caller's own org + confirm they may manage members, or return an error message.
 async function requireMemberManager(): Promise<
@@ -33,7 +35,7 @@ async function requireMemberManager(): Promise<
 > {
 	const session = await getSession(await headers());
 	if (!session) return { error: "Your session expired. Please sign in again." };
-	const org = await getPersonalOrg(session.user.id);
+	const org = await resolveActiveOrg(session.user.id);
 	if (!org) return { error: "No organization was found for your account." };
 	const role = await resolveOrgRole(session.user.id, org.id);
 	if (!role || !can(role, "members.manage")) {
@@ -84,6 +86,27 @@ export async function revokeInviteAction(
 		invitationId,
 	);
 	if (!revoked) return { error: "That invitation is no longer pending." };
+
+	revalidatePath("/team");
+	return { error: null };
+}
+
+export async function removeMemberAction(
+	_previous: RemoveMemberState,
+	formData: FormData,
+): Promise<RemoveMemberState> {
+	const gate = await requireMemberManager();
+	if ("error" in gate) return { error: gate.error };
+
+	const userId = String(formData.get("userId") ?? "");
+	if (!userId) return { error: "No member was specified." };
+
+	const removed = await removeOrganizationMember(gate.organizationId, userId);
+	if (!removed) {
+		return {
+			error: "The owner can't be removed, or that member has already left.",
+		};
+	}
 
 	revalidatePath("/team");
 	return { error: null };

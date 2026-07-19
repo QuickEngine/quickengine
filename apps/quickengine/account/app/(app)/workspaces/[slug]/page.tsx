@@ -2,10 +2,7 @@ import { API_CAPABILITIES, listApiKeys } from "@quickengine/auth/api-keys";
 import { getSession } from "@quickengine/auth/server";
 import { and, db, eq } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
-import {
-	FOUNDATION_MODULE_IDS,
-	getWorkspaceModuleCatalog,
-} from "@quickengine/module-registry";
+import { getWorkspaceModuleCatalog } from "@quickengine/module-registry";
 import { Button } from "@quickengine/ui/components/ui/button";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -77,7 +74,6 @@ export default async function Page({
 
 	const modules = await getWorkspaceModuleCatalog(workspace.id);
 	const businessType = getBusinessType(workspace.businessType);
-	const foundationIds = new Set<string>(FOUNDATION_MODULE_IDS);
 
 	const now = Date.now();
 	const apiKeyRows: ApiKeyRow[] = (await listApiKeys(workspace.id)).map(
@@ -179,7 +175,6 @@ export default async function Page({
 				</div>
 				<div className="mt-4 grid gap-4 lg:grid-cols-2">
 					{modules.map((module) => {
-						const foundation = foundationIds.has(module.id);
 						return (
 							<article
 								key={module.id}
@@ -196,11 +191,7 @@ export default async function Page({
 										<span className="rounded-full border border-foreground/10 px-2 py-0.5 text-[11px] text-muted-foreground">
 											{module.enabled ? "Enabled" : "Disabled"}
 										</span>
-										{foundation ? (
-											<span className="text-muted-foreground text-xs">
-												Always included
-											</span>
-										) : workspace.archivedAt ? (
+										{workspace.archivedAt ? (
 											<span className="text-muted-foreground text-xs">
 												Restore to manage
 											</span>

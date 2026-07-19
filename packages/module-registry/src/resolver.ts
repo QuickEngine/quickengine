@@ -1,6 +1,12 @@
 import { getModule } from "./catalog";
 import type { ModuleManifest } from "./manifest";
 
+// The default modules a new workspace STARTS with — a sensible general baseline, not a
+// lock. They can all be toggled off afterward (subject only to real dependency: these
+// four are chained client-records ← invoicing ← payments ← fulfillment, so a lower one
+// can't be removed while a higher enabled one still depends on it). The bigger question
+// — per-business-type starting sets, choose-your-own, and what's free vs. paid — is a
+// deliberate future pass (docs/planning/BACKLOG.md → module model & gating).
 export const FOUNDATION_MODULE_IDS = [
 	"client-records",
 	"invoicing",

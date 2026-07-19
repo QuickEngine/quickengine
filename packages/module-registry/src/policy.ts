@@ -1,7 +1,5 @@
 import { getModule } from "./catalog";
-import { FOUNDATION_MODULE_IDS, resolveModules } from "./resolver";
-
-const FOUNDATION_IDS = new Set<string>(FOUNDATION_MODULE_IDS);
+import { resolveModules } from "./resolver";
 
 /** Enabled modules whose dependency graph includes `moduleId`. */
 export function findEnabledDependents(
@@ -21,8 +19,9 @@ export function findEnabledDependents(
 }
 
 /**
- * Reject a disable before any database write. Foundation modules are permanent;
- * optional modules are protected while another enabled module depends on them.
+ * Reject a disable before any database write. No module is permanently locked — a
+ * module is protected only while another *enabled* module genuinely depends on it
+ * (the real dependency graph), never by an artificial "foundation" rule.
  */
 export function assertModuleCanBeDisabled(
 	moduleId: string,
@@ -30,9 +29,6 @@ export function assertModuleCanBeDisabled(
 ): void {
 	if (!getModule(moduleId)) {
 		throw new Error(`UNKNOWN_MODULE:${moduleId}`);
-	}
-	if (FOUNDATION_IDS.has(moduleId)) {
-		throw new Error(`FOUNDATION_MODULE_REQUIRED:${moduleId}`);
 	}
 
 	const dependents = findEnabledDependents(moduleId, enabledModuleIds);

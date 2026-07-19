@@ -6,6 +6,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Changed
+
+- **Removed the hard lock on the four "foundation" modules.** Client Records, Invoicing, Payments, and Fulfillment are no longer permanently forced on — every module is now user-toggleable from the workspace's module manager. The *only* thing that blocks disabling a module is a genuine dependency (another **enabled** module that depends on it); the artificial "foundation modules are always included" rule is gone. New workspaces still start with those four enabled as a sensible default (now removable). The deeper questions this opens — loosening the hard `dependsOn` chain so any combination of modules can interoperate (via the event bus / eventual QuickFlow editor), per-business-type starting recipes, and what's free vs. paid — are captured as a deliberate future pass in the backlog, not decided here.
+
 ### Added
 
 - **Notifications — in-app inbox + email (step 5).** A new `notifications` table (migration `0035`, additive) backs a per-user, cross-workspace inbox, with a `notify()` seam (new `@quickengine/notifications` package) that writes the durable in-app row and, when relevant, sends an email through the existing provider — best-effort, so a delivery failure never fails the triggering action. The Account header gains a **bell with an unread badge and a popover inbox** (mark-one / mark-all read, deep-link on click). First triggers are **membership**: sending an invite now **emails the invitee their join link** (previously it emailed no one — the inviter only saw a copyable link), and accepting an invite **notifies the inviter** in-app. Built behind a small seam so future triggers (assignments, payments, security events) plug in without rework. Migration applied to the production database.

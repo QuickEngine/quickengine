@@ -14,6 +14,9 @@ export const clientEnvSchema = z.object({
 	// local dev (no realtime) parses fine; the realtime hook no-ops when they're unset.
 	NEXT_PUBLIC_PUSHER_KEY: z.string().optional(),
 	NEXT_PUBLIC_PUSHER_CLUSTER: z.string().optional(),
+	// Stripe publishable key — browser-safe (not a secret), used by Stripe.js for the
+	// embedded checkout form. Optional so dev without Stripe still parses.
+	NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
 });
 
 export const clientEnv = clientEnvSchema.parse({
@@ -26,6 +29,8 @@ export const clientEnv = clientEnvSchema.parse({
 	NEXT_PUBLIC_QUICKDASH_ADMIN_URL: process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL,
 	NEXT_PUBLIC_PUSHER_KEY: process.env.NEXT_PUBLIC_PUSHER_KEY,
 	NEXT_PUBLIC_PUSHER_CLUSTER: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
+	NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
+		process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;

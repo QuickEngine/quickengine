@@ -36,8 +36,10 @@ export async function getUpgradeState(): Promise<UpgradeState> {
 	const scopeId = org.id;
 	const planId = await getAccountPlanId(scopeId);
 	const planName = getPlan(planId)?.displayName ?? "Free";
-	// Nothing above Team/Enterprise to sell — don't nag them.
-	if (planId === "team" || planId === "enterprise") {
+	// The header CTA is only for driving the FIRST upgrade. Once on any paid plan,
+	// don't linger a "keep upgrading" button in the header — moving up further stays
+	// available from Settings → Billing.
+	if (planId !== "free") {
 		return { show: false, urgency: "none", planName };
 	}
 	const states = Object.values(await getUsage({ scopeId })).map((m) => m.state);

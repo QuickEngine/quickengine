@@ -1,5 +1,7 @@
+import { can } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
 import { createCheckoutSession } from "@quickengine/billing";
+import { listOrganizationMembers, resolveOrgRole } from "@quickengine/db";
 import type {
 	QuickEngineBillingCycle,
 	QuickEnginePlanId,
@@ -8,30 +10,45 @@ import type {
 const getAppUrl = () =>
 	process.env.NEXT_PUBLIC_QUICKENGINE_WEB_URL ?? "http://localhost:3000";
 
+// Start Stripe Checkout for an ORGANIZATION. The caller (the account app's upgrade UI) passes
+// the organization to bill; the plan and seats bill to that org, not the user. The signed-in
+// user must hold `billing.manage` on the org, and seats = the org's current member count.
 export async function POST(request: Request): Promise<Response> {
 	const session = await getSession(request.headers);
 	if (!session) {
 		return Response.json({ error: "Unauthenticated." }, { status: 401 });
 	}
 
-	const { planId, cycle } = (await request.json().catch(() => ({}))) as {
+	const { organizationId, planId, cycle } = (await request
+		.json()
+		.catch(() => ({}))) as {
+		organizationId?: string;
 		planId?: QuickEnginePlanId;
 		cycle?: QuickEngineBillingCycle;
 	};
-	if (!planId) {
-		return Response.json({ error: "planId is required." }, { status: 400 });
+	if (!organizationId || !planId) {
+		return Response.json(
+			{ error: "organizationId and planId are required." },
+			{ status: 400 },
+		);
 	}
 
+	// Only someone who can manage the org's billing may start checkout for it.
+	const role = await resolveOrgRole(session.user.id, organizationId);
+	if (!role || !can(role, "billing.manage")) {
+		return Response.json({ error: "Forbidden." }, { status: 403 });
+	}
+
+	const members = await listOrganizationMembers(organizationId);
 	const appUrl = getAppUrl();
 	try {
 		const checkout = await createCheckoutSession({
-			user: {
-				id: session.user.id,
-				email: session.user.email,
-				name: session.user.name,
-			},
+			organizationId,
+			billingEmail: session.user.email,
+			billingName: session.user.name,
 			planId,
 			cycle: cycle ?? "monthly",
+			seats: members.length,
 			successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
 			cancelUrl: `${appUrl}/checkout/cancel`,
 		});

@@ -9,6 +9,9 @@ import type Stripe from "stripe";
 import { planIdForPriceId } from "./plans";
 import { getStripe } from "./stripe";
 
+// Billing is ORG-scoped: the subscription belongs to an organization (a personal org is an
+// individual's billing entity; a shared org is a team's). Everything keys on organizationId.
+
 /** Map Stripe's subscription status to our narrower enum. */
 const mapStatus = (
 	status: Stripe.Subscription.Status,
@@ -41,42 +44,42 @@ const periodEndSeconds = (sub: Stripe.Subscription): number | undefined => {
 	return item?.current_period_end ?? top.current_period_end;
 };
 
-const firstRowForUser = async (userId: string) => {
+const firstRowForOrg = async (organizationId: string) => {
 	const rows = await db
 		.select()
 		.from(quickengineSubscriptions)
-		.where(eq(quickengineSubscriptions.userId, userId))
+		.where(eq(quickengineSubscriptions.organizationId, organizationId))
 		.limit(1);
 	return rows[0];
 };
 
-const userIdForCustomer = async (id: string): Promise<string | undefined> => {
+const orgIdForCustomer = async (id: string): Promise<string | undefined> => {
 	const rows = await db
-		.select({ userId: quickengineSubscriptions.userId })
+		.select({ organizationId: quickengineSubscriptions.organizationId })
 		.from(quickengineSubscriptions)
 		.where(eq(quickengineSubscriptions.stripeCustomerId, id))
 		.limit(1);
-	return rows[0]?.userId;
+	return rows[0]?.organizationId ?? undefined;
 };
 
 /**
- * Return the user's Stripe customer ID, creating the customer (and a placeholder
- * `free` subscription row to anchor it) on first use. Idempotent per user.
+ * Return an organization's Stripe customer ID, creating the customer (and a placeholder
+ * `free` subscription row to anchor it) on first use. Idempotent per org.
  */
 export const findOrCreateStripeCustomer = async ({
-	userId,
+	organizationId,
 	email,
 	name,
 }: {
-	userId: string;
+	organizationId: string;
 	email: string;
 	name?: string;
 }): Promise<string> => {
-	const existing = await firstRowForUser(userId);
+	const existing = await firstRowForOrg(organizationId);
 	if (existing?.stripeCustomerId) {
-		// Verify the stored customer still exists at Stripe. If it was deleted, or
-		// the row was anchored to a different account (e.g. after a key/env swap),
-		// fall through and create a fresh one instead of failing checkout.
+		// Verify the stored customer still exists at Stripe. If it was deleted, or the row
+		// was anchored to a different account (e.g. after a key/env swap), fall through and
+		// create a fresh one instead of failing checkout.
 		try {
 			const stored = await getStripe().customers.retrieve(
 				existing.stripeCustomerId,
@@ -92,7 +95,7 @@ export const findOrCreateStripeCustomer = async ({
 	const customer = await getStripe().customers.create({
 		email,
 		name,
-		metadata: { userId },
+		metadata: { organizationId },
 	});
 
 	if (existing) {
@@ -102,7 +105,7 @@ export const findOrCreateStripeCustomer = async ({
 			.where(eq(quickengineSubscriptions.id, existing.id));
 	} else {
 		await db.insert(quickengineSubscriptions).values({
-			userId,
+			organizationId,
 			stripeCustomerId: customer.id,
 			planId: "free",
 			status: "active",
@@ -112,14 +115,15 @@ export const findOrCreateStripeCustomer = async ({
 	return customer.id;
 };
 
-/** Upsert the user's subscription row from a Stripe subscription object. */
+/** Upsert the organization's subscription row from a Stripe subscription object. */
 export const upsertSubscriptionFromStripe = async (
 	sub: Stripe.Subscription,
 ): Promise<void> => {
-	const userId =
-		sub.metadata?.userId ?? (await userIdForCustomer(customerId(sub.customer)));
-	if (!userId) {
-		return; // Can't map this subscription to a user — nothing to do.
+	const organizationId =
+		sub.metadata?.organizationId ??
+		(await orgIdForCustomer(customerId(sub.customer)));
+	if (!organizationId) {
+		return; // Can't map this subscription to an org — nothing to do.
 	}
 
 	const item = sub.items.data[0];
@@ -141,18 +145,20 @@ export const upsertSubscriptionFromStripe = async (
 		updatedAt: new Date(),
 	};
 
-	const row = await firstRowForUser(userId);
+	const row = await firstRowForOrg(organizationId);
 	if (row) {
 		await db
 			.update(quickengineSubscriptions)
 			.set(values)
 			.where(eq(quickengineSubscriptions.id, row.id));
 	} else {
-		await db.insert(quickengineSubscriptions).values({ userId, ...values });
+		await db
+			.insert(quickengineSubscriptions)
+			.values({ organizationId, ...values });
 	}
 };
 
-/** A subscription was fully deleted at Stripe — drop the account back to free. */
+/** A subscription was fully deleted at Stripe — drop the org back to free. */
 export const markSubscriptionCanceled = async (
 	sub: Stripe.Subscription,
 ): Promise<void> => {
@@ -179,21 +185,6 @@ export const setStatusForCustomer = async (
 		.where(eq(quickengineSubscriptions.stripeCustomerId, stripeCustomerId));
 };
 
-/** Read a user's current subscription (for UI / entitlement checks). */
-export const getSubscriptionForUser = async (userId: string) =>
-	firstRowForUser(userId);
-
-/**
- * Read an organization's current subscription. Billing is org-scoped — the personal org is
- * an individual's billing entity, a shared org is a team's — so this is the read the billing
- * UI and entitlement checks use. The checkout/webhook write-path is being migrated from
- * user-scope to org-scope alongside this; until it is, an org with no row reads as `free`.
- */
-export const getSubscriptionForOrg = async (organizationId: string) => {
-	const rows = await db
-		.select()
-		.from(quickengineSubscriptions)
-		.where(eq(quickengineSubscriptions.organizationId, organizationId))
-		.limit(1);
-	return rows[0];
-};
+/** Read an organization's current subscription (for UI / entitlement checks). */
+export const getSubscriptionForOrg = async (organizationId: string) =>
+	firstRowForOrg(organizationId);

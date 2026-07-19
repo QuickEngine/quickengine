@@ -10,6 +10,7 @@ import {
 	quickengineWorkspaces,
 } from "@quickengine/db/schema/quickengine";
 import { headers } from "next/headers";
+import { resolveActiveOrg } from "./active-org";
 
 export type UpgradeState = {
 	/** Whether to render the upgrade CTA at all (hidden on the top tier). */
@@ -27,7 +28,12 @@ export async function getUpgradeState(): Promise<UpgradeState> {
 	if (!session) {
 		return { show: false, urgency: "none", planName: "" };
 	}
-	const scopeId = session.user.id;
+	// Billing is org-scoped: plan + usage bill against the active organization.
+	const org = await resolveActiveOrg(session.user.id);
+	if (!org) {
+		return { show: false, urgency: "none", planName: "" };
+	}
+	const scopeId = org.id;
 	const planId = await getAccountPlanId(scopeId);
 	const planName = getPlan(planId)?.displayName ?? "Free";
 	// Nothing above Team/Enterprise to sell — don't nag them.

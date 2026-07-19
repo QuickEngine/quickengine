@@ -9,7 +9,7 @@ import {
 	getUsage,
 	meter,
 } from "../src/metering";
-import { insertUser } from "./helpers";
+import { insertOrg } from "./helpers";
 
 // DB-backed engine tests. The usage table isn't FK'd to users, so most tests use
 // a bare scopeId string; plan-resolution tests insert a real user + subscription.
@@ -113,29 +113,29 @@ describe("metering engine", () => {
 	});
 
 	it("resolves the plan from an active subscription, else Free", async () => {
-		const scope = "user-plan";
-		await insertUser(scope, "plan@example.com");
+		const scope = "00000000-0000-4000-8000-0000000ccf01";
+		await insertOrg(scope);
 		expect(await getAccountPlanId(scope)).toBe("free");
 
 		await db
 			.insert(quickengineSubscriptions)
-			.values({ userId: scope, planId: "pro", status: "active" });
+			.values({ organizationId: scope, planId: "pro", status: "active" });
 		expect(await getAccountPlanId(scope)).toBe("pro");
 
 		// A canceled subscription falls back to Free.
 		await db
 			.update(quickengineSubscriptions)
 			.set({ status: "canceled" })
-			.where(eq(quickengineSubscriptions.userId, scope));
+			.where(eq(quickengineSubscriptions.organizationId, scope));
 		expect(await getAccountPlanId(scope)).toBe("free");
 	});
 
 	it("a higher plan raises the limit (Pro actions = 100k)", async () => {
-		const scope = "user-pro-limit";
-		await insertUser(scope, "pro-limit@example.com");
+		const scope = "00000000-0000-4000-8000-0000000ccf02";
+		await insertOrg(scope);
 		await db
 			.insert(quickengineSubscriptions)
-			.values({ userId: scope, planId: "pro", status: "active" });
+			.values({ organizationId: scope, planId: "pro", status: "active" });
 		await meter({ scopeId: scope, meter: "actions", amount: 5000 });
 		const check = await checkLimit({ scopeId: scope, meter: "actions" });
 		expect(check.limit).toBe(100_000);

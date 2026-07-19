@@ -172,6 +172,9 @@ importers:
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../../packages/module-registry
+      '@quickengine/notifications':
+        specifier: workspace:*
+        version: link:../../../packages/notifications
       '@quickengine/types':
         specifier: workspace:*
         version: link:../../../packages/types
@@ -1172,6 +1175,22 @@ importers:
       zod:
         specifier: ^4.3.6
         version: 4.4.3
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/notifications:
+    dependencies:
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../db
+      '@quickengine/email':
+        specifier: workspace:*
+        version: link:../email
     devDependencies:
       '@quickengine/config':
         specifier: workspace:*

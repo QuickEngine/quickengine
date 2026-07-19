@@ -1,4 +1,5 @@
 import { getSession } from "@quickengine/auth/server";
+import { countUnreadNotifications, listNotifications } from "@quickengine/db";
 import {
 	Sidebar,
 	SidebarInset,
@@ -9,6 +10,7 @@ import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { Breadcrumbs } from "../_components/breadcrumbs";
 import { DashboardNav } from "../_components/nav";
+import { NotificationBell } from "../_components/notification-bell";
 import { ProfileMenu } from "../_components/profile-menu";
 import { SearchBar } from "../_components/search-bar";
 import { TeamSwitcher } from "../_components/team-switcher";
@@ -35,6 +37,19 @@ export default async function AppLayout({
 	}
 	const { orgs, active } = await loadOrgContext(session.user.id);
 
+	const [inbox, unreadCount] = await Promise.all([
+		listNotifications(session.user.id, { limit: 15 }),
+		countUnreadNotifications(session.user.id),
+	]);
+	const notifications = inbox.map((n) => ({
+		id: n.id,
+		title: n.title,
+		body: n.body,
+		href: n.href,
+		unread: n.readAt === null,
+		createdAt: n.createdAt.toISOString(),
+	}));
+
 	return (
 		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
 			{/* Both the header and the sidebar are fixed, so they stay locked
@@ -49,6 +64,7 @@ export default async function AppLayout({
 					<div className="flex items-center gap-3">
 						<SearchBar />
 						<UpgradeButton />
+						<NotificationBell items={notifications} unread={unreadCount} />
 						<ProfileMenu
 							seed={session.user.id}
 							name={session.user.name ?? ""}

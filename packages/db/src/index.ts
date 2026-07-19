@@ -4,6 +4,7 @@ export * from "./activity";
 export * from "./client";
 export * from "./drizzle";
 export * from "./invitations";
+export * from "./notifications";
 export * from "./orgs";
 export * from "./rbac";
 export * from "./schema";

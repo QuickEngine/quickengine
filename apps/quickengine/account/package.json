@@ -18,6 +18,7 @@
 		"@quickengine/auth": "workspace:*",
 		"@quickengine/billing": "workspace:*",
 		"@quickengine/db": "workspace:*",
+		"@quickengine/notifications": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/types": "workspace:*",
 		"@quickengine/ui": "workspace:*",

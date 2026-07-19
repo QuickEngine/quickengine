@@ -58,7 +58,11 @@ describe("organization invitations", () => {
 		expect(pending).toMatchObject({ organizationId: orgId, role: "admin" });
 
 		const accepted = await acceptOrganizationInvitation(token, inviteeId);
-		expect(accepted).toEqual({ organizationId: orgId, role: "admin" });
+		expect(accepted).toEqual({
+			organizationId: orgId,
+			role: "admin",
+			invitedByUserId: inviterId,
+		});
 
 		// The invitee now has the "admin" role on the org's workspace (Slice 1 seam).
 		expect(

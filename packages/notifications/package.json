@@ -1,0 +1,24 @@
+{
+	"name": "@quickengine/notifications",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@quickengine/db": "workspace:*",
+		"@quickengine/email": "workspace:*"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"typescript": "^5"
+	}
+}

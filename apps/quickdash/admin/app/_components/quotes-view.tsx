@@ -395,6 +395,9 @@ function QuoteEditor({
 }) {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	const [state, action] = useActionState(
 		quote ? updateQuoteAction : createQuoteAction,
 		INITIAL_STATE,
@@ -402,6 +405,7 @@ function QuoteEditor({
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [router, state.completionId]);
@@ -411,7 +415,11 @@ function QuoteEditor({
 			<DialogContent className="sm:max-w-3xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{quote && <input type="hidden" name="quoteId" value={quote.id} />}
+					{quote ? (
+						<input type="hidden" name="quoteId" value={quote.id} />
+					) : (
+						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+					)}
 					<DialogHeader>
 						<DialogTitle>
 							{quote ? `Edit ${quote.number}` : "Create quote"}

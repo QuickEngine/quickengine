@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey } from "@quickengine/db";
 import {
 	createInvoice,
 	deleteInvoice,
@@ -116,6 +117,18 @@ export async function createInvoiceAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	if (
+		!(await claimIdempotencyKey(
+			idempotencyKey,
+			`invoices.create:${workspaceId}`,
+		))
+	) {
+		revalidatePath(`/${workspaceId}/invoicing`);
+		return { error: null, completionId: crypto.randomUUID() };
+	}
+
 	try {
 		const input = readInvoiceInput(formData);
 		await createInvoice(workspaceId, {

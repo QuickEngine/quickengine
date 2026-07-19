@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey } from "@quickengine/db";
 import {
 	bookingsSettingsSchema,
 	createBooking,
@@ -55,6 +56,18 @@ export async function createBookingAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	if (
+		!(await claimIdempotencyKey(
+			idempotencyKey,
+			`bookings.create:${workspaceId}`,
+		))
+	) {
+		revalidatePath(`/${workspaceId}/bookings`);
+		return success();
+	}
+
 	try {
 		await createBooking(workspaceId, {
 			clientId: String(formData.get("clientId") ?? ""),

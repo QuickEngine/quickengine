@@ -23,6 +23,7 @@ import {
 } from "../src/records";
 
 const userId = "files-user";
+const orgId = "00000000-0000-4000-8000-000000000102";
 const workspaceId = "00000000-0000-4000-8000-000000000101";
 const targetId = "opaque-project-id";
 
@@ -52,8 +53,12 @@ beforeEach(async () => {
 		VALUES (${userId}, 'Files User', 'files@example.com', true)
 	`;
 	await sql`
-		INSERT INTO quickengine_workspaces (id, owner_id, name, business_type)
-		VALUES (${workspaceId}, ${userId}, 'Files Workspace', 'freelancer')
+		INSERT INTO quickengine_organizations (id, name, slug, is_personal, owner_id)
+		VALUES (${orgId}, 'Files Org', 'files-org', false, ${userId})
+	`;
+	await sql`
+		INSERT INTO quickengine_workspaces (id, owner_id, organization_id, name, business_type)
+		VALUES (${workspaceId}, ${userId}, ${orgId}, 'Files Workspace', 'freelancer')
 	`;
 });
 
@@ -78,7 +83,7 @@ describe("files persistence", () => {
 			versionNumber: 1,
 		});
 		expect(
-			(await checkLimit({ scopeId: userId, meter: "storageBytes" })).used,
+			(await checkLimit({ scopeId: orgId, meter: "storageBytes" })).used,
 		).toBe(firstBody.length);
 
 		const attachment = await db.transaction((tx) =>
@@ -151,7 +156,7 @@ describe("files persistence", () => {
 		expect(created.version.status).toBe("quarantined");
 		expect(created.document?.currentVersionNumber).toBeNull();
 		expect(
-			(await checkLimit({ scopeId: userId, meter: "storageBytes" })).used,
+			(await checkLimit({ scopeId: orgId, meter: "storageBytes" })).used,
 		).toBe(body.length);
 		await releaseQuarantinedFileVersion(workspaceId, created.version.id);
 		expect(
@@ -240,7 +245,7 @@ describe("files persistence", () => {
 				.where(eq(fileDocuments.id, created.version.documentId)),
 		).toHaveLength(0);
 		expect(
-			(await checkLimit({ scopeId: userId, meter: "storageBytes" })).used,
+			(await checkLimit({ scopeId: orgId, meter: "storageBytes" })).used,
 		).toBe(0);
 	});
 });

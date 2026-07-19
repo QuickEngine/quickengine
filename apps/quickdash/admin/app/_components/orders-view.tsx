@@ -367,11 +367,16 @@ function OrderDialog({
 	defaultCurrency: string;
 }) {
 	const [open, setOpen] = useState(false);
+	// Per-submit idempotency key for the create case; fresh after each success.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	const [state, action] = useActionState(saveOrderAction, INITIAL);
 	const router = useRouter();
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [state.completionId, router]);
@@ -394,7 +399,11 @@ function OrderDialog({
 			<DialogContent className="sm:max-w-2xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{order && <input type="hidden" name="orderId" value={order.id} />}
+					{order ? (
+						<input type="hidden" name="orderId" value={order.id} />
+					) : (
+						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+					)}
 					<DialogHeader>
 						<DialogTitle>
 							{order ? `Edit ${order.number}` : "Create an order draft"}

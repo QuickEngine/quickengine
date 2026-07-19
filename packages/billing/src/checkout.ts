@@ -7,21 +7,28 @@ import { getStripe } from "./stripe";
 import { findOrCreateStripeCustomer } from "./subscriptions";
 
 /**
- * Create a Stripe Checkout Session for a signed-in user + plan. This is the
- * reusable primitive: today it returns a hosted-checkout URL (fine for sandbox
- * testing), and the future custom Elements/embedded UI reuses the same customer
- * + price wiring. `userId` rides in metadata so the webhook can map back.
+ * Create a Stripe Checkout Session for an organization + plan. Billing is org-scoped, so the
+ * plan and seats bill to the org: `organizationId` rides in metadata so the webhook maps back,
+ * and `seats` (the org's member count) is the subscription quantity. Today it returns a hosted
+ * checkout URL; a future embedded UI reuses the same customer + price wiring.
  */
 export const createCheckoutSession = async ({
-	user,
+	organizationId,
+	billingEmail,
+	billingName,
 	planId,
 	cycle,
+	seats,
 	successUrl,
 	cancelUrl,
 }: {
-	user: { id: string; email: string; name?: string };
+	organizationId: string;
+	billingEmail: string;
+	billingName?: string;
 	planId: QuickEnginePlanId;
 	cycle: QuickEngineBillingCycle;
+	/** Number of seats to bill (org member count). Defaults to 1. */
+	seats?: number;
 	successUrl: string;
 	cancelUrl: string;
 }): Promise<{ id: string; url: string | null }> => {
@@ -33,17 +40,19 @@ export const createCheckoutSession = async ({
 	}
 
 	const customer = await findOrCreateStripeCustomer({
-		userId: user.id,
-		email: user.email,
-		name: user.name,
+		organizationId,
+		email: billingEmail,
+		name: billingName,
 	});
+
+	const quantity = Math.max(1, Math.floor(seats ?? 1));
 
 	const session = await getStripe().checkout.sessions.create({
 		mode: "subscription",
 		customer,
-		line_items: [{ price: priceId, quantity: 1 }],
-		subscription_data: { metadata: { userId: user.id, planId } },
-		metadata: { userId: user.id, planId },
+		line_items: [{ price: priceId, quantity }],
+		subscription_data: { metadata: { organizationId, planId } },
+		metadata: { organizationId, planId },
 		allow_promotion_codes: true,
 		billing_address_collection: "auto",
 		success_url: successUrl,

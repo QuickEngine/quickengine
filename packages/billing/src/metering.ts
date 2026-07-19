@@ -19,16 +19,24 @@ type MeterInput = { scopeId: string; meter: MeterKey; amount?: number };
 // Usage is metered PER ACCOUNT; today the scope is the owning user id. Resolve
 // which plan's limits apply — only an active/trialing subscription grants its
 // plan, otherwise the account is on Free.
+// A billing scope is an organization id (uuid). A non-uuid scope has no org subscription —
+// return Free rather than letting Postgres throw on an invalid-uuid comparison.
+const ORG_SCOPE_PATTERN =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getAccountPlanId(
 	scopeId: string,
 ): Promise<QuickEnginePlanId> {
+	if (!ORG_SCOPE_PATTERN.test(scopeId)) {
+		return "free";
+	}
 	const [row] = await db
 		.select({
 			planId: quickengineSubscriptions.planId,
 			status: quickengineSubscriptions.status,
 		})
 		.from(quickengineSubscriptions)
-		.where(eq(quickengineSubscriptions.userId, scopeId))
+		.where(eq(quickengineSubscriptions.organizationId, scopeId))
 		.limit(1);
 	if (!row) {
 		return "free";

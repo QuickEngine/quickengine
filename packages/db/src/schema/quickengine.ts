@@ -277,13 +277,12 @@ export const quickengineSubscriptions = pgTable(
 	"quickengine_subscriptions",
 	{
 		id: uuid("id").primaryKey().defaultRandom(),
-		userId: text("user_id")
+		// Who set the subscription up (optional). Billing is ORG-scoped — the organization,
+		// not the user, is the billing entity, so this is nullable.
+		userId: text("user_id").references(() => quickengineUsers.id),
+		organizationId: uuid("organization_id")
 			.notNull()
-			.references(() => quickengineUsers.id),
-		organizationId: uuid("organization_id").references(
-			() => quickengineOrganizations.id,
-			{ onDelete: "cascade" },
-		),
+			.references(() => quickengineOrganizations.id, { onDelete: "cascade" }),
 		planId: text("plan_id")
 			.$type<QuickEnginePlanId>()
 			.notNull()
@@ -307,8 +306,8 @@ export const quickengineSubscriptions = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		index("quickengine_subscriptions_user_idx").on(table.userId),
-		index("quickengine_subscriptions_org_idx").on(table.organizationId),
+		// One subscription per organization — the real billing invariant.
+		uniqueIndex("quickengine_subscriptions_org_idx").on(table.organizationId),
 	],
 );
 

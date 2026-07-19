@@ -18,38 +18,50 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@quickengine/ui/components/ui/popover";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { setActiveOrgAction } from "../_lib/org-actions";
 
-type Team = { id: string; name: string; seed: string };
+export type SwitcherOrg = { id: string; name: string; isPersonal: boolean };
 
-// Team switcher. Only the caret opens the popover; the mark + name + tier badge
-// are display. Vercel-style: a search field filters the team list. The team mark
-// is seeded distinctly from the personal profile avatar so the two never render
-// the same gradient.
+// Organization switcher. Only the caret opens the popover; the mark + name + tier badge are
+// display. Vercel-style: a search field filters the list. Selecting an org sets it active
+// (server cookie) and refreshes; "Create organization" opens the create page.
 export function TeamSwitcher({
-	seed,
-	name,
+	orgs,
+	activeOrgId,
 	tier = "Free",
 }: {
-	seed: string;
-	name: string;
+	orgs: SwitcherOrg[];
+	activeOrgId: string;
 	tier?: string;
 }) {
 	const [open, setOpen] = useState(false);
+	const [pending, startTransition] = useTransition();
+	const router = useRouter();
 
-	// Only the caller's own team exists for now; search still works over it, and
-	// this is where additional teams will land once memberships are wired.
-	const teams: Team[] = [{ id: seed, name, seed: `account:${seed}` }];
-	const activeId = seed;
-	const activeTeam = teams.find((t) => t.id === activeId) ?? teams[0];
+	const active = orgs.find((org) => org.id === activeOrgId) ?? orgs[0];
+	if (!active) return null;
+
+	function switchTo(orgId: string) {
+		if (orgId === activeOrgId) {
+			setOpen(false);
+			return;
+		}
+		startTransition(async () => {
+			await setActiveOrgAction(orgId);
+			router.refresh();
+			setOpen(false);
+		});
+	}
 
 	return (
 		<div className="flex w-full items-center gap-2">
 			<Avatar className="size-8 shrink-0">
-				<GeneratedAvatar seed={activeTeam.seed} className="size-full" />
+				<GeneratedAvatar seed={`account:${active.id}`} className="size-full" />
 			</Avatar>
 			<span className="min-w-0 truncate font-normal text-[15px] text-foreground">
-				{activeTeam.name}
+				{active.name}
 			</span>
 			<Badge
 				variant="secondary"
@@ -61,9 +73,6 @@ export function TeamSwitcher({
 				<PopoverTrigger className="ml-auto flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-foreground/40">
 					<CaretUpDown className="size-5" />
 				</PopoverTrigger>
-				{/* sideOffset clears the fixed header; align="end" tucks it under the
-				    caret. collisionPadding pins the left edge 8px in — matching the
-				    settings popover's left edge (the sidebar's p-2). */}
 				<PopoverContent
 					align="end"
 					sideOffset={20}
@@ -71,22 +80,26 @@ export function TeamSwitcher({
 					className="w-80 p-0"
 				>
 					<Command>
-						<CommandInput placeholder="Find team..." />
+						<CommandInput placeholder="Find organization..." />
 						<CommandList>
-							<CommandEmpty>No teams found.</CommandEmpty>
-							<CommandGroup heading="Teams">
-								{teams.map((team) => (
+							<CommandEmpty>No organizations found.</CommandEmpty>
+							<CommandGroup heading="Organizations">
+								{orgs.map((org) => (
 									<CommandItem
-										key={team.id}
-										value={team.name}
-										onSelect={() => setOpen(false)}
+										key={org.id}
+										value={org.name}
+										disabled={pending}
+										onSelect={() => switchTo(org.id)}
 										className="gap-2"
 									>
 										<Avatar className="size-6">
-											<GeneratedAvatar seed={team.seed} className="size-full" />
+											<GeneratedAvatar
+												seed={`account:${org.id}`}
+												className="size-full"
+											/>
 										</Avatar>
-										<span className="flex-1 truncate">{team.name}</span>
-										{team.id === activeId && (
+										<span className="flex-1 truncate">{org.name}</span>
+										{org.id === activeOrgId && (
 											<Check className="size-4 shrink-0" />
 										)}
 									</CommandItem>
@@ -94,9 +107,15 @@ export function TeamSwitcher({
 							</CommandGroup>
 							<CommandSeparator />
 							<CommandGroup>
-								<CommandItem disabled className="gap-2 text-muted-foreground">
+								<CommandItem
+									className="gap-2"
+									onSelect={() => {
+										setOpen(false);
+										router.push("/organizations/new");
+									}}
+								>
 									<Plus className="size-4" />
-									Create team
+									Create organization
 								</CommandItem>
 							</CommandGroup>
 						</CommandList>

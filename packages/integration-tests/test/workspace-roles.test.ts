@@ -1,5 +1,7 @@
 import {
+	createOrganization,
 	listOrganizationMembers,
+	listOrganizationsForUser,
 	resolveOrgRole,
 	resolveWorkspaceRole,
 } from "@quickengine/db";
@@ -68,5 +70,19 @@ describe("resolveWorkspaceRole", () => {
 		expect(members.map((m) => m.role).sort()).toEqual(["member", "owner"]);
 		const owner = members.find((m) => m.role === "owner");
 		expect(owner?.email).toBe("owner-role@example.com");
+	});
+
+	it("createOrganization adds a shared org the creator owns and can list", async () => {
+		const created = await createOrganization("Acme Co", ownerId);
+		expect(created.name).toBe("Acme Co");
+
+		const orgs = await listOrganizationsForUser(ownerId);
+		// The fixture org plus the newly created one.
+		expect(orgs.some((org) => org.id === orgId)).toBe(true);
+		const acme = orgs.find((org) => org.id === created.id);
+		expect(acme).toMatchObject({ role: "owner", isPersonal: false });
+
+		// A stranger sees none of these orgs.
+		expect(await listOrganizationsForUser(strangerId)).toHaveLength(0);
 	});
 });

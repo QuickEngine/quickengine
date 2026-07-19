@@ -5,13 +5,13 @@ import { getSession } from "@quickengine/auth/server";
 import {
 	acceptOrganizationInvitation,
 	createOrganizationInvitation,
-	getPersonalOrg,
 	removeOrganizationMember,
 	resolveOrgRole,
 	revokeOrganizationInvitation,
 } from "@quickengine/db";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { resolveActiveOrg } from "./active-org";
 
 // Roles that can be invited. "owner" is the org creator and is never handed out via invite.
 const INVITABLE_ROLES = ["admin", "member"] as const;
@@ -35,7 +35,7 @@ async function requireMemberManager(): Promise<
 > {
 	const session = await getSession(await headers());
 	if (!session) return { error: "Your session expired. Please sign in again." };
-	const org = await getPersonalOrg(session.user.id);
+	const org = await resolveActiveOrg(session.user.id);
 	if (!org) return { error: "No organization was found for your account." };
 	const role = await resolveOrgRole(session.user.id, org.id);
 	if (!role || !can(role, "members.manage")) {

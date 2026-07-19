@@ -13,6 +13,7 @@ import { ProfileMenu } from "../_components/profile-menu";
 import { SearchBar } from "../_components/search-bar";
 import { TeamSwitcher } from "../_components/team-switcher";
 import { UpgradeButton } from "../_components/upgrade-button";
+import { loadOrgContext } from "../_lib/active-org";
 import { getAccountState } from "../_lib/onboarding";
 
 // The account-app shell (header + sidebar). Lives in its own route group so the
@@ -32,6 +33,7 @@ export default async function AppLayout({
 	if (!account.onboardingCompletedAt) {
 		redirect("/onboarding");
 	}
+	const { orgs, active } = await loadOrgContext(session.user.id);
 
 	return (
 		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
@@ -40,12 +42,7 @@ export default async function AppLayout({
 			<header className="fixed inset-x-0 top-0 z-30 flex h-(--header-height) items-center border-sidebar-border border-b bg-background">
 				{/* Left zone matches the sidebar width so the switcher sits above it. */}
 				<div className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4">
-					<TeamSwitcher
-						seed={session.user.id}
-						name={
-							account.companyName ?? session.user.name ?? session.user.email
-						}
-					/>
+					<TeamSwitcher orgs={orgs} activeOrgId={active?.id ?? ""} />
 				</div>
 				<div className="flex flex-1 items-center justify-between px-4">
 					<Breadcrumbs />

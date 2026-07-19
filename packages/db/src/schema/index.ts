@@ -7,6 +7,7 @@ export * from "./files";
 export * from "./fulfillments";
 export * from "./inventory";
 export * from "./invoices";
+export * from "./notifications";
 export * from "./orders";
 export * from "./payments";
 export * from "./projects-tasks";

@@ -9,9 +9,14 @@ import {
 	resolveOrgRole,
 	revokeOrganizationInvitation,
 } from "@quickengine/db";
+import { notify, sendNotificationEmail } from "@quickengine/notifications";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { resolveActiveOrg } from "./active-org";
+
+// Absolute base for links that go into emails (must be absolute, unlike in-app hrefs).
+const ACCOUNT_URL =
+	process.env.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL ?? "http://localhost:3001";
 
 // Roles that can be invited. "owner" is the org creator and is never handed out via invite.
 const INVITABLE_ROLES = ["admin", "member"] as const;
@@ -31,7 +36,8 @@ export type RemoveMemberState = { error: string | null };
 
 // Resolve the caller's own org + confirm they may manage members, or return an error message.
 async function requireMemberManager(): Promise<
-	{ organizationId: string; userId: string } | { error: string }
+	| { organizationId: string; organizationName: string; userId: string }
+	| { error: string }
 > {
 	const session = await getSession(await headers());
 	if (!session) return { error: "Your session expired. Please sign in again." };
@@ -41,7 +47,11 @@ async function requireMemberManager(): Promise<
 	if (!role || !can(role, "members.manage")) {
 		return { error: "You do not have permission to manage members." };
 	}
-	return { organizationId: org.id, userId: session.user.id };
+	return {
+		organizationId: org.id,
+		organizationName: org.name,
+		userId: session.user.id,
+	};
 }
 
 export async function inviteMemberAction(
@@ -67,6 +77,15 @@ export async function inviteMemberAction(
 		email,
 		role: role as InvitableRole,
 		invitedByUserId: gate.userId,
+	});
+
+	// Email the invitee their join link. Best-effort: the invite exists regardless,
+	// and the inviter still sees the copyable link in the UI as a fallback.
+	const joinUrl = `${ACCOUNT_URL}/join/${token}`;
+	await sendNotificationEmail({
+		to: email,
+		subject: `You're invited to join ${gate.organizationName} on QuickEngine`,
+		text: `You've been invited to join ${gate.organizationName} as a ${role}.\n\nAccept your invitation:\n${joinUrl}\n\nIf you weren't expecting this, you can ignore this email.`,
 	});
 
 	revalidatePath("/team");
@@ -125,7 +144,20 @@ export async function acceptInviteAction(
 	}
 	const token = String(formData.get("token") ?? "");
 	try {
-		await acceptOrganizationInvitation(token, session.user.id);
+		const accepted = await acceptOrganizationInvitation(token, session.user.id);
+		// Tell the inviter their invitation was accepted (in-app; don't notify a user
+		// who accepted their own invite).
+		if (accepted.invitedByUserId !== session.user.id) {
+			const who = session.user.name ?? session.user.email ?? "Someone";
+			await notify({
+				userId: accepted.invitedByUserId,
+				organizationId: accepted.organizationId,
+				type: "org.member_joined",
+				title: "New team member",
+				body: `${who} accepted your invitation.`,
+				href: "/team",
+			});
+		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "";
 		if (message === "INVITATION_EXPIRED") {

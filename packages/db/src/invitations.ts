@@ -94,6 +94,8 @@ export async function getInvitationByToken(
 export type AcceptedInvitation = {
 	organizationId: string;
 	role: QuickEngineOrgRole;
+	// Who sent the invite — so the caller can notify them that it was accepted.
+	invitedByUserId: string;
 };
 
 /**
@@ -114,6 +116,7 @@ export async function acceptOrganizationInvitation(
 				role: quickengineOrganizationInvitations.role,
 				status: quickengineOrganizationInvitations.status,
 				expiresAt: quickengineOrganizationInvitations.expiresAt,
+				invitedByUserId: quickengineOrganizationInvitations.invitedByUserId,
 			})
 			.from(quickengineOrganizationInvitations)
 			.where(eq(quickengineOrganizationInvitations.tokenHash, tokenHash))
@@ -156,6 +159,7 @@ export async function acceptOrganizationInvitation(
 		return {
 			organizationId: invitation.organizationId,
 			role: invitation.role,
+			invitedByUserId: invitation.invitedByUserId,
 		};
 	});
 }

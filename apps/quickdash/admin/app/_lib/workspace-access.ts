@@ -78,6 +78,8 @@ export async function requireWorkspaceAccess(
 			slug: workspace.slug,
 			businessType: workspace.businessType,
 		},
+		// The owning org — billing/identity scope; used for the org avatar in the header.
+		organizationId: workspace.organizationId,
 		modules: modules.filter((module) => module.enabled),
 		role,
 	};

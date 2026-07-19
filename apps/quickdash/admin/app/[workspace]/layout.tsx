@@ -51,6 +51,7 @@ export default async function WorkspaceLayout({
 					<WorkspaceSwitcher
 						active={access.workspace}
 						workspaces={workspaces}
+						organizationId={access.organizationId}
 					/>
 				</div>
 				<div className="flex flex-1 items-center justify-between px-4">

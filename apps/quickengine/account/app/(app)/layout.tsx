@@ -1,4 +1,5 @@
 import { getSession } from "@quickengine/auth/server";
+import { getAccountPlanId, getPlan } from "@quickengine/billing";
 import { countUnreadNotifications, listNotifications } from "@quickengine/db";
 import {
 	Sidebar,
@@ -37,6 +38,10 @@ export default async function AppLayout({
 	}
 	const { orgs, active } = await loadOrgContext(session.user.id);
 
+	// The active org's current plan — shown as the switcher's tier tag (org-scoped billing).
+	const tierPlanId = active ? await getAccountPlanId(active.id) : "free";
+	const tier = getPlan(tierPlanId)?.displayName ?? "Free";
+
 	const [inbox, unreadCount] = await Promise.all([
 		listNotifications(session.user.id, { limit: 15 }),
 		countUnreadNotifications(session.user.id),
@@ -57,7 +62,11 @@ export default async function AppLayout({
 			<header className="fixed inset-x-0 top-0 z-30 flex h-(--header-height) items-center border-sidebar-border border-b bg-background">
 				{/* Left zone matches the sidebar width so the switcher sits above it. */}
 				<div className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4">
-					<TeamSwitcher orgs={orgs} activeOrgId={active?.id ?? ""} />
+					<TeamSwitcher
+						orgs={orgs}
+						activeOrgId={active?.id ?? ""}
+						tier={tier}
+					/>
 				</div>
 				<div className="flex flex-1 items-center justify-between px-4">
 					<Breadcrumbs />

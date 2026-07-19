@@ -1,4 +1,7 @@
-export { createCheckoutSession } from "./checkout";
+export {
+	createCheckoutSession,
+	createSubscriptionForPaymentElement,
+} from "./checkout";
 export {
 	checkAllowance,
 	checkLimit,
@@ -21,6 +24,11 @@ export {
 	type PlanLimits,
 	planIdForPriceId,
 } from "./plans";
+export {
+	type CyclePrice,
+	getPlanPricing,
+	type PlanPricing,
+} from "./pricing";
 export { getStripe, isStripeConfigured } from "./stripe";
 export {
 	findOrCreateStripeCustomer,

@@ -1,6 +1,7 @@
 "use client";
 
 import { MagnifyingGlass, Plus, User } from "@phosphor-icons/react";
+import { useWorkspaceRealtime } from "@quickengine/realtime/client";
 import { Button } from "@quickengine/ui/components/ui/button";
 import {
 	Dialog,
@@ -31,7 +32,13 @@ import {
 } from "@quickengine/ui/components/ui/table";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import {
+	useActionState,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { useFormStatus } from "react-dom";
 import {
 	type ClientRecordActionState,
@@ -328,7 +335,19 @@ export function ClientRecordsView({
 	labelPlural: string;
 	fields: VisibleFields;
 }) {
+	const router = useRouter();
 	const [query, setQuery] = useState("");
+
+	// Live updates: when another session changes a client record in this workspace,
+	// the event bus publishes to the workspace channel; refetch authoritative state.
+	const onRealtimeEvent = useCallback(
+		(eventName: string) => {
+			if (eventName.startsWith("client_records.")) router.refresh();
+		},
+		[router],
+	);
+	useWorkspaceRealtime(workspaceId, onRealtimeEvent);
+
 	const visibleRecords = useMemo(() => {
 		const normalized = query.trim().toLowerCase();
 		if (!normalized) {

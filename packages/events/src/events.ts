@@ -1,9 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { getJobQueue, type JobQueue } from "@quickengine/jobs";
 import {
-	createNoopRealtimeProvider,
+	getRealtimeProvider,
 	type RealtimeProvider,
+	workspaceChannel,
 } from "@quickengine/realtime";
+
+// Re-exported for producers/consumers that reason about channels; the format itself
+// now lives in @quickengine/realtime so the publisher and the auth endpoint share one
+// source of truth.
+export { workspaceChannel };
 
 // Canonical domain-event names: "<module>.<entity>.<verb>". Every name a module can
 // emit is registered here so producers and consumers are typed against one list
@@ -66,12 +72,6 @@ export type CreateEventBusOptions = {
 	generateId?: () => string;
 	now?: () => Date;
 };
-
-// Pusher private channels are prefixed `private-`; one channel per workspace keeps
-// realtime fan-out tenant-scoped and authorizable by workspace membership.
-export function workspaceChannel(workspaceId: string): string {
-	return `private-workspace-${workspaceId}`;
-}
 
 export function createEventBus(options: CreateEventBusOptions): EventBus {
 	const { realtime, jobs } = options;
@@ -147,16 +147,16 @@ export function createEventBus(options: CreateEventBusOptions): EventBus {
 	};
 }
 
-// The process-wide default bus. The durable side is now the env-selected job queue
-// (Inngest when configured, in-memory offline otherwise); realtime is still the no-op
-// provider until the Pusher branch. Providers swap in behind these without touching any
-// producer, since modules only ever see `emit()`.
+// The process-wide default bus. Both sides are now env-selected: the durable job queue
+// (Inngest when configured, in-memory offline otherwise) and the realtime provider
+// (Pusher when configured, no-op offline otherwise). Providers swap in behind these
+// without touching any producer, since modules only ever see `emit()`.
 let defaultBus: EventBus | undefined;
 
 export function getEventBus(): EventBus {
 	if (!defaultBus) {
 		defaultBus = createEventBus({
-			realtime: createNoopRealtimeProvider(),
+			realtime: getRealtimeProvider(),
 			jobs: getJobQueue(),
 		});
 	}

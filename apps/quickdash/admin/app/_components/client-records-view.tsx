@@ -166,6 +166,11 @@ function CreateClientDialog({
 }) {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
+	// A per-submit idempotency key so a double-fire creates only one record; a fresh key
+	// is minted after each successful create.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	const [state, action] = useActionState(
 		createClientRecordAction,
 		INITIAL_STATE,
@@ -173,6 +178,7 @@ function CreateClientDialog({
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [router, state.completionId]);
@@ -188,6 +194,7 @@ function CreateClientDialog({
 			<DialogContent>
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>Add {label.toLowerCase()}</DialogTitle>
 						<DialogDescription>

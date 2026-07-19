@@ -5,6 +5,7 @@ export * from "./client-records";
 export * from "./contracts-esign";
 export * from "./files";
 export * from "./fulfillments";
+export * from "./idempotency";
 export * from "./inventory";
 export * from "./invoices";
 export * from "./notifications";

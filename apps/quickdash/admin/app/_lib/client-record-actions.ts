@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey } from "@quickengine/db";
 import {
 	clientRecordsSettingsSchema,
 	createClientRecord,
@@ -76,6 +77,18 @@ export async function createClientRecordAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) {
 		return failure(authorization.error);
+	}
+
+	// Idempotency: a retry, a race, or a double-fire that slips past the button's
+	// pending-disable carries the same key, so only the first request creates a record.
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	const isFirst = await claimIdempotencyKey(
+		idempotencyKey,
+		`client-records.create:${workspaceId}`,
+	);
+	if (!isFirst) {
+		revalidatePath(`/${workspaceId}/client-records`);
+		return { error: null, completionId: crypto.randomUUID() };
 	}
 
 	try {

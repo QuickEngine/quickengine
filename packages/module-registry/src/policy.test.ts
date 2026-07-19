@@ -21,17 +21,23 @@ describe("module registry policy", () => {
 		]);
 	});
 
-	it("never allows a foundation module to be disabled", () => {
-		for (const moduleId of [
-			"client-records",
-			"invoicing",
-			"payments",
-			"fulfillment",
-		]) {
-			expect(() => assertModuleCanBeDisabled(moduleId, [])).toThrow(
-				`FOUNDATION_MODULE_REQUIRED:${moduleId}`,
-			);
-		}
+	it("allows the former-foundation modules to be disabled — no artificial lock", () => {
+		// The leaf of the chain disables freely.
+		expect(() =>
+			assertModuleCanBeDisabled("fulfillment", ["fulfillment"]),
+		).not.toThrow();
+		// Even the base disables when nothing enabled depends on it.
+		expect(() =>
+			assertModuleCanBeDisabled("client-records", ["client-records"]),
+		).not.toThrow();
+		// The only protection left is the real dependency: can't drop client-records
+		// while an enabled module (invoicing) genuinely depends on it.
+		expect(() =>
+			assertModuleCanBeDisabled("client-records", [
+				"client-records",
+				"invoicing",
+			]),
+		).toThrow("MODULE_REQUIRED_BY:client-records:invoicing");
 	});
 
 	it("reports dependency blockers before a disable is attempted", () => {

@@ -264,12 +264,6 @@ export async function setWorkspaceModuleEnabledAction(
 		}
 	} catch (error) {
 		if (error instanceof Error) {
-			if (error.message.startsWith("FOUNDATION_MODULE_REQUIRED:")) {
-				return {
-					error: "Foundation modules are always included.",
-					success: false,
-				};
-			}
 			if (error.message.startsWith("MODULE_REQUIRED_BY:")) {
 				return {
 					error: "Another enabled module depends on this module.",

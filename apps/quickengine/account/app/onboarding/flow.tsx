@@ -56,6 +56,15 @@ function Canvas({
 const headingClass =
 	"font-display font-normal text-4xl text-foreground tracking-tight";
 
+// Onboarding's whole purpose is to hand the user to QuickDash with a working workspace, so
+// the success step links there rather than to the account console. Mirrors the fallback used
+// by the workspace toolbar.
+const QUICKDASH_URL =
+	process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ??
+	(process.env.NODE_ENV === "production"
+		? "https://dash.quickengine.xyz"
+		: "http://localhost:3011");
+
 function SummaryRow({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="flex items-center justify-between border-foreground/[0.06] border-b py-2.5 text-sm last:border-0">
@@ -73,6 +82,12 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 	const [businessName, setBusinessName] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
+	const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+	// How the user configured, so Back returns them where they actually came from. `typeId`
+	// can't carry this: both the manual path and the fast path leave it null.
+	const [route, setRoute] = useState<"preset" | "manual" | "defaults">(
+		"preset",
+	);
 
 	const byId = useMemo(
 		() => new Map(catalog.map((module) => [module.id, module])),
@@ -112,6 +127,7 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 
 	function applyRecipe(id: string) {
 		setTypeId(id);
+		setRoute("preset");
 		const recipe = RECIPE_MODULES[id] ?? [];
 		const next = new Set<string>();
 		for (const moduleId of recipe) {
@@ -119,6 +135,23 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 			for (const resolved of withDependencies(moduleId)) next.add(resolved);
 		}
 		setEnabled(next);
+		setStep("review");
+	}
+
+	/**
+	 * The fast path: an excellent default with no configuration at all, straight to Review.
+	 * The acceptance criteria make business type optional — this is what "optional" means in
+	 * practice, and it is the only route that plausibly finishes in under two minutes for
+	 * someone who does not yet know what a module is.
+	 */
+	function useDefaults() {
+		const next = new Set<string>();
+		for (const moduleId of FOUNDATION) {
+			if (byId.get(moduleId)?.status === "built") next.add(moduleId);
+		}
+		setEnabled(next);
+		setTypeId(null);
+		setRoute("defaults");
 		setStep("review");
 	}
 
@@ -131,6 +164,7 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 		}
 		setEnabled(next);
 		setTypeId(null);
+		setRoute("manual");
 		setStep("modules");
 	}
 
@@ -154,12 +188,13 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 		setSubmitting(true);
 		setSubmitError(null);
 		try {
-			await completeOnboarding({
+			const created = await completeOnboarding({
 				businessName,
 				// Manual configuration has no business type; the server normalizes this.
 				businessType: typeId ?? "custom",
 				moduleIds: [...enabled],
 			});
+			setWorkspaceId(created?.workspaceId ?? null);
 			setStep("success");
 		} catch {
 			setSubmitError(
@@ -241,7 +276,33 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 							Start from the essentials and add exactly what you need.
 						</p>
 					</button>
+
+					{/*
+					 * A preview of what's coming, not a control. Rendered as a static panel
+					 * with no hover or focus affordance — a disabled-looking button invites a
+					 * click and makes the user feel stupid for trying.
+					 */}
+					<div className="relative flex flex-col rounded-xl border border-foreground/[0.06] border-dashed p-6 sm:col-span-2">
+						<span className="absolute top-4 right-4 rounded-full border border-foreground/10 px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
+							Coming soon
+						</span>
+						<Sparkle className="size-6 text-muted-foreground" />
+						<h2 className="mt-4 font-medium text-muted-foreground">
+							Set it up for me
+						</h2>
+						<p className="mt-1 max-w-md text-muted-foreground text-sm">
+							Describe your business and we'll assemble the workspace for you.
+						</p>
+					</div>
 				</div>
+
+				<button
+					type="button"
+					onClick={useDefaults}
+					className="mt-6 w-fit text-muted-foreground text-sm underline-offset-4 transition-colors hover:text-foreground hover:underline"
+				>
+					Skip — use sensible defaults
+				</button>
 			</Canvas>
 		);
 	}
@@ -275,7 +336,7 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 	// Step 3b — Module grid.
 	if (step === "modules") {
 		return (
-			<Canvas onBack={() => setStep(typeId ? "review" : "setup")}>
+			<Canvas onBack={() => setStep(route === "manual" ? "setup" : "review")}>
 				<h1 className={headingClass}>Choose your modules</h1>
 				<p className="mt-3 text-muted-foreground">
 					{enabled.size} selected. Some modules build on others — picking one
@@ -316,7 +377,17 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 	if (step === "review") {
 		const selected = built.filter((module) => enabled.has(module.id));
 		return (
-			<Canvas onBack={() => setStep(typeId ? "preset" : "modules")}>
+			<Canvas
+				onBack={() =>
+					setStep(
+						route === "preset"
+							? "preset"
+							: route === "manual"
+								? "modules"
+								: "setup",
+					)
+				}
+			>
 				<h1 className={headingClass}>Ready to build</h1>
 				<p className="mt-3 text-muted-foreground">
 					Here's what gets created. Nothing is charged, and everything can
@@ -399,13 +470,35 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 					<SummaryRow label="Modules" value={`${enabled.size} enabled`} />
 				</div>
 
-				<button
-					type="button"
-					onClick={() => router.push("/")}
-					className="mt-8 w-full rounded-lg bg-foreground px-6 py-3 font-medium text-background transition-opacity hover:opacity-90"
+				{/*
+				 * Into QuickDash, not the account console. Onboarding exists to produce a
+				 * working workspace, and leaving the user in Account made finding it their
+				 * problem. A plain anchor, not the router: QuickDash is a different origin.
+				 */}
+				{workspaceId ? (
+					<a
+						href={`${QUICKDASH_URL}/${workspaceId}`}
+						className="mt-8 w-full rounded-lg bg-foreground px-6 py-3 text-center font-medium text-background transition-opacity hover:opacity-90"
+					>
+						Enter {businessName.trim() || "workspace"}
+					</a>
+				) : (
+					// No id means the workspace already existed (a re-run of a completed
+					// onboarding). Send them to the account console to pick one.
+					<button
+						type="button"
+						onClick={() => router.push("/")}
+						className="mt-8 w-full rounded-lg bg-foreground px-6 py-3 font-medium text-background transition-opacity hover:opacity-90"
+					>
+						Go to your workspaces
+					</button>
+				)}
+				<a
+					href="/"
+					className="mt-3 text-muted-foreground text-sm underline-offset-4 transition-colors hover:text-foreground hover:underline"
 				>
-					Enter {businessName.trim() || "workspace"}
-				</button>
+					Or go to your account
+				</a>
 			</div>
 		</Canvas>
 	);

@@ -17,7 +17,7 @@ export async function completeOnboarding(input: {
 	if (!session) {
 		throw new Error("UNAUTHENTICATED");
 	}
-	await createWorkspaceForUser({
+	const workspace = await createWorkspaceForUser({
 		userId: session.user.id,
 		userLabel: session.user.name ?? session.user.email,
 		name: input.businessName,
@@ -25,4 +25,7 @@ export async function completeOnboarding(input: {
 		moduleIds: input.moduleIds,
 		completeOnboarding: true,
 	});
+	// null means onboarding had already completed (the idempotency guard inside the
+	// transaction). Nothing was created, so there is no workspace to hand back.
+	return workspace ? { workspaceId: workspace.id } : null;
 }

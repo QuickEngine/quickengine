@@ -104,7 +104,7 @@ const MODULE_ICONS: Record<string, Icon> = {
  * sensible default for a new workspace, but they are no longer *locked* — #173 removed that
  * hard requirement, and a user may switch any of them off.
  */
-const FOUNDATION = [
+export const FOUNDATION = [
 	"client-records",
 	"invoicing",
 	"payments",

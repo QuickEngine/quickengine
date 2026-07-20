@@ -4,7 +4,11 @@ import {
 	quickengineWorkspaces,
 } from "@quickengine/db/schema/quickengine";
 import { workspaceModules } from "@quickengine/db/schema/workspace-modules";
-import { resolveFoundationModules } from "@quickengine/module-registry";
+import {
+	getModule,
+	resolveFoundationModules,
+	resolveModules,
+} from "@quickengine/module-registry";
 import { nextAvailableSlug, slugify } from "./slug";
 import {
 	normalizeBusinessType,
@@ -16,6 +20,13 @@ export type CreateWorkspaceInput = {
 	userLabel: string;
 	name: string;
 	businessType: string;
+	/**
+	 * The modules the user actually chose. Unknown ids are ignored (never trust the
+	 * client), and dependencies are resolved by the registry, so enabling a module that
+	 * composes on another brings its prerequisite along. Omitted or empty falls back to
+	 * the foundation set — the sensible default for a workspace created without a choice.
+	 */
+	moduleIds?: readonly string[];
 	/** Only the first-workspace onboarding path may set this. */
 	completeOnboarding?: boolean;
 	/** The org to create the workspace in. Defaults to the user's personal org (onboarding). */
@@ -40,8 +51,14 @@ export async function createWorkspaceForUser(
 ): Promise<CreatedWorkspace | null> {
 	const name = normalizeWorkspaceName(input.name);
 	const businessType = normalizeBusinessType(input.businessType);
-	const foundation = resolveFoundationModules();
-	const moduleIds = foundation.map((module) => module.id);
+	// Drop ids the registry doesn't know before resolving — `resolveModules` throws on an
+	// unknown id, and this input crosses a trust boundary from the browser.
+	const requested = (input.moduleIds ?? []).filter((id) => getModule(id));
+	const selected =
+		requested.length > 0
+			? resolveModules(requested)
+			: resolveFoundationModules();
+	const moduleIds = selected.map((module) => module.id);
 	const organizationId =
 		input.organizationId ??
 		(await ensurePersonalOrg(input.userId, input.userLabel));
@@ -93,7 +110,7 @@ export async function createWorkspaceForUser(
 		}
 
 		await tx.insert(workspaceModules).values(
-			foundation.map((module) => ({
+			selected.map((module) => ({
 				workspaceId: workspace.id,
 				moduleId: module.id,
 				enabled: true,

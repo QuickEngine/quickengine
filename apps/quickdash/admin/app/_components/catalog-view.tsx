@@ -38,6 +38,7 @@ import {
 	TableRow,
 } from "@quickengine/ui/components/ui/table";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
+import { formatMoney } from "@quickengine/ui/lib/format";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -76,10 +77,7 @@ const centsText = (value: number | null) =>
 	value === null
 		? ""
 		: `${Math.floor(value / 100)}.${String(value % 100).padStart(2, "0")}`;
-const money = (value: number, currency: string) =>
-	new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
-		value / 100,
-	);
+const money = formatMoney;
 const title = (value: string) =>
 	value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 

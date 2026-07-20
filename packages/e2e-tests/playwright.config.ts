@@ -8,32 +8,10 @@ import {
 // two suites can never truncate each other mid-run.
 process.env.TEST_DB_NAME = "quickengine_test_e2e";
 
-/**
- * `resolveTestDatabaseUrl` swaps the database NAME but keeps the HOST — so with a
- * `.env.local` pointed at Neon it would resolve to a test-named database ON PRODUCTION.
- * These tests truncate every table between runs, so that must be impossible: refuse to
- * start unless the host is local. Set E2E_DATABASE_URL to run against something else
- * deliberately.
- */
-function localDatabaseUrl(): string {
-	const url = process.env.E2E_DATABASE_URL ?? resolveTestDatabaseUrl();
-	const { hostname } = new URL(url);
-	const isLocal =
-		hostname === "localhost" ||
-		hostname === "127.0.0.1" ||
-		hostname === "::1" ||
-		hostname === "host.docker.internal";
-	if (!isLocal && !process.env.E2E_DATABASE_URL) {
-		throw new Error(
-			`Refusing to run e2e against a non-local database host "${hostname}". ` +
-				"These tests truncate every table. Point DATABASE_URL at docker " +
-				"(pnpm docker:up) or set E2E_DATABASE_URL to override deliberately.",
-		);
-	}
-	return url;
-}
-
-const databaseUrl = localDatabaseUrl();
+// The non-local-host guard now lives in `resolveTestDatabaseUrl` itself, so all sixteen
+// test configs share one implementation (override with ALLOW_REMOTE_TEST_DB=1).
+// E2E_DATABASE_URL still allows pointing this suite somewhere specific.
+const databaseUrl = process.env.E2E_DATABASE_URL ?? resolveTestDatabaseUrl();
 // The app and the seeding process must agree on the secret, or the session cookie
 // we mint during setup won't validate against the running server.
 const authSecret =

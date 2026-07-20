@@ -1,0 +1,18 @@
+/* TEAM */
+
+  QuickEngine Software
+  Site: quickengine.net
+
+/* PRODUCT */
+
+  QuickDash — a headless business backend configured per workspace.
+  Build more. Switch less.
+
+/* TECHNOLOGY */
+
+  Next.js, TypeScript, Tailwind, PostgreSQL, Drizzle
+
+/* AGENTS */
+
+  Building a frontend against QuickDash with an AI coding agent?
+  Point it at https://dash.quickengine.net/agents.txt

@@ -32,6 +32,7 @@ import {
 	TableRow,
 } from "@quickengine/ui/components/ui/table";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
+import { formatMoney } from "@quickengine/ui/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
@@ -93,10 +94,7 @@ export type OrderClientChoice = {
 const INITIAL: OrderActionState = { error: null, completionId: null };
 const centsText = (value: number) =>
 	`${Math.floor(value / 100)}.${String(value % 100).padStart(2, "0")}`;
-const money = (value: number, currency: string) =>
-	new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
-		value / 100,
-	);
+const money = formatMoney;
 const title = (value: string) =>
 	value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 

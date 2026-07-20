@@ -1,14 +1,10 @@
 import {
 	AddressBook,
 	Article,
-	Briefcase,
-	Buildings,
 	CalendarBlank,
-	Camera,
 	ChartBar,
 	ChatCircle,
 	ClipboardText,
-	CloudArrowUp,
 	Coins,
 	CreditCard,
 	Envelope,
@@ -26,26 +22,24 @@ import {
 	Repeat,
 	ShoppingCart,
 	Star,
-	Storefront,
 	Tag,
 	Timer,
 	Truck,
-	User,
 	UsersThree,
 	Wallet,
 } from "@phosphor-icons/react";
 
-export type BusinessType = { id: string; name: string; icon: Icon };
-
-// Business types = recipes. Picking one preselects a curated set of modules.
-export const BUSINESS_TYPES: BusinessType[] = [
-	{ id: "ecommerce", name: "E-commerce", icon: Storefront },
-	{ id: "agency", name: "Agency", icon: Buildings },
-	{ id: "freelancer", name: "Freelancer", icon: User },
-	{ id: "saas", name: "SaaS", icon: CloudArrowUp },
-	{ id: "creator", name: "Creator", icon: Camera },
-	{ id: "consulting", name: "Consulting", icon: Briefcase },
-];
+/**
+ * The default starting set when no recipe is chosen — the manual and fast paths seed from
+ * this. Not a lock: every one can be switched off, subject only to real dependencies.
+ * Recipes live in `./recipes`; this is only the fallback when the user picks none.
+ */
+export const FOUNDATION = [
+	"client-records",
+	"invoicing",
+	"payments",
+	"fulfillment",
+] as const;
 
 /**
  * Icons for the module picker, keyed by module id.
@@ -95,59 +89,6 @@ const MODULE_ICONS: Record<string, Icon> = {
 	referrals: UsersThree,
 };
 
-/**
- * What each business type preselects — the "recipe". Ids only; the catalog decides what
- * actually exists, so an id listed here that isn't built yet is simply ignored rather than
- * offering the user something that doesn't work.
- *
- * Every recipe includes Client Records, Invoicing, Payments, and Fulfillment: they are the
- * sensible default for a new workspace, but they are no longer *locked* — #173 removed that
- * hard requirement, and a user may switch any of them off.
- */
-export const FOUNDATION = [
-	"client-records",
-	"invoicing",
-	"payments",
-	"fulfillment",
-] as const;
-
-export const RECIPE_MODULES: Record<string, readonly string[]> = {
-	ecommerce: [
-		...FOUNDATION,
-		"products-services",
-		"orders",
-		"inventory",
-		"shipping",
-	],
-	agency: [
-		...FOUNDATION,
-		"quotes-estimates",
-		"projects-tasks",
-		"time-tracking",
-		"contracts-esign",
-	],
-	freelancer: [
-		...FOUNDATION,
-		"quotes-estimates",
-		"time-tracking",
-		"contracts-esign",
-		"files",
-	],
-	saas: [...FOUNDATION, "reporting-analytics", "files"],
-	creator: [...FOUNDATION, "products-services", "orders", "files", "bookings"],
-	consulting: [
-		...FOUNDATION,
-		"quotes-estimates",
-		"projects-tasks",
-		"time-tracking",
-		"contracts-esign",
-	],
-};
-
 export function moduleIcon(id: string): Icon {
 	return MODULE_ICONS[id] ?? Package;
-}
-
-export function businessTypeName(typeId: string): string {
-	return BUSINESS_TYPES.find((t) => t.id === typeId)?.name ?? "workspace";
 }

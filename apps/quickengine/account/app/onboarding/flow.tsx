@@ -10,13 +10,8 @@ import {
 import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
 import type { OnboardingModule } from "../_lib/module-catalog";
-import {
-	BUSINESS_TYPES,
-	businessTypeName,
-	FOUNDATION,
-	moduleIcon,
-	RECIPE_MODULES,
-} from "../_lib/modules";
+import { FOUNDATION, moduleIcon } from "../_lib/modules";
+import { findRecipe, groupRecipes, searchRecipes } from "../_lib/recipes";
 import { completeOnboarding } from "./actions";
 
 /**
@@ -88,6 +83,7 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 	const [route, setRoute] = useState<"preset" | "manual" | "defaults">(
 		"preset",
 	);
+	const [recipeQuery, setRecipeQuery] = useState("");
 
 	const byId = useMemo(
 		() => new Map(catalog.map((module) => [module.id, module])),
@@ -100,6 +96,10 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 	const upcoming = useMemo(
 		() => catalog.filter((module) => module.status === "upcoming"),
 		[catalog],
+	);
+	const matchedRecipes = useMemo(
+		() => searchRecipes(recipeQuery),
+		[recipeQuery],
 	);
 
 	/** A module plus everything it composes on, transitively. */
@@ -128,7 +128,7 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 	function applyRecipe(id: string) {
 		setTypeId(id);
 		setRoute("preset");
-		const recipe = RECIPE_MODULES[id] ?? [];
+		const recipe = findRecipe(id)?.modules ?? [];
 		const next = new Set<string>();
 		for (const moduleId of recipe) {
 			if (byId.get(moduleId)?.status !== "built") continue;
@@ -316,19 +316,50 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 					Pick the closest fit — you'll see exactly what it sets up before
 					anything is created.
 				</p>
-				<div className="mt-8 grid gap-3 sm:grid-cols-3">
-					{BUSINESS_TYPES.map((type) => (
+				<input
+					type="search"
+					aria-label="Search business types"
+					value={recipeQuery}
+					onChange={(event) => setRecipeQuery(event.target.value)}
+					placeholder="Search — plumber, photographer, online store…"
+					className="mt-8 w-full max-w-md rounded-lg border border-input bg-transparent px-4 py-3 text-foreground outline-none transition-colors focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/40"
+				/>
+
+				{matchedRecipes.length === 0 ? (
+					<p className="mt-8 text-muted-foreground text-sm">
+						Nothing matches "{recipeQuery.trim()}". Try a broader word, or{" "}
 						<button
-							key={type.id}
 							type="button"
-							onClick={() => applyRecipe(type.id)}
-							className="flex flex-col items-start gap-3 rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] p-5 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+							onClick={startManual}
+							className="text-foreground underline underline-offset-4"
 						>
-							<type.icon className="size-6 text-foreground" />
-							<span className="font-medium text-foreground">{type.name}</span>
+							choose modules yourself
 						</button>
-					))}
-				</div>
+						.
+					</p>
+				) : (
+					<div className="mt-8 max-h-[52vh] space-y-6 overflow-y-auto pr-1">
+						{groupRecipes(matchedRecipes).map(([category, recipes]) => (
+							<section key={category}>
+								<h2 className="text-[11px] text-muted-foreground uppercase tracking-[0.18em]">
+									{category}
+								</h2>
+								<div className="mt-3 grid gap-2 sm:grid-cols-3">
+									{recipes.map((recipe) => (
+										<button
+											key={recipe.id}
+											type="button"
+											onClick={() => applyRecipe(recipe.id)}
+											className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] p-4 text-left font-medium text-foreground text-sm transition-colors hover:border-foreground/20 hover:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+										>
+											{recipe.name}
+										</button>
+									))}
+								</div>
+							</section>
+						))}
+					</div>
+				)}
 			</Canvas>
 		);
 	}
@@ -398,7 +429,7 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 					<SummaryRow label="Workspace" value={businessName.trim() || "—"} />
 					<SummaryRow
 						label="Type"
-						value={typeId ? businessTypeName(typeId) : "Custom"}
+						value={typeId ? (findRecipe(typeId)?.name ?? "Custom") : "Custom"}
 					/>
 					<SummaryRow label="Modules" value={`${selected.length} enabled`} />
 				</div>
@@ -465,7 +496,7 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 					<SummaryRow label="Business" value={businessName.trim() || "—"} />
 					<SummaryRow
 						label="Type"
-						value={typeId ? businessTypeName(typeId) : "Custom"}
+						value={typeId ? (findRecipe(typeId)?.name ?? "Custom") : "Custom"}
 					/>
 					<SummaryRow label="Modules" value={`${enabled.size} enabled`} />
 				</div>

@@ -7,6 +7,7 @@ import {
 	loadWorkspaceForKey,
 	requireWorkspaceAccess,
 } from "../../_lib/workspace-access";
+import { consumeRateLimit, RATE_LIMITS, type RateLimit } from "./rate-limit";
 import { fail } from "./respond";
 
 // The common workspace-access shape shared by both principals. Based on the API-key loader
@@ -27,6 +28,8 @@ export type ApiContext = {
 	workspaceId: string;
 	access: WorkspaceAccess;
 	principal: ApiPrincipal;
+	/** `RateLimit-*` headers to echo on the response so clients can back off before 429. */
+	rateLimitHeaders: Record<string, string>;
 };
 
 export type RouteRequirement = {
@@ -34,6 +37,11 @@ export type RouteRequirement = {
 	module: string;
 	/** The capability an API key must hold (session callers are implicitly full-access). */
 	capability: ApiCapability;
+	/**
+	 * The budget this route consumes. Defaults to the read budget — a route that forgets to
+	 * declare one is still limited, because the safe default matters more than precision.
+	 */
+	rateLimit?: RateLimit;
 };
 
 function readBearer(headers: Headers): string | null {
@@ -53,11 +61,13 @@ function readBearer(headers: Headers): string | null {
  * `QuickEngine-Publishable-Key`, then the signed-in session. A key's own workspace is the
  * scope; a mismatching `QuickEngine-Workspace` header is rejected.
  */
-export async function resolveContext(
+async function resolveAuthorizedContext(
 	request: Request,
 	id: string,
 	required: RouteRequirement,
-): Promise<{ context: ApiContext } | { error: NextResponse }> {
+): Promise<
+	{ context: Omit<ApiContext, "rateLimitHeaders"> } | { error: NextResponse }
+> {
 	const headerWorkspace = request.headers.get("QuickEngine-Workspace")?.trim();
 
 	// --- API-key path ---------------------------------------------------------------
@@ -205,5 +215,36 @@ export async function resolveContext(
 			access,
 			principal: { kind: "session", userId: session.user.id },
 		},
+	};
+}
+
+/**
+ * The single gate every v1 route calls: authorize, then spend rate-limit budget.
+ *
+ * Order matters. Authorization runs first so the budget is charged to the API key rather
+ * than a shared IP — otherwise one customer behind a NAT throttles their neighbours, and a
+ * caller could dodge their own limit by rotating source addresses. The cost is that an
+ * unauthenticated flood still reaches the key lookup, which is indexed and cheap; the
+ * expensive work (module queries, business reads) all sits behind this.
+ */
+export async function resolveContext(
+	request: Request,
+	id: string,
+	required: RouteRequirement,
+): Promise<{ context: ApiContext } | { error: NextResponse }> {
+	const resolved = await resolveAuthorizedContext(request, id, required);
+	if ("error" in resolved) return resolved;
+
+	const limited = await consumeRateLimit(
+		request,
+		id,
+		required.rateLimit ?? RATE_LIMITS.read,
+		resolved.context.principal,
+		required.module,
+	);
+	if (!limited.ok) return { error: limited.response };
+
+	return {
+		context: { ...resolved.context, rateLimitHeaders: limited.headers },
 	};
 }

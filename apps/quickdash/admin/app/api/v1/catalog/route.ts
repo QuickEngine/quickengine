@@ -31,5 +31,6 @@ export async function GET(request: Request): Promise<Response> {
 			unitLabel: item.unitLabel,
 		})),
 		id,
+		resolved.context.rateLimitHeaders,
 	);
 }

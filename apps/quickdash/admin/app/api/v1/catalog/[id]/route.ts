@@ -54,5 +54,6 @@ export async function GET(
 				})),
 		},
 		id,
+		resolved.context.rateLimitHeaders,
 	);
 }

@@ -30,13 +30,44 @@ const withDatabase = (url: string, name: string): string => {
 // skipping") on idempotent migrator re-runs that we don't care to see.
 const quiet = { onnotice: () => {} } as const;
 
+const LOCAL_HOSTS = new Set([
+	"localhost",
+	"127.0.0.1",
+	"::1",
+	"host.docker.internal",
+]);
+
 /**
- * Resolve the test database URL from the ambient DATABASE_URL (or the docker
- * default), always swapping the database name to `quickengine_test`. This makes
- * it impossible to point the suite at the dev or prod database by accident.
+ * Refuse a non-local database host. Swapping the database NAME is not protection on
+ * its own: the host is inherited from DATABASE_URL, so with `.env.local` pointed at
+ * Neon this resolver happily produces a test-named database ON PRODUCTION — and every
+ * suite calls `truncateAll()` between tests. Sixteen vitest/playwright configs go
+ * through here, so the guard belongs at the source rather than in any one of them.
+ *
+ * `ALLOW_REMOTE_TEST_DB=1` opts out deliberately (e.g. a disposable remote branch in CI).
+ */
+const assertLocalHost = (url: string): string => {
+	if (process.env.ALLOW_REMOTE_TEST_DB === "1") return url;
+	const { hostname } = new URL(url);
+	if (!LOCAL_HOSTS.has(hostname)) {
+		throw new Error(
+			`Refusing to run tests against non-local database host "${hostname}". ` +
+				"These suites TRUNCATE every table. Point DATABASE_URL at docker " +
+				"(pnpm docker:up) or set ALLOW_REMOTE_TEST_DB=1 to override deliberately.",
+		);
+	}
+	return url;
+};
+
+/**
+ * Resolve the test database URL from the ambient DATABASE_URL (or the docker default),
+ * always swapping the database name to the per-suite test name AND requiring the host
+ * to be local. Both halves matter — see `assertLocalHost`.
  */
 export const resolveTestDatabaseUrl = (): string =>
-	withDatabase(process.env.DATABASE_URL ?? DEFAULT_URL, testDbName());
+	assertLocalHost(
+		withDatabase(process.env.DATABASE_URL ?? DEFAULT_URL, testDbName()),
+	);
 
 /**
  * Create `quickengine_test` if it doesn't exist, then apply the committed

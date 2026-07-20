@@ -32,6 +32,7 @@ import {
 	TableRow,
 } from "@quickengine/ui/components/ui/table";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
+import { formatDate } from "@quickengine/ui/lib/format";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -336,18 +337,14 @@ function FulfillmentDetails({
 						<dt className="text-muted-foreground">Due</dt>
 						<dd className="mt-1 font-medium">
 							{fulfillment.dueDate
-								? new Intl.DateTimeFormat(undefined, {
-										dateStyle: "medium",
-									}).format(new Date(`${fulfillment.dueDate}T12:00:00Z`))
+								? formatDate(`${fulfillment.dueDate}T12:00:00Z`)
 								: "No due date"}
 						</dd>
 					</div>
 					<div>
 						<dt className="text-muted-foreground">Created</dt>
 						<dd className="mt-1 font-medium">
-							{new Intl.DateTimeFormat(undefined, {
-								dateStyle: "medium",
-							}).format(new Date(fulfillment.createdAt))}
+							{formatDate(fulfillment.createdAt)}
 						</dd>
 					</div>
 				</dl>

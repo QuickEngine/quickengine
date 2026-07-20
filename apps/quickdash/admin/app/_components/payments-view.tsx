@@ -32,6 +32,7 @@ import {
 	TableRow,
 } from "@quickengine/ui/components/ui/table";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
+import { formatDate, formatMoney } from "@quickengine/ui/lib/format";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -86,10 +87,7 @@ export type PaymentViewModel = {
 };
 
 const INITIAL_STATE: PaymentActionState = { error: null, completionId: null };
-const money = (cents: number, currency: string) =>
-	new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
-		cents / 100,
-	);
+const money = formatMoney;
 const titleCase = (value: string) =>
 	value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
@@ -556,11 +554,7 @@ export function PaymentsView({
 						<TableBody>
 							{filtered.map((payment) => (
 								<TableRow key={payment.id}>
-									<TableCell>
-										{new Intl.DateTimeFormat(undefined, {
-											dateStyle: "medium",
-										}).format(new Date(payment.createdAt))}
-									</TableCell>
+									<TableCell>{formatDate(payment.createdAt)}</TableCell>
 									<TableCell>
 										<p className="font-medium">
 											{payment.clientName ?? "Unassigned"}

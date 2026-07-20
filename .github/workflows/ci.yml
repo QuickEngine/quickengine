@@ -90,5 +90,8 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Release automation tests
+        run: pnpm test:release
+
       - name: Build
         run: pnpm build

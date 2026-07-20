@@ -11,7 +11,8 @@
 	},
 	"dependencies": {
 		"@quickengine/auth": "workspace:*",
-		"@quickengine/db": "workspace:*"
+		"@quickengine/db": "workspace:*",
+		"@quickengine/mod-invoicing": "workspace:*"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.50.0",

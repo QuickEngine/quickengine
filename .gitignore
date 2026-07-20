@@ -48,6 +48,8 @@ playwright-report/
 test-results/
 blob-report/
 .playwright/
+# Saved storageState holds a REAL signed-in session cookie — never commit it.
+.auth/
 
 # Debug
 npm-debug.log*

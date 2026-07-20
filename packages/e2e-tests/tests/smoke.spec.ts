@@ -11,6 +11,10 @@ test("the app is up and connected to the e2e database", async ({ request }) => {
 	await expect(response.json()).resolves.toMatchObject({ status: "ok" });
 });
 
+// Every other project inherits the seeded session; this one must not, or "signed out"
+// isn't what's being tested.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test("an unauthenticated visitor is redirected away from the workspace root", async ({
 	page,
 }) => {

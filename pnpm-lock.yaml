@@ -674,6 +674,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../db
+      '@quickengine/mod-invoicing':
+        specifier: workspace:*
+        version: link:../modules/invoicing
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.0

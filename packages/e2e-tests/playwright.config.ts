@@ -39,10 +39,17 @@ const databaseUrl = localDatabaseUrl();
 const authSecret =
 	process.env.BETTER_AUTH_SECRET ?? "test-better-auth-secret-0000000000000000";
 const baseURL = "http://localhost:3011";
+export const STORAGE_STATE = "./.auth/state.json";
 
 process.env.DATABASE_URL = databaseUrl;
 process.env.BETTER_AUTH_SECRET = authSecret;
 process.env.NODE_ENV = "test";
+
+// Seeding a user runs Better Auth's sign-up, which sends a verification email. The email
+// package only falls back to the console provider when RESEND_API_KEY is UNSET — with a
+// real key present (as in .env.local) the suite would send actual mail to a fake address
+// on every run. Strip it so e2e can never send email.
+delete process.env.RESEND_API_KEY;
 
 // Provision here rather than in globalSetup: Playwright waits for the webServer probe
 // BEFORE running globalSetup, and the probe (/api/health) reports 503 until the database
@@ -64,7 +71,16 @@ export default defineConfig({
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
 	},
-	projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+	projects: [
+		// Seeds the workspace fixture and writes a real signed-in session to
+		// .auth/state.json; every other project starts from it.
+		{ name: "setup", testMatch: /.*\.setup\.ts/ },
+		{
+			name: "chromium",
+			use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+			dependencies: ["setup"],
+		},
+	],
 	webServer: {
 		// --webpack matches the rest of the repo: Turbopack fatal-errors here.
 		command: "pnpm --filter @quickengine/quickdash dev",

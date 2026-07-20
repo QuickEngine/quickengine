@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	contractsEsignSettingsSchema,
 	createContract,
@@ -136,12 +137,23 @@ export async function createContractAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	const idempotencyScope = `contracts.create:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
+		revalidatePath(`/${workspaceId}/contracts-esign`);
+		return success();
+	}
+
 	try {
 		await createContract(workspaceId, {
 			...readContractInput(formData),
 			numberPrefix: authorization.settings.contractNumberPrefix,
 		});
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/contracts-esign`);

@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey } from "@quickengine/db";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	createOrder,
 	deleteOrder,
@@ -141,6 +141,9 @@ export async function saveOrderAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+	// Tracks a key this call actually claimed, so a failure can give it back. The update
+	// branch never claims, so it stays null and releases nothing.
+	let claimed: { key: string; scope: string } | null = null;
 	try {
 		const input = await orderInput(workspaceId, formData);
 		const orderId = String(formData.get("orderId") ?? "");
@@ -150,12 +153,9 @@ export async function saveOrderAction(
 		} else {
 			// Guard create against double-fire: only the first request with this key creates.
 			const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-			if (
-				await claimIdempotencyKey(
-					idempotencyKey,
-					`orders.create:${workspaceId}`,
-				)
-			) {
+			const idempotencyScope = `orders.create:${workspaceId}`;
+			if (await claimIdempotencyKey(idempotencyKey, idempotencyScope)) {
+				claimed = { key: idempotencyKey, scope: idempotencyScope };
 				const prefix =
 					typeof authorization.settings.numberPrefix === "string"
 						? authorization.settings.numberPrefix
@@ -164,6 +164,9 @@ export async function saveOrderAction(
 			}
 		}
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		if (claimed) await releaseIdempotencyKey(claimed.key, claimed.scope);
 		return failure(message(error));
 	}
 	revalidatePath(`/${workspaceId}/orders`);

@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey } from "@quickengine/db";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	clientRecordsSettingsSchema,
 	createClientRecord,
@@ -82,10 +82,8 @@ export async function createClientRecordAction(
 	// Idempotency: a retry, a race, or a double-fire that slips past the button's
 	// pending-disable carries the same key, so only the first request creates a record.
 	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	const isFirst = await claimIdempotencyKey(
-		idempotencyKey,
-		`client-records.create:${workspaceId}`,
-	);
+	const idempotencyScope = `client-records.create:${workspaceId}`;
+	const isFirst = await claimIdempotencyKey(idempotencyKey, idempotencyScope);
 	if (!isFirst) {
 		revalidatePath(`/${workspaceId}/client-records`);
 		return { error: null, completionId: crypto.randomUUID() };
@@ -98,6 +96,9 @@ export async function createClientRecordAction(
 			{ actorId: authorization.actorId },
 		);
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return failure(friendlyFailure(error));
 	}
 

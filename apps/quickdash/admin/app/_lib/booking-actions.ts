@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey } from "@quickengine/db";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	bookingsSettingsSchema,
 	createBooking,
@@ -58,12 +58,8 @@ export async function createBookingAction(
 	if (!authorization.ok) return failure(authorization.error);
 
 	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	if (
-		!(await claimIdempotencyKey(
-			idempotencyKey,
-			`bookings.create:${workspaceId}`,
-		))
-	) {
+	const idempotencyScope = `bookings.create:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
 		revalidatePath(`/${workspaceId}/bookings`);
 		return success();
 	}
@@ -87,6 +83,9 @@ export async function createBookingAction(
 			notes: optional(formData.get("notes")),
 		});
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		if (error instanceof Error && error.message === "BOOKING_SCHEDULE_CONFLICT")
 			return failure("That schedule already has an overlapping booking.");
 		return failure(

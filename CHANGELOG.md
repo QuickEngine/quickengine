@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Product releases now version themselves.** Every successful `main` CI run publishes
+  the merged commit as the next monthly CalVer tag and GitHub Release, beginning with
+  `2026.7.1` and resetting the counter each month. The workflow is serialized and safe
+  to rerun, uses generated release notes, and leaves future npm package SemVer separate.
+
 - **CI now caches Turborepo's task results between runs.** The pnpm store was already cached, but Turbo's own cache was not — so every push recomputed typecheck, test, and build for all 45 tasks from cold, even when the change touched two files. Restoring `.turbo` lets Turbo skip everything whose inputs genuinely did not change. Measured locally: a cold typecheck takes 19s, a warm one 0s; build is the larger share of CI time and behaves the same way. Uses the local cache via `actions/cache` — no Turbo account, token, or external service. The cache compounds and Turbo never prunes it, so a note in the workflow records that GitHub's 10GB LRU eviction is what keeps it bounded, and what to do if the restore step ever becomes slower than the work it saves.
 
 ### Added

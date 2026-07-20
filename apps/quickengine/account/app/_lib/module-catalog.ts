@@ -21,6 +21,13 @@ export type OnboardingModule = {
 	kind: "shared" | "domain";
 	/** `built` is selectable now; `upcoming` is shown, labelled, and not selectable. */
 	status: "built" | "upcoming";
+	/**
+	 * Modules this one composes on. Selecting it must bring these along — the server
+	 * resolves them regardless, so the UI has to show the same truth or the user makes a
+	 * choice that is silently overridden (e.g. unticking Fulfillment, then selecting
+	 * Shipping, which requires Orders, which requires Fulfillment).
+	 */
+	dependsOn: readonly string[];
 };
 
 /**
@@ -31,7 +38,7 @@ export type OnboardingModule = {
  * When one of these ships, it gains a manifest and moves into the registry — at which point
  * it appears as `built` automatically and its entry here should be deleted.
  */
-const UPCOMING: readonly Omit<OnboardingModule, "status">[] = [
+const UPCOMING: readonly Omit<OnboardingModule, "status" | "dependsOn">[] = [
 	{
 		id: "forms-intake",
 		name: "Forms & Intake",
@@ -164,10 +171,12 @@ export function buildOnboardingCatalog(): OnboardingModule[] {
 		name: manifest.name,
 		description: manifest.description,
 		kind: manifest.kind,
+		dependsOn: manifest.dependsOn,
 		status: "built",
 	}));
 	const upcoming: OnboardingModule[] = UPCOMING.map((module) => ({
 		...module,
+		dependsOn: [],
 		status: "upcoming",
 	}));
 	return [...built, ...upcoming];

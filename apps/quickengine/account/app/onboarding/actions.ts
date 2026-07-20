@@ -10,6 +10,8 @@ import { createWorkspaceForUser } from "../_lib/workspaces";
 export async function completeOnboarding(input: {
 	businessName: string;
 	businessType: string;
+	/** The modules chosen during onboarding. Validated and dependency-resolved server-side. */
+	moduleIds?: readonly string[];
 }) {
 	const session = await getSession(await headers());
 	if (!session) {
@@ -20,6 +22,7 @@ export async function completeOnboarding(input: {
 		userLabel: session.user.name ?? session.user.email,
 		name: input.businessName,
 		businessType: input.businessType,
+		moduleIds: input.moduleIds,
 		completeOnboarding: true,
 	});
 }

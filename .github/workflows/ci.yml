@@ -60,6 +60,27 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Persist Turborepo's task cache between runs. Without it every push recomputes
+      # typecheck, test and build for all 45 tasks from cold, even when the change touched
+      # two files. Turbo hashes each task's inputs, so restoring this lets it skip
+      # everything that genuinely did not change.
+      #
+      # The key is per-commit so each run writes a fresh entry; `restore-keys` falls back to
+      # the most recent previous cache, which is what actually produces the hit. This is the
+      # local cache — no Turbo account, token, or external service involved.
+      #
+      # The cache compounds: each run saves what it restored plus what it added, and Turbo
+      # never prunes. GitHub evicts least-recently-used entries at a 10GB repo limit, so this
+      # self-regulates, but if CI ever slows down at the restore/save steps rather than the
+      # task steps, that is the cause — delete the caches and let it rebuild.
+      - name: Restore Turborepo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
       - name: Biome check
         run: pnpm check
 

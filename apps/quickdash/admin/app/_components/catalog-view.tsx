@@ -204,9 +204,15 @@ function ItemDialog({
 	const [open, setOpen] = useState(false);
 	const [state, action] = useActionState(saveCatalogItemAction, INITIAL);
 	const router = useRouter();
+	// A per-submit idempotency key so a double-fire creates only one item; a fresh key is
+	// minted after each success. Sent only when creating — an update is naturally idempotent.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [state.completionId, router]);
@@ -229,7 +235,11 @@ function ItemDialog({
 			<DialogContent className="sm:max-w-xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{item && <input type="hidden" name="itemId" value={item.id} />}
+					{item ? (
+						<input type="hidden" name="itemId" value={item.id} />
+					) : (
+						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+					)}
 					<DialogHeader>
 						<DialogTitle>
 							{item ? "Edit catalog item" : "Add a product or service"}
@@ -294,9 +304,15 @@ function VariantDialog({
 	const [open, setOpen] = useState(false);
 	const [state, action] = useActionState(saveVariantAction, INITIAL);
 	const router = useRouter();
+	// A per-submit idempotency key so a double-fire creates only one variant; a fresh key is
+	// minted after each success. Sent only when creating — an update is naturally idempotent.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [state.completionId, router]);
@@ -317,8 +333,10 @@ function VariantDialog({
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
 					<input type="hidden" name="itemId" value={item.id} />
-					{variant && (
+					{variant ? (
 						<input type="hidden" name="variantId" value={variant.id} />
+					) : (
+						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					)}
 					<DialogHeader>
 						<DialogTitle>

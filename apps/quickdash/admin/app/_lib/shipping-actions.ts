@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	createShipment,
 	deleteShipment,
@@ -59,6 +60,14 @@ export async function createShipmentAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	const orderLineItemId = String(formData.get("orderLineItemId") ?? "");
+
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	const idempotencyScope = `shipping.create:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
+		revalidatePath(`/${workspaceId}/shipping`);
+		return success();
+	}
+
 	try {
 		await createShipment(workspaceId, {
 			orderId: String(formData.get("orderId") ?? ""),
@@ -105,6 +114,9 @@ export async function createShipmentAction(
 			trackingUrl: optional(formData.get("trackingUrl")),
 		});
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		if (error instanceof Error && error.message === "ORDER_LINE_OVERSHIPPED")
 			return failure(
 				"That quantity exceeds the order line's unallocated balance.",

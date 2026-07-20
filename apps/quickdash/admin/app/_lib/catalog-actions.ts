@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	createCatalogItem,
 	createProductVariant,
@@ -92,11 +93,24 @@ export async function saveCatalogItemAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const denied = await authorize(workspaceId);
 	if (denied) return denied;
+	// Tracks a key this call actually claimed, so a failure can give it back. The update
+	// branch never claims, so it stays null and releases nothing.
+	let claimed: { key: string; scope: string } | null = null;
 	try {
 		const id = String(formData.get("itemId") ?? "");
 		if (id) await updateCatalogItem(workspaceId, id, itemInput(formData));
-		else await createCatalogItem(workspaceId, itemInput(formData));
+		else {
+			const key = String(formData.get("idempotencyKey") ?? "");
+			const scope = `catalog.item.create:${workspaceId}`;
+			if (await claimIdempotencyKey(key, scope)) {
+				claimed = { key, scope };
+				await createCatalogItem(workspaceId, itemInput(formData));
+			}
+		}
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		if (claimed) await releaseIdempotencyKey(claimed.key, claimed.scope);
 		return failure(message(error));
 	}
 	revalidatePath(`/${workspaceId}/products-services`);
@@ -163,16 +177,28 @@ export async function saveVariantAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const denied = await authorize(workspaceId);
 	if (denied) return denied;
+	// Tracks a key this call actually claimed, so a failure can give it back. The update
+	// branch never claims, so it stays null and releases nothing.
+	let claimed: { key: string; scope: string } | null = null;
 	try {
 		const id = String(formData.get("variantId") ?? "");
 		if (id) await updateProductVariant(workspaceId, id, variantInput(formData));
-		else
-			await createProductVariant(
-				workspaceId,
-				String(formData.get("itemId")),
-				variantInput(formData),
-			);
+		else {
+			const key = String(formData.get("idempotencyKey") ?? "");
+			const scope = `catalog.variant.create:${workspaceId}`;
+			if (await claimIdempotencyKey(key, scope)) {
+				claimed = { key, scope };
+				await createProductVariant(
+					workspaceId,
+					String(formData.get("itemId")),
+					variantInput(formData),
+				);
+			}
+		}
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		if (claimed) await releaseIdempotencyKey(claimed.key, claimed.scope);
 		return failure(message(error));
 	}
 	revalidatePath(`/${workspaceId}/products-services`);

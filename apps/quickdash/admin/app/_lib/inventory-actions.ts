@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	applyInventoryAdjustment,
 	createInventoryItem,
@@ -58,6 +59,14 @@ export async function createInventoryItemAction(
 	const [catalogItemId, variantId = ""] = String(
 		formData.get("target") ?? "",
 	).split("::");
+
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	const idempotencyScope = `inventory.create:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
+		revalidatePath(`/${workspaceId}/inventory`);
+		return success();
+	}
+
 	try {
 		await createInventoryItem(workspaceId, {
 			catalogItemId,
@@ -68,6 +77,9 @@ export async function createInventoryItemAction(
 			),
 		});
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		if (error instanceof Error && error.message.includes("unique"))
 			return failure("That catalog target already has an inventory record.");
 		return failure("Check the catalog target and low-stock threshold.");

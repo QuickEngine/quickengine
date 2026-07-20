@@ -5,7 +5,7 @@ import { Button } from "@quickengine/ui/components/ui/button";
 import { Input } from "@quickengine/ui/components/ui/input";
 import { NativeSelect } from "@quickengine/ui/components/ui/native-select";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
 	addTimeAction,
 	reviewTimeAction,
@@ -38,17 +38,26 @@ function Form({
 	action,
 	hidden,
 	children,
+	idempotent,
 }: {
 	action: Action;
 	hidden: Record<string, string>;
 	children: React.ReactNode;
+	// Opt-in for the manual-entry form: sends a per-submit key so a double-fire logs one
+	// entry. The timer and review forms share this wrapper and don't need it.
+	idempotent?: boolean;
 }) {
 	const [state, formAction] = useActionState(action, INITIAL);
+	const [key, setKey] = useState(() => crypto.randomUUID());
+	useEffect(() => {
+		if (state.completionId) setKey(crypto.randomUUID());
+	}, [state.completionId]);
 	return (
 		<form action={formAction} className="flex flex-wrap items-center gap-2">
 			{Object.entries(hidden).map(([name, value]) => (
 				<input key={name} type="hidden" name={name} value={value} />
 			))}
+			{idempotent && <input type="hidden" name="idempotencyKey" value={key} />}
 			{children}
 			{state.error && (
 				<span className="text-destructive text-xs">{state.error}</span>
@@ -110,7 +119,7 @@ export function TimeTrackingView({
 			</div>
 			<div className="rounded-xl border p-4">
 				<h3 className="mb-3 font-medium">Manual entry</h3>
-				<Form action={addTimeAction} hidden={{ workspaceId }}>
+				<Form action={addTimeAction} hidden={{ workspaceId }} idempotent>
 					<ProjectSelect projects={projects} />
 					<TaskSelect tasks={tasks} />
 					<Input name="workDate" type="date" required />

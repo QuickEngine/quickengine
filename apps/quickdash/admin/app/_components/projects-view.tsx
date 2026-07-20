@@ -3,7 +3,7 @@ import { Button } from "@quickengine/ui/components/ui/button";
 import { Input } from "@quickengine/ui/components/ui/input";
 import { NativeSelect } from "@quickengine/ui/components/ui/native-select";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
 	createProjectAction,
 	createTaskAction,
@@ -30,17 +30,26 @@ function F({
 	action,
 	children,
 	hidden,
+	idempotent,
 }: {
 	action: Action;
 	children: React.ReactNode;
 	hidden: Record<string, string>;
+	// Opt-in for the create forms: sends a per-submit key so a double-fire creates one
+	// record. The status forms share this wrapper and don't need it.
+	idempotent?: boolean;
 }) {
 	const [s, a] = useActionState(action, I);
+	const [key, setKey] = useState(() => crypto.randomUUID());
+	useEffect(() => {
+		if (s.completionId) setKey(crypto.randomUUID());
+	}, [s.completionId]);
 	return (
 		<form action={a} className="flex flex-wrap gap-2">
 			{Object.entries(hidden).map(([k, v]) => (
 				<input key={k} type="hidden" name={k} value={v} />
 			))}
+			{idempotent && <input type="hidden" name="idempotencyKey" value={key} />}
 			{children}
 			{s.error && <span className="text-destructive text-xs">{s.error}</span>}
 		</form>
@@ -63,7 +72,7 @@ export function ProjectsView({
 					Organize client or internal work and its actionable tasks.
 				</p>
 			</div>
-			<F action={createProjectAction} hidden={{ workspaceId }}>
+			<F action={createProjectAction} hidden={{ workspaceId }} idempotent>
 				<Input name="name" placeholder="Project name" required />
 				<NativeSelect name="clientId">
 					<option value="">Internal project</option>
@@ -110,6 +119,7 @@ export function ProjectsView({
 						<F
 							action={createTaskAction}
 							hidden={{ workspaceId, projectId: p.id }}
+							idempotent
 						>
 							<Input name="title" placeholder="Task or deliverable" required />
 							<NativeSelect name="kind">

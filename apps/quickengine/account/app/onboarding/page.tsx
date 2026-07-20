@@ -2,6 +2,7 @@ import { getSession } from "@quickengine/auth/server";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { buildOnboardingCatalog } from "../_lib/module-catalog";
 import { getAccountState } from "../_lib/onboarding";
 import { OnboardingFlow } from "./flow";
 
@@ -16,5 +17,7 @@ export default async function Page() {
 	if (state?.onboardingCompletedAt) {
 		redirect("/");
 	}
-	return <OnboardingFlow />;
+	// Resolved here, on the server: the module registry imports every module package and
+	// their Drizzle schemas, none of which belongs in the browser bundle.
+	return <OnboardingFlow catalog={buildOnboardingCatalog()} />;
 }

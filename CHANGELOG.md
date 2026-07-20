@@ -6,7 +6,17 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Redis is wired — the cache is real, and can count atomically.** `@quickengine/cache` was a 31-line in-memory seam despite Upstash being in the stack. It now selects a provider from the environment like every other external service: **Upstash over REST** when its credentials exist (production runs on Vercel, where a TCP socket per invocation exhausts connection limits), **TCP Redis** via `REDIS_URL` for local docker, and **memory** for tests — with `CACHE_DRIVER=memory` to force the offline provider. The seam also gained `increment(key, windowSeconds)`, because **rate limiting cannot be built on get/set**: read-then-write is a race, so two concurrent requests both read 4, both write 5, and a limit of 5 admits 6. Redis `INCR` is atomic. Verified against the live Upstash instance, not assumed. Also fixes a real bug in the memory provider — `set` accepted a `ttlSeconds` option and silently ignored it, so nothing ever expired and a "one minute" window lasted the life of the process.
+
 ### Fixed
+
+- **Sentry was sampling every transaction, and couldn't tell preview traffic from real users.** `tracesSampleRate` was `1.0` across all four apps; Sentry bills on spans, so that is a cost problem the moment traffic arrives — now `0.1`. No `environment` was set either, and because Vercel preview deployments build with `NODE_ENV=production` they *do* report — meaning our own preview testing landed in the same stream as customer errors, defeating the point of watching it. Both now tagged from `VERCEL_ENV`.
+
+### Removed
+
+- **`@quickengine/monitoring` deleted.** A 20-line provider seam with a console implementation that nothing imported — no package depended on it, no source referenced it. Error monitoring is handled directly by `@sentry/nextjs` in each app, which is where Next.js expects it. Removing the unused abstraction rather than wiring a second path to the same destination.
 
 - **Onboarding's module picker actually does something now.** It was decorative: `completeOnboarding` never sent the selection, and workspace creation hardcoded the foundation set — so whatever a user ticked, they got exactly Client Records, Invoicing, Payments, and Fulfillment. Verified against the database before and after. The chosen modules are now passed through and persisted, with unknown ids discarded server-side (the list crosses a trust boundary from the browser) and dependencies resolved by the registry, so enabling a module brings its prerequisites with it.
 - **Onboarding no longer hides the dependency chain.** Because the server resolves dependencies regardless, a user could untick Fulfillment, select Shipping, and silently get Fulfillment back — Shipping requires Orders, which requires Products & Services and Fulfillment, which requires Payments. The picker now mirrors the server's rules: selecting a module pulls its requirements in visibly, a module something else depends on can't be unticked (and says what needs it), and each card lists what it requires. The new Review step shows the full resolved set before anything is created, so the first place a user learns what they actually got is no longer the database.

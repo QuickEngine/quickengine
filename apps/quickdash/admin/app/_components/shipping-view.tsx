@@ -121,9 +121,15 @@ function CreateDialog({
 	const [state, action] = useActionState(createShipmentAction, INITIAL);
 	const router = useRouter();
 	const line = lines.find((item) => item.lineId === selected);
+	// A per-submit idempotency key so a double-fire creates only one shipment; a fresh key
+	// is minted after each success.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [state.completionId, router]);
@@ -137,6 +143,7 @@ function CreateDialog({
 			<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<input type="hidden" name="orderId" value={line?.orderId ?? ""} />
 					<DialogHeader>
 						<DialogTitle>Create shipment</DialogTitle>

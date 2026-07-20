@@ -1,5 +1,6 @@
 "use server";
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	createProject,
 	createTask,
@@ -42,6 +43,12 @@ export async function createProjectAction(_: ProjectActionState, f: FormData) {
 	const clientId = opt(f.get("clientId"));
 	if (!a.settings.allowInternalProjects && !clientId)
 		return fail("Choose a client for this project.");
+	const key = String(f.get("idempotencyKey") ?? "");
+	const scope = `projects.create:${w}`;
+	if (!(await claimIdempotencyKey(key, scope))) {
+		revalidatePath(`/${w}/projects-tasks`);
+		return ok();
+	}
 	try {
 		await createProject(w, {
 			clientId,
@@ -52,6 +59,8 @@ export async function createProjectAction(_: ProjectActionState, f: FormData) {
 			status: "draft",
 		});
 	} catch {
+		// Failed work must give the key back, or the corrected retry is read as a duplicate.
+		await releaseIdempotencyKey(key, scope);
 		return fail("Check the project name, client, and dates.");
 	}
 	revalidatePath(`/${w}/projects-tasks`);
@@ -61,6 +70,12 @@ export async function createTaskAction(_: ProjectActionState, f: FormData) {
 	const w = String(f.get("workspaceId") ?? "");
 	const a = await auth(w);
 	if (!a.ok) return fail(a.error);
+	const key = String(f.get("idempotencyKey") ?? "");
+	const scope = `tasks.create:${w}`;
+	if (!(await claimIdempotencyKey(key, scope))) {
+		revalidatePath(`/${w}/projects-tasks`);
+		return ok();
+	}
 	try {
 		await createTask(w, {
 			projectId: String(f.get("projectId") ?? ""),
@@ -76,6 +91,8 @@ export async function createTaskAction(_: ProjectActionState, f: FormData) {
 			status: "todo",
 		});
 	} catch {
+		// Failed work must give the key back, or the corrected retry is read as a duplicate.
+		await releaseIdempotencyKey(key, scope);
 		return fail("Check the task details and ensure the project is open.");
 	}
 	revalidatePath(`/${w}/projects-tasks`);

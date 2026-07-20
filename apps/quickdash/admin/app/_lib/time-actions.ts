@@ -1,5 +1,6 @@
 "use server";
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	approveTimeEntry,
 	createManualTimeEntry,
@@ -39,6 +40,12 @@ export async function addTimeAction(_: TimeActionState, f: FormData) {
 	const w = String(f.get("workspaceId"));
 	const a = await auth(w);
 	if (!a.ok) return fail(a.error);
+	const key = String(f.get("idempotencyKey") ?? "");
+	const scope = `time.create:${w}`;
+	if (!(await claimIdempotencyKey(key, scope))) {
+		revalidatePath(`/${w}/time-tracking`);
+		return ok();
+	}
 	try {
 		await createManualTimeEntry(w, {
 			projectId: String(f.get("projectId")),
@@ -53,6 +60,8 @@ export async function addTimeAction(_: TimeActionState, f: FormData) {
 			currency: a.settings.defaultCurrency,
 		});
 	} catch {
+		// Failed work must give the key back, or the corrected retry is read as a duplicate.
+		await releaseIdempotencyKey(key, scope);
 		return fail("Check the project, task, duration, and rate.");
 	}
 	revalidatePath(`/${w}/time-tracking`);

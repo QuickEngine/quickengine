@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@quickengine/auth/server";
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	createFulfillment,
 	deleteFulfillment,
@@ -50,6 +51,14 @@ export async function createFulfillmentAction(
 	const invoiceId = String(formData.get("invoiceId") ?? "") || null;
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+
+	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
+	const idempotencyScope = `fulfillment.create:${workspaceId}`;
+	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
+		revalidatePath(`/${workspaceId}/fulfillment`);
+		return { error: null, completionId: crypto.randomUUID() };
+	}
+
 	try {
 		await createFulfillment(workspaceId, {
 			title: String(formData.get("title") ?? ""),
@@ -70,6 +79,9 @@ export async function createFulfillmentAction(
 				: null,
 		});
 	} catch (error) {
+		// The claim meant "we're doing the work" — the work failed, so give the key back
+		// or the user's corrected retry would be swallowed as a duplicate.
+		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		if (error instanceof Error) {
 			if (error.message === "INVOICE_NOT_PAID")
 				return failure("Only paid invoices are ready for fulfillment.");

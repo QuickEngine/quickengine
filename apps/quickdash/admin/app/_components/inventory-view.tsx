@@ -115,9 +115,15 @@ function CreateDialog({
 	const [open, setOpen] = useState(false);
 	const [state, action] = useActionState(createInventoryItemAction, INITIAL);
 	const router = useRouter();
+	// A per-submit idempotency key so a double-fire creates only one stock record; a fresh
+	// key is minted after each success.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [state.completionId, router]);
@@ -131,6 +137,7 @@ function CreateDialog({
 			<DialogContent>
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>Track catalog inventory</DialogTitle>
 						<DialogDescription>

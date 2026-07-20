@@ -115,10 +115,16 @@ function NewFulfillmentDialog({
 		INITIAL_STATE,
 	);
 	const selected = invoices.find((invoice) => invoice.id === invoiceId);
+	// A per-submit idempotency key so a double-fire creates only one fulfillment; a fresh
+	// key is minted after each success.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (!state.completionId) return;
 		setOpen(false);
 		setInvoiceId("");
+		setIdempotencyKey(crypto.randomUUID());
 		router.refresh();
 	}, [state.completionId, router]);
 	return (
@@ -132,6 +138,7 @@ function NewFulfillmentDialog({
 			<DialogContent className="sm:max-w-xl">
 				<form action={action} className="space-y-5">
 					<input type="hidden" name="workspaceId" value={workspaceId} />
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>Create fulfillment</DialogTitle>
 						<DialogDescription>

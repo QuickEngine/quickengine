@@ -9,10 +9,12 @@ import {
 } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
+import type { OnboardingModule } from "../_lib/module-catalog";
 import {
 	BUSINESS_TYPES,
 	businessTypeName,
-	modulesForType,
+	moduleIcon,
+	RECIPE_MODULES,
 } from "../_lib/modules";
 import { completeOnboarding } from "./actions";
 
@@ -56,7 +58,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 	);
 }
 
-export function OnboardingFlow() {
+export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 	const router = useRouter();
 	const [step, setStep] = useState<Step>("choose");
 	const [typeId, setTypeId] = useState<string | null>(null);
@@ -65,24 +67,23 @@ export function OnboardingFlow() {
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 
+	const built = catalog.filter((module) => module.status === "built");
+
 	function chooseType(id: string) {
 		setTypeId(id);
-		// Every workspace includes the built foundation modules permanently.
+		// The recipe's default selection — a starting point, not a lock. Ids that aren't
+		// built yet are filtered out rather than offering something that doesn't work.
+		const recipe = new Set(RECIPE_MODULES[id] ?? []);
 		setEnabled(
-			new Set(
-				modulesForType(id)
-					.filter((module) => module.status === "built" && module.required)
-					.map((m) => m.id),
-			),
+			new Set(built.filter((module) => recipe.has(module.id)).map((m) => m.id)),
 		);
 		setStep("modules");
 	}
 
 	function toggle(id: string) {
-		const module = typeId
-			? modulesForType(typeId).find((candidate) => candidate.id === id)
-			: undefined;
-		if (!module || module.required || module.status !== "built") {
+		// Any built module can be switched off, foundation included — #173 removed the
+		// hard lock, and onboarding is the last place that still enforced it.
+		if (!built.some((module) => module.id === id)) {
 			return;
 		}
 		setEnabled((prev) => {
@@ -229,15 +230,15 @@ export function OnboardingFlow() {
 				</p>
 
 				<div className="mt-8 space-y-2">
-					{modulesForType(typeId).map((m) => {
-						const comingSoon = m.status === "coming-soon";
-						const locked = comingSoon || m.required;
+					{catalog.map((m) => {
+						const comingSoon = m.status === "upcoming";
 						const on = enabled.has(m.id);
+						const Glyph = moduleIcon(m.id);
 						return (
 							<button
 								key={m.id}
 								type="button"
-								disabled={locked}
+								disabled={comingSoon}
 								onClick={() => toggle(m.id)}
 								className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-colors ${
 									comingSoon
@@ -247,7 +248,7 @@ export function OnboardingFlow() {
 											: "border-foreground/[0.06] bg-foreground/[0.02] hover:border-foreground/15"
 								}`}
 							>
-								<m.icon className="size-5 shrink-0 text-foreground" />
+								<Glyph className="size-5 shrink-0 text-foreground" />
 								<div className="min-w-0 flex-1">
 									<div className="font-medium text-foreground text-sm">
 										{m.name}

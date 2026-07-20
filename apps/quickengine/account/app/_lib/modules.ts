@@ -1,26 +1,38 @@
 import {
 	AddressBook,
-	ArrowsClockwise,
+	Article,
 	Briefcase,
 	Buildings,
 	CalendarBlank,
 	Camera,
 	ChartBar,
 	ChatCircle,
+	ClipboardText,
 	CloudArrowUp,
+	Coins,
 	CreditCard,
+	Envelope,
+	FileText,
 	FolderSimple,
+	Gift,
+	Hammer,
 	type Icon,
 	Kanban,
-	Lightning,
+	Lifebuoy,
+	MapPin,
 	Package,
-	PencilRuler,
+	Percent,
 	Receipt,
+	Repeat,
 	ShoppingCart,
+	Star,
 	Storefront,
+	Tag,
+	Timer,
 	Truck,
 	User,
 	UsersThree,
+	Wallet,
 } from "@phosphor-icons/react";
 
 export type BusinessType = { id: string; name: string; icon: Icon };
@@ -35,156 +47,105 @@ export const BUSINESS_TYPES: BusinessType[] = [
 	{ id: "consulting", name: "Consulting", icon: Briefcase },
 ];
 
-export type ModuleDef = {
-	id: string;
-	name: string;
-	description: string;
-	category: "shared" | "industry";
-	status: "built" | "coming-soon";
-	required?: boolean;
-	icon: Icon;
-	types?: string[]; // industry-only: which business types include it
+/**
+ * Icons for the module picker, keyed by module id.
+ *
+ * Icons deliberately live here rather than in the module manifests: a manifest is a
+ * server-side contract (schema, dependencies, metering) and has no business carrying a React
+ * component. A module with no entry falls back rather than breaking the grid, so a newly
+ * shipped module appears immediately even before anyone picks an icon for it.
+ */
+const MODULE_ICONS: Record<string, Icon> = {
+	// Built — from the registry.
+	"client-records": AddressBook,
+	invoicing: Receipt,
+	payments: CreditCard,
+	fulfillment: Truck,
+	files: FolderSimple,
+	"products-services": Tag,
+	orders: ShoppingCart,
+	inventory: Package,
+	shipping: Truck,
+	bookings: CalendarBlank,
+	"projects-tasks": Kanban,
+	"time-tracking": Timer,
+	"quotes-estimates": FileText,
+	"contracts-esign": ClipboardText,
+	"reporting-analytics": ChartBar,
+	// Upcoming.
+	"forms-intake": ClipboardText,
+	notifications: ChatCircle,
+	subscriptions: Repeat,
+	expenses: Wallet,
+	suppliers: Truck,
+	discounts: Percent,
+	locations: MapPin,
+	"production-jobs": Hammer,
+	"content-cms": Article,
+	"sales-pipeline": Kanban,
+	"client-communications": ChatCircle,
+	reviews: Star,
+	support: Lifebuoy,
+	tax: Receipt,
+	loyalty: Star,
+	"gift-cards": Gift,
+	returns: Repeat,
+	auctions: Coins,
+	"email-marketing": Envelope,
+	referrals: UsersThree,
 };
 
-// The building blocks. Shared modules are available on every workspace; industry
-// modules only appear for the business types that list them.
-export const MODULES: ModuleDef[] = [
-	{
-		id: "client-records",
-		name: "Client records",
-		description: "Customers, contacts, and their history.",
-		category: "shared",
-		status: "built",
-		required: true,
-		icon: AddressBook,
-	},
-	{
-		id: "invoicing",
-		name: "Invoicing",
-		description: "Create, send, and track invoices.",
-		category: "shared",
-		status: "built",
-		required: true,
-		icon: Receipt,
-	},
-	{
-		id: "payments",
-		name: "Payments",
-		description: "Collect money and reconcile paid invoices.",
-		category: "shared",
-		status: "built",
-		required: true,
-		icon: CreditCard,
-	},
-	{
-		id: "fulfillment",
-		name: "Fulfillment",
-		description: "Deliver the product, service, file, or completed work.",
-		category: "shared",
-		status: "built",
-		required: true,
-		icon: Truck,
-	},
-	{
-		id: "files",
-		name: "Files & Documents",
-		description: "Store versioned files and attach them to business records.",
-		category: "shared",
-		status: "coming-soon",
-		icon: FolderSimple,
-	},
-	{
-		id: "comms",
-		name: "Communications",
-		description: "Messages and notifications in one place.",
-		category: "shared",
-		status: "coming-soon",
-		icon: ChatCircle,
-	},
-	{
-		id: "scheduling",
-		name: "Scheduling",
-		description: "Bookings, calendars, and reminders.",
-		category: "shared",
-		status: "coming-soon",
-		icon: CalendarBlank,
-	},
-	{
-		id: "reporting-analytics",
-		name: "Reporting & Analytics",
-		description: "Dashboards and insights across your data.",
-		category: "shared",
-		status: "built",
-		icon: ChartBar,
-	},
-	{
-		id: "automation",
-		name: "Automation",
-		description: "Trigger actions and workflows automatically.",
-		category: "shared",
-		status: "coming-soon",
-		icon: Lightning,
-	},
-	{
-		id: "team",
-		name: "Team & roles",
-		description: "Invite people and manage permissions.",
-		category: "shared",
-		status: "coming-soon",
-		icon: UsersThree,
-	},
-	{
-		id: "orders",
-		name: "Order management",
-		description: "Track and fulfill orders end to end.",
-		category: "industry",
-		status: "coming-soon",
-		icon: ShoppingCart,
-		types: ["ecommerce"],
-	},
-	{
-		id: "inventory",
-		name: "Inventory",
-		description: "Stock levels, variants, and restocking.",
-		category: "industry",
-		status: "coming-soon",
-		icon: Package,
-		types: ["ecommerce"],
-	},
-	{
-		id: "subscriptions",
-		name: "Subscriptions & churn",
-		description: "Recurring plans and retention metrics.",
-		category: "industry",
-		status: "coming-soon",
-		icon: ArrowsClockwise,
-		types: ["saas"],
-	},
-	{
-		id: "projects",
-		name: "Projects & retainers",
-		description: "Track project work and retainers.",
-		category: "industry",
-		status: "coming-soon",
-		icon: Kanban,
-		types: ["agency", "consulting", "freelancer"],
-	},
-	{
-		id: "content",
-		name: "Content & publishing",
-		description: "Plan and schedule your content.",
-		category: "industry",
-		status: "coming-soon",
-		icon: PencilRuler,
-		types: ["creator"],
-	},
-];
+/**
+ * What each business type preselects — the "recipe". Ids only; the catalog decides what
+ * actually exists, so an id listed here that isn't built yet is simply ignored rather than
+ * offering the user something that doesn't work.
+ *
+ * Every recipe includes Client Records, Invoicing, Payments, and Fulfillment: they are the
+ * sensible default for a new workspace, but they are no longer *locked* — #173 removed that
+ * hard requirement, and a user may switch any of them off.
+ */
+const FOUNDATION = [
+	"client-records",
+	"invoicing",
+	"payments",
+	"fulfillment",
+] as const;
 
-// Every module relevant to a business type: all shared ones + its industry ones.
-export function modulesForType(typeId: string): ModuleDef[] {
-	return MODULES.filter(
-		(m) => m.category === "shared" || m.types?.includes(typeId),
-	);
+export const RECIPE_MODULES: Record<string, readonly string[]> = {
+	ecommerce: [
+		...FOUNDATION,
+		"products-services",
+		"orders",
+		"inventory",
+		"shipping",
+	],
+	agency: [
+		...FOUNDATION,
+		"quotes-estimates",
+		"projects-tasks",
+		"time-tracking",
+		"contracts-esign",
+	],
+	freelancer: [
+		...FOUNDATION,
+		"quotes-estimates",
+		"time-tracking",
+		"contracts-esign",
+		"files",
+	],
+	saas: [...FOUNDATION, "reporting-analytics", "files"],
+	creator: [...FOUNDATION, "products-services", "orders", "files", "bookings"],
+	consulting: [
+		...FOUNDATION,
+		"quotes-estimates",
+		"projects-tasks",
+		"time-tracking",
+		"contracts-esign",
+	],
+};
+
+export function moduleIcon(id: string): Icon {
+	return MODULE_ICONS[id] ?? Package;
 }
 
 export function businessTypeName(typeId: string): string {

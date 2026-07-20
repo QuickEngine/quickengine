@@ -1,0 +1,81 @@
+{
+	"$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+	"bootstrap-sha": "525504c721109801ed0fa542f5ee81e04206bfe6",
+	"release-type": "node",
+	"bump-minor-pre-major": false,
+	"bump-patch-for-minor-pre-major": false,
+	"include-v-in-tag": true,
+	"include-component-in-tag": true,
+	"separate-pull-requests": false,
+	"plugins": ["node-workspace"],
+	"packages": {
+		"packages/sdk": {
+			"component": "quick",
+			"package-name": "@quickengine/quick"
+		},
+		"packages/cli": {
+			"component": "cli",
+			"package-name": "@quickengine/cli"
+		},
+		"packages/modules/bookings": {
+			"component": "mod-bookings",
+			"package-name": "@quickengine/mod-bookings"
+		},
+		"packages/modules/client-records": {
+			"component": "mod-client-records",
+			"package-name": "@quickengine/mod-client-records"
+		},
+		"packages/modules/contracts-esign": {
+			"component": "mod-contracts-esign",
+			"package-name": "@quickengine/mod-contracts-esign"
+		},
+		"packages/modules/files": {
+			"component": "mod-files",
+			"package-name": "@quickengine/mod-files"
+		},
+		"packages/modules/fulfillment": {
+			"component": "mod-fulfillment",
+			"package-name": "@quickengine/mod-fulfillment"
+		},
+		"packages/modules/inventory": {
+			"component": "mod-inventory",
+			"package-name": "@quickengine/mod-inventory"
+		},
+		"packages/modules/invoicing": {
+			"component": "mod-invoicing",
+			"package-name": "@quickengine/mod-invoicing"
+		},
+		"packages/modules/orders": {
+			"component": "mod-orders",
+			"package-name": "@quickengine/mod-orders"
+		},
+		"packages/modules/payments": {
+			"component": "mod-payments",
+			"package-name": "@quickengine/mod-payments"
+		},
+		"packages/modules/products-services": {
+			"component": "mod-products-services",
+			"package-name": "@quickengine/mod-products-services"
+		},
+		"packages/modules/projects-tasks": {
+			"component": "mod-projects-tasks",
+			"package-name": "@quickengine/mod-projects-tasks"
+		},
+		"packages/modules/quotes-estimates": {
+			"component": "mod-quotes-estimates",
+			"package-name": "@quickengine/mod-quotes-estimates"
+		},
+		"packages/modules/reporting-analytics": {
+			"component": "mod-reporting-analytics",
+			"package-name": "@quickengine/mod-reporting-analytics"
+		},
+		"packages/modules/shipping": {
+			"component": "mod-shipping",
+			"package-name": "@quickengine/mod-shipping"
+		},
+		"packages/modules/time-tracking": {
+			"component": "mod-time-tracking",
+			"package-name": "@quickengine/mod-time-tracking"
+		}
+	}
+}

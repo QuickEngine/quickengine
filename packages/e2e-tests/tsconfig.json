@@ -1,0 +1,5 @@
+{
+	"extends": "@quickengine/config/tsconfig/base",
+	"include": ["tests", "playwright.config.ts"],
+	"exclude": ["node_modules", "dist"]
+}

@@ -27,7 +27,7 @@
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"typescript": "^5",
-		"vitest": "^3.2.6"
+		"typescript": "^7",
+		"vitest": "^4.1.10"
 	}
 }

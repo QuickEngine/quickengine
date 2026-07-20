@@ -20,8 +20,8 @@
 	"devDependencies": {
 		"@quickengine/agent-providers": "workspace:*",
 		"@quickengine/config": "workspace:*",
-		"typescript": "^5",
-		"vitest": "^3.2.6",
+		"typescript": "^7",
+		"vitest": "^4.1.10",
 		"zod": "^4.3.6"
 	}
 }

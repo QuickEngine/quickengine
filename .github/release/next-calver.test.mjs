@@ -8,7 +8,10 @@ test("starts the first monthly release at one", () => {
 });
 
 test("increments the highest counter in the current month", () => {
-	assert.equal(nextCalver(["2026.7.1", "2026.7.3", "2026.7.2"], 2026, 7), "2026.7.4");
+	assert.equal(
+		nextCalver(["2026.7.1", "2026.7.3", "2026.7.2"], 2026, 7),
+		"2026.7.4",
+	);
 });
 
 test("resets the counter for a new month", () => {
@@ -17,8 +20,12 @@ test("resets the counter for a new month", () => {
 
 test("ignores unrelated, malformed, and prefixed tags", () => {
 	assert.equal(
-		nextCalver(["v2026.7.8", "2026.07", "latest", "2026.7.beta", "2025.7.20"], 2026, 7),
-		"2026.7.1"
+		nextCalver(
+			["v2026.7.8", "2026.07", "latest", "2026.7.beta", "2025.7.20"],
+			2026,
+			7,
+		),
+		"2026.7.1",
 	);
 });
 

@@ -58,13 +58,17 @@ function parseArguments(arguments_) {
 
 async function main() {
 	const { year, month, tagsFile } = parseArguments(process.argv.slice(2));
-	const tags = (await readFile(tagsFile, "utf8")).split(/\r?\n/).filter(Boolean);
+	const tags = (await readFile(tagsFile, "utf8"))
+		.split(/\r?\n/)
+		.filter(Boolean);
 	process.stdout.write(`${nextCalver(tags, year, month)}\n`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main().catch((error) => {
-		process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+		process.stderr.write(
+			`${error instanceof Error ? error.message : String(error)}\n`,
+		);
 		process.exitCode = 1;
 	});
 }

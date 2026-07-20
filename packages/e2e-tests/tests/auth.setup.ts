@@ -4,7 +4,12 @@ import { test as setup } from "@playwright/test";
 import { auth } from "@quickengine/auth/server";
 import { testDbClient, truncateAll } from "@quickengine/db/testing";
 import { STORAGE_STATE } from "../playwright.config";
-import { FIXTURE, seedIssuedInvoice, seedWorkspace } from "./fixture";
+import {
+	FIXTURE,
+	seedIssuedInvoice,
+	seedSecondWorkspace,
+	seedWorkspace,
+} from "./fixture";
 
 /**
  * Mints a REAL signed-in session and saves it for every other project.
@@ -39,6 +44,7 @@ setup("seed the workspace and sign in", async () => {
 	if (!user) throw new Error("Seeded user was not created.");
 
 	await seedWorkspace(user.id);
+	await seedSecondWorkspace(user.id);
 	await seedIssuedInvoice();
 
 	const response = await auth.api.signInEmail({

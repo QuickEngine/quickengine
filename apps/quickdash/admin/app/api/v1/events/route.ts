@@ -1,5 +1,6 @@
 import { recordTrafficEvent } from "@quickengine/mod-reporting-analytics";
 import { resolveContext } from "../../_lib/context";
+import { RATE_LIMITS } from "../../_lib/rate-limit";
 import { fail, ok, requestId } from "../../_lib/respond";
 
 // POST /api/v1/events — ingest one privacy-minimal traffic event a site reports about
@@ -12,6 +13,7 @@ export async function POST(request: Request): Promise<Response> {
 	const resolved = await resolveContext(request, id, {
 		module: "reporting-analytics",
 		capability: "events:write",
+		rateLimit: RATE_LIMITS.telemetry,
 	});
 	if ("error" in resolved) {
 		return resolved.error;
@@ -52,7 +54,7 @@ export async function POST(request: Request): Promise<Response> {
 			referrerHost: raw.referrerHost == null ? null : String(raw.referrerHost),
 			occurredAt,
 		});
-		return ok(result, id);
+		return ok(result, id, resolved.context.rateLimitHeaders);
 	} catch (error) {
 		if (error instanceof Error) {
 			if (error.name === "ZodError") {

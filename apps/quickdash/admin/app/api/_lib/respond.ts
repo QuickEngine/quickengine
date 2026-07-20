@@ -10,10 +10,22 @@ export function requestId(request: Request): string {
 	return request.headers.get("Request-Id")?.trim() || crypto.randomUUID();
 }
 
-/** A successful response: the resource JSON is the body; the SDK wraps it as `data`. */
-export function ok(data: unknown, id: string): NextResponse {
+/**
+ * A successful response: the resource JSON is the body; the SDK wraps it as `data`.
+ *
+ * `headers` carries the caller's remaining rate-limit budget, so a well-behaved client can
+ * slow down before it starts getting 429s rather than after.
+ */
+export function ok(
+	data: unknown,
+	id: string,
+	headers: Record<string, string> = {},
+): NextResponse {
 	const response = NextResponse.json(data);
 	response.headers.set("Request-Id", id);
+	for (const [name, value] of Object.entries(headers)) {
+		response.headers.set(name, value);
+	}
 	return response;
 }
 

@@ -25,6 +25,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Getting-started actions now have a shared, dependency-safe contract.** Module manifests
+  can declare versioned first-value actions with stable IDs, destinations, intents,
+  priorities, and action prerequisites. A deterministic resolver builds a short checklist
+  from the workspace's actual enabled modules, honors recipe ordering where available,
+  removes actions whose prerequisites are unavailable, keeps prerequisites ahead of their
+  dependents, and rejects duplicate IDs, ownership mistakes, and cycles. This is the tested
+  truth layer for the later collapsible QuickDash checklist; it does not yet render UI or
+  treat clicking an item as completion.
+
 - **AI onboarding is now an authenticated, review-first path instead of a mock.** After
   signup, the user can optionally describe their business, request a recommendation, review
   every resolved module, edit it, and use the existing atomic workspace creation path. The server accepts

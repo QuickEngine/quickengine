@@ -1,4 +1,5 @@
 import type { ZodTypeAny } from "zod";
+import type { FirstActionDescriptor } from "./first-actions";
 
 // The shared shape every module manifest conforms to. Each module exports one of
 // these (as a `const … as const`); the catalog types them against this so a
@@ -17,4 +18,10 @@ export type ModuleManifest = {
 	settingsSchema: ZodTypeAny;
 	// Parsed defaults, seeded into a workspace's settings on enable.
 	defaultSettings: unknown;
+	/**
+	 * Small, versioned paths to first value owned by this module. The dashboard resolves
+	 * these against the workspace's actual enabled-module set; completion is checked by
+	 * QuickDash server detectors keyed by action id, never by a clicked checkbox.
+	 */
+	firstActions?: readonly FirstActionDescriptor[];
 };

@@ -20,4 +20,16 @@ export const projectsTasksModule = {
 	meteredAction: null,
 	settingsSchema: projectsTasksSettingsSchema,
 	defaultSettings: projectsTasksSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "projects-tasks:create",
+			version: 1,
+			label: "Create your first project",
+			description: "Organize the first piece of client or internal work.",
+			moduleId: "projects-tasks",
+			intent: "create",
+			priority: 20,
+			requires: ["client-records:create"],
+		},
+	] as const,
 } as const;

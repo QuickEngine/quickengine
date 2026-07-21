@@ -25,6 +25,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **All 15 built modules now make an explicit first-action decision.** Fourteen modules
+  declare one truthful record-producing action, including adding a client or offering,
+  creating a quote/project/booking/invoice/order/contract, recording stock/time/payment,
+  and beginning fulfillment/shipping. Prerequisites follow the real module dependency graph,
+  so an impossible action cannot leak into a workspace checklist. Reporting intentionally
+  declares no action because opening a chart is not a business outcome. Catalog tests enforce
+  explicit coverage, stable ownership, unique IDs, reachable prerequisites, the universal
+  client-to-fulfillment sequence, and recipe filtering.
+
 - **Getting-started actions now have a shared, dependency-safe contract.** Module manifests
   can declare versioned first-value actions with stable IDs, destinations, intents,
   priorities, and action prerequisites. A deterministic resolver builds a short checklist

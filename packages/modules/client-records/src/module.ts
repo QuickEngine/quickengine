@@ -35,4 +35,15 @@ export const clientRecordsModule = {
 	meteredAction: null,
 	settingsSchema: clientRecordsSettingsSchema,
 	defaultSettings: clientRecordsSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "client-records:create",
+			version: 1,
+			label: "Add your first client",
+			description: "Create the first person or business you work with.",
+			moduleId: "client-records",
+			intent: "create",
+			priority: 10,
+		},
+	] as const,
 } as const;

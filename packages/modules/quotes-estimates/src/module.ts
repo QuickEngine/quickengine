@@ -34,4 +34,16 @@ export const quotesEstimatesModule = {
 	meteredAction: null,
 	settingsSchema: quotesEstimatesSettingsSchema,
 	defaultSettings: quotesEstimatesSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "quotes-estimates:create",
+			version: 1,
+			label: "Create your first quote",
+			description: "Prepare a quote, estimate, or proposal for a client.",
+			moduleId: "quotes-estimates",
+			intent: "create",
+			priority: 20,
+			requires: ["client-records:create"],
+		},
+	] as const,
 } as const;

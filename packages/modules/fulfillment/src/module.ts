@@ -27,4 +27,17 @@ export const fulfillmentModule = {
 	meteredAction: null,
 	settingsSchema: fulfillmentSettingsSchema,
 	defaultSettings: fulfillmentSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "fulfillment:create",
+			version: 1,
+			label: "Start your first fulfillment",
+			description:
+				"Begin delivering a paid product, file, service, or engagement.",
+			moduleId: "fulfillment",
+			intent: "create",
+			priority: 60,
+			requires: ["payments:record"],
+		},
+	] as const,
 } as const;

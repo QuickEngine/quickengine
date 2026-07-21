@@ -32,4 +32,16 @@ export const invoicingModule = {
 	meteredAction: null,
 	settingsSchema: invoicingSettingsSchema,
 	defaultSettings: invoicingSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "invoicing:create",
+			version: 1,
+			label: "Create your first invoice",
+			description: "Bill a client for work, products, or services.",
+			moduleId: "invoicing",
+			intent: "create",
+			priority: 30,
+			requires: ["client-records:create"],
+		},
+	] as const,
 } as const;

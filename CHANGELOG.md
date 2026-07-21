@@ -8,6 +8,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Quick.js, the CLI, and all 15 shipped modules now have independent SemVer release
+  automation.** Conventional package commits feed one reviewed Release Please PR, with
+  fixes producing patches, features producing minors, and breaking changes producing
+  majors. Component-prefixed tags keep all 17 package releases separate from product
+  CalVer. Their manifests now declare the intended public npm access, while actual npm
+  publication remains disabled until the shared dependency graph and credentials are
+  deliberately made publish-ready.
+
 - **Product releases now version themselves.** Every successful `main` CI run publishes
   the merged commit as the next monthly CalVer tag and GitHub Release, beginning with
   `2026.7.1` and resetting the counter each month. The workflow is serialized and safe

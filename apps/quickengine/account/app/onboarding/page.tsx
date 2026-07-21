@@ -11,7 +11,12 @@ export const metadata: Metadata = { title: "Get started" };
 // Shell-free first-run onboarding (lives outside the (app) group, so no sidebar
 // or header). Auth is enforced by the root layout; here we bounce users who have
 // already finished onboarding back into the app so they can't re-run it.
-export default async function Page() {
+export default async function Page({
+	searchParams,
+}: {
+	searchParams: Promise<{ prompt?: string }>;
+}) {
+	const params = await searchParams;
 	const session = await getSession(await headers());
 	const state = session ? await getAccountState(session.user.id) : null;
 	if (state?.onboardingCompletedAt) {
@@ -19,5 +24,10 @@ export default async function Page() {
 	}
 	// Resolved here, on the server: the module registry imports every module package and
 	// their Drizzle schemas, none of which belongs in the browser bundle.
-	return <OnboardingFlow catalog={buildOnboardingCatalog()} />;
+	return (
+		<OnboardingFlow
+			catalog={buildOnboardingCatalog()}
+			initialDescription={params.prompt?.slice(0, 500) ?? ""}
+		/>
+	);
 }

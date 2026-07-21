@@ -3,6 +3,7 @@
 import {
 	ArrowLeft,
 	Check,
+	CircleNotch,
 	Lock,
 	SlidersHorizontal,
 	Sparkle,
@@ -12,7 +13,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import type { OnboardingModule } from "../_lib/module-catalog";
 import { FOUNDATION, moduleIcon } from "../_lib/modules";
 import { findRecipe, groupRecipes, searchRecipes } from "../_lib/recipes";
-import { completeOnboarding } from "./actions";
+import { completeOnboarding, recommendOnboarding } from "./actions";
 
 /**
  * Name → Set up → Configure → Review → Success.
@@ -21,7 +22,14 @@ import { completeOnboarding } from "./actions";
  * feel ownership of; the previous flow's problem was never its length but that one step was a
  * dead end, two steps did the same job, and it ended in the wrong app.
  */
-type Step = "name" | "setup" | "preset" | "modules" | "review" | "success";
+type Step =
+	| "name"
+	| "setup"
+	| "ai"
+	| "preset"
+	| "modules"
+	| "review"
+	| "success";
 
 // Centered, shell-free canvas shared by every onboarding step.
 function Canvas({
@@ -69,7 +77,13 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 	);
 }
 
-export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
+export function OnboardingFlow({
+	catalog,
+	initialDescription = "",
+}: {
+	catalog: OnboardingModule[];
+	initialDescription?: string;
+}) {
 	const router = useRouter();
 	const [step, setStep] = useState<Step>("name");
 	const [typeId, setTypeId] = useState<string | null>(null);
@@ -80,10 +94,18 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 	const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 	// How the user configured, so Back returns them where they actually came from. `typeId`
 	// can't carry this: both the manual path and the fast path leave it null.
-	const [route, setRoute] = useState<"preset" | "manual" | "defaults">(
+	const [route, setRoute] = useState<"preset" | "manual" | "defaults" | "ai">(
 		"preset",
 	);
 	const [recipeQuery, setRecipeQuery] = useState("");
+	const [description, setDescription] = useState(initialDescription);
+	const [recommending, setRecommending] = useState(false);
+	const [recommendationError, setRecommendationError] = useState<string | null>(
+		null,
+	);
+	const [recommendationReason, setRecommendationReason] = useState<
+		string | null
+	>(null);
 
 	const byId = useMemo(
 		() => new Map(catalog.map((module) => [module.id, module])),
@@ -168,6 +190,39 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 		setStep("modules");
 	}
 
+	async function requestRecommendation() {
+		if (description.trim().length < 10) return;
+		setRecommending(true);
+		setRecommendationError(null);
+		try {
+			const result = await recommendOnboarding(description);
+			if (!result.ok) {
+				setRecommendationError(
+					result.error === "rate_limited"
+						? "You've reached the recommendation limit for now. Choose a preset or continue manually."
+						: "Recommendations are unavailable right now. Choose a preset or continue manually.",
+				);
+				return;
+			}
+			const next = new Set<string>();
+			for (const moduleId of result.recommendation.moduleIds) {
+				if (byId.get(moduleId)?.status !== "built") continue;
+				for (const resolved of withDependencies(moduleId)) next.add(resolved);
+			}
+			setEnabled(next);
+			setTypeId(result.recommendation.recipeId);
+			setRecommendationReason(result.recommendation.rationale);
+			setRoute("ai");
+			setStep("review");
+		} catch {
+			setRecommendationError(
+				"Recommendations are unavailable right now. Choose a preset or continue manually.",
+			);
+		} finally {
+			setRecommending(false);
+		}
+	}
+
 	function toggle(id: string) {
 		if (byId.get(id)?.status !== "built") return;
 		setEnabled((previous) => {
@@ -241,8 +296,7 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 		);
 	}
 
-	// Step 2 — How to set it up. The AI card is deliberately absent until it exists:
-	// a disabled option as the first thing a new user sees is a bad opening move.
+	// Step 2 — How to set it up. All paths converge on the same editable review.
 	if (step === "setup") {
 		return (
 			<Canvas onBack={() => setStep("name")}>
@@ -251,6 +305,20 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 					Either way you can change every module afterwards.
 				</p>
 				<div className="mt-8 grid gap-4 sm:grid-cols-2">
+					<button
+						type="button"
+						onClick={() => setStep("ai")}
+						className="flex flex-col rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] p-6 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 sm:col-span-2"
+					>
+						<Sparkle className="size-6 text-foreground" />
+						<h2 className="mt-4 font-medium text-foreground">
+							Set it up for me
+						</h2>
+						<p className="mt-1 max-w-md text-muted-foreground text-sm">
+							Describe the business. We'll recommend a starting recipe for you
+							to review.
+						</p>
+					</button>
 					<button
 						type="button"
 						onClick={() => setStep("preset")}
@@ -276,24 +344,6 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 							Start from the essentials and add exactly what you need.
 						</p>
 					</button>
-
-					{/*
-					 * A preview of what's coming, not a control. Rendered as a static panel
-					 * with no hover or focus affordance — a disabled-looking button invites a
-					 * click and makes the user feel stupid for trying.
-					 */}
-					<div className="relative flex flex-col rounded-xl border border-foreground/[0.06] border-dashed p-6 sm:col-span-2">
-						<span className="absolute top-4 right-4 rounded-full border border-foreground/10 px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
-							Coming soon
-						</span>
-						<Sparkle className="size-6 text-muted-foreground" />
-						<h2 className="mt-4 font-medium text-muted-foreground">
-							Set it up for me
-						</h2>
-						<p className="mt-1 max-w-md text-muted-foreground text-sm">
-							Describe your business and we'll assemble the workspace for you.
-						</p>
-					</div>
 				</div>
 
 				<button
@@ -303,6 +353,62 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 				>
 					Skip — use sensible defaults
 				</button>
+			</Canvas>
+		);
+	}
+
+	if (step === "ai") {
+		return (
+			<Canvas onBack={() => setStep("setup")}>
+				<h1 className={headingClass}>Describe your business</h1>
+				<p className="mt-3 text-muted-foreground">
+					A short description is enough. You'll review and edit the result
+					before anything is created.
+				</p>
+				<textarea
+					aria-label="Business description"
+					value={description}
+					onChange={(event) => setDescription(event.target.value.slice(0, 500))}
+					rows={5}
+					placeholder="We sell handmade jewelry online and ship across Canada."
+					className="mt-8 w-full max-w-xl resize-none rounded-lg border border-input bg-transparent px-4 py-3 text-foreground outline-none transition-colors focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/40"
+				/>
+				<p className="mt-2 text-muted-foreground text-xs">
+					{description.length}/500. Don't include passwords, payment details, or
+					private customer data.
+				</p>
+				<button
+					type="button"
+					disabled={description.trim().length < 10 || recommending}
+					onClick={requestRecommendation}
+					className="mt-6 inline-flex w-fit items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-40"
+				>
+					{recommending ? (
+						<CircleNotch className="size-4 animate-spin" />
+					) : null}
+					{recommending ? "Finding a fit…" : "Recommend my workspace"}
+				</button>
+				{recommendationError ? (
+					<p role="alert" className="mt-4 max-w-xl text-destructive text-sm">
+						{recommendationError}
+					</p>
+				) : null}
+				<div className="mt-5 flex gap-4 text-sm">
+					<button
+						type="button"
+						onClick={() => setStep("preset")}
+						className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+					>
+						Choose a preset instead
+					</button>
+					<button
+						type="button"
+						onClick={startManual}
+						className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+					>
+						Choose modules myself
+					</button>
+				</div>
 			</Canvas>
 		);
 	}
@@ -413,9 +519,11 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 					setStep(
 						route === "preset"
 							? "preset"
-							: route === "manual"
-								? "modules"
-								: "setup",
+							: route === "ai"
+								? "ai"
+								: route === "manual"
+									? "modules"
+									: "setup",
 					)
 				}
 			>
@@ -424,6 +532,11 @@ export function OnboardingFlow({ catalog }: { catalog: OnboardingModule[] }) {
 					Here's what gets created. Nothing is charged, and everything can
 					change later.
 				</p>
+				{route === "ai" && recommendationReason ? (
+					<p className="mt-3 max-w-2xl text-foreground text-sm">
+						{recommendationReason}
+					</p>
+				) : null}
 
 				<div className="mt-8 rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] p-5">
 					<SummaryRow label="Workspace" value={businessName.trim() || "—"} />

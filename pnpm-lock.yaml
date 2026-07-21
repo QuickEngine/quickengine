@@ -39,6 +39,12 @@ importers:
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@quickengine/agent-core':
+        specifier: workspace:*
+        version: link:../../../packages/agent-core
+      '@quickengine/agent-providers':
+        specifier: workspace:*
+        version: link:../../../packages/agent-providers
       '@quickengine/auth':
         specifier: workspace:*
         version: link:../../../packages/auth
@@ -172,9 +178,15 @@ importers:
       '@quickengine/billing':
         specifier: workspace:*
         version: link:../../../packages/billing
+      '@quickengine/cache':
+        specifier: workspace:*
+        version: link:../../../packages/cache
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../../packages/db
+      '@quickengine/env':
+        specifier: workspace:*
+        version: link:../../../packages/env
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../../packages/module-registry

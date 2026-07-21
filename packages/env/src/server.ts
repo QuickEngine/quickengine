@@ -75,6 +75,8 @@ export const serverEnvSchema = clientEnvSchema.extend({
 	ALGOLIA_APP_ID: emptyStringAsUndefined(z.string()),
 	ALGOLIA_SEARCH_KEY: emptyStringAsUndefined(z.string()),
 	ALGOLIA_ADMIN_KEY: emptyStringAsUndefined(z.string()),
+	ANTHROPIC_API_KEY: emptyStringAsUndefined(z.string()),
+	ANTHROPIC_MODEL: emptyStringAsUndefined(z.string()),
 });
 
 export const serverEnv = serverEnvSchema.parse({
@@ -126,6 +128,8 @@ export const serverEnv = serverEnvSchema.parse({
 	ALGOLIA_APP_ID: process.env.ALGOLIA_APP_ID,
 	ALGOLIA_SEARCH_KEY: process.env.ALGOLIA_SEARCH_KEY,
 	ALGOLIA_ADMIN_KEY: process.env.ALGOLIA_ADMIN_KEY,
+	ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+	ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL,
 	NEXT_PUBLIC_QUICKENGINE_AUTH_URL:
 		process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL,
 	NEXT_PUBLIC_QUICKENGINE_WEB_URL: process.env.NEXT_PUBLIC_QUICKENGINE_WEB_URL,

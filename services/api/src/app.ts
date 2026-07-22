@@ -1,13 +1,23 @@
+import { API_HEADERS } from "@quickengine/api-contracts/headers";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { type RequestIdVariables, requestId } from "hono/request-id";
+import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import type { ApiConfig } from "./config";
+import { createCsrfProtection } from "./csrf";
+import { type ApiLogger, noopLogger } from "./logger";
 import { createOpenApiDocument } from "./openapi";
+import type { PlatformEnv } from "./platform-types";
 import { respond, respondError } from "./respond";
+import { type ApiTelemetry, noopTelemetry } from "./telemetry";
 
-export function createApp(config: ApiConfig) {
-	const app = new Hono<{ Variables: RequestIdVariables }>();
+export function createApp(
+	config: ApiConfig,
+	options: { logger?: ApiLogger; telemetry?: ApiTelemetry } = {},
+) {
+	const app = new Hono<PlatformEnv>();
+	const logger = options.logger ?? noopLogger;
+	const telemetry = options.telemetry ?? noopTelemetry;
 
 	app.use("*", requestId({ headerName: "X-Request-Id", limitLength: 128 }));
 	app.use("*", secureHeaders());
@@ -15,10 +25,12 @@ export function createApp(config: ApiConfig) {
 		const corsMiddleware = cors({
 			origin: (origin) => (config.corsOrigins.has(origin) ? origin : ""),
 			allowHeaders: [
-				"Authorization",
+				API_HEADERS.apiKey,
 				"Content-Type",
-				"Idempotency-Key",
-				"X-Request-Id",
+				API_HEADERS.idempotencyKey,
+				API_HEADERS.publishableKey,
+				API_HEADERS.requestId,
+				API_HEADERS.workspace,
 			],
 			allowMethods: [
 				"GET",
@@ -35,9 +47,27 @@ export function createApp(config: ApiConfig) {
 		});
 		return corsMiddleware(c, next);
 	});
+	app.use("*", createCsrfProtection(config));
 	app.use("*", async (c, next) => {
-		await next();
+		const startedAt = performance.now();
+		await telemetry.withSpan(
+			`${c.req.method} request`,
+			{
+				"http.request.method": c.req.method,
+			},
+			() => next(),
+		);
+		const durationMs = performance.now() - startedAt;
+		const route = c.req.routePath || "unmatched";
 		c.header("X-Request-Id", c.get("requestId"));
+		c.header("Server-Timing", `app;dur=${durationMs.toFixed(2)}`);
+		logger.info("request.completed", {
+			durationMs: Number(durationMs.toFixed(2)),
+			method: c.req.method,
+			route,
+			requestId: c.get("requestId"),
+			status: c.res.status,
+		});
 	});
 
 	app.get("/health", (c) =>
@@ -63,14 +93,26 @@ export function createApp(config: ApiConfig) {
 		}),
 	);
 
-	app.get("/openapi.json", (c) => respond(c, createOpenApiDocument(config)));
+	app.get("/openapi.json", (c) => c.json(createOpenApiDocument(config)));
 
 	app.notFound((c) =>
 		respondError(c, "NOT_FOUND", "The requested resource was not found.", 404),
 	);
-	app.onError((_error, c) =>
-		respondError(c, "INTERNAL_ERROR", "An unexpected error occurred.", 500),
-	);
+	app.onError((error, c) => {
+		const context = {
+			method: c.req.method,
+			route: c.req.routePath || "unmatched",
+			requestId: c.get("requestId"),
+		};
+		logger.error("request.failed", { ...context, error });
+		telemetry.captureException(error, context);
+		return respondError(
+			c,
+			"INTERNAL_ERROR",
+			"An unexpected error occurred.",
+			500,
+		);
+	});
 
 	return app;
 }

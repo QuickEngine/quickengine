@@ -8,6 +8,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The API now has a shared security and observability core.** Reusable contracts define
+  stable envelopes, error codes, headers, pagination, and OpenAPI schemas. Hono routes can
+  authorize Better Auth sessions or correctly channeled API keys against workspace roles,
+  capabilities, enabled modules, and tenant boundaries while carrying an explicit audit actor.
+  First-party cookie writes receive origin-based CSRF protection, and requests emit redacted
+  structured logs, server timing, OpenTelemetry spans, and optional Sentry diagnostics without
+  recording credentials or customer identifiers in route labels.
+
 - **QuickEngine now has an independent Hono API foundation.** The runtime-neutral service
   provides standard response and error envelopes, request IDs, credential-safe CORS and
   security headers, health/readiness/version endpoints, an initial OpenAPI document, a local

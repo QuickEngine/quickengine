@@ -1,3 +1,10 @@
+import {
+	apiErrorSchema,
+	errorEnvelopeSchema,
+	successEnvelopeSchema,
+	toOpenApiSchema,
+} from "@quickengine/api-contracts";
+import { z } from "zod";
 import type { ApiConfig } from "./config";
 
 export function createOpenApiDocument(config: ApiConfig) {
@@ -9,6 +16,21 @@ export function createOpenApiDocument(config: ApiConfig) {
 			description: "The canonical API for QuickEngine and QuickDash.",
 		},
 		servers: [{ url: config.baseUrl }],
+		components: {
+			schemas: {
+				ApiError: toOpenApiSchema(apiErrorSchema),
+				ErrorEnvelope: toOpenApiSchema(errorEnvelopeSchema),
+				HealthEnvelope: toOpenApiSchema(
+					successEnvelopeSchema(
+						z.object({
+							service: z.string(),
+							status: z.literal("ok"),
+							version: z.string(),
+						}),
+					),
+				),
+			},
+		},
 		paths: {
 			"/health": {
 				get: {

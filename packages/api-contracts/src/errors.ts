@@ -1,0 +1,49 @@
+import { z } from "zod";
+
+export const API_ERROR_CODES = [
+	"AUTHENTICATION_REQUIRED",
+	"INVALID_API_KEY",
+	"CREDENTIAL_CHANNEL_MISMATCH",
+	"WORKSPACE_REQUIRED",
+	"WORKSPACE_MISMATCH",
+	"WORKSPACE_NOT_FOUND",
+	"CAPABILITY_DENIED",
+	"MODULE_DISABLED",
+	"CSRF_REJECTED",
+	"VALIDATION_ERROR",
+	"RATE_LIMITED",
+	"IDEMPOTENCY_CONFLICT",
+	"NOT_FOUND",
+	"CONFLICT",
+	"INTERNAL_ERROR",
+] as const;
+
+export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);
+export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
+
+export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
+	AUTHENTICATION_REQUIRED: 401,
+	INVALID_API_KEY: 401,
+	CREDENTIAL_CHANNEL_MISMATCH: 401,
+	WORKSPACE_REQUIRED: 400,
+	WORKSPACE_MISMATCH: 403,
+	WORKSPACE_NOT_FOUND: 404,
+	CAPABILITY_DENIED: 403,
+	MODULE_DISABLED: 403,
+	CSRF_REJECTED: 403,
+	VALIDATION_ERROR: 400,
+	RATE_LIMITED: 429,
+	IDEMPOTENCY_CONFLICT: 409,
+	NOT_FOUND: 404,
+	CONFLICT: 409,
+	INTERNAL_ERROR: 500,
+};
+
+export const apiErrorSchema = z.object({
+	code: apiErrorCodeSchema,
+	message: z.string(),
+	requestId: z.string().min(1),
+	details: z.unknown().optional(),
+});
+
+export type ApiError = z.infer<typeof apiErrorSchema>;

@@ -6,7 +6,9 @@ const config: ApiConfig = {
 	baseUrl: "https://api.quickengine.xyz",
 	corsOrigins: new Set(["https://dash.quickengine.xyz"]),
 	environment: "test",
+	logLevel: "error",
 	port: 3020,
+	tracesSampleRate: 0,
 	version: "0.1.0-test",
 };
 
@@ -40,14 +42,10 @@ describe("QuickEngine API foundation", () => {
 		const response = await app.request("/openapi.json");
 		const body = await response.json();
 
-		expect(body.data.openapi).toBe("3.1.0");
-		expect(body.data.info.version).toBe(config.version);
-		expect(body.data.servers).toEqual([{ url: config.baseUrl }]);
-		expect(Object.keys(body.data.paths)).toEqual([
-			"/health",
-			"/ready",
-			"/version",
-		]);
+		expect(body.openapi).toBe("3.1.0");
+		expect(body.info.version).toBe(config.version);
+		expect(body.servers).toEqual([{ url: config.baseUrl }]);
+		expect(Object.keys(body.paths)).toEqual(["/health", "/ready", "/version"]);
 	});
 
 	it("uses the standard error envelope for unknown routes", async () => {
@@ -79,5 +77,63 @@ describe("QuickEngine API foundation", () => {
 			"true",
 		);
 		expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+	});
+
+	it("preflights every platform authentication and context header", async () => {
+		const response = await app.request("/future", {
+			method: "OPTIONS",
+			headers: {
+				"Access-Control-Request-Headers":
+					"Authorization, QuickEngine-Publishable-Key, QuickEngine-Workspace, X-Request-Id",
+				"Access-Control-Request-Method": "GET",
+				Origin: "https://dash.quickengine.xyz",
+			},
+		});
+
+		expect(response.status).toBe(204);
+		const allowedHeaders =
+			response.headers.get("access-control-allow-headers") ?? "";
+		expect(allowedHeaders).toContain("Authorization");
+		expect(allowedHeaders).toContain("QuickEngine-Publishable-Key");
+		expect(allowedHeaders).toContain("QuickEngine-Workspace");
+	});
+
+	it("protects cookie-authenticated writes from cross-site requests", async () => {
+		const denied = await app.request("/future-write", {
+			method: "POST",
+			headers: {
+				Cookie: "quickengine.session=fake",
+				Origin: "https://example.com",
+			},
+		});
+		const allowed = await app.request("/future-write", {
+			method: "POST",
+			headers: {
+				Cookie: "quickengine.session=fake",
+				Origin: "https://dash.quickengine.xyz",
+			},
+		});
+
+		expect(denied.status).toBe(403);
+		expect((await denied.json()).error.code).toBe("CSRF_REJECTED");
+		expect(allowed.status).toBe(404);
+	});
+
+	it("publishes request timing without logging request bodies", async () => {
+		const lines: Array<{ message: string; route: string }> = [];
+		const observed = createApp(config, {
+			logger: {
+				debug() {},
+				info(message, fields) {
+					lines.push({ message, route: String(fields?.route) });
+				},
+				warn() {},
+				error() {},
+			},
+		});
+		const response = await observed.request("/health");
+
+		expect(response.headers.get("server-timing")).toMatch(/^app;dur=/);
+		expect(lines).toEqual([{ message: "request.completed", route: "/health" }]);
 	});
 });

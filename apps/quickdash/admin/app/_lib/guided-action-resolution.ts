@@ -2,7 +2,7 @@ import type { ResolvedFirstAction } from "@quickengine/module-registry";
 
 export type GuidedActionStepCompletion = { id: string; completed: boolean };
 
-export type ResolvedGuidedAction = ResolvedFirstAction & {
+export type ResolvedGuidedAction = Omit<ResolvedFirstAction, "steps"> & {
 	completed: boolean;
 	steps: readonly (ResolvedFirstAction["steps"][number] & {
 		completed: boolean;

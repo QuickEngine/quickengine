@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	ArrowRight,
 	CaretDown,
 	CaretUp,
 	Check,
@@ -53,7 +54,7 @@ export function FirstActionChecklist({
 					setError(result.error);
 				}
 			});
-		}, 3000);
+		}, 8000);
 		return () => window.clearTimeout(timeout);
 	}, [allCompleted, dismissed, workspaceId]);
 
@@ -121,6 +122,14 @@ export function FirstActionChecklist({
 				<div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
 					<div className="h-full w-full rounded-full bg-primary" />
 				</div>
+				<Button
+					type="button"
+					className="mt-4 w-full"
+					disabled={pending}
+					onClick={() => persist(true, true)}
+				>
+					Start building <ArrowRight />
+				</Button>
 				{error && (
 					<p className="mt-3 text-destructive text-xs" role="alert">
 						{error}

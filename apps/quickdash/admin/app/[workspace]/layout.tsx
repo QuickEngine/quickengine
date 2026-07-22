@@ -1,5 +1,8 @@
 import { getSession } from "@quickengine/auth/server";
-import { getFirstActionChecklistState } from "@quickengine/db";
+import {
+	getFirstActionChecklistState,
+	getQuickDashOrientationState,
+} from "@quickengine/db";
 import { listModules, resolveFirstActions } from "@quickengine/module-registry";
 import {
 	Sidebar,
@@ -13,8 +16,12 @@ import { CommandPalette } from "../_components/command-palette";
 import { FirstActionChecklist } from "../_components/first-action-checklist";
 import { ModuleNav } from "../_components/module-nav";
 import { ProfileMenu } from "../_components/profile-menu";
+import { QuickDashOrientation } from "../_components/quickdash-orientation";
 import { WorkspaceSwitcher } from "../_components/workspace-switcher";
-import { buildFirstActionChecklistItems } from "../_lib/first-action-checklist";
+import {
+	buildFirstActionChecklistItems,
+	resolveInitialFirstActionChecklistCollapsed,
+} from "../_lib/first-action-checklist";
 import { resolveDatabaseFirstActionCompletions } from "../_lib/first-action-completion-database";
 import { getModuleNavigation } from "../_lib/module-navigation";
 import {
@@ -52,13 +59,15 @@ export default async function WorkspaceLayout({
 		manifests: listModules(),
 		enabledModuleIds: access.modules.map((module) => module.id),
 	});
-	const [firstActionCompletions, firstActionState] = await Promise.all([
-		resolveDatabaseFirstActionCompletions(
-			access.workspace.id,
-			firstActions.map((action) => action.id),
-		),
-		getFirstActionChecklistState(session.user.id, access.workspace.id),
-	]);
+	const [firstActionCompletions, firstActionState, orientationState] =
+		await Promise.all([
+			resolveDatabaseFirstActionCompletions(
+				access.workspace.id,
+				firstActions.map((action) => action.id),
+			),
+			getFirstActionChecklistState(session.user.id, access.workspace.id),
+			getQuickDashOrientationState(session.user.id, access.workspace.id),
+		]);
 	const firstActionItems = buildFirstActionChecklistItems(
 		access.workspace.id,
 		firstActions,
@@ -68,7 +77,10 @@ export default async function WorkspaceLayout({
 	return (
 		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
 			<header className="fixed inset-x-0 top-0 z-30 flex h-(--header-height) items-center border-sidebar-border border-b bg-background">
-				<div className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4">
+				<div
+					data-orientation-target="workspace-switcher"
+					className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4"
+				>
 					<WorkspaceSwitcher
 						active={access.workspace}
 						workspaces={workspaces}
@@ -87,6 +99,7 @@ export default async function WorkspaceLayout({
 					<div className="flex items-center gap-3">
 						<CommandPalette workspaceId={access.workspace.id} />
 						<ProfileMenu
+							workspaceId={access.workspace.id}
 							seed={session.user.id}
 							name={session.user.name ?? ""}
 							email={session.user.email}
@@ -102,11 +115,21 @@ export default async function WorkspaceLayout({
 				/>
 			</Sidebar>
 			<SidebarInset className="pt-(--header-height)">{children}</SidebarInset>
-			<FirstActionChecklist
+			{!orientationState.shouldOffer && (
+				<FirstActionChecklist
+					workspaceId={access.workspace.id}
+					items={firstActionItems}
+					initialCollapsed={resolveInitialFirstActionChecklistCollapsed({
+						hasStoredState: firstActionState.hasStoredState,
+						storedCollapsed: firstActionState.collapsed,
+					})}
+					initialDismissed={firstActionState.dismissedAt !== null}
+				/>
+			)}
+			<QuickDashOrientation
 				workspaceId={access.workspace.id}
-				items={firstActionItems}
-				initialCollapsed={firstActionState.collapsed}
-				initialDismissed={firstActionState.dismissedAt !== null}
+				workspaceName={access.workspace.name}
+				shouldOffer={orientationState.shouldOffer}
 			/>
 		</SidebarProvider>
 	);

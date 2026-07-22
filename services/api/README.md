@@ -31,5 +31,8 @@ Foundation endpoints:
 Create a separate Vercel project rooted at `services/api`. Hono's Vercel adapter is the
 default application export in `src/index.ts`; no Next.js application owns this service.
 Set `API_BASE_URL` to the canonical API origin and `API_CORS_ORIGINS` to a comma-separated
-allowlist for the deployed first-party clients. Authentication, database connections,
-module routes, telemetry, and production deployment are deliberately later Step 8 slices.
+allowlist for the deployed first-party clients. Production deployment and module routes are
+deliberately later Step 8 slices. The platform core already defines dependency-injected
+session/API-key authentication, workspace and RBAC context, CSRF/CORS policy, audit actors,
+structured redacted logging, OpenTelemetry spans, and optional Sentry capture; module routes
+begin consuming that gate in later verticals.

@@ -1,7 +1,6 @@
+import type { ApiErrorCode } from "@quickengine/api-contracts/errors";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-
-export type ApiErrorCode = "INTERNAL_ERROR" | "NOT_FOUND";
 
 export function respond<T>(
 	c: Context,
@@ -24,6 +23,7 @@ export function respondError(
 	code: ApiErrorCode,
 	message: string,
 	status: ContentfulStatusCode,
+	details?: unknown,
 ) {
 	return c.json(
 		{
@@ -31,6 +31,7 @@ export function respondError(
 				code,
 				message,
 				requestId: c.get("requestId") as string,
+				...(details === undefined ? {} : { details }),
 			},
 		},
 		status,

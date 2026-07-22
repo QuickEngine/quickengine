@@ -10,6 +10,12 @@ export type FirstActionChecklistItem = {
 	completed: boolean;
 };
 
+export function isFirstActionChecklistComplete(
+	items: readonly Pick<FirstActionChecklistItem, "completed">[],
+) {
+	return items.length > 0 && items.every((item) => item.completed);
+}
+
 export function buildFirstActionChecklistItems(
 	workspaceId: string,
 	actions: readonly ResolvedFirstAction[],

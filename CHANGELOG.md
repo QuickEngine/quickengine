@@ -28,7 +28,8 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **QuickDash now turns first-value guidance into a live workspace checklist.** A compact
   bottom-right panel selects up to five actions from the workspace's enabled modules, links
   into the owning module, and checks each item only after its real business record exists.
-  Progress, collapse, and dismissal are accessible and persist per user and workspace.
+  Progress, collapse, and dismissal are accessible and persist per user and workspace. When
+  every action is complete, a short success state appears and closes itself automatically.
 
 - **The QuickDash getting-started checklist now has durable per-user state.** Collapsed
   and dismissed preferences are stored independently for each user and workspace, survive

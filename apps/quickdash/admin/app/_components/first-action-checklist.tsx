@@ -1,10 +1,20 @@
 "use client";
 
-import { CaretDown, CaretUp, Check, Circle, X } from "@phosphor-icons/react";
+import {
+	CaretDown,
+	CaretUp,
+	Check,
+	CheckCircle,
+	Circle,
+	X,
+} from "@phosphor-icons/react";
 import { Button } from "@quickengine/ui/components/ui/button";
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import type { FirstActionChecklistItem } from "../_lib/first-action-checklist";
+import { useEffect, useRef, useState, useTransition } from "react";
+import {
+	type FirstActionChecklistItem,
+	isFirstActionChecklistComplete,
+} from "../_lib/first-action-checklist";
 import { saveFirstActionChecklistPresentationAction } from "../_lib/first-action-checklist-actions";
 
 export function FirstActionChecklist({
@@ -22,8 +32,30 @@ export function FirstActionChecklist({
 	const [dismissed, setDismissed] = useState(initialDismissed);
 	const [error, setError] = useState<string | null>(null);
 	const [pending, startTransition] = useTransition();
+	const autoDismissAttempted = useRef(false);
 	const completed = items.filter((item) => item.completed).length;
 	const percent = items.length === 0 ? 0 : (completed / items.length) * 100;
+	const allCompleted = isFirstActionChecklistComplete(items);
+
+	useEffect(() => {
+		if (!allCompleted || dismissed || autoDismissAttempted.current) return;
+		const timeout = window.setTimeout(() => {
+			autoDismissAttempted.current = true;
+			setDismissed(true);
+			startTransition(async () => {
+				const result = await saveFirstActionChecklistPresentationAction({
+					workspaceId,
+					collapsed: true,
+					dismissed: true,
+				});
+				if (!result.ok) {
+					setDismissed(false);
+					setError(result.error);
+				}
+			});
+		}, 3000);
+		return () => window.clearTimeout(timeout);
+	}, [allCompleted, dismissed, workspaceId]);
 
 	if (items.length === 0 || dismissed) return null;
 
@@ -64,6 +96,37 @@ export function FirstActionChecklist({
 					<CaretUp />
 				</Button>
 			</div>
+		);
+	}
+
+	if (allCompleted) {
+		return (
+			<aside
+				aria-label="Getting started complete"
+				aria-live="polite"
+				className="fixed right-5 bottom-5 z-40 w-[min(24rem,calc(100vw-2.5rem))] rounded-2xl border bg-background p-5 shadow-xl"
+			>
+				<div className="flex items-start gap-3">
+					<span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+						<CheckCircle className="size-6" weight="fill" />
+					</span>
+					<div>
+						<h2 className="font-semibold">You’re ready to go</h2>
+						<p className="mt-1 text-muted-foreground text-sm">
+							Your workspace setup is complete. This checklist will close
+							automatically.
+						</p>
+					</div>
+				</div>
+				<div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
+					<div className="h-full w-full rounded-full bg-primary" />
+				</div>
+				{error && (
+					<p className="mt-3 text-destructive text-xs" role="alert">
+						{error}
+					</p>
+				)}
+			</aside>
 		);
 	}
 

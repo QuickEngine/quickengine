@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildFirstActionChecklistItems } from "./first-action-checklist";
+import {
+	buildFirstActionChecklistItems,
+	isFirstActionChecklistComplete,
+} from "./first-action-checklist";
 
 const actions = [
 	{
@@ -47,5 +50,21 @@ describe("buildFirstActionChecklistItems", () => {
 			{ id: "client-records:create", completed: true },
 			{ id: "files:upload", completed: false },
 		]);
+	});
+
+	it("completes only a non-empty checklist whose actions all have real outcomes", () => {
+		expect(isFirstActionChecklistComplete([])).toBe(false);
+		expect(
+			isFirstActionChecklistComplete([
+				{ completed: true },
+				{ completed: false },
+			]),
+		).toBe(false);
+		expect(
+			isFirstActionChecklistComplete([
+				{ completed: true },
+				{ completed: true },
+			]),
+		).toBe(true);
 	});
 });

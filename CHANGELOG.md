@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **QuickEngine now has an independent Hono API foundation.** The runtime-neutral service
+  provides standard response and error envelopes, request IDs, credential-safe CORS and
+  security headers, health/readiness/version endpoints, an initial OpenAPI document, a local
+  Node entry point, and a Vercel-compatible export. It joins the pnpm/Turborepo graph with
+  focused tests before authentication, database access, and module routes are introduced.
+
 - **Onboarding now has a real browser-level release contract.** An isolated Playwright path
   proves required email verification, optional setup branches, the no-billing/no-2FA minimal
   path, default modules and free access, atomic rollback and retry, direct authenticated
@@ -16,6 +22,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   five-minute targets without interfering with normal development servers.
 
 ### Changed
+
+- **The developer platform now has an explicit incremental delivery contract.** The Hono
+  backend extraction is divided into independently reviewable foundations, module verticals,
+  developer surfaces, and a measured Vite proof. Every slice carries a complete cross-agent
+  implementation checkpoint so backend work can continue safely across sessions without
+  confusing planned architecture with shipped behavior.
 
 - **Getting started now shows the real steps inside each business goal.** Parent goals expand
   into status-derived substeps, the next required action is emphasized, and progress counts

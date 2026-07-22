@@ -13,6 +13,7 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@fortawesome/fontawesome-svg-core": "7.3.1",
 		"@fortawesome/free-brands-svg-icons": "^7.3.0",
 		"@fortawesome/react-fontawesome": "^3.3.1",
 		"@phosphor-icons/react": "^2.1.10",
@@ -24,8 +25,8 @@
 		"better-auth": "^1.6.2",
 		"next": "^16.2.5",
 		"nuqs": "^2.9.0",
-		"react": "19.2.7",
-		"react-dom": "19.2.7"
+		"react": "19.2.8",
+		"react-dom": "19.2.8"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",

@@ -25,6 +25,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The QuickDash getting-started checklist now has durable per-user state.** Collapsed
+  and dismissed preferences are stored independently for each user and workspace, survive
+  refreshes and devices, and reset safely when a materially new checklist version ships.
+  Real action completion remains derived from business records rather than stored checkmarks.
+
 - **Getting-started actions can now complete from real workspace records.** QuickDash
   maps every declared first action to its owning module's workspace-scoped data and checks
   only the short resolved action list in parallel. Completion comes from creating the real

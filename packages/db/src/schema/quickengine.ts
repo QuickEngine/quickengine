@@ -415,3 +415,33 @@ export const quickengineOrganizationInvitations = pgTable(
 		index("quickengine_org_invitations_email_idx").on(table.email),
 	],
 );
+
+// Per-user presentation state for QuickDash's first-value checklist. Business-action
+// completion is intentionally absent: that truth is derived from workspace module records.
+export const quickdashFirstActionStates = pgTable(
+	"quickdash_first_action_states",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
+		checklistVersion: integer("checklist_version").notNull(),
+		collapsed: boolean("collapsed").default(false).notNull(),
+		dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("quickdash_first_action_states_user_workspace_idx").on(
+			table.userId,
+			table.workspaceId,
+		),
+	],
+);

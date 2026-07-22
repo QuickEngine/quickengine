@@ -26,7 +26,7 @@
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
 		"@types/react": "^19",
-		"react": "19.2.7",
+		"react": "19.2.8",
 		"typescript": "^5",
 		"vitest": "^3.2.6"
 	}

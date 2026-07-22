@@ -25,6 +25,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Getting-started goals now describe the real steps behind each first outcome.** All 14
+  actionable first-wave modules declare ordered, versioned milestones such as drafting and
+  sending an invoice, confirming a booking or order, and starting then completing fulfillment;
+  Reporting remains explicitly outcome-free. Optional Account security and 2FA guidance stays
+  outside the module dependency graph and cannot block the business path.
+
 - **New QuickDash workspaces now offer a short, optional orientation.** Four concise
   coach cards introduce the workspace switcher and module navigation, then point to workspace
   settings and Account in a fourth step. Stable target attributes and directional notches keep

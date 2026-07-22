@@ -14,6 +14,15 @@ const manifests = [
 				moduleId: "clients",
 				intent: "create",
 				priority: 20,
+				steps: [
+					{
+						id: "clients:create:record",
+						version: 1,
+						label: "Add details",
+						description: "Save the client.",
+						intent: "create",
+					},
+				],
 			},
 		],
 	},
@@ -30,6 +39,15 @@ const manifests = [
 				intent: "create",
 				priority: 10,
 				requires: ["clients:create"],
+				steps: [
+					{
+						id: "invoices:create:draft",
+						version: 1,
+						label: "Draft it",
+						description: "Save the invoice.",
+						intent: "create",
+					},
+				],
 			},
 		],
 	},
@@ -45,6 +63,15 @@ const manifests = [
 				moduleId: "products",
 				intent: "create",
 				priority: 30,
+				steps: [
+					{
+						id: "products:create:item",
+						version: 1,
+						label: "Add it",
+						description: "Save the product.",
+						intent: "create",
+					},
+				],
 			},
 		],
 	},
@@ -124,6 +151,15 @@ describe("resolveFirstActions", () => {
 								moduleId: "loop",
 								priority: 1,
 								requires: ["loop:a" as const],
+								steps: [
+									{
+										id: "loop:a:step" as const,
+										version: 1 as const,
+										label: "Loop",
+										description: "Loop",
+										intent: "loop",
+									},
+								],
 							},
 						],
 					},

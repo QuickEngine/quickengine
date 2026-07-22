@@ -34,6 +34,22 @@ export const ordersModule = {
 			intent: "create",
 			priority: 30,
 			requires: ["client-records:create", "products-services:create"],
+			steps: [
+				{
+					id: "orders:create:draft",
+					version: 1,
+					label: "Create the order",
+					description: "Choose the client and add what they ordered.",
+					intent: "create",
+				},
+				{
+					id: "orders:create:confirm",
+					version: 1,
+					label: "Confirm the order",
+					description: "Review the order and move it into processing.",
+					intent: "confirm",
+				},
+			],
 		},
 	] as const,
 } as const;

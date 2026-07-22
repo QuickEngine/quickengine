@@ -31,6 +31,29 @@ describe("first-action catalog", () => {
 		expect(ids.size).toBe(14);
 	});
 
+	it("gives every business goal ordered, unique, module-owned substeps", () => {
+		const stepIds = new Set<string>();
+		for (const module of listModules()) {
+			for (const action of module.firstActions ?? []) {
+				expect(action.steps.length, action.id).toBeGreaterThan(0);
+				expect(
+					action.steps.some((step) => !step.optional),
+					action.id,
+				).toBe(true);
+				for (const step of action.steps) {
+					expect(step.id.startsWith(`${action.id}:`), step.id).toBe(true);
+					expect(step.version).toBe(1);
+					expect(step.label.trim()).not.toBe("");
+					expect(step.description.trim()).not.toBe("");
+					expect(step.intent.trim()).not.toBe("");
+					expect(stepIds.has(step.id), step.id).toBe(false);
+					stepIds.add(step.id);
+				}
+			}
+		}
+		expect(stepIds.size).toBe(23);
+	});
+
 	it("references only actions available through structural module dependencies", () => {
 		const actionOwner = new Map<string, string>();
 		for (const module of listModules()) {

@@ -45,6 +45,24 @@ export const contractsEsignModule = {
 			intent: "create",
 			priority: 40,
 			requires: ["client-records:create", "files:upload"],
+			steps: [
+				{
+					id: "contracts-esign:create:draft",
+					version: 1,
+					label: "Prepare the agreement",
+					description:
+						"Choose the client, document, signers, and signing terms.",
+					intent: "create",
+				},
+				{
+					id: "contracts-esign:create:send",
+					version: 1,
+					label: "Send it for signature",
+					description:
+						"Review the agreement and send the immutable signing request.",
+					intent: "send",
+				},
+			],
 		},
 	] as const,
 } as const;

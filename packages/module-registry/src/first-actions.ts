@@ -1,3 +1,15 @@
+export type GuidedActionStepDescriptor = {
+	/** Stable identity nested below its owning first action. */
+	id: `${string}:${string}:${string}`;
+	version: 1;
+	label: string;
+	description: string;
+	/** Intent interpreted by the owning module page in the later execution slice. */
+	intent: string;
+	/** Optional steps never prevent the parent business goal from completing. */
+	optional?: boolean;
+};
+
 export type FirstActionDescriptor = {
 	/** Stable, namespaced identity such as `client-records:create`. */
 	id: `${string}:${string}`;
@@ -13,6 +25,8 @@ export type FirstActionDescriptor = {
 	priority: number;
 	/** Other first actions that must be possible and ordered before this one. */
 	requires?: readonly FirstActionDescriptor["id"][];
+	/** Ordered, real-state milestones that explain how to complete this parent goal. */
+	steps: readonly GuidedActionStepDescriptor[];
 };
 
 export type ResolvedFirstAction = FirstActionDescriptor & {

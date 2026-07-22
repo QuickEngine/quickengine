@@ -34,6 +34,23 @@ export const shippingModule = {
 			intent: "create",
 			priority: 60,
 			requires: ["orders:create"],
+			steps: [
+				{
+					id: "shipping:create:shipment",
+					version: 1,
+					label: "Prepare the shipment",
+					description:
+						"Choose the order lines, carrier, parcels, and destination.",
+					intent: "create",
+				},
+				{
+					id: "shipping:create:dispatch",
+					version: 1,
+					label: "Mark it shipped",
+					description: "Confirm dispatch and add tracking when available.",
+					intent: "dispatch",
+				},
+			],
 		},
 	] as const,
 } as const;

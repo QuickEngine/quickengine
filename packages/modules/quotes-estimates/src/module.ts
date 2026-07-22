@@ -44,6 +44,24 @@ export const quotesEstimatesModule = {
 			intent: "create",
 			priority: 20,
 			requires: ["client-records:create"],
+			steps: [
+				{
+					id: "quotes-estimates:create:draft",
+					version: 1,
+					label: "Prepare the quote",
+					description:
+						"Choose a client and describe the proposed work or items.",
+					intent: "create",
+				},
+				{
+					id: "quotes-estimates:create:send",
+					version: 1,
+					label: "Send the quote",
+					description:
+						"Review the proposal and send it for the client’s decision.",
+					intent: "send",
+				},
+			],
 		},
 	] as const,
 } as const;

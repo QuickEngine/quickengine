@@ -36,6 +36,22 @@ export const bookingsModule = {
 			intent: "create",
 			priority: 30,
 			requires: ["client-records:create", "products-services:create"],
+			steps: [
+				{
+					id: "bookings:create:booking",
+					version: 1,
+					label: "Schedule the booking",
+					description: "Choose the client, service, date, and time.",
+					intent: "create",
+				},
+				{
+					id: "bookings:create:confirm",
+					version: 1,
+					label: "Confirm the booking",
+					description: "Confirm the appointment so it is ready to deliver.",
+					intent: "confirm",
+				},
+			],
 		},
 	] as const,
 } as const;

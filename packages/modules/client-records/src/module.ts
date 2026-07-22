@@ -44,6 +44,15 @@ export const clientRecordsModule = {
 			moduleId: "client-records",
 			intent: "create",
 			priority: 10,
+			steps: [
+				{
+					id: "client-records:create:details",
+					version: 1,
+					label: "Add the client’s details",
+					description: "Save the person or business you will work with.",
+					intent: "create",
+				},
+			],
 		},
 	] as const,
 } as const;

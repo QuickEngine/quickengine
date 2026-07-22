@@ -30,6 +30,22 @@ export const projectsTasksModule = {
 			intent: "create",
 			priority: 20,
 			requires: ["client-records:create"],
+			steps: [
+				{
+					id: "projects-tasks:create:project",
+					version: 1,
+					label: "Create the project",
+					description: "Name the work and connect the client when applicable.",
+					intent: "create",
+				},
+				{
+					id: "projects-tasks:create:task",
+					version: 1,
+					label: "Add the first task",
+					description: "Define the first concrete piece of work to complete.",
+					intent: "create-task",
+				},
+			],
 		},
 	] as const,
 } as const;

@@ -15,6 +15,15 @@ const actions = [
 		moduleName: "Client Records",
 		intent: "create",
 		priority: 10,
+		steps: [
+			{
+				id: "client-records:create:details" as const,
+				version: 1 as const,
+				label: "Add details",
+				description: "Save the client.",
+				intent: "create",
+			},
+		],
 	},
 	{
 		id: "files:upload" as const,
@@ -25,6 +34,15 @@ const actions = [
 		moduleName: "Files & Documents",
 		intent: "upload",
 		priority: 20,
+		steps: [
+			{
+				id: "files:upload:file" as const,
+				version: 1 as const,
+				label: "Upload it",
+				description: "Save the file.",
+				intent: "upload",
+			},
+		],
 	},
 ];
 

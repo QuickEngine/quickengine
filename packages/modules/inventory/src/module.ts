@@ -28,6 +28,16 @@ export const inventoryModule = {
 			intent: "adjust",
 			priority: 40,
 			requires: ["products-services:create"],
+			steps: [
+				{
+					id: "inventory:adjust:stock",
+					version: 1,
+					label: "Set the opening stock",
+					description:
+						"Record the available quantity for a catalog item or variant.",
+					intent: "adjust",
+				},
+			],
 		},
 	] as const,
 } as const;

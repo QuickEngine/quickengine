@@ -48,6 +48,24 @@ export const timeTrackingModule = {
 			intent: "create",
 			priority: 35,
 			requires: ["projects-tasks:create"],
+			steps: [
+				{
+					id: "time-tracking:create:entry",
+					version: 1,
+					label: "Log the work",
+					description: "Record time against the relevant project or task.",
+					intent: "create",
+				},
+				{
+					id: "time-tracking:create:review",
+					version: 1,
+					label: "Review billable time",
+					description:
+						"Approve or verify the entry before invoicing when your workflow requires it.",
+					intent: "review",
+					optional: true,
+				},
+			],
 		},
 	] as const,
 } as const;

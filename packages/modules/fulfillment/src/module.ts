@@ -38,6 +38,23 @@ export const fulfillmentModule = {
 			intent: "create",
 			priority: 60,
 			requires: ["payments:record"],
+			steps: [
+				{
+					id: "fulfillment:create:start",
+					version: 1,
+					label: "Start the fulfillment",
+					description:
+						"Begin delivering the paid product, file, service, or engagement.",
+					intent: "create",
+				},
+				{
+					id: "fulfillment:create:complete",
+					version: 1,
+					label: "Complete the fulfillment",
+					description: "Confirm that the promised outcome was delivered.",
+					intent: "complete",
+				},
+			],
 		},
 	] as const,
 } as const;

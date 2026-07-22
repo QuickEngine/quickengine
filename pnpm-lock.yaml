@@ -680,6 +680,9 @@ importers:
       '@neondatabase/serverless':
         specifier: ^1.0.2
         version: 1.1.0
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../api-contracts
       '@quickengine/env':
         specifier: workspace:*
         version: link:../env
@@ -938,6 +941,9 @@ importers:
 
   packages/modules/client-records:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1536,9 +1542,6 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
-      '@upstash/redis':
-        specifier: ^1.38.0
-        version: 1.38.0
       '@quickengine/api-contracts':
         specifier: workspace:*
         version: link:../../packages/api-contracts
@@ -1551,12 +1554,18 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@quickengine/mod-client-records':
+        specifier: workspace:*
+        version: link:../../packages/modules/client-records
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../packages/module-registry
       '@sentry/node':
         specifier: ^10.65.0
         version: 10.67.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.220.0(@opentelemetry/api@1.9.1))
+      '@upstash/redis':
+        specifier: ^1.38.0
+        version: 1.38.0
       hono:
         specifier: ^4.12.27
         version: 4.12.27

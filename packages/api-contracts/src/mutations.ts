@@ -60,6 +60,11 @@ export type MutationResult<TResult> =
 	| { kind: "conflict" }
 	| { kind: "in_progress"; retryAfterSeconds: number };
 
+export type MutationCommit<TResult> = {
+	result: TResult;
+	status: number;
+};
+
 /**
  * The adapter must commit domain state, audit intents, and outbox intents in one database
  * transaction. External provider calls belong outside this transaction.
@@ -80,6 +85,6 @@ export type MutationUnitOfWork<DatabaseTransaction> = {
 		context: MutationExecutionContext,
 		work: (
 			transaction: MutationTransaction<DatabaseTransaction>,
-		) => Promise<TResult>,
+		) => Promise<MutationCommit<TResult>>,
 	): Promise<MutationResult<TResult>>;
 };

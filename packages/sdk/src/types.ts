@@ -52,6 +52,58 @@ export type QuickResponse<TData> = {
 	requestId: string | null;
 };
 
+export type QuickClientRecord = {
+	id: string;
+	workspaceId: string;
+	name: string;
+	email: string | null;
+	phone: string | null;
+	company: string | null;
+	notes: string | null;
+	fields: Record<string, unknown>;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type QuickClientInput = {
+	name: string;
+	email?: string | null;
+	phone?: string | null;
+	company?: string | null;
+	notes?: string | null;
+	fields?: Record<string, unknown>;
+};
+
+export type QuickClientAddress = {
+	id: string;
+	workspaceId: string;
+	clientId: string;
+	label: string | null;
+	line1: string;
+	line2: string | null;
+	city: string;
+	region: string | null;
+	postalCode: string | null;
+	countryCode: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type QuickClientAddressInput = {
+	label?: string | null;
+	line1: string;
+	line2?: string | null;
+	city: string;
+	region?: string | null;
+	postalCode?: string | null;
+	countryCode: string;
+};
+
+export type QuickCursorPage<T> = {
+	items: T[];
+	page: { hasMore: boolean; nextCursor: string | null };
+};
+
 export type QuickApiErrorBody = {
 	code?: string;
 	message?: string;

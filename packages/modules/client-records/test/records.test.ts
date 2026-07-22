@@ -2,12 +2,26 @@ import { testDbClient } from "@quickengine/db/testing";
 import { type DomainEvent, getEventBus } from "@quickengine/events";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+	createClientCommand,
 	createClientRecord,
 	deleteClientRecord,
 	getClientRecord,
 	listClientRecords,
 	updateClientRecord,
 } from "../src";
+
+const mutationContext = (key: string, fingerprint = "same") => ({
+	abortSignal: new AbortController().signal,
+	actor: { id: ownerId, type: "user" as const },
+	deadlineAtMs: Date.now() + 10_000,
+	fingerprint,
+	idempotencyKey: key,
+	operation: "clients.create",
+	organizationId: null,
+	requestId: crypto.randomUUID(),
+	source: "api" as const,
+	workspaceId,
+});
 
 const ownerId = "client-records-owner";
 const workspaceId = "00000000-0000-4000-8000-000000000601";
@@ -28,6 +42,56 @@ beforeEach(async () => {
 });
 
 describe("Client Records persistence", () => {
+	it("commits domain state, replay result, audit, and outbox exactly once", async () => {
+		const first = await createClientCommand(
+			mutationContext("client-create-1"),
+			{
+				name: "Durable Client",
+			},
+		);
+		const replay = await createClientCommand(
+			mutationContext("client-create-1"),
+			{
+				name: "Durable Client",
+			},
+		);
+		expect(first).toMatchObject({
+			kind: "success",
+			source: "executed",
+			status: 201,
+		});
+		expect(replay).toMatchObject({
+			kind: "success",
+			source: "replayed",
+			status: 201,
+		});
+		const sql = testDbClient();
+		const [counts] = await sql`
+			select
+				(select count(*)::int from client_records where workspace_id = ${workspaceId}) clients,
+				(select count(*)::int from api_mutations where workspace_id = ${workspaceId}) mutations,
+				(select count(*)::int from api_audit_events where workspace_id = ${workspaceId}) audits,
+				(select count(*)::int from api_outbox_events where workspace_id = ${workspaceId}) outbox
+		`;
+		expect(counts).toMatchObject({
+			clients: 1,
+			mutations: 1,
+			audits: 1,
+			outbox: 1,
+		});
+	});
+
+	it("rejects reuse of an idempotency key with different validated input", async () => {
+		await createClientCommand(mutationContext("client-create-2"), {
+			name: "First",
+		});
+		const conflict = await createClientCommand(
+			mutationContext("client-create-2", "different"),
+			{ name: "Second" },
+		);
+		expect(conflict).toEqual({ kind: "conflict" });
+		expect(await listClientRecords(workspaceId)).toHaveLength(1);
+	});
 	it("normalizes input and lists records deterministically", async () => {
 		await createClientRecord(workspaceId, {
 			name: "  Zoe Example  ",

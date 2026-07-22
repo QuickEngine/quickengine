@@ -21,6 +21,7 @@
 		"@quickengine/cache": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
+		"@quickengine/mod-client-records": "workspace:*",
 		"@sentry/node": "^10.65.0",
 		"hono": "^4.12.27",
 		"postgres": "^3.4.9",

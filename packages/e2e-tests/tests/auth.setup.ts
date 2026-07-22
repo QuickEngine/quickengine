@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { test as setup } from "@playwright/test";
 import { auth } from "@quickengine/auth/server";
 import { testDbClient, truncateAll } from "@quickengine/db/testing";
-import { STORAGE_STATE } from "../playwright.config";
+import { ONBOARDING_STORAGE_STATE, STORAGE_STATE } from "../playwright.config";
 import {
 	FIXTURE,
 	seedIssuedInvoice,
@@ -32,6 +32,13 @@ setup("seed the workspace and sign in", async () => {
 			name: FIXTURE.name,
 		},
 	});
+	const unverifiedSignIn = await auth.api.signInEmail({
+		body: { email: FIXTURE.email, password: FIXTURE.password },
+		asResponse: true,
+	});
+	if (unverifiedSignIn.status < 400) {
+		throw new Error("Password sign-in succeeded before email verification.");
+	}
 
 	// Password sign-in requires a verified email (requireEmailVerification: true).
 	// Verify directly rather than round-tripping a token through the console mailer.
@@ -60,6 +67,35 @@ setup("seed the workspace and sign in", async () => {
 	await writeFile(
 		STORAGE_STATE,
 		JSON.stringify({ cookies, origins: [] }, null, 2),
+	);
+
+	await auth.api.signUpEmail({
+		body: {
+			email: FIXTURE.onboardingEmail,
+			password: FIXTURE.onboardingPassword,
+			name: FIXTURE.onboardingName,
+		},
+	});
+	await sql`
+		update quickengine_users set email_verified = true
+		where email = ${FIXTURE.onboardingEmail}
+	`;
+	const onboardingResponse = await auth.api.signInEmail({
+		body: {
+			email: FIXTURE.onboardingEmail,
+			password: FIXTURE.onboardingPassword,
+		},
+		asResponse: true,
+	});
+	const onboardingCookies = parseSetCookie(
+		onboardingResponse.headers.getSetCookie(),
+	);
+	if (onboardingCookies.length === 0) {
+		throw new Error("Onboarding sign-in returned no session cookie.");
+	}
+	await writeFile(
+		ONBOARDING_STORAGE_STATE,
+		JSON.stringify({ cookies: onboardingCookies, origins: [] }, null, 2),
 	);
 });
 

@@ -36,7 +36,7 @@ export function FirstActionChecklist({
 }) {
 	const [collapsed, setCollapsed] = useState(initialCollapsed);
 	const [dismissed, setDismissed] = useState(initialDismissed);
-	const [openGoalId, setOpenGoalId] = useState<string | undefined>();
+	const [openGoalId, setOpenGoalId] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [pending, startTransition] = useTransition();
 	const requiredSteps = items
@@ -78,7 +78,7 @@ export function FirstActionChecklist({
 					className="h-11 rounded-full border bg-card px-4 text-card-foreground opacity-100 shadow-lg hover:bg-muted"
 					disabled={pending}
 					onClick={() => {
-						setOpenGoalId(undefined);
+						setOpenGoalId("");
 						persist(false, false);
 					}}
 				>

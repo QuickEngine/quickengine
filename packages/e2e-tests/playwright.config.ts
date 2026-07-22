@@ -16,8 +16,10 @@ const databaseUrl = process.env.E2E_DATABASE_URL ?? resolveTestDatabaseUrl();
 // we mint during setup won't validate against the running server.
 const authSecret =
 	process.env.BETTER_AUTH_SECRET ?? "test-better-auth-secret-0000000000000000";
-const baseURL = "http://localhost:3011";
+const baseURL = "http://localhost:3111";
+const accountURL = "http://localhost:3101";
 export const STORAGE_STATE = "./.auth/state.json";
+export const ONBOARDING_STORAGE_STATE = "./.auth/onboarding-state.json";
 
 process.env.DATABASE_URL = databaseUrl;
 process.env.BETTER_AUTH_SECRET = authSecret;
@@ -56,26 +58,53 @@ export default defineConfig({
 		{
 			name: "chromium",
 			use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+			testIgnore: /onboarding\.spec\.ts/,
+			dependencies: ["setup"],
+		},
+		{
+			name: "onboarding",
+			use: {
+				...devices["Desktop Chrome"],
+				storageState: ONBOARDING_STORAGE_STATE,
+			},
+			testMatch: /onboarding\.spec\.ts/,
 			dependencies: ["setup"],
 		},
 	],
-	webServer: {
-		// --webpack matches the rest of the repo: Turbopack fatal-errors here.
-		command: "pnpm --filter @quickengine/quickdash dev",
-		// Probe the health endpoint, not `/`: an unauthenticated `/` 307-redirects to
-		// the auth app, which doesn't run under e2e, so the probe would follow the
-		// redirect to a dead server and never go ready. /api/health also returns 200
-		// only once the database is actually reachable — a stronger readiness signal.
-		url: `${baseURL}/api/health`,
-		reuseExistingServer: !process.env.CI,
-		// Next cold start in this repo is ~16s; allow generous headroom.
-		timeout: 180_000,
-		stdout: "pipe",
-		stderr: "pipe",
-		env: {
-			DATABASE_URL: databaseUrl,
-			BETTER_AUTH_SECRET: authSecret,
-			TEST_DB_NAME: "quickengine_test_e2e",
+	webServer: [
+		{
+			// --webpack matches the rest of the repo: Turbopack fatal-errors here.
+			command:
+				"pnpm --filter @quickengine/quickdash exec next dev --webpack --port 3111",
+			url: `${baseURL}/api/health`,
+			reuseExistingServer: !process.env.CI,
+			timeout: 180_000,
+			stdout: "pipe",
+			stderr: "pipe",
+			env: {
+				DATABASE_URL: databaseUrl,
+				BETTER_AUTH_SECRET: authSecret,
+				TEST_DB_NAME: "quickengine_test_e2e",
+				NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL: accountURL,
+				NEXT_DIST_DIR: ".next-e2e",
+			},
 		},
-	},
+		{
+			command:
+				"pnpm --filter @quickengine/account exec next dev --webpack --port 3101",
+			url: `${accountURL}/api/health`,
+			reuseExistingServer: !process.env.CI,
+			timeout: 180_000,
+			stdout: "pipe",
+			stderr: "pipe",
+			env: {
+				DATABASE_URL: databaseUrl,
+				BETTER_AUTH_SECRET: authSecret,
+				TEST_DB_NAME: "quickengine_test_e2e",
+				NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL: accountURL,
+				NEXT_PUBLIC_QUICKDASH_ADMIN_URL: baseURL,
+				NEXT_DIST_DIR: ".next-e2e",
+			},
+		},
+	],
 });

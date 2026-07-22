@@ -250,6 +250,15 @@ export async function listInventoryAdjustments(
 		);
 }
 
+export async function hasInventoryAdjustments(workspaceId: string) {
+	const [adjustment] = await db
+		.select({ id: inventoryAdjustments.id })
+		.from(inventoryAdjustments)
+		.where(eq(inventoryAdjustments.workspaceId, workspaceId))
+		.limit(1);
+	return adjustment !== undefined;
+}
+
 export async function deleteInventoryItem(workspaceId: string, id: string) {
 	return db.transaction(async (tx) => {
 		const [current] = await tx

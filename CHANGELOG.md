@@ -25,6 +25,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Getting-started actions can now complete from real workspace records.** QuickDash
+  maps every declared first action to its owning module's workspace-scoped data and checks
+  only the short resolved action list in parallel. Completion comes from creating the real
+  business record, never from clicking a checkbox. Inventory uses a direct existence query
+  so confirming a stock adjustment does not scan every inventory item's history.
+
 - **All 15 built modules now make an explicit first-action decision.** Fourteen modules
   declare one truthful record-producing action, including adding a client or offering,
   creating a quote/project/booking/invoice/order/contract, recording stock/time/payment,

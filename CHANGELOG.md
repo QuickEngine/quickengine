@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Getting-started substeps now resolve from real workspace status.** Twenty-three supported
+  milestones derive completion from module records and meaningful transitions such as sent,
+  confirmed, approved, fulfilled, and dispatched. A deterministic resolver selects the first
+  unfinished required substep while optional guidance never blocks a parent business goal.
+
 - **Quick.js, the CLI, and all 15 shipped modules now have independent SemVer release
   automation.** Conventional package commits feed one reviewed Release Please PR, with
   fixes producing patches, features producing minors, and breaking changes producing

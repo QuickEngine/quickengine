@@ -29,4 +29,16 @@ export const paymentsModule = {
 	meteredAction: null,
 	settingsSchema: paymentsSettingsSchema,
 	defaultSettings: paymentsSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "payments:record",
+			version: 1,
+			label: "Record your first payment",
+			description: "Record money received against an invoice.",
+			moduleId: "payments",
+			intent: "create",
+			priority: 50,
+			requires: ["invoicing:create"],
+		},
+	] as const,
 } as const;

@@ -2,7 +2,10 @@
 	"name": "@quickengine/cli",
 	"version": "0.1.0",
 	"description": "The `quick` command-line tool for QuickEngine and QuickDash",
-	"private": true,
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
 	"type": "module",
 	"bin": {
 		"quick": "./dist/index.js"

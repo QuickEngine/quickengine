@@ -24,4 +24,16 @@ export const shippingModule = {
 	meteredAction: null,
 	settingsSchema: shippingSettingsSchema,
 	defaultSettings: shippingSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "shipping:create",
+			version: 1,
+			label: "Create your first shipment",
+			description: "Prepare a tracked delivery for an order.",
+			moduleId: "shipping",
+			intent: "create",
+			priority: 60,
+			requires: ["orders:create"],
+		},
+	] as const,
 } as const;

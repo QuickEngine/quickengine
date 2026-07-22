@@ -18,4 +18,16 @@ export const inventoryModule = {
 	meteredAction: null,
 	settingsSchema: inventorySettingsSchema,
 	defaultSettings: inventorySettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "inventory:adjust",
+			version: 1,
+			label: "Record your first stock adjustment",
+			description: "Set or correct the available stock for a catalog item.",
+			moduleId: "inventory",
+			intent: "adjust",
+			priority: 40,
+			requires: ["products-services:create"],
+		},
+	] as const,
 } as const;

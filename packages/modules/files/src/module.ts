@@ -19,4 +19,15 @@ export const filesModule = {
 	meteredAction: "storageBytes",
 	settingsSchema: filesSettingsSchema,
 	defaultSettings: filesSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "files:upload",
+			version: 1,
+			label: "Upload your first file",
+			description: "Add a document or asset to this workspace.",
+			moduleId: "files",
+			intent: "upload",
+			priority: 15,
+		},
+	] as const,
 } as const;

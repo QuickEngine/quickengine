@@ -7,13 +7,20 @@ import { SiteHeader } from "./_components/site-header";
 
 const AUTH_URL =
 	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
+const ACCOUNT_URL =
+	process.env.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL ?? "http://localhost:3001";
 
-export default function Page() {
+export default async function Page() {
+	// Returning users should land in the product, not be sold the product again. Account is
+	// the stable control plane and routes incomplete accounts into onboarding. A future
+	// persisted last-workspace preference can safely tighten this to QuickDash.
+	if (await getSession(await headers())) redirect(ACCOUNT_URL);
+
 	return (
 		<>
 			<SiteHeader />
 			<main className="pt-16">
-				{/* Hero — claim + AI questionnaire (client component). */}
+				{/* Hero — marketing claim and authenticated product entry. */}
 				<Hero />
 
 				{/* Everything below the hero scrolls up and over it: the hero is
@@ -155,3 +162,7 @@ export default function Page() {
 		</>
 	);
 }
+
+import { getSession } from "@quickengine/auth/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";

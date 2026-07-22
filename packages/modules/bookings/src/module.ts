@@ -26,4 +26,16 @@ export const bookingsModule = {
 	meteredAction: null,
 	settingsSchema: bookingsSettingsSchema,
 	defaultSettings: bookingsSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "bookings:create",
+			version: 1,
+			label: "Create your first booking",
+			description: "Schedule a client for one of your services.",
+			moduleId: "bookings",
+			intent: "create",
+			priority: 30,
+			requires: ["client-records:create", "products-services:create"],
+		},
+	] as const,
 } as const;

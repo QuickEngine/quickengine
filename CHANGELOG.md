@@ -8,6 +8,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Quick.js, the CLI, and all 15 shipped modules now have independent SemVer release
+  automation.** Conventional package commits feed one reviewed Release Please PR, with
+  fixes producing patches, features producing minors, and breaking changes producing
+  majors. Component-prefixed tags keep all 17 package releases separate from product
+  CalVer. Their manifests now declare the intended public npm access, while actual npm
+  publication remains disabled until the shared dependency graph and credentials are
+  deliberately made publish-ready.
+
 - **Product releases now version themselves.** Every successful `main` CI run publishes
   the merged commit as the next monthly CalVer tag and GitHub Release, beginning with
   `2026.7.1` and resetting the counter each month. The workflow is serialized and safe
@@ -16,6 +24,52 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **CI now caches Turborepo's task results between runs.** The pnpm store was already cached, but Turbo's own cache was not — so every push recomputed typecheck, test, and build for all 45 tasks from cold, even when the change touched two files. Restoring `.turbo` lets Turbo skip everything whose inputs genuinely did not change. Measured locally: a cold typecheck takes 19s, a warm one 0s; build is the larger share of CI time and behaves the same way. Uses the local cache via `actions/cache` — no Turbo account, token, or external service. The cache compounds and Turbo never prunes it, so a note in the workflow records that GitHub's 10GB LRU eviction is what keeps it bounded, and what to do if the restore step ever becomes slower than the work it saves.
 
 ### Added
+
+- **The QuickDash getting-started checklist now has durable per-user state.** Collapsed
+  and dismissed preferences are stored independently for each user and workspace, survive
+  refreshes and devices, and reset safely when a materially new checklist version ships.
+  Real action completion remains derived from business records rather than stored checkmarks.
+
+- **Getting-started actions can now complete from real workspace records.** QuickDash
+  maps every declared first action to its owning module's workspace-scoped data and checks
+  only the short resolved action list in parallel. Completion comes from creating the real
+  business record, never from clicking a checkbox. Inventory uses a direct existence query
+  so confirming a stock adjustment does not scan every inventory item's history.
+
+- **All 15 built modules now make an explicit first-action decision.** Fourteen modules
+  declare one truthful record-producing action, including adding a client or offering,
+  creating a quote/project/booking/invoice/order/contract, recording stock/time/payment,
+  and beginning fulfillment/shipping. Prerequisites follow the real module dependency graph,
+  so an impossible action cannot leak into a workspace checklist. Reporting intentionally
+  declares no action because opening a chart is not a business outcome. Catalog tests enforce
+  explicit coverage, stable ownership, unique IDs, reachable prerequisites, the universal
+  client-to-fulfillment sequence, and recipe filtering.
+
+- **Getting-started actions now have a shared, dependency-safe contract.** Module manifests
+  can declare versioned first-value actions with stable IDs, destinations, intents,
+  priorities, and action prerequisites. A deterministic resolver builds a short checklist
+  from the workspace's actual enabled modules, honors recipe ordering where available,
+  removes actions whose prerequisites are unavailable, keeps prerequisites ahead of their
+  dependents, and rejects duplicate IDs, ownership mistakes, and cycles. This is the tested
+  truth layer for the later collapsible QuickDash checklist; it does not yet render UI or
+  treat clicking an item as completion.
+
+- **AI onboarding is now an authenticated, review-first path instead of a mock.** After
+  signup, the user can optionally describe their business, request a recommendation, review
+  every resolved module, edit it, and use the existing atomic workspace creation path. The server accepts
+  only real recipe IDs, caps descriptions and model output, allows three requests per user
+  per hour and 500 globally per day, fails closed when shared rate limiting is unavailable,
+  and falls back to deterministic catalog matching when no provider is configured or the
+  response is invalid. The new text-only Anthropic adapter defaults to Claude Haiku 4.5,
+  forwards cancellation/output limits, accounts for token cost, and returns stable errors
+  without leaking provider response bodies.
+
+- **Returning users now skip the marketing homepage.** A valid shared QuickEngine session
+  at `quickengine.xyz` redirects to Account, which remains the stable control plane and
+  routes incomplete accounts into onboarding. The marketing hero is marketing-only again:
+  its old fake prompt and fake plan recommendation are gone, replaced by signup and sign-in
+  entry points. Direct-to-QuickDash return can follow once a real last-workspace preference
+  exists instead of guessing which business the user meant.
 
 - **Rate limiting on the public API.** `/api/v1/*` had none, and `POST /api/v1/events` accepts a **publishable key — a credential deliberately shipped in browser code, so its value is public by design.** An unmetered public write endpoint with a public credential was the sharpest edge the backend audit found. Limits are enforced at the shared route gate, so every current and future route inherits them rather than each having to remember: 600 reads/minute, 120 writes/minute, and a tighter 300/minute on telemetry. Budgets are keyed to the **API key or user, not the IP** — otherwise one customer behind a shared NAT throttles their neighbours, and a caller could dodge their own limit by rotating source addresses. Responses carry `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` on success too, so a well-behaved client slows down *before* it starts getting 429s; a rejection adds `Retry-After`. Authorization runs first so the budget can be charged to a known caller; the expensive work all sits behind the check. **It fails open** — if Redis is unreachable the request is allowed and the failure logged, because an Upstash blip taking the whole API down is worse than a brief unprotected window. Verified against live Upstash, watching the sixth request in a limit of five actually get rejected.
 

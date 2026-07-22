@@ -27,4 +27,15 @@ export const productsServicesModule = {
 	meteredAction: null,
 	settingsSchema: productsServicesSettingsSchema,
 	defaultSettings: productsServicesSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "products-services:create",
+			version: 1,
+			label: "Add your first product or service",
+			description: "Create something your business sells or delivers.",
+			moduleId: "products-services",
+			intent: "create",
+			priority: 10,
+		},
+	] as const,
 } as const;

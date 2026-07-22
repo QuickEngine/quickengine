@@ -1,4 +1,6 @@
 import { getSession } from "@quickengine/auth/server";
+import { getFirstActionChecklistState } from "@quickengine/db";
+import { listModules, resolveFirstActions } from "@quickengine/module-registry";
 import {
 	Sidebar,
 	SidebarInset,
@@ -8,9 +10,12 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import { CommandPalette } from "../_components/command-palette";
+import { FirstActionChecklist } from "../_components/first-action-checklist";
 import { ModuleNav } from "../_components/module-nav";
 import { ProfileMenu } from "../_components/profile-menu";
 import { WorkspaceSwitcher } from "../_components/workspace-switcher";
+import { buildFirstActionChecklistItems } from "../_lib/first-action-checklist";
+import { resolveDatabaseFirstActionCompletions } from "../_lib/first-action-completion-database";
 import { getModuleNavigation } from "../_lib/module-navigation";
 import {
 	listAccessibleWorkspaces,
@@ -43,6 +48,22 @@ export default async function WorkspaceLayout({
 		}
 		return item;
 	});
+	const firstActions = resolveFirstActions({
+		manifests: listModules(),
+		enabledModuleIds: access.modules.map((module) => module.id),
+	});
+	const [firstActionCompletions, firstActionState] = await Promise.all([
+		resolveDatabaseFirstActionCompletions(
+			access.workspace.id,
+			firstActions.map((action) => action.id),
+		),
+		getFirstActionChecklistState(session.user.id, access.workspace.id),
+	]);
+	const firstActionItems = buildFirstActionChecklistItems(
+		access.workspace.id,
+		firstActions,
+		firstActionCompletions,
+	);
 
 	return (
 		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
@@ -81,6 +102,12 @@ export default async function WorkspaceLayout({
 				/>
 			</Sidebar>
 			<SidebarInset className="pt-(--header-height)">{children}</SidebarInset>
+			<FirstActionChecklist
+				workspaceId={access.workspace.id}
+				items={firstActionItems}
+				initialCollapsed={firstActionState.collapsed}
+				initialDismissed={firstActionState.dismissedAt !== null}
+			/>
 		</SidebarProvider>
 	);
 }

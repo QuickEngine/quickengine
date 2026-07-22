@@ -34,7 +34,7 @@ export function ModuleNav({
 
 	return (
 		<>
-			<SidebarContent>
+			<SidebarContent data-orientation-target="module-navigation">
 				<SidebarGroup className="px-3">
 					<SidebarMenu>
 						<SidebarMenuItem>
@@ -79,6 +79,7 @@ export function ModuleNav({
 					<SidebarMenuItem>
 						<SidebarMenuButton asChild className={navButton}>
 							<a
+								data-orientation-target="workspace-settings"
 								href={
 									workspaceSlug
 										? `${ACCOUNT_URL}/workspaces/${workspaceSlug}`

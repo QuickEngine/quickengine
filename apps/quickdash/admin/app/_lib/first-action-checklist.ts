@@ -16,6 +16,13 @@ export function isFirstActionChecklistComplete(
 	return items.length > 0 && items.every((item) => item.completed);
 }
 
+export function resolveInitialFirstActionChecklistCollapsed(input: {
+	hasStoredState: boolean;
+	storedCollapsed: boolean;
+}) {
+	return input.hasStoredState ? input.storedCollapsed : true;
+}
+
 export function buildFirstActionChecklistItems(
 	workspaceId: string,
 	actions: readonly ResolvedFirstAction[],

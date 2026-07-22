@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	buildFirstActionChecklistItems,
 	isFirstActionChecklistComplete,
+	resolveInitialFirstActionChecklistCollapsed,
 } from "./first-action-checklist";
 
 const actions = [
@@ -66,5 +67,20 @@ describe("buildFirstActionChecklistItems", () => {
 				{ completed: true },
 			]),
 		).toBe(true);
+	});
+
+	it("starts collapsed after orientation without overwriting a stored preference", () => {
+		expect(
+			resolveInitialFirstActionChecklistCollapsed({
+				hasStoredState: false,
+				storedCollapsed: false,
+			}),
+		).toBe(true);
+		expect(
+			resolveInitialFirstActionChecklistCollapsed({
+				hasStoredState: true,
+				storedCollapsed: false,
+			}),
+		).toBe(false);
 	});
 });

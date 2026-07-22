@@ -25,11 +25,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **New QuickDash workspaces now offer a short, optional orientation.** Four concise
+  coach cards introduce the workspace switcher and module navigation, then point to workspace
+  settings and Account in a fourth step. Stable target attributes and directional notches keep
+  each compact, light-gray card attached to the control it explains. People can skip, finish,
+  or restart the orientation from their profile menu; the outcome persists per user and
+  workspace so it does not repeatedly reappear across devices.
+
 - **QuickDash now turns first-value guidance into a live workspace checklist.** A compact
   bottom-right panel selects up to five actions from the workspace's enabled modules, links
   into the owning module, and checks each item only after its real business record exists.
   Progress, collapse, and dismissal are accessible and persist per user and workspace. When
-  every action is complete, a short success state appears and closes itself automatically.
+  every action is complete, a short success state offers **Start building** and closes itself
+  automatically if left alone.
 
 - **The QuickDash getting-started checklist now has durable per-user state.** Collapsed
   and dismissed preferences are stored independently for each user and workspace, survive

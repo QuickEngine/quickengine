@@ -10,6 +10,7 @@
 		"./envelopes": "./src/envelopes.ts",
 		"./errors": "./src/errors.ts",
 		"./headers": "./src/headers.ts",
+		"./mutations": "./src/mutations.ts",
 		"./openapi": "./src/openapi.ts",
 		"./query": "./src/query.ts"
 	},

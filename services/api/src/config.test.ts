@@ -7,6 +7,9 @@ describe("loadApiConfig", () => {
 
 		expect(config.port).toBe(3020);
 		expect(config.baseUrl).toBe("http://localhost:3020");
+		expect(config.bodyLimitBytes).toBe(1024 * 1024);
+		expect(config.requestTimeoutMs).toBe(10_000);
+		expect(config.readinessTimeoutMs).toBe(2000);
 		expect(config.corsOrigins.has("http://localhost:3011")).toBe(true);
 	});
 
@@ -25,5 +28,6 @@ describe("loadApiConfig", () => {
 	it("rejects invalid ports and base URLs", () => {
 		expect(() => loadApiConfig({ API_PORT: "70000" })).toThrow();
 		expect(() => loadApiConfig({ API_BASE_URL: "not-a-url" })).toThrow();
+		expect(() => loadApiConfig({ API_BODY_LIMIT_BYTES: "100" })).toThrow();
 	});
 });

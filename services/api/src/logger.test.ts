@@ -6,11 +6,13 @@ describe("structured API logging", () => {
 		expect(
 			redact({
 				authorization: "Bearer secret",
+				idempotencyKey: "intent-secret",
 				nested: { api_key: "qsk_secret", password: "password" },
 				requestId: "req_1",
 			}),
 		).toEqual({
 			authorization: "[REDACTED]",
+			idempotencyKey: "[REDACTED]",
 			nested: { api_key: "[REDACTED]", password: "[REDACTED]" },
 			requestId: "req_1",
 		});

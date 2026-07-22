@@ -18,6 +18,27 @@ export const serverEnvSchema = clientEnvSchema.extend({
 		.enum(["development", "test", "production"])
 		.default("development"),
 	DATABASE_URL: z.string().url(),
+	DATABASE_POOL_MAX: emptyStringAsUndefined(
+		z.coerce.number().int().min(1).max(20),
+	),
+	DATABASE_CONNECT_TIMEOUT_SECONDS: emptyStringAsUndefined(
+		z.coerce.number().int().min(1).max(60),
+	),
+	DATABASE_IDLE_TIMEOUT_SECONDS: emptyStringAsUndefined(
+		z.coerce.number().int().min(1).max(600),
+	),
+	DATABASE_MAX_LIFETIME_SECONDS: emptyStringAsUndefined(
+		z.coerce.number().int().min(60).max(86_400),
+	),
+	DATABASE_STATEMENT_TIMEOUT_MS: emptyStringAsUndefined(
+		z.coerce.number().int().min(100).max(300_000),
+	),
+	DATABASE_LOCK_TIMEOUT_MS: emptyStringAsUndefined(
+		z.coerce.number().int().min(100).max(60_000),
+	),
+	DATABASE_IDLE_TRANSACTION_TIMEOUT_MS: emptyStringAsUndefined(
+		z.coerce.number().int().min(1000).max(300_000),
+	),
 	// Set automatically by Vercel: "production" | "preview" | "development".
 	// Unset locally and in CI.
 	VERCEL_ENV: emptyStringAsUndefined(
@@ -82,6 +103,15 @@ export const serverEnvSchema = clientEnvSchema.extend({
 export const serverEnv = serverEnvSchema.parse({
 	NODE_ENV: process.env.NODE_ENV,
 	DATABASE_URL: process.env.DATABASE_URL,
+	DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX,
+	DATABASE_CONNECT_TIMEOUT_SECONDS:
+		process.env.DATABASE_CONNECT_TIMEOUT_SECONDS,
+	DATABASE_IDLE_TIMEOUT_SECONDS: process.env.DATABASE_IDLE_TIMEOUT_SECONDS,
+	DATABASE_MAX_LIFETIME_SECONDS: process.env.DATABASE_MAX_LIFETIME_SECONDS,
+	DATABASE_STATEMENT_TIMEOUT_MS: process.env.DATABASE_STATEMENT_TIMEOUT_MS,
+	DATABASE_LOCK_TIMEOUT_MS: process.env.DATABASE_LOCK_TIMEOUT_MS,
+	DATABASE_IDLE_TRANSACTION_TIMEOUT_MS:
+		process.env.DATABASE_IDLE_TRANSACTION_TIMEOUT_MS,
 	VERCEL_ENV: process.env.VERCEL_ENV,
 	DATABASE_IS_PRODUCTION: process.env.DATABASE_IS_PRODUCTION,
 	REDIS_URL: process.env.REDIS_URL,

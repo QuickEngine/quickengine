@@ -46,6 +46,8 @@ export type AuthorizedApiContext = {
 
 export type PlatformVariables = {
 	authorized: AuthorizedApiContext;
+	abortSignal: AbortSignal;
+	deadlineAtMs: number;
 };
 
 export type PlatformEnv = {

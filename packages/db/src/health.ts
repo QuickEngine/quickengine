@@ -1,5 +1,4 @@
-import { sql } from "drizzle-orm";
-import { db } from "./client";
+import { databaseConnection } from "./connection";
 
 export type HealthReport = {
 	status: "ok" | "degraded";
@@ -15,7 +14,7 @@ export async function checkHealth(): Promise<HealthReport> {
 	let healthy = true;
 
 	try {
-		await db.execute(sql`select 1`);
+		await databaseConnection`select 1`;
 		checks.database = "ok";
 	} catch {
 		checks.database = "error";

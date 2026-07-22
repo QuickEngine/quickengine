@@ -38,4 +38,16 @@ export const timeTrackingModule = {
 	meteredAction: null,
 	settingsSchema: timeTrackingSettingsSchema,
 	defaultSettings: timeTrackingSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "time-tracking:create",
+			version: 1,
+			label: "Log your first time entry",
+			description: "Record work against a project or task.",
+			moduleId: "time-tracking",
+			intent: "create",
+			priority: 35,
+			requires: ["projects-tasks:create"],
+		},
+	] as const,
 } as const;

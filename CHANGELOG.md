@@ -25,6 +25,35 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The QuickDash getting-started checklist now has durable per-user state.** Collapsed
+  and dismissed preferences are stored independently for each user and workspace, survive
+  refreshes and devices, and reset safely when a materially new checklist version ships.
+  Real action completion remains derived from business records rather than stored checkmarks.
+
+- **Getting-started actions can now complete from real workspace records.** QuickDash
+  maps every declared first action to its owning module's workspace-scoped data and checks
+  only the short resolved action list in parallel. Completion comes from creating the real
+  business record, never from clicking a checkbox. Inventory uses a direct existence query
+  so confirming a stock adjustment does not scan every inventory item's history.
+
+- **All 15 built modules now make an explicit first-action decision.** Fourteen modules
+  declare one truthful record-producing action, including adding a client or offering,
+  creating a quote/project/booking/invoice/order/contract, recording stock/time/payment,
+  and beginning fulfillment/shipping. Prerequisites follow the real module dependency graph,
+  so an impossible action cannot leak into a workspace checklist. Reporting intentionally
+  declares no action because opening a chart is not a business outcome. Catalog tests enforce
+  explicit coverage, stable ownership, unique IDs, reachable prerequisites, the universal
+  client-to-fulfillment sequence, and recipe filtering.
+
+- **Getting-started actions now have a shared, dependency-safe contract.** Module manifests
+  can declare versioned first-value actions with stable IDs, destinations, intents,
+  priorities, and action prerequisites. A deterministic resolver builds a short checklist
+  from the workspace's actual enabled modules, honors recipe ordering where available,
+  removes actions whose prerequisites are unavailable, keeps prerequisites ahead of their
+  dependents, and rejects duplicate IDs, ownership mistakes, and cycles. This is the tested
+  truth layer for the later collapsible QuickDash checklist; it does not yet render UI or
+  treat clicking an item as completion.
+
 - **AI onboarding is now an authenticated, review-first path instead of a mock.** After
   signup, the user can optionally describe their business, request a recommendation, review
   every resolved module, edit it, and use the existing atomic workspace creation path. The server accepts

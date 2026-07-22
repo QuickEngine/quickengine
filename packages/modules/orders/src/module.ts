@@ -24,4 +24,16 @@ export const ordersModule = {
 	meteredAction: null,
 	settingsSchema: ordersSettingsSchema,
 	defaultSettings: ordersSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "orders:create",
+			version: 1,
+			label: "Create your first order",
+			description: "Record what a client ordered from your catalog.",
+			moduleId: "orders",
+			intent: "create",
+			priority: 30,
+			requires: ["client-records:create", "products-services:create"],
+		},
+	] as const,
 } as const;

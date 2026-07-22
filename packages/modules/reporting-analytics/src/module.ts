@@ -28,4 +28,7 @@ export const reportingAnalyticsModule = {
 	meteredAction: null,
 	settingsSchema: reportingAnalyticsSettingsSchema,
 	defaultSettings: reportingAnalyticsSettingsSchema.parse({}),
+	// Reports become useful from records created in their owning modules. Merely opening a
+	// chart is not a business outcome, so Reporting adds no dishonest checklist item.
+	firstActions: [] as const,
 } as const;

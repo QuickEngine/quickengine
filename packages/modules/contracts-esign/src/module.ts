@@ -35,4 +35,16 @@ export const contractsEsignModule = {
 	meteredAction: null,
 	settingsSchema: contractsEsignSettingsSchema,
 	defaultSettings: contractsEsignSettingsSchema.parse({}),
+	firstActions: [
+		{
+			id: "contracts-esign:create",
+			version: 1,
+			label: "Create your first contract",
+			description: "Prepare an agreement for a client to review and sign.",
+			moduleId: "contracts-esign",
+			intent: "create",
+			priority: 40,
+			requires: ["client-records:create", "files:upload"],
+		},
+	] as const,
 } as const;

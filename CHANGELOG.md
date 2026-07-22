@@ -6,6 +6,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Onboarding now has a real browser-level release contract.** An isolated Playwright path
+  proves required email verification, optional setup branches, the no-billing/no-2FA minimal
+  path, default modules and free access, atomic rollback and retry, direct authenticated
+  QuickDash entry, orientation/checklist sequencing, and creation of the first useful client.
+  The measured local path reaches QuickDash and first value comfortably inside the two- and
+  five-minute targets without interfering with normal development servers.
+
 ### Changed
 
 - **Getting started now shows the real steps inside each business goal.** Parent goals expand

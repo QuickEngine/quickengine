@@ -9,6 +9,9 @@ export const FIXTURE = {
 	email: "e2e-owner@example.com",
 	password: "e2e-password-Aa1!",
 	name: "E2E Owner",
+	onboardingEmail: "e2e-onboarding@example.com",
+	onboardingPassword: "e2e-onboarding-Aa1!",
+	onboardingName: "E2E Onboarding Owner",
 	workspaceId: "00000000-0000-4000-8000-00000000e001",
 	clientId: "00000000-0000-4000-8000-00000000e002",
 	// A second workspace the same user owns. The switching flow bounces between the two

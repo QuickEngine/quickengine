@@ -1,7 +1,6 @@
 "use client";
 
 import {
-	ArrowRight,
 	CaretDown,
 	CaretUp,
 	Check,
@@ -9,9 +8,15 @@ import {
 	Circle,
 	X,
 } from "@phosphor-icons/react";
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@quickengine/ui/components/ui/accordion";
 import { Button } from "@quickengine/ui/components/ui/button";
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
 	type FirstActionChecklistItem,
 	isFirstActionChecklistComplete,
@@ -31,34 +36,18 @@ export function FirstActionChecklist({
 }) {
 	const [collapsed, setCollapsed] = useState(initialCollapsed);
 	const [dismissed, setDismissed] = useState(initialDismissed);
+	const [openGoalId, setOpenGoalId] = useState<string | undefined>();
 	const [error, setError] = useState<string | null>(null);
 	const [pending, startTransition] = useTransition();
-	const autoDismissAttempted = useRef(false);
-	const completed = items.filter((item) => item.completed).length;
-	const percent = items.length === 0 ? 0 : (completed / items.length) * 100;
+	const requiredSteps = items
+		.flatMap((item) => item.steps)
+		.filter((step) => !step.optional);
+	const completed = requiredSteps.filter((step) => step.completed).length;
+	const percent =
+		requiredSteps.length === 0 ? 0 : (completed / requiredSteps.length) * 100;
 	const allCompleted = isFirstActionChecklistComplete(items);
 
-	useEffect(() => {
-		if (!allCompleted || dismissed || autoDismissAttempted.current) return;
-		const timeout = window.setTimeout(() => {
-			autoDismissAttempted.current = true;
-			setDismissed(true);
-			startTransition(async () => {
-				const result = await saveFirstActionChecklistPresentationAction({
-					workspaceId,
-					collapsed: true,
-					dismissed: true,
-				});
-				if (!result.ok) {
-					setDismissed(false);
-					setError(result.error);
-				}
-			});
-		}, 8000);
-		return () => window.clearTimeout(timeout);
-	}, [allCompleted, dismissed, workspaceId]);
-
-	if (items.length === 0 || dismissed) return null;
+	if (requiredSteps.length === 0 || dismissed) return null;
 
 	function persist(nextCollapsed: boolean, nextDismissed: boolean) {
 		const previousCollapsed = collapsed;
@@ -85,14 +74,17 @@ export function FirstActionChecklist({
 			<div className="fixed right-5 bottom-5 z-40">
 				<Button
 					type="button"
-					variant="outline"
-					className="h-11 rounded-full bg-background px-4 shadow-lg"
+					variant="secondary"
+					className="h-11 rounded-full border bg-card px-4 text-card-foreground opacity-100 shadow-lg hover:bg-muted"
 					disabled={pending}
-					onClick={() => persist(false, false)}
+					onClick={() => {
+						setOpenGoalId(undefined);
+						persist(false, false);
+					}}
 				>
 					<span className="font-medium">Getting started</span>
 					<span className="text-muted-foreground text-xs">
-						{completed}/{items.length}
+						{completed}/{requiredSteps.length}
 					</span>
 					<CaretUp />
 				</Button>
@@ -114,27 +106,27 @@ export function FirstActionChecklist({
 					<div>
 						<h2 className="font-semibold">You’re ready to go</h2>
 						<p className="mt-1 text-muted-foreground text-sm">
-							Your workspace setup is complete. This checklist will close
-							automatically.
+							Your workspace setup is complete. Everything is ready for what you
+							build next.
 						</p>
 					</div>
 				</div>
 				<div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
 					<div className="h-full w-full rounded-full bg-primary" />
 				</div>
+				{error && (
+					<p className="mt-3 text-destructive text-xs" role="alert">
+						{error}
+					</p>
+				)}
 				<Button
 					type="button"
 					className="mt-4 w-full"
 					disabled={pending}
 					onClick={() => persist(true, true)}
 				>
-					Start building <ArrowRight />
+					Start Building
 				</Button>
-				{error && (
-					<p className="mt-3 text-destructive text-xs" role="alert">
-						{error}
-					</p>
-				)}
 			</aside>
 		);
 	}
@@ -149,7 +141,7 @@ export function FirstActionChecklist({
 					<div className="flex items-center justify-between gap-3">
 						<h2 className="font-semibold text-sm">Getting started</h2>
 						<span className="text-muted-foreground text-xs">
-							{completed} of {items.length}
+							{completed} of {requiredSteps.length}
 						</span>
 					</div>
 					<div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -182,39 +174,64 @@ export function FirstActionChecklist({
 					</Button>
 				</div>
 			</div>
-			<div className="p-2">
+			<Accordion
+				type="single"
+				collapsible
+				value={openGoalId}
+				onValueChange={setOpenGoalId}
+				className="p-2"
+			>
 				{items.map((item) => (
-					<Link
-						key={item.id}
-						href={item.href}
-						className="flex gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					>
-						<span className="mt-0.5 text-muted-foreground">
-							{item.completed ? (
-								<span className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-									<Check weight="bold" className="size-3" />
-								</span>
-							) : (
-								<Circle className="size-5" />
-							)}
-						</span>
-						<span className="min-w-0">
-							<span
-								className={
-									item.completed
-										? "block font-medium text-muted-foreground text-sm line-through"
-										: "block font-medium text-sm"
-								}
-							>
-								{item.label}
+					<AccordionItem key={item.id} value={item.id} className="px-2">
+						<AccordionTrigger className="gap-2 px-1 py-3 hover:no-underline">
+							<span className="flex min-w-0 items-center gap-2">
+								{item.completed ? (
+									<Check
+										className="size-4 shrink-0 text-primary"
+										weight="bold"
+									/>
+								) : (
+									<Circle className="size-4 shrink-0 text-muted-foreground" />
+								)}
+								<span className="truncate">{item.label}</span>
 							</span>
-							<span className="block text-muted-foreground text-xs">
-								{item.description}
-							</span>
-						</span>
-					</Link>
+						</AccordionTrigger>
+						<AccordionContent className="ml-2 border-l pb-2 pl-4">
+							{item.steps.map((step) => (
+								<Link
+									key={step.id}
+									href={step.href}
+									className={`-ml-2 flex gap-2 rounded-lg px-2 py-2 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${step.isNext ? "bg-muted" : ""}`}
+								>
+									{step.completed ? (
+										<Check
+											className="mt-0.5 size-3.5 shrink-0 text-primary"
+											weight="bold"
+										/>
+									) : (
+										<Circle className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+									)}
+									<span className="min-w-0">
+										<span
+											className={
+												step.completed
+													? "block text-muted-foreground text-xs line-through"
+													: "block font-medium text-xs"
+											}
+										>
+											{step.label}
+											{step.optional ? " (optional)" : ""}
+										</span>
+										<span className="block text-muted-foreground text-xs">
+											{step.description}
+										</span>
+									</span>
+								</Link>
+							))}
+						</AccordionContent>
+					</AccordionItem>
 				))}
-			</div>
+			</Accordion>
 			{error && (
 				<p className="border-t px-4 py-2 text-destructive text-xs" role="alert">
 					{error}

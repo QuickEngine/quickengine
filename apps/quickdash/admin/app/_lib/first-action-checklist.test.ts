@@ -15,6 +15,7 @@ const actions = [
 		moduleName: "Client Records",
 		intent: "create",
 		priority: 10,
+		completed: true,
 		steps: [
 			{
 				id: "client-records:create:details" as const,
@@ -22,6 +23,7 @@ const actions = [
 				label: "Add details",
 				description: "Save the client.",
 				intent: "create",
+				completed: true,
 			},
 		],
 	},
@@ -34,6 +36,7 @@ const actions = [
 		moduleName: "Files & Documents",
 		intent: "upload",
 		priority: 20,
+		completed: false,
 		steps: [
 			{
 				id: "files:upload:file" as const,
@@ -41,6 +44,7 @@ const actions = [
 				label: "Upload it",
 				description: "Save the file.",
 				intent: "upload",
+				completed: false,
 			},
 		],
 	},
@@ -48,41 +52,85 @@ const actions = [
 
 describe("buildFirstActionChecklistItems", () => {
 	it("builds workspace-scoped module destinations", () => {
-		expect(buildFirstActionChecklistItems("workspace-1", actions, [])).toEqual([
+		expect(
+			buildFirstActionChecklistItems("workspace-1", actions, null),
+		).toEqual([
 			expect.objectContaining({
 				id: "client-records:create",
-				href: "/workspace-1/client-records?intent=create",
+				steps: [
+					expect.objectContaining({
+						href: "/workspace-1/client-records?intent=create",
+					}),
+				],
 			}),
 			expect.objectContaining({
 				id: "files:upload",
-				href: "/workspace-1/files?intent=upload",
+				steps: [
+					expect.objectContaining({ href: "/workspace-1/files?intent=upload" }),
+				],
 			}),
 		]);
 	});
 
-	it("uses real completion results and defaults missing results to incomplete", () => {
-		const items = buildFirstActionChecklistItems("workspace-1", actions, [
-			{ id: "client-records:create", completed: true },
-		]);
+	it("marks the resolver-selected next step", () => {
+		const items = buildFirstActionChecklistItems(
+			"workspace-1",
+			actions,
+			"files:upload:file",
+		);
 
-		expect(items.map(({ id, completed }) => ({ id, completed }))).toEqual([
-			{ id: "client-records:create", completed: true },
-			{ id: "files:upload", completed: false },
-		]);
+		expect(items[0]?.steps[0]?.isNext).toBe(false);
+		expect(items[1]?.steps[0]?.isNext).toBe(true);
+	});
+
+	it("adds Account security as non-blocking supplemental guidance", () => {
+		const items = buildFirstActionChecklistItems("workspace-1", actions, null, {
+			goal: {
+				id: "account:security",
+				version: 1,
+				label: "Secure your account",
+				description: "Review security.",
+				surface: "account",
+				intent: "security",
+				optional: true,
+				steps: [
+					{
+						id: "account:security:review",
+						version: 1,
+						label: "Review security",
+						description: "Review it.",
+						intent: "security",
+					},
+					{
+						id: "account:security:2fa",
+						version: 1,
+						label: "Enable two-factor authentication",
+						description: "Enable it.",
+						intent: "two-factor",
+						optional: true,
+					},
+				],
+			},
+			href: "http://localhost:3001/settings/security",
+		});
+		const security = items.at(-1);
+		expect(security?.id).toBe("account:security");
+		expect(security?.steps.every((step) => step.optional)).toBe(true);
+		expect(security?.steps[1]?.label).toContain("two-factor");
 	});
 
 	it("completes only a non-empty checklist whose actions all have real outcomes", () => {
 		expect(isFirstActionChecklistComplete([])).toBe(false);
 		expect(
 			isFirstActionChecklistComplete([
-				{ completed: true },
-				{ completed: false },
+				{ steps: [{ optional: false, completed: true }] },
+				{ steps: [{ optional: false, completed: false }] },
 			]),
 		).toBe(false);
 		expect(
 			isFirstActionChecklistComplete([
-				{ completed: true },
-				{ completed: true },
+				{ steps: [{ optional: false, completed: true }] },
+				{ steps: [{ optional: true, completed: false }] },
 			]),
 		).toBe(true);
 	});

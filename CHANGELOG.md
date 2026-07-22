@@ -8,6 +8,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Getting started now shows the real steps inside each business goal.** Parent goals expand
+  into status-derived substeps, the next required action is emphasized, and progress counts
+  required milestones rather than clicks. Optional Account security and 2FA guidance links out
+  without blocking business completion. The success state remains visible until the user chooses
+  **Start Building**, creating an explicit handoff into their finished workspace. The guide
+  opens with every goal collapsed and behaves as a single-open accordion, while its collapsed
+  launcher uses a solid surface instead of blending into the dashboard.
+
 - **Getting-started substeps now resolve from real workspace status.** Twenty-three supported
   milestones derive completion from module records and meaningful transitions such as sent,
   confirmed, approved, fulfilled, and dispatched. A deterministic resolver selects the first

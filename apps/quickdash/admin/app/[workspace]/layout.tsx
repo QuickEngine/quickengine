@@ -3,7 +3,11 @@ import {
 	getFirstActionChecklistState,
 	getQuickDashOrientationState,
 } from "@quickengine/db";
-import { listModules, resolveFirstActions } from "@quickengine/module-registry";
+import {
+	accountSecurityGuidedGoal,
+	listModules,
+	resolveFirstActions,
+} from "@quickengine/module-registry";
 import {
 	Sidebar,
 	SidebarInset,
@@ -22,12 +26,16 @@ import {
 	buildFirstActionChecklistItems,
 	resolveInitialFirstActionChecklistCollapsed,
 } from "../_lib/first-action-checklist";
-import { resolveDatabaseFirstActionCompletions } from "../_lib/first-action-completion-database";
+import { resolveDatabaseGuidedStepCompletions } from "../_lib/guided-action-completion-database";
+import { resolveGuidedActions } from "../_lib/guided-action-resolution";
 import { getModuleNavigation } from "../_lib/module-navigation";
 import {
 	listAccessibleWorkspaces,
 	requireWorkspaceAccess,
 } from "../_lib/workspace-access";
+
+const ACCOUNT_URL =
+	process.env.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL ?? "http://localhost:3001";
 
 export default async function WorkspaceLayout({
 	children,
@@ -59,19 +67,27 @@ export default async function WorkspaceLayout({
 		manifests: listModules(),
 		enabledModuleIds: access.modules.map((module) => module.id),
 	});
-	const [firstActionCompletions, firstActionState, orientationState] =
+	const [guidedStepCompletions, firstActionState, orientationState] =
 		await Promise.all([
-			resolveDatabaseFirstActionCompletions(
+			resolveDatabaseGuidedStepCompletions(
 				access.workspace.id,
-				firstActions.map((action) => action.id),
+				firstActions.flatMap((action) => action.steps.map((step) => step.id)),
 			),
 			getFirstActionChecklistState(session.user.id, access.workspace.id),
 			getQuickDashOrientationState(session.user.id, access.workspace.id),
 		]);
+	const guidedActions = resolveGuidedActions(
+		firstActions,
+		guidedStepCompletions,
+	);
 	const firstActionItems = buildFirstActionChecklistItems(
 		access.workspace.id,
-		firstActions,
-		firstActionCompletions,
+		guidedActions.goals,
+		guidedActions.nextStep?.id ?? null,
+		{
+			goal: accountSecurityGuidedGoal,
+			href: `${ACCOUNT_URL}/settings/security`,
+		},
 	);
 
 	return (

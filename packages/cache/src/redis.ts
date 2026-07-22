@@ -1,6 +1,14 @@
 import { createClient, type RedisClientType } from "redis";
 import type { CacheProvider } from "./index";
 
+const INCREMENT_WITH_EXPIRY = `
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return count
+`;
+
 /**
  * TCP Redis — the local/docker provider (`pnpm docker:up` runs one on :6381).
  *
@@ -28,6 +36,8 @@ export function createRedisCacheProvider(url: string): CacheProvider {
 	};
 
 	return {
+		kind: "redis",
+		shared: true,
 		async get(key) {
 			const raw = await (await connection()).get(key);
 			return (raw === null ? null : JSON.parse(raw)) as never;
@@ -44,12 +54,27 @@ export function createRedisCacheProvider(url: string): CacheProvider {
 		async delete(key) {
 			await (await connection()).del(key);
 		},
+		async ping() {
+			await (await connection()).ping();
+		},
+		async setIfAbsent(key, value, options) {
+			const result = await (await connection()).set(
+				key,
+				JSON.stringify(value),
+				{
+					EX: options.ttlSeconds,
+					NX: true,
+				},
+			);
+			return result === "OK";
+		},
 		async increment(key, windowSeconds) {
 			const redis = await connection();
-			const count = await redis.incr(key);
-			// Expire only on the first hit so the window rolls from when it opened.
-			if (count === 1) await redis.expire(key, windowSeconds);
-			return count;
+			const count = await redis.eval(INCREMENT_WITH_EXPIRY, {
+				arguments: [String(windowSeconds)],
+				keys: [key],
+			});
+			return Number(count);
 		},
 	};
 }

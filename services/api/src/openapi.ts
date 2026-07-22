@@ -8,6 +8,18 @@ import { z } from "zod";
 import type { ApiConfig } from "./config";
 
 export function createOpenApiDocument(config: ApiConfig) {
+	const readinessEnvelope = successEnvelopeSchema(
+		z.object({
+			checks: z.array(
+				z.object({
+					name: z.string(),
+					status: z.enum(["error", "ok"]),
+				}),
+			),
+			service: z.string(),
+			status: z.enum(["degraded", "not_ready", "ready"]),
+		}),
+	);
 	return {
 		openapi: "3.1.0",
 		info: {
@@ -29,6 +41,7 @@ export function createOpenApiDocument(config: ApiConfig) {
 						}),
 					),
 				),
+				ReadinessEnvelope: toOpenApiSchema(readinessEnvelope),
 			},
 		},
 		paths: {
@@ -42,7 +55,11 @@ export function createOpenApiDocument(config: ApiConfig) {
 				get: {
 					operationId: "getReadiness",
 					responses: {
-						"200": { description: "The API is ready to accept traffic." },
+						"200": {
+							description:
+								"Required dependencies are ready; optional checks may be degraded.",
+						},
+						"503": { description: "A required dependency is unavailable." },
 					},
 				},
 			},

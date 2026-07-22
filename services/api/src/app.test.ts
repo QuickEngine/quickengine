@@ -4,10 +4,13 @@ import type { ApiConfig } from "./config";
 
 const config: ApiConfig = {
 	baseUrl: "https://api.quickengine.xyz",
+	bodyLimitBytes: 32,
 	corsOrigins: new Set(["https://dash.quickengine.xyz"]),
 	environment: "test",
 	logLevel: "error",
 	port: 3020,
+	readinessTimeoutMs: 50,
+	requestTimeoutMs: 50,
 	tracesSampleRate: 0,
 	version: "0.1.0-test",
 };
@@ -96,6 +99,91 @@ describe("QuickEngine API foundation", () => {
 		expect(allowedHeaders).toContain("Authorization");
 		expect(allowedHeaders).toContain("QuickEngine-Publishable-Key");
 		expect(allowedHeaders).toContain("QuickEngine-Workspace");
+		expect(response.headers.get("access-control-expose-headers")).toContain(
+			"Idempotency-Replayed",
+		);
+	});
+
+	it("counts actual request bytes and rejects oversized bodies", async () => {
+		const exact = await app.request("/future-write", {
+			body: "x".repeat(32),
+			headers: { Authorization: "Bearer fake" },
+			method: "POST",
+		});
+		const oversized = await app.request("/future-write", {
+			body: "é".repeat(17),
+			headers: { Authorization: "Bearer fake" },
+			method: "POST",
+		});
+
+		expect(exact.status).toBe(404);
+		expect(oversized.status).toBe(413);
+		expect((await oversized.json()).error.code).toBe("PAYLOAD_TOO_LARGE");
+	});
+
+	it("rejects an oversized streamed body without trusting Content-Length", async () => {
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode("x".repeat(20)));
+				controller.enqueue(new TextEncoder().encode("x".repeat(20)));
+				controller.close();
+			},
+		});
+		const request = new Request("https://api.quickengine.xyz/future-write", {
+			body: stream,
+			duplex: "half",
+			headers: { Authorization: "Bearer fake" },
+			method: "POST",
+		} as RequestInit & { duplex: "half" });
+		const response = await app.request(request);
+
+		expect(response.status).toBe(413);
+		expect((await response.json()).error.code).toBe("PAYLOAD_TOO_LARGE");
+	});
+
+	it("returns bounded, sanitized readiness results", async () => {
+		const checked = createApp(config, {
+			readinessChecks: [
+				{ critical: true, name: "database", async run() {} },
+				{
+					critical: false,
+					name: "request-control-store",
+					async run() {
+						throw new Error("redis://secret-host");
+					},
+				},
+			],
+		});
+		const response = await checked.request("/ready");
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data).toEqual({
+			checks: [
+				{ name: "database", status: "ok" },
+				{ name: "request-control-store", status: "error" },
+			],
+			service: "quickengine-api",
+			status: "degraded",
+		});
+		expect(JSON.stringify(body)).not.toContain("secret-host");
+	});
+
+	it("returns 503 when a critical readiness probe misses its deadline", async () => {
+		const checked = createApp(config, {
+			readinessChecks: [
+				{
+					critical: true,
+					name: "database",
+					run: () => new Promise(() => {}),
+				},
+			],
+		});
+		const response = await checked.request("/ready");
+		const body = await response.json();
+
+		expect(response.status).toBe(503);
+		expect(body.data.status).toBe("not_ready");
 	});
 
 	it("protects cookie-authenticated writes from cross-site requests", async () => {

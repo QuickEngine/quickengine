@@ -8,6 +8,18 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **API writes now have enforceable reliability contracts.** The Hono boundary caps actual
+  streamed request bytes, propagates cooperative deadlines, reports bounded dependency
+  readiness, and provides atomic Redis/Upstash counters for tenant- and principal-scoped route
+  budgets. Durable mutation contracts require canonical input fingerprints, replayable results,
+  append-only audit intents, and outbox events to commit with domain state before any module
+  write can be exposed. The shared Postgres client now bounds pool size and connection, query,
+  lock, idle-transaction, idle-connection, and connection-lifetime waits; the production API
+  artifact also bundles internal TypeScript boundaries so plain Node can start it reliably.
+  CI freezes the existing Next compatibility surface at 26
+  server-action files and 17 route handlers so future module slices can reduce it without
+  quietly adding new framework-owned business logic.
+
 - **The API now has a shared security and observability core.** Reusable contracts define
   stable envelopes, error codes, headers, pagination, and OpenAPI schemas. Hono routes can
   authorize Better Auth sessions or correctly channeled API keys against workspace roles,

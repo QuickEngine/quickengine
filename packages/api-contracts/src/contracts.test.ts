@@ -2,10 +2,18 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { errorEnvelopeSchema, successEnvelopeSchema } from "./envelopes";
 import { API_ERROR_CODES } from "./errors";
+import { idempotencyKeySchema } from "./mutations";
 import { toOpenApiSchema } from "./openapi";
 import { cursorPageQuerySchema } from "./query";
 
 describe("API contracts", () => {
+	it("bounds idempotency keys to safe opaque values", () => {
+		expect(idempotencyKeySchema.parse("intent_01HV-example")).toBe(
+			"intent_01HV-example",
+		);
+		expect(() => idempotencyKeySchema.parse("short")).toThrow();
+		expect(() => idempotencyKeySchema.parse("unsafe value")).toThrow();
+	});
 	it("keeps stable error codes unique", () => {
 		expect(new Set(API_ERROR_CODES).size).toBe(API_ERROR_CODES.length);
 	});

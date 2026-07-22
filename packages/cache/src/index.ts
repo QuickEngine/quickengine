@@ -5,6 +5,9 @@ export type CacheSetOptions = {
 };
 
 export type CacheProvider = {
+	/** Identifies whether this provider coordinates state across processes/invocations. */
+	readonly kind: "memory" | "redis" | "upstash";
+	readonly shared: boolean;
 	get<TValue>(key: CacheKey): Promise<TValue | null>;
 	set<TValue>(
 		key: CacheKey,
@@ -12,6 +15,19 @@ export type CacheProvider = {
 		options?: CacheSetOptions,
 	): Promise<void>;
 	delete(key: CacheKey): Promise<void>;
+	/** Cheap dependency probe used by readiness checks. */
+	ping(): Promise<void>;
+	/**
+	 * Atomically write only when the key does not already exist.
+	 *
+	 * Useful for distributed single-flight gates and leases. It is not durable HTTP
+	 * idempotency: a cache write cannot commit atomically with a Postgres mutation.
+	 */
+	setIfAbsent<TValue>(
+		key: CacheKey,
+		value: TValue,
+		options: { ttlSeconds: number },
+	): Promise<boolean>;
 	/**
 	 * Atomically increment a counter and return its new value, setting the key's expiry on
 	 * first write so the window rolls.
@@ -47,6 +63,8 @@ export const createMemoryCacheProvider = (): CacheProvider => {
 	};
 
 	return {
+		kind: "memory",
+		shared: false,
 		async get(key) {
 			return (read(key)?.value ?? null) as never;
 		},
@@ -60,6 +78,15 @@ export const createMemoryCacheProvider = (): CacheProvider => {
 		},
 		async delete(key) {
 			store.delete(key);
+		},
+		async ping() {},
+		async setIfAbsent(key, value, options) {
+			if (read(key)) return false;
+			store.set(key, {
+				value,
+				expiresAt: Date.now() + options.ttlSeconds * 1000,
+			});
+			return true;
 		},
 		async increment(key, windowSeconds) {
 			const existing = read(key);

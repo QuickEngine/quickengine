@@ -1,5 +1,6 @@
 import { createApp } from "./app";
 import { loadApiConfig } from "./config";
+import { createDefaultReadinessChecks } from "./default-readiness";
 import { createJsonLogger } from "./logger";
 import { initializeTelemetry } from "./telemetry";
 
@@ -9,6 +10,7 @@ const app = createApp(config, {
 		level: config.logLevel,
 		service: "quickengine-api",
 	}),
+	readinessChecks: createDefaultReadinessChecks(config),
 	telemetry: initializeTelemetry(config),
 });
 

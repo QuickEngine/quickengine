@@ -1,6 +1,7 @@
 import { getCacheProvider } from "@quickengine/cache";
 import { mutationUnitOfWork } from "@quickengine/db";
 import { createApp } from "./app";
+import { registerClientRecordRoutes } from "./client-records-routes";
 import { loadApiConfig } from "./config";
 import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
@@ -9,14 +10,19 @@ import { initializeTelemetry } from "./telemetry";
 
 const config = loadApiConfig();
 const app = createApp(config, {
-	cache: getCacheProvider(),
 	logger: createJsonLogger({
 		level: config.logLevel,
 		service: "quickengine-api",
 	}),
 	readinessChecks: createDefaultReadinessChecks(config),
-	mutationUnitOfWork,
-	platformDependencies: defaultPlatformDependencies,
+	registerRoutes(app, logger) {
+		registerClientRecordRoutes(app, {
+			cache: getCacheProvider(),
+			logger,
+			platform: defaultPlatformDependencies,
+			uow: mutationUnitOfWork,
+		});
+	},
 	telemetry: initializeTelemetry(config),
 });
 

@@ -88,3 +88,49 @@ export type MutationUnitOfWork<DatabaseTransaction> = {
 		) => Promise<MutationCommit<TResult>>,
 	): Promise<MutationResult<TResult>>;
 };
+
+function canonicalize(value: unknown, seen = new WeakSet<object>()): string {
+	if (value === null) return "null";
+	if (typeof value === "string" || typeof value === "boolean")
+		return JSON.stringify(value);
+	if (typeof value === "number") {
+		if (!Number.isFinite(value))
+			throw new TypeError("Canonical input must be finite");
+		return JSON.stringify(value);
+	}
+	if (value instanceof Date) return JSON.stringify(value.toISOString());
+	if (Array.isArray(value)) {
+		if (seen.has(value))
+			throw new TypeError("Canonical input must not be cyclic");
+		seen.add(value);
+		try {
+			return `[${value.map((item) => canonicalize(item, seen)).join(",")}]`;
+		} finally {
+			seen.delete(value);
+		}
+	}
+	if (typeof value === "object") {
+		if (seen.has(value))
+			throw new TypeError("Canonical input must not be cyclic");
+		seen.add(value);
+		try {
+			const entries = Object.entries(value as Record<string, unknown>)
+				.filter(([, child]) => child !== undefined)
+				.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+			return `{${entries.map(([key, child]) => `${JSON.stringify(key)}:${canonicalize(child, seen)}`).join(",")}}`;
+		} finally {
+			seen.delete(value);
+		}
+	}
+	throw new TypeError("Canonical input must be JSON-compatible");
+}
+
+export async function fingerprintCanonicalInput(
+	value: unknown,
+): Promise<string> {
+	const bytes = new TextEncoder().encode(canonicalize(value));
+	const digest = await crypto.subtle.digest("SHA-256", bytes);
+	return Array.from(new Uint8Array(digest), (byte) =>
+		byte.toString(16).padStart(2, "0"),
+	).join("");
+}

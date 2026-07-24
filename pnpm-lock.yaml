@@ -39,6 +39,9 @@ importers:
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../../packages/api-contracts
       '@quickengine/auth':
         specifier: workspace:*
         version: link:../../../packages/auth

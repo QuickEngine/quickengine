@@ -2,24 +2,19 @@ import {
 	API_HEADERS,
 	RATE_LIMIT_HEADERS,
 } from "@quickengine/api-contracts/headers";
-import type { MutationUnitOfWork } from "@quickengine/api-contracts/mutations";
-import type { CacheProvider } from "@quickengine/cache";
-import type { DatabaseTransaction } from "@quickengine/db";
-import { ClientRecordNotFoundError } from "@quickengine/mod-client-records";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { ZodError } from "zod";
 import { createBodyLimit } from "./body-limit";
-import { registerClientRecordRoutes } from "./client-records-routes";
 import type { ApiConfig } from "./config";
 import { createCsrfProtection } from "./csrf";
 import { createRequestDeadline } from "./deadline";
 import { type ApiLogger, noopLogger } from "./logger";
 import { MutationPolicyError } from "./mutation-policy";
 import { createOpenApiDocument } from "./openapi";
-import type { PlatformDependencies, PlatformEnv } from "./platform-types";
+import type { PlatformEnv } from "./platform-types";
 import { type ReadinessCheck, respondReadiness } from "./readiness";
 import { respond, respondError } from "./respond";
 import { type ApiTelemetry, noopTelemetry } from "./telemetry";
@@ -27,11 +22,9 @@ import { type ApiTelemetry, noopTelemetry } from "./telemetry";
 export function createApp(
 	config: ApiConfig,
 	options: {
-		cache?: CacheProvider;
 		logger?: ApiLogger;
-		mutationUnitOfWork?: MutationUnitOfWork<DatabaseTransaction>;
-		platformDependencies?: PlatformDependencies;
 		readinessChecks?: readonly ReadinessCheck[];
+		registerRoutes?: (app: Hono<PlatformEnv>, logger: ApiLogger) => void;
 		telemetry?: ApiTelemetry;
 	} = {},
 ) {
@@ -121,18 +114,7 @@ export function createApp(
 	);
 
 	app.get("/openapi.json", (c) => c.json(createOpenApiDocument(config)));
-	if (
-		options.cache &&
-		options.mutationUnitOfWork &&
-		options.platformDependencies
-	) {
-		registerClientRecordRoutes(app, {
-			cache: options.cache,
-			logger,
-			platform: options.platformDependencies,
-			uow: options.mutationUnitOfWork,
-		});
-	}
+	options.registerRoutes?.(app, logger);
 
 	app.notFound((c) =>
 		respondError(c, "NOT_FOUND", "The requested resource was not found.", 404),
@@ -150,7 +132,7 @@ export function createApp(
 		if (error instanceof MutationPolicyError) {
 			return respondError(c, error.code, error.message, 400);
 		}
-		if (error instanceof ClientRecordNotFoundError) {
+		if (error.name === "ClientRecordNotFoundError") {
 			return respondError(
 				c,
 				"NOT_FOUND",

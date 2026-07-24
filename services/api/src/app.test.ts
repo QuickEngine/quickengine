@@ -48,7 +48,15 @@ describe("QuickEngine API foundation", () => {
 		expect(body.openapi).toBe("3.1.0");
 		expect(body.info.version).toBe(config.version);
 		expect(body.servers).toEqual([{ url: config.baseUrl }]);
-		expect(Object.keys(body.paths)).toEqual(["/health", "/ready", "/version"]);
+		expect(Object.keys(body.paths)).toEqual([
+			"/v1/clients",
+			"/v1/clients/{id}",
+			"/v1/clients/{id}/addresses",
+			"/v1/addresses/{id}",
+			"/health",
+			"/ready",
+			"/version",
+		]);
 	});
 
 	it("uses the standard error envelope for unknown routes", async () => {

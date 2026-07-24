@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { errorEnvelopeSchema, successEnvelopeSchema } from "./envelopes";
 import { API_ERROR_CODES } from "./errors";
-import { idempotencyKeySchema } from "./mutations";
+import { fingerprintCanonicalInput, idempotencyKeySchema } from "./mutations";
 import { toOpenApiSchema } from "./openapi";
 import { cursorPageQuerySchema } from "./query";
 
@@ -13,6 +13,14 @@ describe("API contracts", () => {
 		);
 		expect(() => idempotencyKeySchema.parse("short")).toThrow();
 		expect(() => idempotencyKeySchema.parse("unsafe value")).toThrow();
+	});
+	it("fingerprints validated input independently of object key order", async () => {
+		expect(await fingerprintCanonicalInput({ name: "Ada", active: true })).toBe(
+			await fingerprintCanonicalInput({ active: true, name: "Ada" }),
+		);
+		expect(await fingerprintCanonicalInput({ name: "Grace" })).not.toBe(
+			await fingerprintCanonicalInput({ name: "Ada" }),
+		);
 	});
 	it("keeps stable error codes unique", () => {
 		expect(new Set(API_ERROR_CODES).size).toBe(API_ERROR_CODES.length);

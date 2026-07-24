@@ -391,6 +391,155 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/invoices": {
+				get: {
+					operationId: "listInvoices",
+					summary: "List invoices",
+					responses: { "200": { description: "A cursor page of invoices." } },
+				},
+				post: {
+					operationId: "createInvoice",
+					summary: "Create an invoice",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Invoice created." },
+						"409": {
+							description: "Idempotency conflict or invalid reference.",
+						},
+					},
+				},
+			},
+			"/v1/invoices/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getInvoice",
+					responses: {
+						"200": { description: "The invoice with its line items." },
+						"404": { description: "Invoice not found." },
+					},
+				},
+				patch: {
+					operationId: "updateDraftInvoice",
+					responses: {
+						"200": { description: "Draft invoice updated." },
+						"409": { description: "Only a draft invoice can be edited." },
+					},
+				},
+				delete: {
+					operationId: "deleteInvoice",
+					responses: { "200": { description: "Draft invoice deleted." } },
+				},
+			},
+			"/v1/invoices/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setInvoiceStatus",
+					summary: "Move an invoice between draft, sent, paid, and void",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/payments": {
+				get: {
+					operationId: "listPayments",
+					summary: "List payments",
+					responses: { "200": { description: "A cursor page of payments." } },
+				},
+				post: {
+					operationId: "recordPayment",
+					summary: "Record a payment",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Payment recorded." },
+						"409": { description: "Idempotency conflict or invalid amount." },
+					},
+				},
+			},
+			"/v1/payments/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getPayment",
+					responses: {
+						"200": { description: "The payment with its refunds." },
+						"404": { description: "Payment not found." },
+					},
+				},
+			},
+			"/v1/payments/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setPaymentStatus",
+					summary: "Move a payment between its lifecycle statuses",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/payments/{id}/refund": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "refundPayment",
+					summary: "Refund all or part of a succeeded payment",
+					responses: {
+						"201": { description: "Refund recorded." },
+						"409": {
+							description: "Payment not refundable or amount too high.",
+						},
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

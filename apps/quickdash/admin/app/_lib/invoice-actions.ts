@@ -1,13 +1,16 @@
 "use server";
 
-import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
-	createInvoice,
-	deleteInvoice,
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
+import { getSession } from "@quickengine/auth/server";
+import {
+	createInvoiceCommand,
+	deleteInvoiceCommand,
 	invoicingSettingsSchema,
-	setInvoiceStatus,
-	updateDraftInvoice,
+	setInvoiceStatusCommand,
+	updateDraftInvoiceCommand,
 } from "@quickengine/mod-invoicing";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -21,6 +24,10 @@ export type InvoiceActionState = {
 const failure = (error: string): InvoiceActionState => ({
 	error,
 	completionId: null,
+});
+const success = (): InvoiceActionState => ({
+	error: null,
+	completionId: crypto.randomUUID(),
 });
 
 async function authorize(workspaceId: string) {
@@ -44,9 +51,41 @@ async function authorize(workspaceId: string) {
 	}
 	return {
 		ok: true,
+		access,
+		actorId: session.user.id,
 		settings: invoicingSettingsSchema.parse(module.settings),
 	} as const;
 }
+
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	failure(
+		kind === "conflict"
+			? "This request was already used with different details. Try again."
+			: "This invoice change is still being processed. Try again shortly.",
+	);
+
+const key = (formData: FormData) =>
+	String(formData.get("idempotencyKey") ?? "");
 
 function decimalToCents(value: FormDataEntryValue | null, label: string) {
 	const text = String(value ?? "").trim();
@@ -89,6 +128,8 @@ function readInvoiceInput(formData: FormData) {
 }
 
 const friendlyFailure = (error: unknown) => {
+	if (error instanceof Error && error.name === "DomainError")
+		return error.message;
 	if (!(error instanceof Error)) return "We couldn't save this invoice.";
 	if (
 		error.message === "CLIENT_WORKSPACE_MISMATCH" ||
@@ -117,29 +158,26 @@ export async function createInvoiceAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
-
-	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	const idempotencyScope = `invoices.create:${workspaceId}`;
-	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
-		revalidatePath(`/${workspaceId}/invoicing`);
-		return { error: null, completionId: crypto.randomUUID() };
-	}
-
 	try {
-		const input = readInvoiceInput(formData);
-		await createInvoice(workspaceId, {
-			...input,
-			currency: input.currency || authorization.settings.defaultCurrency,
+		const parsed = readInvoiceInput(formData);
+		const input = {
+			...parsed,
+			currency: parsed.currency || authorization.settings.defaultCurrency,
 			numberPrefix: authorization.settings.numberPrefix,
-		});
+		};
+		const context = await mutationContext(
+			authorization,
+			"invoices.create",
+			key(formData),
+			input,
+		);
+		const outcome = await createInvoiceCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		// The claim meant "we're doing the work" — the work failed, so give the key back
-		// or the user's corrected retry would be swallowed as a duplicate.
-		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/invoicing`);
-	return { error: null, completionId: crypto.randomUUID() };
+	return success();
 }
 
 export async function updateInvoiceAction(
@@ -151,16 +189,20 @@ export async function updateInvoiceAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await updateDraftInvoice(
-			workspaceId,
-			invoiceId,
-			readInvoiceInput(formData),
+		const input = readInvoiceInput(formData);
+		const context = await mutationContext(
+			authorization,
+			"invoices.update",
+			key(formData),
+			{ id: invoiceId, input },
 		);
+		const outcome = await updateDraftInvoiceCommand(context, invoiceId, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
 		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/invoicing`);
-	return { error: null, completionId: crypto.randomUUID() };
+	return success();
 }
 
 export async function changeInvoiceStatusAction(
@@ -170,17 +212,25 @@ export async function changeInvoiceStatusAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const invoiceId = String(formData.get("invoiceId") ?? "");
 	const target = String(formData.get("target") ?? "");
+	if (target !== "sent" && target !== "void") {
+		return failure("Invalid invoice action.");
+	}
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
-	if (target !== "sent" && target !== "void")
-		return failure("Invalid invoice action.");
 	try {
-		await setInvoiceStatus(workspaceId, invoiceId, target);
-	} catch {
-		return failure("This invoice can no longer make that lifecycle change.");
+		const context = await mutationContext(
+			authorization,
+			"invoices.set-status",
+			key(formData),
+			{ id: invoiceId, status: target },
+		);
+		const outcome = await setInvoiceStatusCommand(context, invoiceId, target);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/invoicing`);
-	return { error: null, completionId: crypto.randomUUID() };
+	return success();
 }
 
 export async function deleteInvoiceAction(
@@ -192,11 +242,17 @@ export async function deleteInvoiceAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		const deleted = await deleteInvoice(workspaceId, invoiceId);
-		if (!deleted) return failure("This invoice no longer exists.");
-	} catch {
-		return failure("Only ordinary draft invoices can be permanently deleted.");
+		const context = await mutationContext(
+			authorization,
+			"invoices.delete",
+			key(formData),
+			{ id: invoiceId },
+		);
+		const outcome = await deleteInvoiceCommand(context, invoiceId);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/invoicing`);
-	return { error: null, completionId: crypto.randomUUID() };
+	return success();
 }

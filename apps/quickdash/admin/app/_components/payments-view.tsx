@@ -299,8 +299,14 @@ function PaymentDetails({
 		refundOfflinePaymentAction,
 		INITIAL_STATE,
 	);
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
-		if (state.completionId) router.refresh();
+		if (state.completionId) {
+			router.refresh();
+			setIdempotencyKey(crypto.randomUUID());
+		}
 	}, [state.completionId, router]);
 	return (
 		<Dialog>
@@ -373,6 +379,7 @@ function PaymentDetails({
 					<form action={action} className="space-y-3 border-t pt-4">
 						<input type="hidden" name="workspaceId" value={workspaceId} />
 						<input type="hidden" name="paymentId" value={payment.id} />
+						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 						<p className="font-medium text-sm">Record refund</p>
 						<div className="grid gap-3 sm:grid-cols-2">
 							<Input

@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Invoicing and Payments now have durable APIs.** Invoicing gains guarded routes for draft
+  create, edit, the draft to sent to paid to void status machine, and delete, each committing
+  domain state, audit, and outbox together. Payments gains routes to record a payment, move its
+  status, and issue full or partial refunds, with the same durable guarantees. Quick.js, the lean
+  CLI, and the QuickDash invoice and payment screens follow the same package contracts, and both
+  modules share one transaction-scoped implementation between their standalone and API paths.
+
 - **Quotes and Estimates now has a full lifecycle API.** Durable commands cover creating,
   editing, sending, accepting, declining, deleting, and converting a quote into an invoice or an
   order, each committing domain state, audit, and outbox together. Hono adds guarded routes with

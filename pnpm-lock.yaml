@@ -1056,6 +1056,9 @@ importers:
 
   packages/modules/invoicing:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1100,6 +1103,9 @@ importers:
 
   packages/modules/payments:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/billing':
         specifier: workspace:*
         version: link:../../billing
@@ -1568,6 +1574,12 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../../packages/modules/client-records
+      '@quickengine/mod-invoicing':
+        specifier: workspace:*
+        version: link:../../packages/modules/invoicing
+      '@quickengine/mod-payments':
+        specifier: workspace:*
+        version: link:../../packages/modules/payments
       '@quickengine/mod-products-services':
         specifier: workspace:*
         version: link:../../packages/modules/products-services

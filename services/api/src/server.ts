@@ -7,7 +7,9 @@ import { registerClientRecordRoutes } from "./client-records-routes";
 import { loadApiConfig } from "./config";
 import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
+import { registerInvoicesRoutes } from "./invoices-routes";
 import { createJsonLogger } from "./logger";
+import { registerPaymentsRoutes } from "./payments-routes";
 import { registerProductsServicesRoutes } from "./products-services-routes";
 import { registerQuotesRoutes } from "./quotes-routes";
 import { initializeTelemetry } from "./telemetry";
@@ -30,6 +32,8 @@ const app = createApp(config, {
 		registerClientRecordRoutes(app, dependencies);
 		registerProductsServicesRoutes(app, dependencies);
 		registerQuotesRoutes(app, dependencies);
+		registerInvoicesRoutes(app, dependencies);
+		registerPaymentsRoutes(app, dependencies);
 	},
 	telemetry: initializeTelemetry(config),
 });

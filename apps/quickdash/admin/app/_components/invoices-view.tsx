@@ -387,14 +387,21 @@ function LifecycleForm({
 		changeInvoiceStatusAction,
 		INITIAL_STATE,
 	);
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
-		if (state.completionId) router.refresh();
+		if (state.completionId) {
+			router.refresh();
+			setIdempotencyKey(crypto.randomUUID());
+		}
 	}, [router, state.completionId]);
 	return (
 		<form action={action}>
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name="invoiceId" value={invoiceId} />
 			<input type="hidden" name="target" value={target} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			<SubmitButton
 				label={label}
 				variant={destructive ? "destructive" : "default"}
@@ -427,10 +434,14 @@ function InvoiceDetails({
 		deleteInvoiceAction,
 		INITIAL_STATE,
 	);
+	const [deleteIdempotencyKey, setDeleteIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (deleteState.completionId) {
 			setOpen(false);
 			router.refresh();
+			setDeleteIdempotencyKey(crypto.randomUUID());
 		}
 	}, [deleteState.completionId, router]);
 	return (
@@ -514,6 +525,11 @@ function InvoiceDetails({
 						<form action={deleteAction}>
 							<input type="hidden" name="workspaceId" value={workspaceId} />
 							<input type="hidden" name="invoiceId" value={invoice.id} />
+							<input
+								type="hidden"
+								name="idempotencyKey"
+								value={deleteIdempotencyKey}
+							/>
 							<SubmitButton label="Delete draft" variant="destructive" />
 							{deleteState.error && (
 								<p className="mt-2 text-destructive text-xs">

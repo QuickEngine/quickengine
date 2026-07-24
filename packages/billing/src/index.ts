@@ -1,7 +1,4 @@
-export {
-	createCheckoutSession,
-	createSubscriptionForPaymentElement,
-} from "./checkout";
+export { createSubscriptionForPaymentElement } from "./checkout";
 export {
 	checkAllowance,
 	checkLimit,

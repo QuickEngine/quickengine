@@ -54,7 +54,6 @@ export const NEXT_ROUTE_BASELINE = new Map([
 	["apps/quickdash/admin/app/api/pusher/auth/route.ts", ["POST"]],
 	["apps/quickdash/admin/app/api/v1/catalog/[id]/route.ts", ["GET"]],
 	["apps/quickdash/admin/app/api/v1/catalog/route.ts", ["GET"]],
-	["apps/quickdash/admin/app/api/v1/events/route.ts", ["POST"]],
 	["apps/quickengine/account/app/api/health/route.ts", ["GET"]],
 	[
 		"apps/quickengine/auth/app/api/auth/[...all]/route.ts",

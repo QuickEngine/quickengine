@@ -15,6 +15,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Reporting and Analytics now has an API, completing the module set.** A cross-module snapshot
+  reports clients, invoices, payments, revenue, orders, fulfillment, projects, bookings, contracts,
+  inventory, and site traffic for any date range, and every section says whether that module is
+  switched on — so "nothing happened" is never confused with "not enabled". Revenue is always
+  reported per currency and never summed across them. Traffic ingest moved to the API, keeps its
+  privacy guarantees, and stays safe to retry. Quick.js, the lean CLI, and the QuickDash reporting
+  screen now follow the same contracts.
+
 - **Files and Documents now has a durable API for folders and document records.** Routes cover
   creating, renaming, and moving folders, editing document details, moving a document through
   active, archived, trashed, and deletion, releasing a quarantined version, and removing an

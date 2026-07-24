@@ -15,6 +15,7 @@ import { registerOrderCommands } from "./commands/orders";
 import { registerPaymentCommands } from "./commands/payments";
 import { registerProjectCommands } from "./commands/projects";
 import { registerQuoteCommands } from "./commands/quotes";
+import { registerReportCommands } from "./commands/reports";
 import { registerShipmentCommands } from "./commands/shipments";
 import { registerTimeCommands } from "./commands/time";
 import { errorLine } from "./output";
@@ -43,6 +44,7 @@ registerBookingCommands(program);
 registerTimeCommands(program);
 registerContractCommands(program);
 registerFileCommands(program);
+registerReportCommands(program);
 registerDoctorCommand(program);
 
 async function main(): Promise<void> {

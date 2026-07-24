@@ -1778,6 +1778,158 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/reports/workspace": {
+				get: {
+					operationId: "getWorkspaceReport",
+					summary: "Cross-module snapshot for a date range",
+					description:
+						"Sections for modules the workspace hasn't enabled come back unavailable rather than zeroed, so absent data is distinguishable from switched-off modules.",
+					parameters: [
+						{
+							in: "query",
+							name: "from",
+							schema: { type: "string", format: "date-time" },
+							description: "Range start. Defaults to 30 days before `to`.",
+						},
+						{
+							in: "query",
+							name: "to",
+							schema: { type: "string", format: "date-time" },
+							description: "Range end. Defaults to now.",
+						},
+						{
+							in: "query",
+							name: "timeZone",
+							schema: { type: "string", default: "UTC" },
+							description: "IANA time zone the range is bucketed in.",
+						},
+						{
+							in: "query",
+							name: "granularity",
+							schema: { type: "string", enum: ["day", "week", "month"] },
+						},
+					],
+					responses: {
+						"200": { description: "The report." },
+						"400": { description: "Invalid range, time zone, or granularity." },
+						"404": { description: "Workspace not found." },
+					},
+				},
+			},
+			"/v1/reports/revenue": {
+				get: {
+					operationId: "getRevenueSeries",
+					summary: "Collected and refunded revenue over time, per currency",
+					parameters: [
+						{
+							in: "query",
+							name: "from",
+							schema: { type: "string", format: "date-time" },
+							description: "Range start. Defaults to 30 days before `to`.",
+						},
+						{
+							in: "query",
+							name: "to",
+							schema: { type: "string", format: "date-time" },
+							description: "Range end. Defaults to now.",
+						},
+						{
+							in: "query",
+							name: "timeZone",
+							schema: { type: "string", default: "UTC" },
+							description: "IANA time zone the range is bucketed in.",
+						},
+						{
+							in: "query",
+							name: "granularity",
+							schema: { type: "string", enum: ["day", "week", "month"] },
+						},
+					],
+					responses: { "200": { description: "Revenue series." } },
+				},
+			},
+			"/v1/reports/traffic": {
+				get: {
+					operationId: "getTrafficSeries",
+					summary: "Self-reported site traffic over time",
+					parameters: [
+						{
+							in: "query",
+							name: "from",
+							schema: { type: "string", format: "date-time" },
+							description: "Range start. Defaults to 30 days before `to`.",
+						},
+						{
+							in: "query",
+							name: "to",
+							schema: { type: "string", format: "date-time" },
+							description: "Range end. Defaults to now.",
+						},
+						{
+							in: "query",
+							name: "timeZone",
+							schema: { type: "string", default: "UTC" },
+							description: "IANA time zone the range is bucketed in.",
+						},
+						{
+							in: "query",
+							name: "granularity",
+							schema: { type: "string", enum: ["day", "week", "month"] },
+						},
+					],
+					responses: { "200": { description: "Traffic series." } },
+				},
+			},
+			"/v1/reports/traffic/summary": {
+				get: {
+					operationId: "getTrafficSummary",
+					summary: "Traffic totals for a range",
+					parameters: [
+						{
+							in: "query",
+							name: "from",
+							schema: { type: "string", format: "date-time" },
+							description: "Range start. Defaults to 30 days before `to`.",
+						},
+						{
+							in: "query",
+							name: "to",
+							schema: { type: "string", format: "date-time" },
+							description: "Range end. Defaults to now.",
+						},
+						{
+							in: "query",
+							name: "timeZone",
+							schema: { type: "string", default: "UTC" },
+							description: "IANA time zone the range is bucketed in.",
+						},
+						{
+							in: "query",
+							name: "granularity",
+							schema: { type: "string", enum: ["day", "week", "month"] },
+						},
+					],
+					responses: { "200": { description: "Traffic summary." } },
+				},
+			},
+			"/v1/events": {
+				post: {
+					operationId: "recordTrafficEvent",
+					summary: "Record one self-reported traffic event",
+					description:
+						"The only write a publishable key may perform. Visitor and session ids are hashed server-side with a per-workspace salt, so raw ids are never stored, and `path` must carry no query string. Idempotent on `eventId`: a repeat returns `accepted: false` rather than an error, so no Idempotency-Key is required.",
+					responses: {
+						"200": {
+							description:
+								"Recorded, or already known — `accepted` distinguishes the two.",
+						},
+						"400": {
+							description: "Event is malformed, future-dated, or too old.",
+						},
+						"403": { description: "Reporting & Analytics isn't enabled." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

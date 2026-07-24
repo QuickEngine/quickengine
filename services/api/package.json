@@ -34,6 +34,7 @@
 		"@quickengine/mod-products-services": "workspace:*",
 		"@quickengine/mod-projects-tasks": "workspace:*",
 		"@quickengine/mod-quotes-estimates": "workspace:*",
+		"@quickengine/mod-reporting-analytics": "workspace:*",
 		"@quickengine/mod-shipping": "workspace:*",
 		"@quickengine/mod-time-tracking": "workspace:*",
 		"@sentry/node": "^10.65.0",

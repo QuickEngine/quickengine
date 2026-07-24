@@ -15,27 +15,20 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Files and Documents now has a durable API for folders and document records.** Routes cover
+  creating, renaming, and moving folders, editing document details, moving a document through
+  active, archived, trashed, and deletion, and removing an attachment, each committing domain state,
+  audit, and outbox together. A folder can't be moved inside itself or deleted while it still holds
+  anything, a document must be trashed before it can be deleted, and the storage cleanup that
+  follows a deletion is only scheduled once the request has actually been saved. Internal storage
+  addressing is never returned.
+
 - **Contracts and E-sign now has a durable agreement API.** Routes cover creating a draft, editing
   it, sending it for signature, expiring, voiding, superseding it with a revision, and deleting a
   draft, each committing domain state, audit, and outbox together. Signing links are treated as
   credentials: they are never returned by the API, never written to the audit trail, and never
   stored where a retry could replay them. Quick.js, the lean CLI, and the QuickDash agreements
   screen now follow the same package contracts.
-
-- **Bookings now has a durable scheduling API.** Routes cover booking a slot, rescheduling one that
-  hasn't started, moving it through requested, confirmed, checked in, completed, cancelled, and no
-  show, and deleting one that never went ahead. Two live bookings can never overlap on the same
-  schedule, the same clock time stays free on a different one, and cancelling releases the slot for
-  rebooking.
-
-- **Time Tracking now has a durable API.** Routes cover logging time manually, running timers,
-  the draft to approved to invoiced lifecycle, voiding time instead of deleting it, and attaching
-  or detaching approved billable time on a draft invoice. Retrying a start request replays the same
-  timer rather than opening a second one, approved time can no longer be quietly deleted, and time
-  and invoice move together in one transaction so time is never marked invoiced against an invoice
-  that did not change.
-
-### Added
 
 - **Bookings now has a durable scheduling API.** Routes cover booking a slot, rescheduling one that
   hasn't started, moving it through requested, confirmed, checked in, completed, cancelled, and no

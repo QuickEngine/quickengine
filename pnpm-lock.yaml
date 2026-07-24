@@ -996,6 +996,9 @@ importers:
 
   packages/modules/files:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/billing':
         specifier: workspace:*
         version: link:../../billing

@@ -23,6 +23,7 @@
 	},
 	"dependencies": {
 		"@quickengine/billing": "workspace:*",
+		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/jobs": "workspace:*",
 		"@quickengine/storage": "workspace:*",

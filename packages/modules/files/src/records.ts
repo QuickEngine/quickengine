@@ -799,12 +799,12 @@ export async function setFileDocumentStatusInTx(
 	}
 }
 
-export async function requestFileDocumentDeletion(
+export async function requestFileDocumentDeletionInTx(
+	tx: FilesTransaction,
 	workspaceId: string,
 	documentId: string,
-	queue: JobQueue,
 ) {
-	const document = await db.transaction(async (tx) => {
+	{
 		await getWorkspace(tx, workspaceId, true);
 		const current = await getDocumentReference(tx, workspaceId, documentId);
 		if (current.status === "deleting") return current;
@@ -831,12 +831,31 @@ export async function requestFileDocumentDeletion(
 			.returning();
 		if (!updated) throw new Error("FILE_DOCUMENT_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
+}
+
+/** Enqueue the storage cleanup that follows a deletion request. Runs AFTER the row commits. */
+export async function enqueueFileDocumentCleanup(
+	workspaceId: string,
+	documentId: string,
+	queue: JobQueue,
+) {
 	await queue.enqueue({
 		name: "storage.cleanup",
 		payload: { workspaceId, documentId },
 		idempotencyKey: `file-document-delete:${documentId}`,
 	});
+}
+
+export async function requestFileDocumentDeletion(
+	workspaceId: string,
+	documentId: string,
+	queue: JobQueue,
+) {
+	const document = await db.transaction((tx) =>
+		requestFileDocumentDeletionInTx(tx, workspaceId, documentId),
+	);
+	await enqueueFileDocumentCleanup(workspaceId, documentId, queue);
 	return document;
 }
 

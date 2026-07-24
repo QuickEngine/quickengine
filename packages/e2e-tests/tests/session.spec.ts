@@ -11,6 +11,6 @@ test("the seeded session can open its workspace", async ({ page }) => {
 	expect(response?.status()).toBe(200);
 	// The name also appears in the sidebar and workspace switcher — anchor on the heading.
 	await expect(
-		page.getByRole("heading", { name: "E2E Workspace" }),
+		page.getByRole("heading", { name: "E2E Workspace", exact: true }),
 	).toBeVisible();
 });

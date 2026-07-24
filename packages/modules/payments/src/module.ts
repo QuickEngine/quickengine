@@ -39,6 +39,15 @@ export const paymentsModule = {
 			intent: "create",
 			priority: 50,
 			requires: ["invoicing:create"],
+			steps: [
+				{
+					id: "payments:record:payment",
+					version: 1,
+					label: "Record the invoice payment",
+					description: "Select a sent invoice and record the money received.",
+					intent: "create",
+				},
+			],
 		},
 	] as const,
 } as const;

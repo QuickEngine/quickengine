@@ -11,7 +11,12 @@ import { quickengineApiKeys } from "@quickengine/db/schema/quickengine";
 // Single source of truth for API capabilities. A route declares the capability it
 // requires; a key must hold it. Grow this one string per new route so the gate, the
 // Account UI, and the docs never drift.
-export const API_CAPABILITIES = ["catalog:read", "events:write"] as const;
+export const API_CAPABILITIES = [
+	"catalog:read",
+	"clients:read",
+	"clients:write",
+	"events:write",
+] as const;
 export type ApiCapability = (typeof API_CAPABILITIES)[number];
 
 // Publishable keys ship in public websites, so they may only carry WEBSITE-SAFE

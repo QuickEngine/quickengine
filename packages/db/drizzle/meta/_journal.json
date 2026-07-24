@@ -267,6 +267,20 @@
 			"when": 1784678788520,
 			"tag": "0037_volatile_silver_centurion",
 			"breakpoints": true
+		},
+		{
+			"idx": 38,
+			"version": "7",
+			"when": 1784684426722,
+			"tag": "0038_absent_argent",
+			"breakpoints": true
+		},
+		{
+			"idx": 39,
+			"version": "7",
+			"when": 1784702943560,
+			"tag": "0039_soft_human_cannonball",
+			"breakpoints": true
 		}
 	]
 }

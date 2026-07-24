@@ -1,12 +1,17 @@
 "use server";
 
-import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
+import { getSession } from "@quickengine/auth/server";
+import {
+	ClientRecordNotFoundError,
+	clientRecordInputSchema,
 	clientRecordsSettingsSchema,
-	createClientRecord,
-	deleteClientRecord,
-	updateClientRecord,
+	createClientCommand,
+	deleteClientCommand,
+	updateClientCommand,
 } from "@quickengine/mod-client-records";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -69,6 +74,33 @@ const friendlyFailure = (error: unknown) => {
 	return "We couldn't save this client. Please try again.";
 };
 
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	failure(
+		kind === "conflict"
+			? "This request was already used with different client details. Try again."
+			: "This client change is still being processed. Try again shortly.",
+	);
+
 export async function createClientRecordAction(
 	_previous: ClientRecordActionState,
 	formData: FormData,
@@ -79,26 +111,19 @@ export async function createClientRecordAction(
 		return failure(authorization.error);
 	}
 
-	// Idempotency: a retry, a race, or a double-fire that slips past the button's
-	// pending-disable carries the same key, so only the first request creates a record.
-	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	const idempotencyScope = `client-records.create:${workspaceId}`;
-	const isFirst = await claimIdempotencyKey(idempotencyKey, idempotencyScope);
-	if (!isFirst) {
-		revalidatePath(`/${workspaceId}/client-records`);
-		return { error: null, completionId: crypto.randomUUID() };
-	}
-
 	try {
-		await createClientRecord(
-			workspaceId,
+		const input = clientRecordInputSchema.parse(
 			inputFrom(formData, authorization.settings.fields),
-			{ actorId: authorization.actorId },
 		);
+		const context = await mutationContext(
+			authorization,
+			"clients.create",
+			String(formData.get("idempotencyKey") ?? ""),
+			input,
+		);
+		const outcome = await createClientCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		// The claim meant "we're doing the work" — the work failed, so give the key back
-		// or the user's corrected retry would be swallowed as a duplicate.
-		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return failure(friendlyFailure(error));
 	}
 
@@ -118,16 +143,21 @@ export async function updateClientRecordAction(
 	}
 
 	try {
-		const updated = await updateClientRecord(
-			workspaceId,
-			recordId,
+		const input = clientRecordInputSchema.parse(
 			inputFrom(formData, authorization.settings.fields),
-			{ actorId: authorization.actorId },
 		);
-		if (!updated) {
+		const context = await mutationContext(
+			authorization,
+			"clients.update",
+			String(formData.get("idempotencyKey") ?? ""),
+			{ id: recordId, input },
+		);
+		const outcome = await updateClientCommand(context, recordId, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		if (error instanceof ClientRecordNotFoundError) {
 			return failure("This client no longer exists in this workspace.");
 		}
-	} catch (error) {
 		return failure(friendlyFailure(error));
 	}
 
@@ -147,13 +177,18 @@ export async function deleteClientRecordAction(
 	}
 
 	try {
-		const deleted = await deleteClientRecord(workspaceId, recordId, {
-			actorId: authorization.actorId,
-		});
-		if (!deleted) {
+		const context = await mutationContext(
+			authorization,
+			"clients.delete",
+			String(formData.get("idempotencyKey") ?? ""),
+			{ id: recordId },
+		);
+		const outcome = await deleteClientCommand(context, recordId);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		if (error instanceof ClientRecordNotFoundError) {
 			return failure("This client no longer exists in this workspace.");
 		}
-	} catch {
 		return failure(
 			"This record is connected to other business records and cannot be deleted yet.",
 		);

@@ -42,6 +42,23 @@ export const invoicingModule = {
 			intent: "create",
 			priority: 30,
 			requires: ["client-records:create"],
+			steps: [
+				{
+					id: "invoicing:create:draft",
+					version: 1,
+					label: "Create the invoice draft",
+					description:
+						"Choose a client and add what they are being billed for.",
+					intent: "create",
+				},
+				{
+					id: "invoicing:create:send",
+					version: 1,
+					label: "Review and send the invoice",
+					description: "Confirm the totals and move the invoice out of draft.",
+					intent: "send",
+				},
+			],
 		},
 	] as const,
 } as const;

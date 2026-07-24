@@ -1,4 +1,5 @@
 export * from "./activity";
+export * from "./api-platform";
 export * from "./bookings";
 export * from "./catalog-items";
 export * from "./client-records";
@@ -10,6 +11,7 @@ export * from "./inventory";
 export * from "./invoices";
 export * from "./notifications";
 export * from "./orders";
+export * from "./orientation";
 export * from "./payments";
 export * from "./projects-tasks";
 export * from "./quickdash";

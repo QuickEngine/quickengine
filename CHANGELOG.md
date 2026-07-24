@@ -6,7 +6,69 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Client Records now has the durable foundation for public writes.** Additive Postgres
+  tables persist mutation replay results, audit evidence, and versioned outbox events in the
+  same transaction as client and address changes. Package-owned commands cover workspace-
+  scoped clients and addresses, while Hono adds private read/write capabilities and guarded
+  CRUD routes with validation, budgets, tenant/module authorization, deadlines, and required
+  idempotency keys. OpenAPI, Quick.js, the lean CLI, and QuickDash compatibility actions all
+  follow the same package-owned contracts, and the production API artifact boots on plain Node.
+
+- **API writes now have enforceable reliability contracts.** The Hono boundary caps actual
+  streamed request bytes, propagates cooperative deadlines, reports bounded dependency
+  readiness, and provides atomic Redis/Upstash counters for tenant- and principal-scoped route
+  budgets. Durable mutation contracts require canonical input fingerprints, replayable results,
+  append-only audit intents, and outbox events to commit with domain state before any module
+  write can be exposed. The shared Postgres client now bounds pool size and connection, query,
+  lock, idle-transaction, idle-connection, and connection-lifetime waits; the production API
+  artifact also bundles internal TypeScript boundaries so plain Node can start it reliably.
+  CI freezes the existing Next compatibility surface at 26
+  server-action files and 17 route handlers so future module slices can reduce it without
+  quietly adding new framework-owned business logic.
+
+- **The API now has a shared security and observability core.** Reusable contracts define
+  stable envelopes, error codes, headers, pagination, and OpenAPI schemas. Hono routes can
+  authorize Better Auth sessions or correctly channeled API keys against workspace roles,
+  capabilities, enabled modules, and tenant boundaries while carrying an explicit audit actor.
+  First-party cookie writes receive origin-based CSRF protection, and requests emit redacted
+  structured logs, server timing, OpenTelemetry spans, and optional Sentry diagnostics without
+  recording credentials or customer identifiers in route labels.
+
+- **QuickEngine now has an independent Hono API foundation.** The runtime-neutral service
+  provides standard response and error envelopes, request IDs, credential-safe CORS and
+  security headers, health/readiness/version endpoints, an initial OpenAPI document, a local
+  Node entry point, and a Vercel-compatible export. It joins the pnpm/Turborepo graph with
+  focused tests before authentication, database access, and module routes are introduced.
+
+- **Onboarding now has a real browser-level release contract.** An isolated Playwright path
+  proves required email verification, optional setup branches, the no-billing/no-2FA minimal
+  path, default modules and free access, atomic rollback and retry, direct authenticated
+  QuickDash entry, orientation/checklist sequencing, and creation of the first useful client.
+  The measured local path reaches QuickDash and first value comfortably inside the two- and
+  five-minute targets without interfering with normal development servers.
+
 ### Changed
+
+- **The developer platform now has an explicit incremental delivery contract.** The Hono
+  backend extraction is divided into independently reviewable foundations, module verticals,
+  developer surfaces, and a measured Vite proof. Every slice carries a complete cross-agent
+  implementation checkpoint so backend work can continue safely across sessions without
+  confusing planned architecture with shipped behavior.
+
+- **Getting started now shows the real steps inside each business goal.** Parent goals expand
+  into status-derived substeps, the next required action is emphasized, and progress counts
+  required milestones rather than clicks. Optional Account security and 2FA guidance links out
+  without blocking business completion. The success state remains visible until the user chooses
+  **Start Building**, creating an explicit handoff into their finished workspace. The guide
+  opens with every goal collapsed and behaves as a single-open accordion, while its collapsed
+  launcher uses a solid surface instead of blending into the dashboard.
+
+- **Getting-started substeps now resolve from real workspace status.** Twenty-three supported
+  milestones derive completion from module records and meaningful transitions such as sent,
+  confirmed, approved, fulfilled, and dispatched. A deterministic resolver selects the first
+  unfinished required substep while optional guidance never blocks a parent business goal.
 
 - **Quick.js, the CLI, and all 15 shipped modules now have independent SemVer release
   automation.** Conventional package commits feed one reviewed Release Please PR, with
@@ -24,6 +86,26 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **CI now caches Turborepo's task results between runs.** The pnpm store was already cached, but Turbo's own cache was not — so every push recomputed typecheck, test, and build for all 45 tasks from cold, even when the change touched two files. Restoring `.turbo` lets Turbo skip everything whose inputs genuinely did not change. Measured locally: a cold typecheck takes 19s, a warm one 0s; build is the larger share of CI time and behaves the same way. Uses the local cache via `actions/cache` — no Turbo account, token, or external service. The cache compounds and Turbo never prunes it, so a note in the workflow records that GitHub's 10GB LRU eviction is what keeps it bounded, and what to do if the restore step ever becomes slower than the work it saves.
 
 ### Added
+
+- **Getting-started goals now describe the real steps behind each first outcome.** All 14
+  actionable first-wave modules declare ordered, versioned milestones such as drafting and
+  sending an invoice, confirming a booking or order, and starting then completing fulfillment;
+  Reporting remains explicitly outcome-free. Optional Account security and 2FA guidance stays
+  outside the module dependency graph and cannot block the business path.
+
+- **New QuickDash workspaces now offer a short, optional orientation.** Four concise
+  coach cards introduce the workspace switcher and module navigation, then point to workspace
+  settings and Account in a fourth step. Stable target attributes and directional notches keep
+  each compact, light-gray card attached to the control it explains. People can skip, finish,
+  or restart the orientation from their profile menu; the outcome persists per user and
+  workspace so it does not repeatedly reappear across devices.
+
+- **QuickDash now turns first-value guidance into a live workspace checklist.** A compact
+  bottom-right panel selects up to five actions from the workspace's enabled modules, links
+  into the owning module, and checks each item only after its real business record exists.
+  Progress, collapse, and dismissal are accessible and persist per user and workspace. When
+  every action is complete, a short success state offers **Start building** and closes itself
+  automatically if left alone.
 
 - **The QuickDash getting-started checklist now has durable per-user state.** Collapsed
   and dismissed preferences are stored independently for each user and workspace, survive

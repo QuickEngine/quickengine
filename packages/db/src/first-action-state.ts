@@ -32,7 +32,10 @@ export async function getFirstActionChecklistState(
 		)
 		.limit(1);
 
-	return resolveFirstActionChecklistState(stored);
+	return {
+		...resolveFirstActionChecklistState(stored),
+		hasStoredState: stored !== undefined,
+	};
 }
 
 export async function saveFirstActionChecklistState(

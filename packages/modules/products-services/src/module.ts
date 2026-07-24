@@ -36,6 +36,16 @@ export const productsServicesModule = {
 			moduleId: "products-services",
 			intent: "create",
 			priority: 10,
+			steps: [
+				{
+					id: "products-services:create:offering",
+					version: 1,
+					label: "Add the offering",
+					description:
+						"Save a product or service with the details needed to sell it.",
+					intent: "create",
+				},
+			],
 		},
 	] as const,
 } as const;

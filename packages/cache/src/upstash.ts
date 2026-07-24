@@ -1,6 +1,14 @@
 import { Redis } from "@upstash/redis";
 import type { CacheProvider } from "./index";
 
+const INCREMENT_WITH_EXPIRY = `
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return count
+`;
+
 /**
  * Upstash over HTTP — the production provider.
  *
@@ -15,6 +23,8 @@ export function createUpstashCacheProvider(
 	const redis = new Redis({ url, token });
 
 	return {
+		kind: "upstash",
+		shared: true,
 		async get(key) {
 			return (await redis.get(key)) as never;
 		},
@@ -28,12 +38,20 @@ export function createUpstashCacheProvider(
 		async delete(key) {
 			await redis.del(key);
 		},
+		async ping() {
+			await redis.ping();
+		},
+		async setIfAbsent(key, value, options) {
+			const result = await redis.set(key, value, {
+				ex: options.ttlSeconds,
+				nx: true,
+			});
+			return result === "OK";
+		},
 		async increment(key, windowSeconds) {
-			const count = await redis.incr(key);
-			// Set the expiry only on the first hit, so the window rolls from when it opened
-			// rather than being extended by every subsequent request.
-			if (count === 1) await redis.expire(key, windowSeconds);
-			return count;
+			return Number(
+				await redis.eval(INCREMENT_WITH_EXPIRY, [key], [String(windowSeconds)]),
+			);
 		},
 	};
 }

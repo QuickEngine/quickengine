@@ -28,6 +28,16 @@ export const filesModule = {
 			moduleId: "files",
 			intent: "upload",
 			priority: 15,
+			steps: [
+				{
+					id: "files:upload:file",
+					version: 1,
+					label: "Choose and upload a file",
+					description:
+						"Add the first useful document or asset to the workspace.",
+					intent: "upload",
+				},
+			],
 		},
 	] as const,
 } as const;

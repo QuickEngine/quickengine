@@ -237,6 +237,12 @@ function ClientDialog({
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [deleting, setDeleting] = useState(false);
+	const [editIdempotencyKey, setEditIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
+	const [deleteIdempotencyKey, setDeleteIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	const [editState, editAction] = useActionState(
 		updateClientRecordAction,
 		INITIAL_STATE,
@@ -250,6 +256,8 @@ function ClientDialog({
 			setOpen(false);
 			setDeleting(false);
 			router.refresh();
+			setEditIdempotencyKey(crypto.randomUUID());
+			setDeleteIdempotencyKey(crypto.randomUUID());
 		}
 	}, [deleteState.completionId, editState.completionId, router]);
 
@@ -265,6 +273,11 @@ function ClientDialog({
 					<form action={deleteAction}>
 						<input type="hidden" name="workspaceId" value={workspaceId} />
 						<input type="hidden" name="recordId" value={record.id} />
+						<input
+							type="hidden"
+							name="idempotencyKey"
+							value={deleteIdempotencyKey}
+						/>
 						<DialogHeader>
 							<DialogTitle>Delete {record.name}?</DialogTitle>
 							<DialogDescription>
@@ -293,6 +306,11 @@ function ClientDialog({
 					<form action={editAction}>
 						<input type="hidden" name="workspaceId" value={workspaceId} />
 						<input type="hidden" name="recordId" value={record.id} />
+						<input
+							type="hidden"
+							name="idempotencyKey"
+							value={editIdempotencyKey}
+						/>
 						<DialogHeader>
 							<DialogTitle>Edit {label.toLowerCase()}</DialogTitle>
 							<DialogDescription>

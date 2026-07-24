@@ -1,0 +1,172 @@
+import {
+	apiErrorSchema,
+	errorEnvelopeSchema,
+	successEnvelopeSchema,
+	toOpenApiSchema,
+} from "@quickengine/api-contracts";
+import { z } from "zod";
+import type { ApiConfig } from "./config";
+
+export function createOpenApiDocument(config: ApiConfig) {
+	const readinessEnvelope = successEnvelopeSchema(
+		z.object({
+			checks: z.array(
+				z.object({
+					name: z.string(),
+					status: z.enum(["error", "ok"]),
+				}),
+			),
+			service: z.string(),
+			status: z.enum(["degraded", "not_ready", "ready"]),
+		}),
+	);
+	return {
+		openapi: "3.1.0",
+		info: {
+			title: "QuickEngine API",
+			version: config.version,
+			description: "The canonical API for QuickEngine and QuickDash.",
+		},
+		servers: [{ url: config.baseUrl }],
+		components: {
+			securitySchemes: {
+				bearerApiKey: { type: "http", scheme: "bearer" },
+				workspaceSession: {
+					type: "apiKey",
+					in: "cookie",
+					name: "quickengine.session_token",
+				},
+			},
+			schemas: {
+				ApiError: toOpenApiSchema(apiErrorSchema),
+				ErrorEnvelope: toOpenApiSchema(errorEnvelopeSchema),
+				HealthEnvelope: toOpenApiSchema(
+					successEnvelopeSchema(
+						z.object({
+							service: z.string(),
+							status: z.literal("ok"),
+							version: z.string(),
+						}),
+					),
+				),
+				ReadinessEnvelope: toOpenApiSchema(readinessEnvelope),
+			},
+		},
+		paths: {
+			"/v1/clients": {
+				get: {
+					operationId: "listClients",
+					summary: "List client records",
+					responses: { "200": { description: "A cursor page of clients." } },
+				},
+				post: {
+					operationId: "createClient",
+					summary: "Create a client record",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Client created." },
+						"409": {
+							description: "Idempotency conflict or request in progress.",
+						},
+					},
+				},
+			},
+			"/v1/clients/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getClient",
+					responses: {
+						"200": { description: "The client." },
+						"404": { description: "Client not found." },
+					},
+				},
+				patch: {
+					operationId: "updateClient",
+					responses: { "200": { description: "Client updated." } },
+				},
+				delete: {
+					operationId: "deleteClient",
+					responses: { "200": { description: "Client deleted." } },
+				},
+			},
+			"/v1/clients/{id}/addresses": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "listClientAddresses",
+					responses: { "200": { description: "Client addresses." } },
+				},
+				post: {
+					operationId: "createClientAddress",
+					responses: { "201": { description: "Address created." } },
+				},
+			},
+			"/v1/addresses/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getClientAddress",
+					responses: { "200": { description: "The address." } },
+				},
+				patch: {
+					operationId: "updateClientAddress",
+					responses: { "200": { description: "Address updated." } },
+				},
+				delete: {
+					operationId: "deleteClientAddress",
+					responses: { "200": { description: "Address deleted." } },
+				},
+			},
+			"/health": {
+				get: {
+					operationId: "getHealth",
+					responses: { "200": { description: "The API process is alive." } },
+				},
+			},
+			"/ready": {
+				get: {
+					operationId: "getReadiness",
+					responses: {
+						"200": {
+							description:
+								"Required dependencies are ready; optional checks may be degraded.",
+						},
+						"503": { description: "A required dependency is unavailable." },
+					},
+				},
+			},
+			"/version": {
+				get: {
+					operationId: "getVersion",
+					responses: { "200": { description: "The deployed API version." } },
+				},
+			},
+		},
+	} as const;
+}

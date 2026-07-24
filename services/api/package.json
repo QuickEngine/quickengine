@@ -1,0 +1,39 @@
+{
+	"name": "@quickengine/api",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsx watch src/server.ts",
+		"start": "node dist/server.js",
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@hono/node-server": "^2.0.10",
+		"@opentelemetry/api": "^1.9.0",
+		"@upstash/redis": "^1.38.0",
+		"@quickengine/api-contracts": "workspace:*",
+		"@quickengine/auth": "workspace:*",
+		"@quickengine/cache": "workspace:*",
+		"@quickengine/db": "workspace:*",
+		"@quickengine/module-registry": "workspace:*",
+		"@quickengine/mod-client-records": "workspace:*",
+		"@sentry/node": "^10.65.0",
+		"hono": "^4.12.27",
+		"postgres": "^3.4.9",
+		"redis": "^6.1.0",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"@types/node": "^22.15.3",
+		"tsx": "^4.21.0",
+		"tsup": "^8.4.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.6"
+	}
+}

@@ -21,7 +21,7 @@ export type ModuleManifest = {
 	/**
 	 * Small, versioned paths to first value owned by this module. The dashboard resolves
 	 * these against the workspace's actual enabled-module set; completion is checked by
-	 * QuickDash server detectors keyed by action id, never by a clicked checkbox.
+	 * QuickDash server detectors keyed by action/substep id, never by a clicked checkbox.
 	 */
 	firstActions?: readonly FirstActionDescriptor[];
 };

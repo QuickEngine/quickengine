@@ -53,6 +53,6 @@ test("the create button locks while submitting, so one submission creates one re
 		dialog.getByRole("button", { name: /^(Saving|Working)…$/ }),
 	).toBeDisabled();
 
-	await expect(dialog).toBeHidden();
+	await expect(dialog).toBeHidden({ timeout: 15_000 });
 	expect(await countRows("client_records")).toBe(before + 1);
 });

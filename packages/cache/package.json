@@ -11,7 +11,8 @@
 	"scripts": {
 		"lint": "biome lint .",
 		"format": "biome format . --write",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@upstash/redis": "^1.38.0",
@@ -20,6 +21,7 @@
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"typescript": "^5"
+		"typescript": "^5",
+		"vitest": "^3.2.6"
 	}
 }

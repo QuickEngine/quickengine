@@ -1,0 +1,31 @@
+{
+	"name": "@quickengine/api-contracts",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./envelopes": "./src/envelopes.ts",
+		"./errors": "./src/errors.ts",
+		"./headers": "./src/headers.ts",
+		"./mutations": "./src/mutations.ts",
+		"./openapi": "./src/openapi.ts",
+		"./query": "./src/query.ts"
+	},
+	"scripts": {
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.6"
+	}
+}

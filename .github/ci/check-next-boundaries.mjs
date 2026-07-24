@@ -66,8 +66,6 @@ export const NEXT_ROUTE_BASELINE = new Map([
 	["apps/quickengine/web/app/api/billing/subscription/route.ts", ["GET"]],
 	["apps/quickengine/web/app/api/health/route.ts", ["GET"]],
 	["apps/quickengine/web/app/api/resend/webhook/route.ts", ["POST"]],
-	["apps/quickengine/web/app/api/stripe/checkout/route.ts", ["POST"]],
-	["apps/quickengine/web/app/api/stripe/webhook/route.ts", ["POST"]],
 ]);
 
 async function walk(directory) {

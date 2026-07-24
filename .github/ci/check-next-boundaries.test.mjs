@@ -11,7 +11,7 @@ test("the repository matches the declared Next compatibility boundary", async ()
 	const result = await auditNextBoundaries();
 	assert.deepEqual(result.errors, []);
 	assert.equal(result.serverActions.size, 26);
-	assert.equal(result.routes.size, 17);
+	assert.equal(result.routes.size, 15);
 });
 
 test("new and stale compatibility files require an explicit baseline change", () => {
@@ -22,5 +22,5 @@ test("new and stale compatibility files require an explicit baseline change", ()
 		"Stale adapter baseline (remove it deliberately): old.ts",
 	]);
 	assert.equal(SERVER_ACTION_BASELINE.size, 26);
-	assert.equal(NEXT_ROUTE_BASELINE.size, 17);
+	assert.equal(NEXT_ROUTE_BASELINE.size, 15);
 });

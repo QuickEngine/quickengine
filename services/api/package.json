@@ -21,6 +21,7 @@
 		"@quickengine/cache": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
+		"@quickengine/billing": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",
 		"@quickengine/mod-payments": "workspace:*",

@@ -12,6 +12,7 @@ import { createJsonLogger } from "./logger";
 import { registerPaymentsRoutes } from "./payments-routes";
 import { registerProductsServicesRoutes } from "./products-services-routes";
 import { registerQuotesRoutes } from "./quotes-routes";
+import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
 import { initializeTelemetry } from "./telemetry";
 
 const config = loadApiConfig();
@@ -34,6 +35,7 @@ const app = createApp(config, {
 		registerQuotesRoutes(app, dependencies);
 		registerInvoicesRoutes(app, dependencies);
 		registerPaymentsRoutes(app, dependencies);
+		registerStripeWebhookRoutes(app, { logger: routeLogger });
 	},
 	telemetry: initializeTelemetry(config),
 });

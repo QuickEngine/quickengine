@@ -623,6 +623,106 @@ export type QuickShipment = {
 	[field: string]: unknown;
 };
 
+export type QuickProjectStatus =
+	| "draft"
+	| "active"
+	| "on_hold"
+	| "completed"
+	| "cancelled";
+
+export type QuickMilestoneStatus = "open" | "completed" | "cancelled";
+
+export type QuickTaskStatus =
+	| "todo"
+	| "in_progress"
+	| "blocked"
+	| "completed"
+	| "cancelled";
+
+export type QuickTaskPriority = "low" | "normal" | "high" | "urgent";
+
+/** Dates on projects, milestones, and tasks are calendar dates (`YYYY-MM-DD`), not timestamps. */
+export type QuickProjectInput = {
+	name: string;
+	clientId?: string | null;
+	description?: string | null;
+	startDate?: string | null;
+	dueDate?: string | null;
+	status?: QuickProjectStatus;
+	metadata?: Record<string, unknown>;
+};
+
+export type QuickProject = {
+	id: string;
+	workspaceId: string;
+	name: string;
+	status: QuickProjectStatus;
+	clientId: string | null;
+	description: string | null;
+	startDate: string | null;
+	dueDate: string | null;
+	/** Set once archived; archived projects are hidden from `list` unless asked for. */
+	archivedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickMilestoneInput = {
+	projectId: string;
+	name: string;
+	description?: string | null;
+	dueDate?: string | null;
+	position?: number;
+	status?: QuickMilestoneStatus;
+	metadata?: Record<string, unknown>;
+};
+
+export type QuickMilestone = {
+	id: string;
+	workspaceId: string;
+	projectId: string;
+	name: string;
+	status: QuickMilestoneStatus;
+	dueDate: string | null;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickTaskInput = {
+	projectId: string;
+	title: string;
+	/** A parent task must sit on the same project and milestone as its child. */
+	parentTaskId?: string | null;
+	milestoneId?: string | null;
+	description?: string | null;
+	priority?: QuickTaskPriority;
+	startDate?: string | null;
+	dueDate?: string | null;
+	estimatedMinutes?: number | null;
+	status?: QuickTaskStatus;
+	metadata?: Record<string, unknown>;
+};
+
+export type QuickTask = {
+	id: string;
+	workspaceId: string;
+	projectId: string;
+	milestoneId: string | null;
+	parentTaskId: string | null;
+	title: string;
+	status: QuickTaskStatus;
+	priority: QuickTaskPriority;
+	startDate: string | null;
+	dueDate: string | null;
+	estimatedMinutes: number | null;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

@@ -38,6 +38,10 @@ import {
 
 type QueryExecutor = Pick<typeof db, "select">;
 
+export type ProjectsTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
 async function assertWorkspace(executor: QueryExecutor, workspaceId: string) {
 	const [workspace] = await executor
 		.select({ id: quickengineWorkspaces.id })
@@ -240,9 +244,13 @@ function taskStatusTimestamps(status: TaskStatus, now: Date) {
 	return { completedAt: null, cancelledAt: null };
 }
 
-export async function createProject(workspaceId: string, input: ProjectInput) {
+export async function createProjectInTx(
+	tx: ProjectsTransaction,
+	workspaceId: string,
+	input: ProjectInput,
+) {
 	const parsed = projectInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		await assertWorkspace(tx, workspaceId);
 		const client = await resolveClientSnapshot(
 			tx,
@@ -260,7 +268,7 @@ export async function createProject(workspaceId: string, input: ProjectInput) {
 			})
 			.returning();
 		return created;
-	});
+	}
 }
 
 export async function listProjects(
@@ -285,13 +293,14 @@ export async function getProject(workspaceId: string, id: string) {
 	return project;
 }
 
-export async function updateProject(
+export async function updateProjectInTx(
+	tx: ProjectsTransaction,
 	workspaceId: string,
 	id: string,
 	input: ProjectDetailsInput,
 ) {
 	const parsed = projectDetailsInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const current = await getProjectReference(tx, workspaceId, id);
 		if (current.archivedAt) throw new Error("PROJECT_ARCHIVED");
 		const client = await resolveClientSnapshot(
@@ -305,15 +314,16 @@ export async function updateProject(
 			.where(and(eq(projects.workspaceId, workspaceId), eq(projects.id, id)))
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function setProjectStatus(
+export async function setProjectStatusInTx(
+	tx: ProjectsTransaction,
 	workspaceId: string,
 	id: string,
 	status: ProjectStatus,
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const current = await getProjectReference(tx, workspaceId, id);
 		if (current.archivedAt) throw new Error("PROJECT_ARCHIVED");
 		if (current.status === status) throw new Error("PROJECT_STATUS_UNCHANGED");
@@ -338,11 +348,15 @@ export async function setProjectStatus(
 			.returning();
 		if (!updated) throw new Error("PROJECT_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function archiveProject(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function archiveProjectInTx(
+	tx: ProjectsTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const current = await getProjectReference(tx, workspaceId, id);
 		if (current.archivedAt) throw new Error("PROJECT_ALREADY_ARCHIVED");
 		if (current.status !== "completed" && current.status !== "cancelled") {
@@ -355,11 +369,15 @@ export async function archiveProject(workspaceId: string, id: string) {
 			.where(and(eq(projects.workspaceId, workspaceId), eq(projects.id, id)))
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function restoreProject(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function restoreProjectInTx(
+	tx: ProjectsTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const current = await getProjectReference(tx, workspaceId, id);
 		if (!current.archivedAt) throw new Error("PROJECT_NOT_ARCHIVED");
 		const [updated] = await tx
@@ -368,11 +386,15 @@ export async function restoreProject(workspaceId: string, id: string) {
 			.where(and(eq(projects.workspaceId, workspaceId), eq(projects.id, id)))
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function deleteProject(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteProjectInTx(
+	tx: ProjectsTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const current = await getProjectReference(tx, workspaceId, id);
 		if (!current.archivedAt) throw new Error("PROJECT_MUST_BE_ARCHIVED");
 		const [deleted] = await tx
@@ -380,15 +402,16 @@ export async function deleteProject(workspaceId: string, id: string) {
 			.where(and(eq(projects.workspaceId, workspaceId), eq(projects.id, id)))
 			.returning();
 		return deleted;
-	});
+	}
 }
 
-export async function createMilestone(
+export async function createMilestoneInTx(
+	tx: ProjectsTransaction,
 	workspaceId: string,
 	input: MilestoneInput,
 ) {
 	const parsed = milestoneInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const project = await getProjectReference(
 			tx,
 			workspaceId,
@@ -405,7 +428,7 @@ export async function createMilestone(
 			})
 			.returning();
 		return created;
-	});
+	}
 }
 
 export async function listProjectMilestones(
@@ -438,13 +461,14 @@ export async function getMilestone(workspaceId: string, id: string) {
 	return milestone;
 }
 
-export async function updateMilestone(
+export async function updateMilestoneInTx(
+	tx: ProjectsTransaction,
 	workspaceId: string,
 	id: string,
 	input: MilestoneDetailsInput,
 ) {
 	const parsed = milestoneDetailsInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const projectId = await getMilestoneProjectId(tx, workspaceId, id);
 		const project = await getProjectReference(tx, workspaceId, projectId);
 		assertProjectOperational(project);
@@ -474,15 +498,16 @@ export async function updateMilestone(
 			)
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function setMilestoneStatus(
+export async function setMilestoneStatusInTx(
+	tx: ProjectsTransaction,
 	workspaceId: string,
 	id: string,
 	status: MilestoneStatus,
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const projectId = await getMilestoneProjectId(tx, workspaceId, id);
 		const project = await getProjectReference(tx, workspaceId, projectId);
 		if (project.archivedAt) throw new Error("PROJECT_ARCHIVED");
@@ -525,11 +550,15 @@ export async function setMilestoneStatus(
 			.returning();
 		if (!updated) throw new Error("MILESTONE_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function deleteMilestone(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteMilestoneInTx(
+	tx: ProjectsTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const projectId = await getMilestoneProjectId(tx, workspaceId, id);
 		const project = await getProjectReference(tx, workspaceId, projectId);
 		if (project.archivedAt) throw new Error("PROJECT_ARCHIVED");
@@ -569,12 +598,16 @@ export async function deleteMilestone(workspaceId: string, id: string) {
 			)
 			.returning();
 		return deleted;
-	});
+	}
 }
 
-export async function createTask(workspaceId: string, input: TaskInput) {
+export async function createTaskInTx(
+	tx: ProjectsTransaction,
+	workspaceId: string,
+	input: TaskInput,
+) {
 	const parsed = taskInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const project = await getProjectReference(
 			tx,
 			workspaceId,
@@ -598,7 +631,7 @@ export async function createTask(workspaceId: string, input: TaskInput) {
 			})
 			.returning();
 		return created;
-	});
+	}
 }
 
 export async function listProjectTasks(workspaceId: string, projectId: string) {
@@ -625,13 +658,14 @@ export async function getTask(workspaceId: string, id: string) {
 	return task;
 }
 
-export async function updateTask(
+export async function updateTaskInTx(
+	tx: ProjectsTransaction,
 	workspaceId: string,
 	id: string,
 	input: TaskDetailsInput,
 ) {
 	const parsed = taskDetailsInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const projectId = await getTaskProjectId(tx, workspaceId, id);
 		const project = await getProjectReference(tx, workspaceId, projectId);
 		assertProjectOperational(project);
@@ -662,15 +696,16 @@ export async function updateTask(
 			)
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function setTaskStatus(
+export async function setTaskStatusInTx(
+	tx: ProjectsTransaction,
 	workspaceId: string,
 	id: string,
 	status: TaskStatus,
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const projectId = await getTaskProjectId(tx, workspaceId, id);
 		const project = await getProjectReference(tx, workspaceId, projectId);
 		if (project.archivedAt) throw new Error("PROJECT_ARCHIVED");
@@ -711,11 +746,15 @@ export async function setTaskStatus(
 			.returning();
 		if (!updated) throw new Error("TASK_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function deleteTask(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteTaskInTx(
+	tx: ProjectsTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const projectId = await getTaskProjectId(tx, workspaceId, id);
 		const project = await getProjectReference(tx, workspaceId, projectId);
 		if (project.archivedAt) throw new Error("PROJECT_ARCHIVED");
@@ -749,5 +788,94 @@ export async function deleteTask(workspaceId: string, id: string) {
 			)
 			.returning();
 		return deleted;
-	});
+	}
+}
+
+export async function createProject(workspaceId: string, input: ProjectInput) {
+	return db.transaction((tx) => createProjectInTx(tx, workspaceId, input));
+}
+
+export async function updateProject(
+	workspaceId: string,
+	id: string,
+	input: ProjectDetailsInput,
+) {
+	return db.transaction((tx) => updateProjectInTx(tx, workspaceId, id, input));
+}
+
+export async function setProjectStatus(
+	workspaceId: string,
+	id: string,
+	status: ProjectStatus,
+) {
+	return db.transaction((tx) =>
+		setProjectStatusInTx(tx, workspaceId, id, status),
+	);
+}
+
+export async function archiveProject(workspaceId: string, id: string) {
+	return db.transaction((tx) => archiveProjectInTx(tx, workspaceId, id));
+}
+
+export async function restoreProject(workspaceId: string, id: string) {
+	return db.transaction((tx) => restoreProjectInTx(tx, workspaceId, id));
+}
+
+export async function deleteProject(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteProjectInTx(tx, workspaceId, id));
+}
+
+export async function createMilestone(
+	workspaceId: string,
+	input: MilestoneInput,
+) {
+	return db.transaction((tx) => createMilestoneInTx(tx, workspaceId, input));
+}
+
+export async function updateMilestone(
+	workspaceId: string,
+	id: string,
+	input: MilestoneDetailsInput,
+) {
+	return db.transaction((tx) =>
+		updateMilestoneInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function setMilestoneStatus(
+	workspaceId: string,
+	id: string,
+	status: MilestoneStatus,
+) {
+	return db.transaction((tx) =>
+		setMilestoneStatusInTx(tx, workspaceId, id, status),
+	);
+}
+
+export async function deleteMilestone(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteMilestoneInTx(tx, workspaceId, id));
+}
+
+export async function createTask(workspaceId: string, input: TaskInput) {
+	return db.transaction((tx) => createTaskInTx(tx, workspaceId, input));
+}
+
+export async function updateTask(
+	workspaceId: string,
+	id: string,
+	input: TaskDetailsInput,
+) {
+	return db.transaction((tx) => updateTaskInTx(tx, workspaceId, id, input));
+}
+
+export async function setTaskStatus(
+	workspaceId: string,
+	id: string,
+	status: TaskStatus,
+) {
+	return db.transaction((tx) => setTaskStatusInTx(tx, workspaceId, id, status));
+}
+
+export async function deleteTask(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteTaskInTx(tx, workspaceId, id));
 }

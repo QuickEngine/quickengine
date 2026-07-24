@@ -924,6 +924,269 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/projects": {
+				get: {
+					operationId: "listProjects",
+					summary: "List projects, archived ones excluded by default",
+					responses: { "200": { description: "A cursor page of projects." } },
+				},
+				post: {
+					operationId: "createProject",
+					summary: "Create a project",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Project created." },
+						"400": { description: "The client reference is invalid." },
+					},
+				},
+			},
+			"/v1/projects/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getProject",
+					responses: {
+						"200": { description: "The project." },
+						"404": { description: "Project not found." },
+					},
+				},
+				patch: {
+					operationId: "updateProject",
+					responses: {
+						"200": { description: "Project updated." },
+						"409": { description: "The project is archived or closed." },
+					},
+				},
+				delete: {
+					operationId: "deleteProject",
+					responses: {
+						"200": { description: "Project deleted." },
+						"409": { description: "The project must be archived first." },
+					},
+				},
+			},
+			"/v1/projects/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setProjectStatus",
+					summary:
+						"Move a project between draft, active, on hold, completed, and cancelled",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/projects/{id}/archive": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "archiveProject",
+					summary: "Archive a completed or cancelled project",
+					responses: {
+						"200": { description: "Project archived." },
+						"409": {
+							description: "The project must be completed or cancelled first.",
+						},
+					},
+				},
+			},
+			"/v1/projects/{id}/restore": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "restoreProject",
+					summary: "Bring an archived project back",
+					responses: {
+						"200": { description: "Project restored." },
+						"409": { description: "The project isn't archived." },
+					},
+				},
+			},
+			"/v1/milestones": {
+				get: {
+					operationId: "listMilestones",
+					summary: "List milestones, optionally for one project",
+					responses: { "200": { description: "A cursor page of milestones." } },
+				},
+				post: {
+					operationId: "createMilestone",
+					summary: "Create a milestone on a project",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Milestone created." },
+						"409": { description: "The project is archived or closed." },
+					},
+				},
+			},
+			"/v1/milestones/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getMilestone",
+					responses: {
+						"200": { description: "The milestone." },
+						"404": { description: "Milestone not found." },
+					},
+				},
+				patch: {
+					operationId: "updateMilestone",
+					responses: {
+						"200": { description: "Milestone updated." },
+						"409": { description: "The milestone is closed." },
+					},
+				},
+				delete: {
+					operationId: "deleteMilestone",
+					responses: {
+						"200": { description: "Milestone deleted." },
+						"409": {
+							description:
+								"It must be cancelled first, and must hold no tasks.",
+						},
+					},
+				},
+			},
+			"/v1/milestones/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setMilestoneStatus",
+					summary: "Move a milestone between open, completed, and cancelled",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/tasks": {
+				get: {
+					operationId: "listTasks",
+					summary: "List tasks, optionally for one project or milestone",
+					responses: { "200": { description: "A cursor page of tasks." } },
+				},
+				post: {
+					operationId: "createTask",
+					summary: "Create a task, optionally under a parent task",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Task created." },
+						"400": {
+							description:
+								"The parent task belongs to a different project or milestone.",
+						},
+					},
+				},
+			},
+			"/v1/tasks/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getTask",
+					responses: {
+						"200": { description: "The task." },
+						"404": { description: "Task not found." },
+					},
+				},
+				patch: {
+					operationId: "updateTask",
+					summary: "Edit a task, including re-parenting it",
+					responses: {
+						"200": { description: "Task updated." },
+						"400": { description: "That change would create a parent cycle." },
+					},
+				},
+				delete: {
+					operationId: "deleteTask",
+					responses: {
+						"200": { description: "Task deleted." },
+						"409": { description: "The task still has subtasks." },
+					},
+				},
+			},
+			"/v1/tasks/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setTaskStatus",
+					summary:
+						"Move a task between todo, in progress, blocked, completed, and cancelled",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

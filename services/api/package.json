@@ -23,6 +23,7 @@
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-products-services": "workspace:*",
+		"@quickengine/mod-quotes-estimates": "workspace:*",
 		"@sentry/node": "^10.65.0",
 		"hono": "^4.12.27",
 		"postgres": "^3.4.9",

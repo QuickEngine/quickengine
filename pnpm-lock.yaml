@@ -1610,6 +1610,9 @@ importers:
       '@quickengine/mod-contracts-esign':
         specifier: workspace:*
         version: link:../../packages/modules/contracts-esign
+      '@quickengine/mod-files':
+        specifier: workspace:*
+        version: link:../../packages/modules/files
       '@quickengine/mod-fulfillment':
         specifier: workspace:*
         version: link:../../packages/modules/fulfillment

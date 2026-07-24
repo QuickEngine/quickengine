@@ -905,6 +905,81 @@ export type QuickContractSendResult = QuickContract & {
 	}>;
 };
 
+export type QuickDocumentStatus =
+	| "active"
+	| "archived"
+	| "trashed"
+	| "deleting";
+
+export type QuickFileVersionStatus =
+	| "pending"
+	| "available"
+	| "failed"
+	| "quarantined";
+
+export type QuickFileFolderInput = {
+	name: string;
+	parentId?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+export type QuickFileFolder = {
+	id: string;
+	workspaceId: string;
+	name: string;
+	parentId: string | null;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickDocumentInput = {
+	title: string;
+	folderId?: string | null;
+	description?: string | null;
+	tags?: string[];
+	metadata?: Record<string, unknown>;
+};
+
+/** A stored version. Internal storage addressing is never exposed. */
+export type QuickFileVersion = {
+	id: string;
+	documentId: string;
+	versionNumber: number;
+	status: QuickFileVersionStatus;
+	originalName: string;
+	contentType: string;
+	sizeBytes: number;
+	checksumSha256: string;
+	availableAt: string | null;
+	createdAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickDocument = {
+	id: string;
+	workspaceId: string;
+	title: string;
+	status: QuickDocumentStatus;
+	folderId: string | null;
+	description: string | null;
+	currentVersionNumber: number | null;
+	createdAt: string;
+	updatedAt: string;
+	versions?: QuickFileVersion[];
+	[field: string]: unknown;
+};
+
+export type QuickFileAttachment = {
+	id: string;
+	workspaceId: string;
+	documentId: string;
+	targetModule: string;
+	targetId: string;
+	createdAt: string;
+	[field: string]: unknown;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

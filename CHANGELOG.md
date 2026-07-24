@@ -17,11 +17,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 - **Files and Documents now has a durable API for folders and document records.** Routes cover
   creating, renaming, and moving folders, editing document details, moving a document through
-  active, archived, trashed, and deletion, and removing an attachment, each committing domain state,
-  audit, and outbox together. A folder can't be moved inside itself or deleted while it still holds
-  anything, a document must be trashed before it can be deleted, and the storage cleanup that
-  follows a deletion is only scheduled once the request has actually been saved. Internal storage
-  addressing is never returned.
+  active, archived, trashed, and deletion, releasing a quarantined version, and removing an
+  attachment, each committing domain state, audit, and outbox together. A folder can't be moved
+  inside itself or deleted while it still holds anything, a document must be trashed before it can
+  be deleted, and the storage cleanup that follows a deletion is only scheduled once the request has
+  actually been saved. Internal storage addressing is never returned. Quick.js, the lean CLI, and
+  the QuickDash files screen now follow the same package contracts. Uploading keeps its own
+  reserve-store-verify sequence so a failed transfer can never leave a half-written record.
 
 - **Contracts and E-sign now has a durable agreement API.** Routes cover creating a draft, editing
   it, sending it for signature, expiring, voiding, superseding it with a revision, and deleting a

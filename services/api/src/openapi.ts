@@ -1623,6 +1623,161 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/file-folders": {
+				get: {
+					operationId: "listFileFolders",
+					summary: "List folders, optionally by parent or root only",
+					responses: { "200": { description: "A cursor page of folders." } },
+				},
+				post: {
+					operationId: "createFileFolder",
+					summary: "Create a folder",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Folder created." },
+						"409": { description: "The workspace is archived." },
+					},
+				},
+			},
+			"/v1/file-folders/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "updateFileFolder",
+					summary: "Rename or move a folder",
+					responses: {
+						"200": { description: "Folder updated." },
+						"400": { description: "A folder can't be moved inside itself." },
+					},
+				},
+				delete: {
+					operationId: "deleteFileFolder",
+					responses: {
+						"200": { description: "Folder deleted." },
+						"409": {
+							description: "The folder still holds subfolders or documents.",
+						},
+					},
+				},
+			},
+			"/v1/documents": {
+				get: {
+					operationId: "listFileDocuments",
+					summary: "List documents, optionally by folder or status",
+					responses: { "200": { description: "A cursor page of documents." } },
+				},
+			},
+			"/v1/documents/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getFileDocument",
+					summary: "Fetch a document with its version history",
+					description:
+						"Internal storage addressing is never returned; downloads are granted separately as time-limited links.",
+					responses: {
+						"200": { description: "The document and its versions." },
+						"404": { description: "Document not found." },
+					},
+				},
+				patch: {
+					operationId: "updateFileDocument",
+					responses: {
+						"200": { description: "Document updated." },
+						"409": { description: "The document can no longer be edited." },
+					},
+				},
+			},
+			"/v1/documents/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setFileDocumentStatus",
+					summary:
+						"Move a document between active, archived, trashed, and deleting",
+					description:
+						"A document must be trashed before it can be scheduled for deletion. Storage cleanup is queued only once the request commits.",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/documents/{id}/attachments": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "listFileAttachments",
+					summary: "List what this document is attached to",
+					responses: { "200": { description: "The document's attachments." } },
+				},
+			},
+			"/v1/file-versions/{id}/release": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "releaseQuarantinedFileVersion",
+					summary: "Release a quarantined version for use",
+					responses: {
+						"200": { description: "Version released." },
+						"409": { description: "That version isn't quarantined." },
+					},
+				},
+			},
+			"/v1/file-attachments/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				delete: {
+					operationId: "removeFileAttachment",
+					responses: {
+						"200": { description: "Attachment removed." },
+						"404": { description: "Attachment not found." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

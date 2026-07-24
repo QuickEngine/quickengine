@@ -21,6 +21,8 @@ export const API_CAPABILITIES = [
 	"contracts:read",
 	"contracts:write",
 	"events:write",
+	"files:read",
+	"files:write",
 	"fulfillment:read",
 	"fulfillment:write",
 	"inventory:read",

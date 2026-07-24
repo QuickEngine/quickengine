@@ -1,13 +1,16 @@
 "use server";
 
-import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
-	createShipment,
-	deleteShipment,
-	setShipmentStatus,
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
+import { getSession } from "@quickengine/auth/server";
+import {
+	createShipmentCommand,
+	deleteShipmentCommand,
+	setShipmentStatusCommand,
 	shippingSettingsSchema,
-	updateShipmentTracking,
+	updateShipmentTrackingCommand,
 } from "@quickengine/mod-shipping";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -45,9 +48,47 @@ async function authorize(workspaceId: string) {
 		} as const;
 	return {
 		ok: true,
+		access,
+		actorId: session.user.id,
 		settings: shippingSettingsSchema.parse(module.settings),
 	} as const;
 }
+
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	failure(
+		kind === "conflict"
+			? "This request was already used with different details. Try again."
+			: "This shipment change is still being processed. Try again shortly.",
+	);
+
+const key = (formData: FormData) =>
+	String(formData.get("idempotencyKey") ?? "");
+
+// Durable commands raise DomainError with copy already written for a person.
+const message = (error: unknown, fallback: string) =>
+	error instanceof Error && error.name === "DomainError"
+		? error.message
+		: fallback;
 
 const optional = (value: FormDataEntryValue | null) =>
 	String(value ?? "").trim() || null;
@@ -61,15 +102,8 @@ export async function createShipmentAction(
 	if (!authorization.ok) return failure(authorization.error);
 	const orderLineItemId = String(formData.get("orderLineItemId") ?? "");
 
-	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	const idempotencyScope = `shipping.create:${workspaceId}`;
-	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
-		revalidatePath(`/${workspaceId}/shipping`);
-		return success();
-	}
-
 	try {
-		await createShipment(workspaceId, {
+		const input = {
 			orderId: String(formData.get("orderId") ?? ""),
 			lines: [
 				{
@@ -112,11 +146,16 @@ export async function createShipmentAction(
 			serviceLevel: optional(formData.get("serviceLevel")),
 			trackingNumber: optional(formData.get("trackingNumber")),
 			trackingUrl: optional(formData.get("trackingUrl")),
-		});
+		};
+		const context = await mutationContext(
+			authorization,
+			"shipments.create",
+			key(formData),
+			input,
+		);
+		const outcome = await createShipmentCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		// The claim meant "we're doing the work" — the work failed, so give the key back
-		// or the user's corrected retry would be swallowed as a duplicate.
-		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		if (error instanceof Error && error.message === "ORDER_LINE_OVERSHIPPED")
 			return failure(
 				"That quantity exceeds the order line's unallocated balance.",
@@ -131,7 +170,10 @@ export async function createShipmentAction(
 				"Choose a physical or rental line from a confirmed order.",
 			);
 		return failure(
-			"Check the shipment quantity, destination, parcel, and tracking details.",
+			message(
+				error,
+				"Check the shipment quantity, destination, parcel, and tracking details.",
+			),
 		);
 	}
 	revalidatePath(`/${workspaceId}/shipping`);
@@ -145,27 +187,39 @@ export async function changeShipmentStatusAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+	const id = String(formData.get("shipmentId") ?? "");
 	try {
-		await setShipmentStatus(
-			workspaceId,
-			String(formData.get("shipmentId") ?? ""),
-			String(formData.get("target")) as
-				| "draft"
-				| "ready"
-				| "shipped"
-				| "in_transit"
-				| "delivered"
-				| "exception"
-				| "cancelled",
-			{ requireTracking: authorization.settings.requireTracking },
+		const status = String(formData.get("target")) as
+			| "draft"
+			| "ready"
+			| "shipped"
+			| "in_transit"
+			| "delivered"
+			| "exception"
+			| "cancelled";
+		const options = {
+			requireTracking: authorization.settings.requireTracking,
+		};
+		const context = await mutationContext(
+			authorization,
+			"shipments.set-status",
+			key(formData),
+			{ id, options, status },
 		);
+		const outcome = await setShipmentStatusCommand(
+			context,
+			id,
+			status,
+			options,
+		);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		if (
-			error instanceof Error &&
-			error.message === "SHIPMENT_TRACKING_REQUIRED"
-		)
-			return failure("Add a tracking number before marking this shipped.");
-		return failure("That shipment can no longer move to the selected status.");
+		return failure(
+			message(
+				error,
+				"That shipment can no longer move to the selected status.",
+			),
+		);
 	}
 	revalidatePath(`/${workspaceId}/shipping`);
 	return success();
@@ -178,20 +232,28 @@ export async function updateShipmentTrackingAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+	const id = String(formData.get("shipmentId") ?? "");
 	try {
-		await updateShipmentTracking(
-			workspaceId,
-			String(formData.get("shipmentId") ?? ""),
-			{
-				carrier: optional(formData.get("carrier")),
-				serviceLevel: optional(formData.get("serviceLevel")),
-				trackingNumber: optional(formData.get("trackingNumber")),
-				trackingUrl: optional(formData.get("trackingUrl")),
-			},
+		const input = {
+			carrier: optional(formData.get("carrier")),
+			serviceLevel: optional(formData.get("serviceLevel")),
+			trackingNumber: optional(formData.get("trackingNumber")),
+			trackingUrl: optional(formData.get("trackingUrl")),
+		};
+		const context = await mutationContext(
+			authorization,
+			"shipments.tracking",
+			key(formData),
+			{ id, input },
 		);
-	} catch {
+		const outcome = await updateShipmentTrackingCommand(context, id, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
 		return failure(
-			"Check the tracking details. Delivered shipments are locked.",
+			message(
+				error,
+				"Check the tracking details. Delivered shipments are locked.",
+			),
 		);
 	}
 	revalidatePath(`/${workspaceId}/shipping`);
@@ -205,10 +267,20 @@ export async function deleteShipmentAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+	const id = String(formData.get("shipmentId") ?? "");
 	try {
-		await deleteShipment(workspaceId, String(formData.get("shipmentId") ?? ""));
-	} catch {
-		return failure("Only draft or cancelled shipments can be deleted.");
+		const context = await mutationContext(
+			authorization,
+			"shipments.delete",
+			key(formData),
+			{ id },
+		);
+		const outcome = await deleteShipmentCommand(context, id);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		return failure(
+			message(error, "Only draft or cancelled shipments can be deleted."),
+		);
 	}
 	revalidatePath(`/${workspaceId}/shipping`);
 	return success();

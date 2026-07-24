@@ -1,14 +1,17 @@
 "use server";
 
-import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
-	applyInventoryAdjustment,
-	createInventoryItem,
-	deleteInventoryItem,
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
+import { getSession } from "@quickengine/auth/server";
+import {
+	applyInventoryAdjustmentCommand,
+	createInventoryItemCommand,
+	deleteInventoryItemCommand,
 	inventorySettingsSchema,
-	setInventoryItemStatus,
-	updateInventoryItem,
+	setInventoryItemStatusCommand,
+	updateInventoryItemCommand,
 } from "@quickengine/mod-inventory";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -45,9 +48,47 @@ async function authorize(workspaceId: string) {
 		} as const;
 	return {
 		ok: true,
+		access,
+		actorId: session.user.id,
 		settings: inventorySettingsSchema.parse(module.settings),
 	} as const;
 }
+
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	failure(
+		kind === "conflict"
+			? "This request was already used with different details. Try again."
+			: "This stock change is still being processed. Try again shortly.",
+	);
+
+const key = (formData: FormData) =>
+	String(formData.get("idempotencyKey") ?? "");
+
+// Durable commands raise DomainError with copy already written for a person.
+const message = (error: unknown, fallback: string) =>
+	error instanceof Error && error.name === "DomainError"
+		? error.message
+		: fallback;
 
 export async function createInventoryItemAction(
 	_previous: InventoryActionState,
@@ -60,29 +101,29 @@ export async function createInventoryItemAction(
 		formData.get("target") ?? "",
 	).split("::");
 
-	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	const idempotencyScope = `inventory.create:${workspaceId}`;
-	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
-		revalidatePath(`/${workspaceId}/inventory`);
-		return success();
-	}
-
 	try {
-		await createInventoryItem(workspaceId, {
+		const input = {
 			catalogItemId,
 			catalogItemVariantId: variantId || null,
 			lowStockThreshold: Number(
 				formData.get("lowStockThreshold") ??
 					authorization.settings.defaultLowStockThreshold,
 			),
-		});
+		};
+		const context = await mutationContext(
+			authorization,
+			"inventory.create",
+			key(formData),
+			input,
+		);
+		const outcome = await createInventoryItemCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		// The claim meant "we're doing the work" — the work failed, so give the key back
-		// or the user's corrected retry would be swallowed as a duplicate.
-		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		if (error instanceof Error && error.message.includes("unique"))
 			return failure("That catalog target already has an inventory record.");
-		return failure("Check the catalog target and low-stock threshold.");
+		return failure(
+			message(error, "Check the catalog target and low-stock threshold."),
+		);
 	}
 	revalidatePath(`/${workspaceId}/inventory`);
 	return success();
@@ -93,16 +134,25 @@ export async function updateInventoryItemAction(
 	formData: FormData,
 ): Promise<InventoryActionState> {
 	const workspaceId = String(formData.get("workspaceId") ?? "");
+	const id = String(formData.get("inventoryItemId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await updateInventoryItem(
-			workspaceId,
-			String(formData.get("inventoryItemId") ?? ""),
-			{ lowStockThreshold: Number(formData.get("lowStockThreshold")) },
+		const input = {
+			lowStockThreshold: Number(formData.get("lowStockThreshold")),
+		};
+		const context = await mutationContext(
+			authorization,
+			"inventory.update",
+			key(formData),
+			{ id, input },
 		);
-	} catch {
-		return failure("Enter a valid nonnegative low-stock threshold.");
+		const outcome = await updateInventoryItemCommand(context, id, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		return failure(
+			message(error, "Enter a valid nonnegative low-stock threshold."),
+		);
 	}
 	revalidatePath(`/${workspaceId}/inventory`);
 	return success();
@@ -113,42 +163,41 @@ export async function adjustInventoryAction(
 	formData: FormData,
 ): Promise<InventoryActionState> {
 	const workspaceId = String(formData.get("workspaceId") ?? "");
+	const id = String(formData.get("inventoryItemId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await applyInventoryAdjustment(
-			workspaceId,
-			String(formData.get("inventoryItemId") ?? ""),
-			{
-				kind: String(formData.get("kind")) as
-					| "receive"
-					| "sale"
-					| "customer_return"
-					| "damage"
-					| "correction_in"
-					| "correction_out"
-					| "reserve"
-					| "release"
-					| "fulfill_reserved",
-				quantity: Number(formData.get("quantity")),
-				note: String(formData.get("note") ?? "") || null,
-			},
-			{ allowNegativeStock: authorization.settings.allowNegativeStock },
+		const input = {
+			kind: String(formData.get("kind")) as
+				| "receive"
+				| "sale"
+				| "customer_return"
+				| "damage"
+				| "correction_in"
+				| "correction_out"
+				| "reserve"
+				| "release"
+				| "fulfill_reserved",
+			quantity: Number(formData.get("quantity")),
+			note: String(formData.get("note") ?? "") || null,
+		};
+		const context = await mutationContext(
+			authorization,
+			"inventory.adjust",
+			key(formData),
+			{ id, input },
 		);
+		const outcome = await applyInventoryAdjustmentCommand(context, id, input, {
+			allowNegativeStock: authorization.settings.allowNegativeStock,
+		});
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		if (
-			error instanceof Error &&
-			error.message === "INVENTORY_INSUFFICIENT_AVAILABLE"
-		)
-			return failure("That movement would make available stock negative.");
-		if (
-			error instanceof Error &&
-			error.message === "INVENTORY_RESERVED_BELOW_ZERO"
-		)
-			return failure("That movement exceeds the currently reserved quantity.");
-		if (error instanceof Error && error.message === "INVENTORY_ITEM_ARCHIVED")
-			return failure("Restore this inventory record before changing stock.");
-		return failure("Check the movement type and positive whole-unit quantity.");
+		return failure(
+			message(
+				error,
+				"Check the movement type and positive whole-unit quantity.",
+			),
+		);
 	}
 	revalidatePath(`/${workspaceId}/inventory`);
 	return success();
@@ -159,21 +208,23 @@ export async function changeInventoryStatusAction(
 	formData: FormData,
 ): Promise<InventoryActionState> {
 	const workspaceId = String(formData.get("workspaceId") ?? "");
+	const id = String(formData.get("inventoryItemId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await setInventoryItemStatus(
-			workspaceId,
-			String(formData.get("inventoryItemId") ?? ""),
-			String(formData.get("target")) as "active" | "archived",
+		const status = String(formData.get("target")) as "active" | "archived";
+		const context = await mutationContext(
+			authorization,
+			"inventory.set-status",
+			key(formData),
+			{ id, status },
 		);
+		const outcome = await setInventoryItemStatusCommand(context, id, status);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		if (
-			error instanceof Error &&
-			error.message === "INVENTORY_HAS_RESERVATIONS"
-		)
-			return failure("Release or fulfill reserved stock before archiving.");
-		return failure("That inventory status can no longer be changed.");
+		return failure(
+			message(error, "That inventory status can no longer be changed."),
+		);
 	}
 	revalidatePath(`/${workspaceId}/inventory`);
 	return success();
@@ -184,26 +235,22 @@ export async function deleteInventoryItemAction(
 	formData: FormData,
 ): Promise<InventoryActionState> {
 	const workspaceId = String(formData.get("workspaceId") ?? "");
+	const id = String(formData.get("inventoryItemId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await deleteInventoryItem(
-			workspaceId,
-			String(formData.get("inventoryItemId") ?? ""),
+		const context = await mutationContext(
+			authorization,
+			"inventory.delete",
+			key(formData),
+			{ id },
 		);
+		const outcome = await deleteInventoryItemCommand(context, id);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		if (error instanceof Error && error.message === "INVENTORY_HISTORY_EXISTS")
-			return failure(
-				"Inventory with movement history is retained for auditability.",
-			);
-		if (
-			error instanceof Error &&
-			error.message === "INVENTORY_BALANCE_NOT_ZERO"
-		)
-			return failure(
-				"Inventory balances must be zero before permanent deletion.",
-			);
-		return failure("Only archived, unused inventory records can be deleted.");
+		return failure(
+			message(error, "Only archived, unused inventory records can be deleted."),
+		);
 	}
 	revalidatePath(`/${workspaceId}/inventory`);
 	return success();

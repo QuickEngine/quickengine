@@ -18,6 +18,29 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Shipping now has a durable dispatch API.** Routes cover creating a draft shipment against a
+  confirmed order, editing it, moving it through ready, shipped, in transit, delivered, exception,
+  and cancelled, correcting carrier tracking, and deleting one that never went out. A shipment can
+  never send more units than the order has left, tracking locks once a shipment is delivered or
+  cancelled, and the delivery record behind it moves in the same transaction, so the two can never
+  disagree. Quick.js, the lean CLI, and the QuickDash shipping screens now follow the same package
+  contracts.
+
+- **Inventory now has a durable stock API.** Routes cover tracking a catalog item or variant,
+  changing its low-stock threshold, archiving and restoring it, deleting one that never moved, and
+  reading its movement history. Balances are never set directly: every change is a recorded
+  movement that commits alongside audit and outbox, so the history always explains the number.
+  Overselling available stock and releasing more than is reserved are both refused, and a movement
+  can carry its own reference so the same real-world event is never counted twice. Quick.js, the
+  lean CLI, and the QuickDash inventory screens now follow the same package contracts.
+
+- **Fulfillment now has a durable delivery API.** Routes cover opening a delivery, moving it
+  through pending, in progress, fulfilled, failed, and cancelled, and deleting one that has not
+  started, each committing domain state, audit, and outbox together. Linking a delivery to a paid
+  invoice or a succeeded payment is verified in the same transaction, and a record can only ever
+  have one delivery. Quick.js, the lean CLI, and the QuickDash fulfillment screens now follow the
+  same package contracts.
+
 - **Orders now has a durable commerce API.** Routes cover draft create and edit, the draft to
   placed to confirmed to processing to fulfilled status machine, cancellation, delete, and opening
   the fulfillment record a confirmed order is delivered through, each committing domain state,

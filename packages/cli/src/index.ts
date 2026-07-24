@@ -5,10 +5,13 @@ import { registerCatalogCommands } from "./commands/catalog";
 import { registerClientCommands } from "./commands/clients";
 import { registerConfigCommands } from "./commands/config";
 import { registerDoctorCommand } from "./commands/doctor";
+import { registerFulfillmentCommands } from "./commands/fulfillments";
+import { registerInventoryCommands } from "./commands/inventory";
 import { registerInvoiceCommands } from "./commands/invoices";
 import { registerOrderCommands } from "./commands/orders";
 import { registerPaymentCommands } from "./commands/payments";
 import { registerQuoteCommands } from "./commands/quotes";
+import { registerShipmentCommands } from "./commands/shipments";
 import { errorLine } from "./output";
 
 const program = new Command();
@@ -27,6 +30,9 @@ registerQuoteCommands(program);
 registerInvoiceCommands(program);
 registerPaymentCommands(program);
 registerOrderCommands(program);
+registerFulfillmentCommands(program);
+registerInventoryCommands(program);
+registerShipmentCommands(program);
 registerDoctorCommand(program);
 
 async function main(): Promise<void> {

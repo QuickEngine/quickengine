@@ -268,13 +268,22 @@ function StatusForm({
 		changeFulfillmentStatusAction,
 		INITIAL_STATE,
 	);
+	// A per-submit key so a double-fire replays one durable mutation instead of running two;
+	// a fresh key is minted after each success.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
-		if (state.completionId) router.refresh();
+		if (state.completionId) {
+			setIdempotencyKey(crypto.randomUUID());
+			router.refresh();
+		}
 	}, [state.completionId, router]);
 	return (
 		<form action={action}>
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name="fulfillmentId" value={id} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			<input type="hidden" name="target" value={target} />
 			<SubmitButton label={label} variant={variant} />
 			{state.error ? (
@@ -298,8 +307,12 @@ function FulfillmentDetails({
 		deleteFulfillmentAction,
 		INITIAL_STATE,
 	);
+	const [deleteKey, setDeleteKey] = useState(() => crypto.randomUUID());
 	useEffect(() => {
-		if (deleteState.completionId) router.refresh();
+		if (deleteState.completionId) {
+			setDeleteKey(crypto.randomUUID());
+			router.refresh();
+		}
 	}, [deleteState.completionId, router]);
 	const open =
 		fulfillment.status === "pending" || fulfillment.status === "in_progress";
@@ -396,6 +409,7 @@ function FulfillmentDetails({
 					<form action={deleteAction} className="border-t pt-4">
 						<input type="hidden" name="workspaceId" value={workspaceId} />
 						<input type="hidden" name="fulfillmentId" value={fulfillment.id} />
+						<input type="hidden" name="idempotencyKey" value={deleteKey} />
 						<SubmitButton label="Delete pending record" variant="destructive" />
 						{deleteState.error ? (
 							<p className="mt-2 text-destructive text-xs">

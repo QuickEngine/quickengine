@@ -5,12 +5,15 @@ import { registerClientRecordRoutes } from "./client-records-routes";
 import { loadApiConfig } from "./config";
 import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
+import { registerFulfillmentRoutes } from "./fulfillment-routes";
+import { registerInventoryRoutes } from "./inventory-routes";
 import { registerInvoicesRoutes } from "./invoices-routes";
 import { createJsonLogger } from "./logger";
 import { registerOrdersRoutes } from "./orders-routes";
 import { registerPaymentsRoutes } from "./payments-routes";
 import { registerProductsServicesRoutes } from "./products-services-routes";
 import { registerQuotesRoutes } from "./quotes-routes";
+import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
 import { initializeTelemetry } from "./telemetry";
 
@@ -34,6 +37,9 @@ const app = createApp(config, {
 		registerInvoicesRoutes(app, dependencies);
 		registerPaymentsRoutes(app, dependencies);
 		registerOrdersRoutes(app, dependencies);
+		registerFulfillmentRoutes(app, dependencies);
+		registerInventoryRoutes(app, dependencies);
+		registerShippingRoutes(app, dependencies);
 		registerStripeWebhookRoutes(app, { logger });
 	},
 	telemetry: initializeTelemetry(config),

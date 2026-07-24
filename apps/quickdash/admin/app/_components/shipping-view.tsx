@@ -316,6 +316,10 @@ function Details({
 		updateShipmentTrackingAction,
 		INITIAL,
 	);
+	const [trackingKey, setTrackingKey] = useState(() => crypto.randomUUID());
+	useEffect(() => {
+		if (trackingState.completionId) setTrackingKey(crypto.randomUUID());
+	}, [trackingState.completionId]);
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
@@ -350,6 +354,7 @@ function Details({
 					<form action={trackingAction} className="grid gap-3 md:grid-cols-2">
 						<input type="hidden" name="workspaceId" value={workspaceId} />
 						<input type="hidden" name="shipmentId" value={shipment.id} />
+						<input type="hidden" name="idempotencyKey" value={trackingKey} />
 						<div className="space-y-2">
 							<Label>Carrier</Label>
 							<Input name="carrier" defaultValue={shipment.carrier ?? ""} />
@@ -423,10 +428,18 @@ function StatusForm({
 		action === "delete" ? deleteShipmentAction : changeShipmentStatusAction,
 		INITIAL,
 	);
+	// A per-submit key so a double-fire replays one durable mutation instead of running two.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
+	useEffect(() => {
+		if (state.completionId) setIdempotencyKey(crypto.randomUUID());
+	}, [state.completionId]);
 	return (
 		<form action={formAction} className="inline-flex flex-col gap-1">
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name="shipmentId" value={shipmentId} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			{target && <input type="hidden" name="target" value={target} />}
 			<Submit destructive={action === "delete" || target === "cancelled"}>
 				{action === "delete" ? (

@@ -20,7 +20,8 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"db:parity": "node --env-file=../../.env.local parity.mjs"
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.0.2",

@@ -6,6 +6,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **Quote and invoice problems now explain themselves instead of failing as server errors.**
+  Fifteen ordinary outcomes, including deleting a quote that isn't a draft, accepting one that
+  can't be accepted, an invoice with no lines, and out-of-range quantities or prices, were being
+  reported as unexpected server errors. They now return the right status with a readable
+  explanation, and a new check keeps every module's failures classified so this can't come back.
+
 ### Changed
 
 - **Stripe billing now runs on the QuickEngine API.** The Stripe webhook moved off the marketing

@@ -17,6 +17,10 @@ export const API_CAPABILITIES = [
 	"clients:read",
 	"clients:write",
 	"events:write",
+	"invoicing:read",
+	"invoicing:write",
+	"payments:read",
+	"payments:write",
 	"quotes:read",
 	"quotes:write",
 ] as const;

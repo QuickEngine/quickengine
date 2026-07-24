@@ -135,14 +135,15 @@ async function reconcileInvoice(
 
 // Records money without metering a business outcome. Offline methods use provider
 // "manual"; provider integrations supply stable external IDs for idempotency.
-export async function recordPayment(
+export async function recordPaymentInTx(
+	tx: PaymentTransaction,
 	workspaceId: string,
 	input: RecordPaymentInput,
 ) {
 	const values = recordPaymentInputSchema.parse(input);
 	const now = new Date();
 	const initialStatus = values.status ?? "pending";
-	return db.transaction(async (tx) => {
+	{
 		const [workspace] = await tx
 			.select({ id: quickengineWorkspaces.id })
 			.from(quickengineWorkspaces)
@@ -245,17 +246,25 @@ export async function recordPayment(
 		if (values.invoiceId)
 			await reconcileInvoice(tx, workspaceId, values.invoiceId, now);
 		return payment;
-	});
+	}
 }
 
-export async function setPaymentStatus(
+export async function recordPayment(
+	workspaceId: string,
+	input: RecordPaymentInput,
+) {
+	return db.transaction((tx) => recordPaymentInTx(tx, workspaceId, input));
+}
+
+export async function setPaymentStatusInTx(
+	tx: PaymentTransaction,
 	workspaceId: string,
 	id: string,
 	status: PaymentStatus,
 	options: { now?: Date } = {},
 ) {
 	const now = options.now ?? new Date();
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(payments)
@@ -305,17 +314,29 @@ export async function setPaymentStatus(
 		if (current.invoiceId)
 			await reconcileInvoice(tx, workspaceId, current.invoiceId, now);
 		return payment;
-	});
+	}
 }
 
-export async function refundPayment(
+export async function setPaymentStatus(
+	workspaceId: string,
+	id: string,
+	status: PaymentStatus,
+	options: { now?: Date } = {},
+) {
+	return db.transaction((tx) =>
+		setPaymentStatusInTx(tx, workspaceId, id, status, options),
+	);
+}
+
+export async function refundPaymentInTx(
+	tx: PaymentTransaction,
 	workspaceId: string,
 	id: string,
 	input: RefundPaymentInput,
 ) {
 	const values = refundPaymentInputSchema.parse(input);
 	const now = new Date();
-	return db.transaction(async (tx) => {
+	{
 		const [payment] = await tx
 			.select()
 			.from(payments)
@@ -364,7 +385,15 @@ export async function refundPayment(
 		if (payment.invoiceId)
 			await reconcileInvoice(tx, workspaceId, payment.invoiceId, now);
 		return refund;
-	});
+	}
+}
+
+export async function refundPayment(
+	workspaceId: string,
+	id: string,
+	input: RefundPaymentInput,
+) {
+	return db.transaction((tx) => refundPaymentInTx(tx, workspaceId, id, input));
 }
 
 export async function getPayment(workspaceId: string, id: string) {

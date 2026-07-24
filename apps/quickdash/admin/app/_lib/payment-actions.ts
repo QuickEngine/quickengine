@@ -1,12 +1,15 @@
 "use server";
 
+import {
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
 import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	getPayment,
 	paymentsSettingsSchema,
-	recordPayment,
-	refundPayment,
+	recordPaymentCommand,
+	refundPaymentCommand,
 } from "@quickengine/mod-payments";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -20,6 +23,10 @@ export type PaymentActionState = {
 const failure = (error: string): PaymentActionState => ({
 	error,
 	completionId: null,
+});
+const success = (): PaymentActionState => ({
+	error: null,
+	completionId: crypto.randomUUID(),
 });
 
 async function authorize(workspaceId: string) {
@@ -40,9 +47,41 @@ async function authorize(workspaceId: string) {
 		} as const;
 	return {
 		ok: true,
+		access,
+		actorId: session.user.id,
 		settings: paymentsSettingsSchema.parse(module.settings),
 	} as const;
 }
+
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	failure(
+		kind === "conflict"
+			? "This request was already used with different details. Try again."
+			: "This payment change is still being processed. Try again shortly.",
+	);
+
+const key = (formData: FormData) =>
+	String(formData.get("idempotencyKey") ?? "");
 
 function decimalToCents(value: FormDataEntryValue | null, label: string) {
 	const text = String(value ?? "").trim();
@@ -58,6 +97,17 @@ function decimalToCents(value: FormDataEntryValue | null, label: string) {
 	return cents;
 }
 
+const friendlyFailure = (error: unknown, fallback: string) => {
+	if (error instanceof Error && error.name === "DomainError")
+		return error.message;
+	if (error instanceof Error) {
+		if (error.name === "ZodError" || error.message.startsWith("Amount "))
+			return "Check the amount and payment details.";
+		if (error.message.startsWith("Refund ")) return "Check the refund amount.";
+	}
+	return fallback;
+};
+
 export async function recordOfflinePaymentAction(
 	_previous: PaymentActionState,
 	formData: FormData,
@@ -65,19 +115,8 @@ export async function recordOfflinePaymentAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
-
-	// Idempotency: a double-fire or retry can't record the same payment twice
-	// (a duplicate payment would mis-count money against the invoice).
-	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	const idempotencyScope = `payments.record:${workspaceId}`;
-	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
-		revalidatePath(`/${workspaceId}/payments`);
-		revalidatePath(`/${workspaceId}/invoicing`);
-		return { error: null, completionId: crypto.randomUUID() };
-	}
-
 	try {
-		await recordPayment(workspaceId, {
+		const input = {
 			invoiceId: String(formData.get("invoiceId") ?? "") || null,
 			clientId: String(formData.get("clientId") ?? "") || null,
 			amountCents: decimalToCents(formData.get("amount"), "Amount"),
@@ -88,28 +127,27 @@ export async function recordOfflinePaymentAction(
 			paymentMethod: String(formData.get("paymentMethod") ?? "other"),
 			reference: String(formData.get("reference") ?? "") || null,
 			notes: String(formData.get("notes") ?? "") || null,
-			status: "succeeded",
-		});
+			status: "succeeded" as const,
+		};
+		const context = await mutationContext(
+			authorization,
+			"payments.record",
+			key(formData),
+			input,
+		);
+		const outcome = await recordPaymentCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		// The claim meant "we're doing the work" — the work failed, so give the key back
-		// or the user's corrected retry would be swallowed as a duplicate. This matters most
-		// here: a mistyped amount is a routine failure, and the retry must actually record.
-		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
-		if (error instanceof Error) {
-			if (error.message === "INVOICE_NOT_PAYABLE")
-				return failure("Only issued invoices can receive payments.");
-			if (error.message === "PAYMENT_CURRENCY_MISMATCH")
-				return failure("The payment currency must match the invoice.");
-			if (error.message === "PAYMENT_EXCEEDS_INVOICE_BALANCE")
-				return failure("The payment exceeds the invoice's remaining balance.");
-			if (error.name === "ZodError" || error.message.startsWith("Amount "))
-				return failure("Check the amount and payment details.");
-		}
-		return failure("We couldn't record this payment. Please try again.");
+		return failure(
+			friendlyFailure(
+				error,
+				"We couldn't record this payment. Please try again.",
+			),
+		);
 	}
 	revalidatePath(`/${workspaceId}/payments`);
 	revalidatePath(`/${workspaceId}/invoicing`);
-	return { error: null, completionId: crypto.randomUUID() };
+	return success();
 }
 
 export async function refundOfflinePaymentAction(
@@ -128,19 +166,27 @@ export async function refundOfflinePaymentAction(
 				"Provider payments must be refunded through their connected provider.",
 			);
 		}
-		await refundPayment(workspaceId, paymentId, {
+		const input = {
 			amountCents: decimalToCents(formData.get("amount"), "Refund"),
 			reason: String(formData.get("reason") ?? "") || null,
-		});
+		};
+		const context = await mutationContext(
+			authorization,
+			"payments.refund",
+			key(formData),
+			{ id: paymentId, input },
+		);
+		const outcome = await refundPaymentCommand(context, paymentId, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		if (error instanceof Error && error.message === "REFUND_EXCEEDS_PAYMENT") {
-			return failure(
-				"The refund exceeds the payment's remaining refundable amount.",
-			);
-		}
-		return failure("We couldn't record this refund. Please try again.");
+		return failure(
+			friendlyFailure(
+				error,
+				"We couldn't record this refund. Please try again.",
+			),
+		);
 	}
 	revalidatePath(`/${workspaceId}/payments`);
 	revalidatePath(`/${workspaceId}/invoicing`);
-	return { error: null, completionId: crypto.randomUUID() };
+	return success();
 }

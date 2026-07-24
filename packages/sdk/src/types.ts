@@ -262,6 +262,108 @@ export type QuickQuote = {
 	[field: string]: unknown;
 };
 
+export type QuickInvoiceStatus = "draft" | "sent" | "paid" | "void";
+
+/** A line item on an invoice. */
+export type QuickInvoiceLineInput = {
+	description: string;
+	quantity: number;
+	unitPriceCents: number;
+	position?: number;
+};
+
+/** Body for creating an invoice over `POST /v1/invoices`. */
+export type QuickInvoiceInput = {
+	lineItems: QuickInvoiceLineInput[];
+	clientId?: string | null;
+	currency?: string;
+	taxCents?: number;
+	notes?: string | null;
+	numberPrefix?: string;
+};
+
+/** A line item as returned on an invoice. */
+export type QuickInvoiceLine = {
+	id: string;
+	description: string;
+	quantity: number;
+	unitPriceCents: number;
+	position: number;
+	[field: string]: unknown;
+};
+
+/** An invoice. The full record is returned; the common fields are typed here. */
+export type QuickInvoice = {
+	id: string;
+	workspaceId: string;
+	number: string;
+	status: QuickInvoiceStatus;
+	clientId: string | null;
+	clientName: string | null;
+	currency: string;
+	subtotalCents: number;
+	taxCents: number;
+	totalCents: number;
+	notes: string | null;
+	dueAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	lineItems?: QuickInvoiceLine[];
+	[field: string]: unknown;
+};
+
+export type QuickPaymentStatus =
+	| "pending"
+	| "processing"
+	| "succeeded"
+	| "failed"
+	| "disputed"
+	| "refunded";
+
+/** Body for recording a payment over `POST /v1/payments`. */
+export type QuickPaymentInput = {
+	amountCents: number;
+	invoiceId?: string | null;
+	clientId?: string | null;
+	currency?: string;
+	applicationFeeCents?: number;
+	status?: "pending" | "processing" | "succeeded" | "failed";
+	provider?: string;
+	paymentMethod?: string;
+	externalPaymentId?: string | null;
+	stripePaymentIntentId?: string | null;
+	reference?: string | null;
+	notes?: string | null;
+};
+
+/** Body for refunding a payment over `POST /v1/payments/:id/refund`. */
+export type QuickRefundInput = {
+	amountCents: number;
+	externalRefundId?: string | null;
+	reason?: string | null;
+};
+
+/** A payment. The full record is returned; the common fields are typed here. */
+export type QuickPayment = {
+	id: string;
+	workspaceId: string;
+	invoiceId: string | null;
+	clientId: string | null;
+	amountCents: number;
+	applicationFeeCents: number;
+	currency: string;
+	status: QuickPaymentStatus;
+	provider: string;
+	createdAt: string;
+	updatedAt: string;
+	refunds?: Array<{
+		id: string;
+		amountCents: number;
+		[field: string]: unknown;
+	}>;
+	[field: string]: unknown;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

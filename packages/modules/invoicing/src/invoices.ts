@@ -105,7 +105,8 @@ async function getClientSnapshot(
 // Create an invoice with its line items. NOT metered — creating an invoice is a
 // business outcome, not billable infrastructure (see the manifest). Totals are
 // computed server-side from the line items, never trusted from the client.
-export async function createInvoice(
+export async function createInvoiceInTx(
+	tx: InvoiceTransaction,
 	workspaceId: string,
 	input: CreateInvoiceInput,
 ) {
@@ -114,7 +115,7 @@ export async function createInvoice(
 	if (!Number.isSafeInteger(totals.totalCents)) {
 		throw new Error("INVOICE_TOTAL_OUT_OF_RANGE");
 	}
-	return db.transaction(async (tx) => {
+	{
 		const [workspace] = await tx
 			.select({ id: quickengineWorkspaces.id })
 			.from(quickengineWorkspaces)
@@ -153,7 +154,14 @@ export async function createInvoice(
 		);
 
 		return invoice;
-	});
+	}
+}
+
+export async function createInvoice(
+	workspaceId: string,
+	input: CreateInvoiceInput,
+) {
+	return db.transaction((tx) => createInvoiceInTx(tx, workspaceId, input));
 }
 
 /**
@@ -298,7 +306,8 @@ export async function getInvoice(workspaceId: string, id: string) {
 }
 
 /** Replace a human-authored draft while preserving its immutable invoice number. */
-export async function updateDraftInvoice(
+export async function updateDraftInvoiceInTx(
+	tx: InvoiceTransaction,
 	workspaceId: string,
 	id: string,
 	input: UpdateDraftInvoiceInput,
@@ -310,7 +319,7 @@ export async function updateDraftInvoice(
 	if (!Number.isSafeInteger(totals.totalCents)) {
 		throw new Error("INVOICE_TOTAL_OUT_OF_RANGE");
 	}
-	return db.transaction(async (tx) => {
+	{
 		const [invoice] = await tx
 			.select()
 			.from(invoices)
@@ -355,17 +364,28 @@ export async function updateDraftInvoice(
 			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
 			.returning();
 		return updated;
-	});
+	}
+}
+
+export async function updateDraftInvoice(
+	workspaceId: string,
+	id: string,
+	input: UpdateDraftInvoiceInput,
+) {
+	return db.transaction((tx) =>
+		updateDraftInvoiceInTx(tx, workspaceId, id, input),
+	);
 }
 
 /** Move an invoice to a new status, stamping the matching timestamp. */
-export async function setInvoiceStatus(
+export async function setInvoiceStatusInTx(
+	tx: InvoiceTransaction,
 	workspaceId: string,
 	id: string,
 	status: InvoiceStatus,
 	options: { now?: Date } = {},
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select({ status: invoices.status })
 			.from(invoices)
@@ -390,12 +410,27 @@ export async function setInvoiceStatus(
 			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
 			.returning();
 		return invoice;
-	});
+	}
+}
+
+export async function setInvoiceStatus(
+	workspaceId: string,
+	id: string,
+	status: InvoiceStatus,
+	options: { now?: Date } = {},
+) {
+	return db.transaction((tx) =>
+		setInvoiceStatusInTx(tx, workspaceId, id, status, options),
+	);
 }
 
 /** Permanently delete only an ordinary draft; issued financial history is preserved. */
-export async function deleteInvoice(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteInvoiceInTx(
+	tx: InvoiceTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [invoice] = await tx
 			.select({ status: invoices.status })
 			.from(invoices)
@@ -416,5 +451,9 @@ export async function deleteInvoice(workspaceId: string, id: string) {
 			.where(and(eq(invoices.workspaceId, workspaceId), eq(invoices.id, id)))
 			.returning({ id: invoices.id });
 		return deleted;
-	});
+	}
+}
+
+export async function deleteInvoice(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteInvoiceInTx(tx, workspaceId, id));
 }

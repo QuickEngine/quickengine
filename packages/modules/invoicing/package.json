@@ -19,6 +19,7 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"zod": "^4.3.6"
 	},

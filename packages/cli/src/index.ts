@@ -5,6 +5,8 @@ import { registerCatalogCommands } from "./commands/catalog";
 import { registerClientCommands } from "./commands/clients";
 import { registerConfigCommands } from "./commands/config";
 import { registerDoctorCommand } from "./commands/doctor";
+import { registerInvoiceCommands } from "./commands/invoices";
+import { registerPaymentCommands } from "./commands/payments";
 import { registerQuoteCommands } from "./commands/quotes";
 import { errorLine } from "./output";
 
@@ -21,6 +23,8 @@ registerConfigCommands(program);
 registerClientCommands(program);
 registerCatalogCommands(program);
 registerQuoteCommands(program);
+registerInvoiceCommands(program);
+registerPaymentCommands(program);
 registerDoctorCommand(program);
 
 async function main(): Promise<void> {

@@ -193,9 +193,15 @@ function AdjustmentDialog({
 	const [open, setOpen] = useState(false);
 	const [state, action] = useActionState(adjustInventoryAction, INITIAL);
 	const router = useRouter();
+	// A per-submit key so a double-fire records one movement, not two. Stock is the one
+	// place a duplicated write silently corrupts a real number rather than erroring.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
+			setIdempotencyKey(crypto.randomUUID());
 			router.refresh();
 		}
 	}, [state.completionId, router]);
@@ -208,6 +214,7 @@ function AdjustmentDialog({
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
 					<input type="hidden" name="inventoryItemId" value={item.id} />
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>Record stock movement</DialogTitle>
 						<DialogDescription>
@@ -273,10 +280,17 @@ function ActionForm({
 	destructive?: boolean;
 }) {
 	const [state, formAction] = useActionState(action, INITIAL);
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
+	useEffect(() => {
+		if (state.completionId) setIdempotencyKey(crypto.randomUUID());
+	}, [state.completionId]);
 	return (
 		<form action={formAction} className="inline-flex flex-col gap-1">
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name="inventoryItemId" value={itemId} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			{target && <input type="hidden" name="target" value={target} />}
 			<Submit destructive={destructive}>{children}</Submit>
 			{state.error && (
@@ -297,6 +311,10 @@ function Details({
 		updateInventoryItemAction,
 		INITIAL,
 	);
+	const [thresholdKey, setThresholdKey] = useState(() => crypto.randomUUID());
+	useEffect(() => {
+		if (thresholdState.completionId) setThresholdKey(crypto.randomUUID());
+	}, [thresholdState.completionId]);
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
@@ -362,6 +380,7 @@ function Details({
 					<form action={thresholdAction} className="flex items-end gap-3">
 						<input type="hidden" name="workspaceId" value={workspaceId} />
 						<input type="hidden" name="inventoryItemId" value={item.id} />
+						<input type="hidden" name="idempotencyKey" value={thresholdKey} />
 						<div className="space-y-2">
 							<Label>Low-stock threshold</Label>
 							<Input

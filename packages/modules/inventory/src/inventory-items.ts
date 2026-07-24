@@ -17,6 +17,10 @@ import {
 	nextInventoryBalance,
 } from "./inventory";
 
+export type InventoryTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
 async function assertTarget(
 	executor: Pick<typeof db, "select">,
 	workspaceId: string,
@@ -50,26 +54,34 @@ async function assertTarget(
 	}
 }
 
-export async function createInventoryItem(
+export async function createInventoryItemInTx(
+	tx: InventoryTransaction,
 	workspaceId: string,
 	input: InventoryItemInput,
 ) {
 	const parsed = inventoryItemInputSchema.parse(input);
-	return db.transaction(async (tx) => {
-		const [workspace] = await tx
-			.select({ id: quickengineWorkspaces.id })
-			.from(quickengineWorkspaces)
-			.where(eq(quickengineWorkspaces.id, workspaceId))
-			.limit(1)
-			.for("update");
-		if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
-		await assertTarget(tx, workspaceId, parsed);
-		const [created] = await tx
-			.insert(inventoryItems)
-			.values({ workspaceId, ...parsed })
-			.returning();
-		return created;
-	});
+	const [workspace] = await tx
+		.select({ id: quickengineWorkspaces.id })
+		.from(quickengineWorkspaces)
+		.where(eq(quickengineWorkspaces.id, workspaceId))
+		.limit(1)
+		.for("update");
+	if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
+	await assertTarget(tx, workspaceId, parsed);
+	const [created] = await tx
+		.insert(inventoryItems)
+		.values({ workspaceId, ...parsed })
+		.returning();
+	return created;
+}
+
+export async function createInventoryItem(
+	workspaceId: string,
+	input: InventoryItemInput,
+) {
+	return db.transaction((tx) =>
+		createInventoryItemInTx(tx, workspaceId, input),
+	);
 }
 
 export async function listInventoryItems(workspaceId: string) {
@@ -94,7 +106,8 @@ export async function getInventoryItem(workspaceId: string, id: string) {
 	return item;
 }
 
-export async function updateInventoryItem(
+export async function updateInventoryItemInTx(
+	tx: InventoryTransaction,
 	workspaceId: string,
 	id: string,
 	input: { lowStockThreshold?: number; metadata?: Record<string, unknown> },
@@ -110,7 +123,7 @@ export async function updateInventoryItem(
 	if (Object.keys(input).length === 0) {
 		throw new Error("INVENTORY_UPDATE_EMPTY");
 	}
-	const [updated] = await db
+	const [updated] = await tx
 		.update(inventoryItems)
 		.set({ ...input, updatedAt: new Date() })
 		.where(
@@ -124,52 +137,71 @@ export async function updateInventoryItem(
 	return updated;
 }
 
+export async function updateInventoryItem(
+	workspaceId: string,
+	id: string,
+	input: { lowStockThreshold?: number; metadata?: Record<string, unknown> },
+) {
+	return db.transaction((tx) =>
+		updateInventoryItemInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function setInventoryItemStatusInTx(
+	tx: InventoryTransaction,
+	workspaceId: string,
+	id: string,
+	status: "active" | "archived",
+) {
+	const [current] = await tx
+		.select()
+		.from(inventoryItems)
+		.where(
+			and(
+				eq(inventoryItems.workspaceId, workspaceId),
+				eq(inventoryItems.id, id),
+			),
+		)
+		.limit(1)
+		.for("update");
+	if (!current) throw new Error("INVENTORY_ITEM_NOT_FOUND");
+	if (current.status === status) throw new Error("INVENTORY_STATUS_UNCHANGED");
+	if (status === "archived" && current.reserved > 0)
+		throw new Error("INVENTORY_HAS_RESERVATIONS");
+	const [updated] = await tx
+		.update(inventoryItems)
+		.set({ status, updatedAt: new Date() })
+		.where(
+			and(
+				eq(inventoryItems.workspaceId, workspaceId),
+				eq(inventoryItems.id, id),
+				eq(inventoryItems.status, current.status),
+			),
+		)
+		.returning();
+	if (!updated) throw new Error("INVENTORY_CONCURRENT_UPDATE");
+	return updated;
+}
+
 export async function setInventoryItemStatus(
 	workspaceId: string,
 	id: string,
 	status: "active" | "archived",
 ) {
-	return db.transaction(async (tx) => {
-		const [current] = await tx
-			.select()
-			.from(inventoryItems)
-			.where(
-				and(
-					eq(inventoryItems.workspaceId, workspaceId),
-					eq(inventoryItems.id, id),
-				),
-			)
-			.limit(1)
-			.for("update");
-		if (!current) throw new Error("INVENTORY_ITEM_NOT_FOUND");
-		if (current.status === status)
-			throw new Error("INVENTORY_STATUS_UNCHANGED");
-		if (status === "archived" && current.reserved > 0)
-			throw new Error("INVENTORY_HAS_RESERVATIONS");
-		const [updated] = await tx
-			.update(inventoryItems)
-			.set({ status, updatedAt: new Date() })
-			.where(
-				and(
-					eq(inventoryItems.workspaceId, workspaceId),
-					eq(inventoryItems.id, id),
-					eq(inventoryItems.status, current.status),
-				),
-			)
-			.returning();
-		if (!updated) throw new Error("INVENTORY_CONCURRENT_UPDATE");
-		return updated;
-	});
+	return db.transaction((tx) =>
+		setInventoryItemStatusInTx(tx, workspaceId, id, status),
+	);
 }
 
-export async function applyInventoryAdjustment(
+export async function applyInventoryAdjustmentInTx(
+	tx: InventoryTransaction,
 	workspaceId: string,
 	id: string,
 	input: InventoryAdjustmentInput,
 	options: { allowNegativeStock?: boolean } = {},
 ) {
 	const parsed = inventoryAdjustmentInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(inventoryItems)
@@ -228,7 +260,18 @@ export async function applyInventoryAdjustment(
 			})
 			.where(eq(inventoryItems.id, id));
 		return adjustment;
-	});
+	}
+}
+
+export async function applyInventoryAdjustment(
+	workspaceId: string,
+	id: string,
+	input: InventoryAdjustmentInput,
+	options: { allowNegativeStock?: boolean } = {},
+) {
+	return db.transaction((tx) =>
+		applyInventoryAdjustmentInTx(tx, workspaceId, id, input, options),
+	);
 }
 
 export async function listInventoryAdjustments(
@@ -259,8 +302,12 @@ export async function hasInventoryAdjustments(workspaceId: string) {
 	return adjustment !== undefined;
 }
 
-export async function deleteInventoryItem(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteInventoryItemInTx(
+	tx: InventoryTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [current] = await tx
 			.select()
 			.from(inventoryItems)
@@ -299,5 +346,9 @@ export async function deleteInventoryItem(workspaceId: string, id: string) {
 			)
 			.returning();
 		return deleted;
-	});
+	}
+}
+
+export async function deleteInventoryItem(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteInventoryItemInTx(tx, workspaceId, id));
 }

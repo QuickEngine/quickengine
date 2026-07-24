@@ -25,6 +25,10 @@ import {
 	shipmentTrackingPatchSchema,
 } from "./shipment";
 
+export type ShipmentTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
 async function assertShippableLines(
 	executor: Pick<typeof db, "select">,
 	workspaceId: string,
@@ -110,12 +114,13 @@ async function replaceShipmentChildren(
 	);
 }
 
-export async function createShipment(
+export async function createShipmentInTx(
+	tx: ShipmentTransaction,
 	workspaceId: string,
 	input: ShipmentInput,
 ) {
 	const parsed = shipmentInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const [order] = await tx
 			.select({
 				id: orders.id,
@@ -160,7 +165,7 @@ export async function createShipment(
 			.returning();
 		await replaceShipmentChildren(tx, shipment.id, parsed);
 		return shipment;
-	});
+	}
 }
 
 export async function listShipments(workspaceId: string, orderId?: string) {
@@ -192,13 +197,14 @@ export async function getShipment(workspaceId: string, id: string) {
 	return { ...shipment, lines, parcels };
 }
 
-export async function updateDraftShipment(
+export async function updateDraftShipmentInTx(
+	tx: ShipmentTransaction,
 	workspaceId: string,
 	id: string,
 	input: ShipmentInput,
 ) {
 	const parsed = shipmentInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select({ orderId: shipments.orderId, status: shipments.status })
 			.from(shipments)
@@ -238,16 +244,17 @@ export async function updateDraftShipment(
 			.returning();
 		await replaceShipmentChildren(tx, id, parsed);
 		return updated;
-	});
+	}
 }
 
-export async function setShipmentStatus(
+export async function setShipmentStatusInTx(
+	tx: ShipmentTransaction,
 	workspaceId: string,
 	id: string,
 	status: ShipmentStatus,
 	options: { requireTracking?: boolean } = {},
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select({
 				status: shipments.status,
@@ -309,16 +316,17 @@ export async function setShipmentStatus(
 			);
 		}
 		return updated;
-	});
+	}
 }
 
-export async function updateShipmentTracking(
+export async function updateShipmentTrackingInTx(
+	tx: ShipmentTransaction,
 	workspaceId: string,
 	id: string,
 	input: ShipmentTrackingPatch,
 ) {
 	const parsed = shipmentTrackingPatchSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select({ status: shipments.status })
 			.from(shipments)
@@ -335,11 +343,15 @@ export async function updateShipmentTracking(
 			.where(and(eq(shipments.workspaceId, workspaceId), eq(shipments.id, id)))
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function deleteShipment(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteShipmentInTx(
+	tx: ShipmentTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [current] = await tx
 			.select({
 				status: shipments.status,
@@ -359,5 +371,47 @@ export async function deleteShipment(workspaceId: string, id: string) {
 			.returning();
 		await deleteFulfillment(workspaceId, current.fulfillmentId, tx);
 		return deleted;
-	});
+	}
+}
+
+export async function createShipment(
+	workspaceId: string,
+	input: ShipmentInput,
+) {
+	return db.transaction((tx) => createShipmentInTx(tx, workspaceId, input));
+}
+
+export async function updateDraftShipment(
+	workspaceId: string,
+	id: string,
+	input: ShipmentInput,
+) {
+	return db.transaction((tx) =>
+		updateDraftShipmentInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function setShipmentStatus(
+	workspaceId: string,
+	id: string,
+	status: ShipmentStatus,
+	options: { requireTracking?: boolean } = {},
+) {
+	return db.transaction((tx) =>
+		setShipmentStatusInTx(tx, workspaceId, id, status, options),
+	);
+}
+
+export async function updateShipmentTracking(
+	workspaceId: string,
+	id: string,
+	input: ShipmentTrackingPatch,
+) {
+	return db.transaction((tx) =>
+		updateShipmentTrackingInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function deleteShipment(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteShipmentInTx(tx, workspaceId, id));
 }

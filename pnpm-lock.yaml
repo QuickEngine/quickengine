@@ -1018,6 +1018,9 @@ importers:
 
   packages/modules/fulfillment:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1037,6 +1040,9 @@ importers:
 
   packages/modules/inventory:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1078,6 +1084,9 @@ importers:
 
   packages/modules/orders:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1225,6 +1234,9 @@ importers:
 
   packages/modules/shipping:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1577,9 +1589,18 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../../packages/modules/client-records
+      '@quickengine/mod-fulfillment':
+        specifier: workspace:*
+        version: link:../../packages/modules/fulfillment
+      '@quickengine/mod-inventory':
+        specifier: workspace:*
+        version: link:../../packages/modules/inventory
       '@quickengine/mod-invoicing':
         specifier: workspace:*
         version: link:../../packages/modules/invoicing
+      '@quickengine/mod-orders':
+        specifier: workspace:*
+        version: link:../../packages/modules/orders
       '@quickengine/mod-payments':
         specifier: workspace:*
         version: link:../../packages/modules/payments
@@ -1589,6 +1610,9 @@ importers:
       '@quickengine/mod-quotes-estimates':
         specifier: workspace:*
         version: link:../../packages/modules/quotes-estimates
+      '@quickengine/mod-shipping':
+        specifier: workspace:*
+        version: link:../../packages/modules/shipping
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../packages/module-registry

@@ -364,6 +364,265 @@ export type QuickPayment = {
 	[field: string]: unknown;
 };
 
+export type QuickOrderStatus =
+	| "draft"
+	| "placed"
+	| "confirmed"
+	| "processing"
+	| "fulfilled"
+	| "cancelled";
+
+/** A purchased line on an order. Snapshots stay immutable once the order is placed. */
+export type QuickOrderLineInput = {
+	name: string;
+	type: "physical" | "digital" | "service" | "rental";
+	quantity: number;
+	unitPriceCents: number;
+	catalogItemId?: string | null;
+	catalogItemVariantId?: string | null;
+	sku?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+/** Body for creating an order over `POST /v1/orders`. */
+export type QuickOrderInput = {
+	clientId: string;
+	lines: QuickOrderLineInput[];
+	currency?: string;
+	notes?: string | null;
+	metadata?: Record<string, unknown>;
+	numberPrefix?: string;
+};
+
+/** A line item as returned on an order. */
+export type QuickOrderLine = {
+	id: string;
+	name: string;
+	type: string;
+	quantity: number;
+	unitPriceCents: number;
+	lineTotalCents: number;
+	position: number;
+	[field: string]: unknown;
+};
+
+/** An order. The full record is returned; the common fields are typed here. */
+export type QuickOrder = {
+	id: string;
+	workspaceId: string;
+	number: string;
+	status: QuickOrderStatus;
+	clientId: string | null;
+	clientName: string;
+	clientEmail: string | null;
+	fulfillmentId: string | null;
+	currency: string;
+	subtotalCents: number;
+	totalCents: number;
+	notes: string | null;
+	createdAt: string;
+	updatedAt: string;
+	lineItems?: QuickOrderLine[];
+	[field: string]: unknown;
+};
+
+/** The fulfillment record opened for a confirmed order. */
+export type QuickOrderFulfillmentRef = {
+	fulfillmentId: string;
+	orderId: string;
+};
+
+export type QuickFulfillmentStatus =
+	| "pending"
+	| "in_progress"
+	| "fulfilled"
+	| "failed"
+	| "cancelled";
+
+export type QuickFulfillmentKind =
+	| "physical"
+	| "digital"
+	| "service"
+	| "pickup"
+	| "other";
+
+/** Body for opening a delivery over `POST /v1/fulfillments`. */
+export type QuickFulfillmentInput = {
+	title: string;
+	kind?: QuickFulfillmentKind;
+	clientId?: string | null;
+	invoiceId?: string | null;
+	paymentId?: string | null;
+	/** Set together with `sourceRecordId` to link the delivery to its originating record. */
+	sourceModule?: string | null;
+	sourceRecordId?: string | null;
+	instructions?: string | null;
+	details?: Record<string, unknown>;
+	dueAt?: Date | string | null;
+};
+
+/** A delivery record. The full record is returned; the common fields are typed here. */
+export type QuickFulfillment = {
+	id: string;
+	workspaceId: string;
+	title: string;
+	kind: QuickFulfillmentKind;
+	status: QuickFulfillmentStatus;
+	clientId: string | null;
+	clientName: string | null;
+	invoiceId: string | null;
+	paymentId: string | null;
+	sourceModule: string | null;
+	sourceRecordId: string | null;
+	instructions: string | null;
+	details: Record<string, unknown>;
+	dueAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickInventoryStatus = "active" | "archived";
+
+/**
+ * A stock movement. `reserve` and `release` move units between available and reserved without
+ * changing what is physically on hand; `fulfill_reserved` consumes a reservation.
+ */
+export type QuickInventoryAdjustmentKind =
+	| "receive"
+	| "sale"
+	| "customer_return"
+	| "damage"
+	| "correction_in"
+	| "correction_out"
+	| "reserve"
+	| "release"
+	| "fulfill_reserved";
+
+/** Body for tracking stock over `POST /v1/inventory`. */
+export type QuickInventoryItemInput = {
+	catalogItemId: string;
+	catalogItemVariantId?: string | null;
+	status?: QuickInventoryStatus;
+	lowStockThreshold?: number;
+	metadata?: Record<string, unknown>;
+};
+
+/** Body for recording a movement over `POST /v1/inventory/:id/adjustments`. */
+export type QuickInventoryAdjustmentInput = {
+	kind: QuickInventoryAdjustmentKind;
+	quantity: number;
+	note?: string | null;
+	/** Links the movement to a record in another module without Inventory owning it. */
+	referenceId?: string | null;
+	/**
+	 * Business-level replay guard, separate from the request's `Idempotency-Key`: it stops the
+	 * same real-world event being counted twice even from a different caller.
+	 */
+	idempotencyKey?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+/** A tracked stock record. */
+export type QuickInventoryItem = {
+	id: string;
+	workspaceId: string;
+	catalogItemId: string;
+	catalogItemVariantId: string | null;
+	status: QuickInventoryStatus;
+	onHand: number;
+	reserved: number;
+	lowStockThreshold: number;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
+/** A recorded stock movement and the balance it produced. */
+export type QuickInventoryAdjustment = {
+	id: string;
+	workspaceId: string;
+	inventoryItemId: string;
+	kind: QuickInventoryAdjustmentKind;
+	quantity: number;
+	onHandDelta: number;
+	reservedDelta: number;
+	resultingOnHand: number;
+	resultingReserved: number;
+	note: string | null;
+	referenceId: string | null;
+	createdAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickShipmentStatus =
+	| "draft"
+	| "ready"
+	| "shipped"
+	| "in_transit"
+	| "delivered"
+	| "exception"
+	| "cancelled";
+
+/** Where a shipment is going. `countryCode` is a two-letter ISO code. */
+export type QuickShippingAddress = {
+	recipientName: string;
+	line1: string;
+	city: string;
+	countryCode: string;
+	company?: string | null;
+	line2?: string | null;
+	region?: string | null;
+	postalCode?: string | null;
+	phone?: string | null;
+	email?: string | null;
+};
+
+/** Body for creating a shipment over `POST /v1/shipments`. */
+export type QuickShipmentInput = {
+	orderId: string;
+	destination: QuickShippingAddress;
+	lines: Array<{ orderLineItemId: string; quantity: number }>;
+	parcels: Array<{
+		weightGrams: number;
+		lengthMillimeters?: number | null;
+		widthMillimeters?: number | null;
+		heightMillimeters?: number | null;
+	}>;
+	carrier?: string | null;
+	serviceLevel?: string | null;
+	trackingNumber?: string | null;
+	trackingUrl?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+/** Carrier tracking details, settable until the shipment is delivered or cancelled. */
+export type QuickShipmentTrackingPatch = {
+	carrier?: string | null;
+	serviceLevel?: string | null;
+	trackingNumber?: string | null;
+	trackingUrl?: string | null;
+};
+
+/** A shipment. The full record is returned; the common fields are typed here. */
+export type QuickShipment = {
+	id: string;
+	workspaceId: string;
+	orderId: string;
+	fulfillmentId: string;
+	status: QuickShipmentStatus;
+	destination: QuickShippingAddress;
+	carrier: string | null;
+	serviceLevel: string | null;
+	trackingNumber: string | null;
+	trackingUrl: string | null;
+	createdAt: string;
+	updatedAt: string;
+	lines?: Array<{ orderLineItemId: string; quantity: number }>;
+	parcels?: Array<{ weightGrams: number; [field: string]: unknown }>;
+	[field: string]: unknown;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

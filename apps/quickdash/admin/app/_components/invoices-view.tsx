@@ -327,11 +327,10 @@ function InvoiceEditor({
 			<DialogContent className="sm:max-w-3xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{invoice ? (
+					{invoice && (
 						<input type="hidden" name="invoiceId" value={invoice.id} />
-					) : (
-						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					)}
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>
 							{invoice ? `Edit ${invoice.number}` : "Create invoice"}

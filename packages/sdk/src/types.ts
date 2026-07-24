@@ -110,33 +110,78 @@ export type QuickApiErrorBody = {
 	details?: unknown;
 };
 
+export type QuickCatalogItemType =
+	| "physical"
+	| "digital"
+	| "service"
+	| "package"
+	| "rental";
+export type QuickPricingModel =
+	| "fixed"
+	| "starting_at"
+	| "hourly"
+	| "custom_quote"
+	| "free";
+export type QuickCatalogStatus = "draft" | "active" | "archived";
+export type QuickVariantOption = { name: string; value: string };
+
 /**
- * A published catalog item as returned by `GET /v1/catalog`. This is the public
- * storefront shape — internal columns (status, workspace, timestamps) are not exposed.
+ * A catalog item, as returned by the `/v1/catalog` routes. One transparent shape for both the
+ * admin surface (all statuses) and the storefront (a publishable key is clamped to `active`).
  */
 export type QuickCatalogItem = {
 	id: string;
+	workspaceId: string;
 	name: string;
 	description: string | null;
-	type: "physical" | "digital" | "service" | "package" | "rental";
+	type: QuickCatalogItemType;
+	status: QuickCatalogStatus;
 	sku: string | null;
-	pricingModel: "fixed" | "starting_at" | "hourly" | "custom_quote" | "free";
+	pricingModel: QuickPricingModel;
 	priceCents: number | null;
 	currency: string;
 	unitLabel: string | null;
+	metadata: Record<string, unknown>;
+	createdAt: string;
+	updatedAt: string;
 };
 
-/** An active variant of a catalog item, as returned by `GET /v1/catalog/:id`. */
+/** A variant of a catalog item, as returned by the `/v1/catalog/:id/variants` and `/v1/variants` routes. */
 export type QuickCatalogVariant = {
 	id: string;
-	options: { name: string; value: string }[];
+	workspaceId: string;
+	catalogItemId: string;
+	combinationKey: string;
+	options: QuickVariantOption[];
+	status: QuickCatalogStatus;
 	sku: string | null;
 	priceCentsOverride: number | null;
+	metadata: Record<string, unknown>;
+	createdAt: string;
+	updatedAt: string;
 };
 
-/** A single catalog item with its active variants — the storefront product-detail shape. */
-export type QuickCatalogItemDetail = QuickCatalogItem & {
-	variants: QuickCatalogVariant[];
+/** Body for creating a catalog item over `POST /v1/catalog`. */
+export type QuickCatalogItemInput = {
+	name: string;
+	type: QuickCatalogItemType;
+	description?: string | null;
+	status?: QuickCatalogStatus;
+	sku?: string | null;
+	pricingModel?: QuickPricingModel;
+	priceCents?: number | null;
+	currency?: string;
+	unitLabel?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+/** Body for creating a variant over `POST /v1/catalog/:id/variants`. */
+export type QuickCatalogVariantInput = {
+	options: QuickVariantOption[];
+	status?: QuickCatalogStatus;
+	sku?: string | null;
+	priceCentsOverride?: number | null;
+	metadata?: Record<string, unknown>;
 };
 
 /**

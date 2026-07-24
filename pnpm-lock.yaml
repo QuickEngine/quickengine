@@ -1128,6 +1128,9 @@ importers:
 
   packages/modules/products-services:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1562,6 +1565,9 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../../packages/modules/client-records
+      '@quickengine/mod-products-services':
+        specifier: workspace:*
+        version: link:../../packages/modules/products-services
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../packages/module-registry

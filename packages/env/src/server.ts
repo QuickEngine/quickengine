@@ -46,7 +46,7 @@ export const serverEnvSchema = clientEnvSchema.extend({
 	),
 	// Set to "true" ONLY on the production environment (paired with the prod
 	// DATABASE_URL). Lets the DB client refuse to boot a non-production deploy
-	// against the production database — see docs/COST_GUARDRAILS.md.
+	// against the production database — see internal/COST_GUARDRAILS.md.
 	DATABASE_IS_PRODUCTION: emptyStringAsUndefined(z.string()),
 	REDIS_URL: z.string().url().default("redis://localhost:6381"),
 	UPSTASH_REDIS_REST_URL: emptyStringAsUndefined(z.string().url()),

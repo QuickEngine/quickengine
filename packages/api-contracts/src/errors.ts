@@ -49,6 +49,25 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
 	INTERNAL_ERROR: 500,
 };
 
+/**
+ * A business-rule failure a module command raises for the HTTP boundary to translate into a
+ * stable API error. Modules throw this instead of a bare `Error("CODE")` so every vertical maps
+ * domain outcomes (conflicts, illegal transitions, missing records) to one consistent envelope.
+ */
+export class DomainError extends Error {
+	readonly code: ApiErrorCode;
+	readonly status: number;
+	readonly details?: unknown;
+
+	constructor(code: ApiErrorCode, message: string, details?: unknown) {
+		super(message);
+		this.name = "DomainError";
+		this.code = code;
+		this.status = API_ERROR_STATUS[code];
+		this.details = details;
+	}
+}
+
 export const apiErrorSchema = z.object({
 	code: apiErrorCodeSchema,
 	message: z.string(),

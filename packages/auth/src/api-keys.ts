@@ -6,13 +6,14 @@ import { quickengineApiKeys } from "@quickengine/db/schema/quickengine";
 // Workspace-scoped credentials for the public QuickDash API + Quick.js. Issued and
 // managed from Account; verified by the QuickDash API gate. Only the sha256 hash is
 // stored — the raw key is shown once at creation and never again. See
-// docs/product/API_KEYS.md.
+// internal/product/API_KEYS.md.
 
 // Single source of truth for API capabilities. A route declares the capability it
 // requires; a key must hold it. Grow this one string per new route so the gate, the
 // Account UI, and the docs never drift.
 export const API_CAPABILITIES = [
 	"catalog:read",
+	"catalog:write",
 	"clients:read",
 	"clients:write",
 	"events:write",

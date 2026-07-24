@@ -8,6 +8,7 @@ import { loadApiConfig } from "./config";
 import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
 import { createJsonLogger } from "./logger";
+import { registerProductsServicesRoutes } from "./products-services-routes";
 import { initializeTelemetry } from "./telemetry";
 
 const config = loadApiConfig();
@@ -19,12 +20,14 @@ const app = createApp(config, {
 	logger,
 	readinessChecks: createDefaultReadinessChecks(config),
 	registerRoutes(app, routeLogger) {
-		registerClientRecordRoutes(app, {
+		const dependencies = {
 			cache: getCacheProvider(),
 			logger: routeLogger,
 			platform: defaultPlatformDependencies,
 			uow: mutationUnitOfWork,
-		});
+		};
+		registerClientRecordRoutes(app, dependencies);
+		registerProductsServicesRoutes(app, dependencies);
 	},
 	telemetry: initializeTelemetry(config),
 });

@@ -21,7 +21,7 @@ import { matchOrigin } from "./_origin";
 // works across web/admin/auth in dev. In production on *.vercel.app cookies
 // can't be shared across subdomains (public-suffix list) — that's handled by
 // the token/redirect path, and switches to cross-subdomain cookies once the
-// real quickengine.net domain is live (see docs/STATE.md domain checklist).
+// real quickengine.net domain is live (see internal/STATE.md domain checklist).
 export const trustedOrigins = [
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_AUTH_URL,
 	serverEnv.NEXT_PUBLIC_QUICKENGINE_WEB_URL,

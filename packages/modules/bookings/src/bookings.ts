@@ -20,6 +20,10 @@ import {
 	canTransitionBooking,
 } from "./booking";
 
+export type BookingTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
 const BLOCKING_STATUSES = ["requested", "confirmed", "checked_in"] as const;
 const BOOKABLE_CATALOG_TYPES = new Set(["service", "rental", "package"]);
 
@@ -99,9 +103,13 @@ async function assertNoOverlap(
 	if (conflict) throw new Error("BOOKING_SCHEDULE_CONFLICT");
 }
 
-export async function createBooking(workspaceId: string, input: BookingInput) {
+export async function createBookingInTx(
+	tx: BookingTransaction,
+	workspaceId: string,
+	input: BookingInput,
+) {
 	const parsed = bookingInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const [workspace] = await tx
 			.select({ id: quickengineWorkspaces.id })
 			.from(quickengineWorkspaces)
@@ -132,7 +140,7 @@ export async function createBooking(workspaceId: string, input: BookingInput) {
 			})
 			.returning();
 		return created;
-	});
+	}
 }
 
 export async function listBookings(workspaceId: string) {
@@ -152,13 +160,14 @@ export async function getBooking(workspaceId: string, id: string) {
 	return booking;
 }
 
-export async function updateBooking(
+export async function updateBookingInTx(
+	tx: BookingTransaction,
 	workspaceId: string,
 	id: string,
 	input: BookingInput,
 ) {
 	const parsed = bookingInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const [workspace] = await tx
 			.select({ id: quickengineWorkspaces.id })
 			.from(quickengineWorkspaces)
@@ -200,16 +209,17 @@ export async function updateBooking(
 			.where(and(eq(bookings.workspaceId, workspaceId), eq(bookings.id, id)))
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function setBookingStatus(
+export async function setBookingStatusInTx(
+	tx: BookingTransaction,
 	workspaceId: string,
 	id: string,
 	status: BookingStatus,
 	options: { cancellationReason?: string | null } = {},
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select({ status: bookings.status })
 			.from(bookings)
@@ -246,18 +256,55 @@ export async function setBookingStatus(
 			.returning();
 		if (!updated) throw new Error("BOOKING_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function deleteBooking(workspaceId: string, id: string) {
-	const current = await getBooking(workspaceId, id);
+export async function deleteBookingInTx(
+	tx: BookingTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	// Locked read: without it a booking could be confirmed between the check and the delete.
+	const [current] = await tx
+		.select({ status: bookings.status })
+		.from(bookings)
+		.where(and(eq(bookings.workspaceId, workspaceId), eq(bookings.id, id)))
+		.limit(1)
+		.for("update");
 	if (!current) throw new Error("BOOKING_NOT_FOUND");
 	if (current.status !== "requested" && current.status !== "cancelled") {
 		throw new Error("BOOKING_NOT_DELETABLE");
 	}
-	const [deleted] = await db
+	const [deleted] = await tx
 		.delete(bookings)
 		.where(and(eq(bookings.workspaceId, workspaceId), eq(bookings.id, id)))
 		.returning();
 	return deleted;
+}
+
+export async function createBooking(workspaceId: string, input: BookingInput) {
+	return db.transaction((tx) => createBookingInTx(tx, workspaceId, input));
+}
+
+export async function updateBooking(
+	workspaceId: string,
+	id: string,
+	input: BookingInput,
+) {
+	return db.transaction((tx) => updateBookingInTx(tx, workspaceId, id, input));
+}
+
+export async function setBookingStatus(
+	workspaceId: string,
+	id: string,
+	status: BookingStatus,
+	options: { cancellationReason?: string | null } = {},
+) {
+	return db.transaction((tx) =>
+		setBookingStatusInTx(tx, workspaceId, id, status, options),
+	);
+}
+
+export async function deleteBooking(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteBookingInTx(tx, workspaceId, id));
 }

@@ -1187,6 +1187,300 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/bookings": {
+				get: {
+					operationId: "listBookings",
+					summary: "List bookings, optionally by schedule or start-time window",
+					responses: { "200": { description: "A cursor page of bookings." } },
+				},
+				post: {
+					operationId: "createBooking",
+					summary: "Book a slot",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Booking created." },
+						"409": {
+							description:
+								"The slot overlaps a live booking on the same schedule.",
+						},
+					},
+				},
+			},
+			"/v1/bookings/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getBooking",
+					responses: {
+						"200": { description: "The booking." },
+						"404": { description: "Booking not found." },
+					},
+				},
+				patch: {
+					operationId: "updateBooking",
+					summary: "Reschedule or edit a booking that hasn't started",
+					responses: {
+						"200": { description: "Booking updated." },
+						"409": {
+							description:
+								"Only a requested or confirmed booking can be changed.",
+						},
+					},
+				},
+				delete: {
+					operationId: "deleteBooking",
+					responses: {
+						"200": { description: "Booking deleted." },
+						"409": {
+							description:
+								"Only a requested or cancelled booking can be deleted.",
+						},
+					},
+				},
+			},
+			"/v1/bookings/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setBookingStatus",
+					summary:
+						"Move a booking between requested, confirmed, checked in, completed, cancelled, and no show",
+					description:
+						"Cancelling frees the slot, so the same time can be booked again.",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/time-entries": {
+				get: {
+					operationId: "listTimeEntries",
+					summary:
+						"List time entries, optionally by project, task, tracker, or window",
+					responses: {
+						"200": { description: "A cursor page of time entries." },
+					},
+				},
+				post: {
+					operationId: "createManualTimeEntry",
+					summary: "Log time manually",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Time entry created." },
+						"409": {
+							description:
+								"The time overlaps another entry, or the project is closed.",
+						},
+					},
+				},
+			},
+			"/v1/time-entries/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getTimeEntry",
+					responses: {
+						"200": { description: "The time entry." },
+						"404": { description: "Time entry not found." },
+					},
+				},
+				patch: {
+					operationId: "updateManualTimeEntry",
+					responses: {
+						"200": { description: "Time entry updated." },
+						"409": { description: "The entry can no longer be edited." },
+					},
+				},
+				delete: {
+					operationId: "deleteTimeEntry",
+					responses: {
+						"200": { description: "Time entry deleted." },
+						"409": {
+							description: "Approved or invoiced time can't be deleted.",
+						},
+					},
+				},
+			},
+			"/v1/timers": {
+				post: {
+					operationId: "startTimer",
+					summary: "Start a timer on a tracker",
+					description:
+						"Retrying with the same Idempotency-Key replays the same timer. A genuine second timer on the same tracker is refused.",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Timer started." },
+						"409": {
+							description: "A timer is already running, or the time overlaps.",
+						},
+					},
+				},
+			},
+			"/v1/timers/{id}/stop": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "stopTimer",
+					summary: "Stop a running timer and record its duration",
+					responses: {
+						"200": { description: "Timer stopped." },
+						"409": { description: "That entry has no running timer." },
+					},
+				},
+			},
+			"/v1/time-entries/{id}/approve": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "approveTimeEntry",
+					summary: "Approve time, applying the workspace's billing rounding",
+					responses: {
+						"200": { description: "Time approved." },
+						"409": {
+							description: "The entry can't be approved from its status.",
+						},
+					},
+				},
+			},
+			"/v1/time-entries/{id}/unapprove": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "unapproveTimeEntry",
+					responses: {
+						"200": { description: "Approval withdrawn." },
+						"409": { description: "Invoiced time can't be unapproved." },
+					},
+				},
+			},
+			"/v1/time-entries/{id}/void": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "voidTimeEntry",
+					summary: "Void time without deleting it",
+					responses: {
+						"200": { description: "Time voided." },
+						"409": {
+							description: "The entry can't be voided from its status.",
+						},
+					},
+				},
+			},
+			"/v1/time-entries/{id}/restore": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "restoreVoidedTimeEntry",
+					responses: {
+						"200": { description: "Voided time restored." },
+						"409": { description: "Only voided time can be restored." },
+					},
+				},
+			},
+			"/v1/time-entries/invoice": {
+				post: {
+					operationId: "invoiceApprovedTimeEntries",
+					summary: "Attach approved billable time to a draft invoice",
+					description:
+						"The invoice and every entry move together in one transaction, so time is never marked invoiced against an invoice that didn't change.",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"200": { description: "Time attached to the invoice." },
+						"409": {
+							description:
+								"Time is not approved, not billable, already invoiced, or the invoice is not a draft.",
+						},
+					},
+				},
+			},
+			"/v1/time-entries/detach": {
+				post: {
+					operationId: "detachTimeEntriesFromDraftInvoice",
+					summary: "Detach time from a draft invoice",
+					responses: {
+						"200": { description: "Time detached." },
+						"409": { description: "The invoice is no longer a draft." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

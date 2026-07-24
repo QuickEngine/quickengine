@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { QuickApiError } from "@quickengine/quick";
 import { Command } from "commander";
+import { registerBookingCommands } from "./commands/bookings";
 import { registerCatalogCommands } from "./commands/catalog";
 import { registerClientCommands } from "./commands/clients";
 import { registerConfigCommands } from "./commands/config";
@@ -13,6 +14,7 @@ import { registerPaymentCommands } from "./commands/payments";
 import { registerProjectCommands } from "./commands/projects";
 import { registerQuoteCommands } from "./commands/quotes";
 import { registerShipmentCommands } from "./commands/shipments";
+import { registerTimeCommands } from "./commands/time";
 import { errorLine } from "./output";
 
 const program = new Command();
@@ -35,6 +37,8 @@ registerFulfillmentCommands(program);
 registerInventoryCommands(program);
 registerShipmentCommands(program);
 registerProjectCommands(program);
+registerBookingCommands(program);
+registerTimeCommands(program);
 registerDoctorCommand(program);
 
 async function main(): Promise<void> {

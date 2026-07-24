@@ -927,6 +927,9 @@ importers:
 
   packages/modules/bookings:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1262,6 +1265,9 @@ importers:
 
   packages/modules/time-tracking:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1589,6 +1595,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@quickengine/mod-bookings':
+        specifier: workspace:*
+        version: link:../../packages/modules/bookings
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../../packages/modules/client-records
@@ -1619,6 +1628,9 @@ importers:
       '@quickengine/mod-shipping':
         specifier: workspace:*
         version: link:../../packages/modules/shipping
+      '@quickengine/mod-time-tracking':
+        specifier: workspace:*
+        version: link:../../packages/modules/time-tracking
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../../packages/module-registry

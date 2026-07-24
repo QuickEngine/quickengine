@@ -255,10 +255,19 @@ function Action({
 		remove ? deleteBookingAction : changeBookingStatusAction,
 		INITIAL,
 	);
+	// Both actions behind this form are durable commands, so each submit needs its own key:
+	// a double-fire replays one mutation instead of running two.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
+	useEffect(() => {
+		if (state.completionId) setIdempotencyKey(crypto.randomUUID());
+	}, [state.completionId]);
 	return (
 		<form action={action} className="inline-flex flex-col gap-1">
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name="bookingId" value={bookingId} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			{target && <input type="hidden" name="target" value={target} />}
 			<Submit destructive={remove || target === "cancelled"}>
 				{remove ? (

@@ -723,6 +723,115 @@ export type QuickTask = {
 	[field: string]: unknown;
 };
 
+export type QuickBookingStatus =
+	| "requested"
+	| "confirmed"
+	| "checked_in"
+	| "completed"
+	| "cancelled"
+	| "no_show";
+
+export type QuickBookingLocationKind = "in_person" | "virtual" | "phone";
+
+/**
+ * Body for booking a slot. `scheduleKey` is what a booking competes for — a room, a person, a
+ * piece of equipment. Two live bookings can never overlap on the same key.
+ */
+export type QuickBookingInput = {
+	clientId: string;
+	title: string;
+	startsAt: Date | string;
+	endsAt: Date | string;
+	/** IANA zone, e.g. "Europe/London". */
+	timeZone: string;
+	scheduleKey?: string;
+	catalogItemId?: string | null;
+	catalogItemVariantId?: string | null;
+	locationKind?: QuickBookingLocationKind;
+	location?: string | null;
+	notes?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+export type QuickBooking = {
+	id: string;
+	workspaceId: string;
+	clientId: string;
+	clientName: string | null;
+	title: string;
+	status: QuickBookingStatus;
+	scheduleKey: string;
+	startsAt: string;
+	endsAt: string;
+	timeZone: string;
+	locationKind: QuickBookingLocationKind;
+	location: string | null;
+	cancellationReason: string | null;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickTimeEntryStatus =
+	| "running"
+	| "draft"
+	| "approved"
+	| "invoiced"
+	| "void";
+
+/** Shared by manual entries and timers. `trackerKey` is what a timer is exclusive on. */
+type QuickTimeEntryCommon = {
+	projectId: string;
+	taskId?: string | null;
+	trackerKey?: string;
+	description?: string | null;
+	billable?: boolean;
+	/** Only allowed when billable. */
+	hourlyRateCents?: number | null;
+	currency?: string;
+	metadata?: Record<string, unknown>;
+};
+
+/** Body for logging time after the fact over `POST /v1/time-entries`. */
+export type QuickManualTimeEntryInput = QuickTimeEntryCommon & {
+	/** Calendar date, `YYYY-MM-DD`. */
+	workDate: string;
+	durationSeconds: number;
+};
+
+/** Body for starting a timer over `POST /v1/timers`. A timer may not start in the future. */
+export type QuickTimerStartInput = QuickTimeEntryCommon & {
+	startedAt: Date | string;
+	timeZone: string;
+};
+
+export type QuickTimeEntry = {
+	id: string;
+	workspaceId: string;
+	projectId: string;
+	taskId: string | null;
+	trackerKey: string;
+	status: QuickTimeEntryStatus;
+	source: "manual" | "timer";
+	description: string | null;
+	billable: boolean;
+	hourlyRateCents: number | null;
+	currency: string;
+	durationSeconds: number;
+	startedAt: string | null;
+	endedAt: string | null;
+	invoiceId: string | null;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
+/** Result of attaching or detaching time on an invoice. */
+export type QuickTimeInvoiceResult = {
+	entryIds: string[];
+	invoiceId: string;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

@@ -8,6 +8,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Bookings now has a durable scheduling API.** Routes cover booking a slot, rescheduling one that
+  hasn't started, moving it through requested, confirmed, checked in, completed, cancelled, and no
+  show, and deleting one that never went ahead. Two live bookings can never overlap on the same
+  schedule, the same clock time stays free on a different one, and cancelling releases the slot for
+  rebooking.
+
+- **Time Tracking now has a durable API.** Routes cover logging time manually, running timers,
+  the draft to approved to invoiced lifecycle, voiding time instead of deleting it, and attaching
+  or detaching approved billable time on a draft invoice. Retrying a start request replays the same
+  timer rather than opening a second one, approved time can no longer be quietly deleted, and time
+  and invoice move together in one transaction so time is never marked invoiced against an invoice
+  that did not change.
+
+### Added
+
 - **Projects and Tasks now has a durable delivery API.** Routes cover projects, the milestones
   inside them, and tasks that can nest under other tasks, each committing domain state, audit, and
   outbox together. Finished work is protected on the way out: a project must be completed or

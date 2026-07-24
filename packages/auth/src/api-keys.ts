@@ -12,6 +12,8 @@ import { quickengineApiKeys } from "@quickengine/db/schema/quickengine";
 // requires; a key must hold it. Grow this one string per new route so the gate, the
 // Account UI, and the docs never drift.
 export const API_CAPABILITIES = [
+	"bookings:read",
+	"bookings:write",
 	"catalog:read",
 	"catalog:write",
 	"clients:read",
@@ -29,6 +31,8 @@ export const API_CAPABILITIES = [
 	"projects:write",
 	"payments:read",
 	"payments:write",
+	"time:read",
+	"time:write",
 	"quotes:read",
 	"quotes:write",
 	"shipping:read",

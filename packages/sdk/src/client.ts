@@ -1,4 +1,5 @@
 import { readApiError } from "./error";
+import { BookingsResource } from "./resources/bookings";
 import { CatalogResource } from "./resources/catalog";
 import { ClientsResource } from "./resources/clients";
 import { EventsResource } from "./resources/events";
@@ -10,6 +11,7 @@ import { PaymentsResource } from "./resources/payments";
 import { ProjectsResource } from "./resources/projects";
 import { QuotesResource } from "./resources/quotes";
 import { ShipmentsResource } from "./resources/shipments";
+import { TimeResource } from "./resources/time";
 import type {
 	QuickClientOptions,
 	QuickCredential,
@@ -78,6 +80,8 @@ export class QuickClient {
 	readonly inventory: InventoryResource;
 	readonly shipments: ShipmentsResource;
 	readonly projects: ProjectsResource;
+	readonly bookings: BookingsResource;
+	readonly time: TimeResource;
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
@@ -98,6 +102,8 @@ export class QuickClient {
 		this.inventory = new InventoryResource(this);
 		this.shipments = new ShipmentsResource(this);
 		this.projects = new ProjectsResource(this);
+		this.bookings = new BookingsResource(this);
+		this.time = new TimeResource(this);
 	}
 
 	/**

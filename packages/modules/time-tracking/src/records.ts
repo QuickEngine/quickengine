@@ -153,7 +153,16 @@ async function assertNoTimerOverlap(
 	if (overlap) throw new Error("TIME_ENTRY_OVERLAP");
 }
 
-function isRunningTimerConstraint(error: unknown): boolean {
+export type TimeTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
+/**
+ * `TIMER_ALREADY_RUNNING` is a Postgres unique-index violation, not an application check, so it
+ * arrives as a raw driver error. Exported so the durable command layer can translate it too:
+ * inside a unit of work the violation aborts the transaction and escapes past any local catch.
+ */
+export function isRunningTimerConstraint(error: unknown): boolean {
 	if (!error || typeof error !== "object") return false;
 	const candidate = error as {
 		code?: string;
@@ -167,12 +176,13 @@ function isRunningTimerConstraint(error: unknown): boolean {
 	);
 }
 
-export async function createManualTimeEntry(
+export async function createManualTimeEntryInTx(
+	tx: TimeTransaction,
 	workspaceId: string,
 	input: ManualTimeEntryInput,
 ) {
 	const parsed = manualTimeEntryInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const context = await resolveWorkContext(
 			tx,
 			workspaceId,
@@ -189,10 +199,11 @@ export async function createManualTimeEntry(
 			})
 			.returning();
 		return created;
-	});
+	}
 }
 
-export async function startTimer(
+export async function startTimerInTx(
+	tx: TimeTransaction,
 	workspaceId: string,
 	input: TimerStartInput,
 	options: { now?: Date } = {},
@@ -200,34 +211,45 @@ export async function startTimer(
 	const parsed = timerStartInputSchema.parse(input);
 	const now = options.now ?? new Date();
 	if (parsed.startedAt > now) throw new Error("TIMER_START_IN_FUTURE");
+	// Deliberately no try/catch here: a unique-index violation aborts the surrounding Postgres
+	// transaction, so it cannot be translated in place. Callers translate it with
+	// `isRunningTimerConstraint` once the transaction has unwound.
+	const context = await resolveWorkContext(
+		tx,
+		workspaceId,
+		parsed.projectId,
+		parsed.taskId,
+		{ requireOperationalProject: true },
+	);
+	await assertNoTimerOverlap(
+		tx,
+		workspaceId,
+		parsed.trackerKey,
+		parsed.startedAt,
+		now,
+	);
+	const [created] = await tx
+		.insert(timeEntries)
+		.values({
+			workspaceId,
+			...parsed,
+			...context,
+			status: "running",
+			durationSeconds: 0,
+		})
+		.returning();
+	return created;
+}
+
+export async function startTimer(
+	workspaceId: string,
+	input: TimerStartInput,
+	options: { now?: Date } = {},
+) {
 	try {
-		return await db.transaction(async (tx) => {
-			const context = await resolveWorkContext(
-				tx,
-				workspaceId,
-				parsed.projectId,
-				parsed.taskId,
-				{ requireOperationalProject: true },
-			);
-			await assertNoTimerOverlap(
-				tx,
-				workspaceId,
-				parsed.trackerKey,
-				parsed.startedAt,
-				now,
-			);
-			const [created] = await tx
-				.insert(timeEntries)
-				.values({
-					workspaceId,
-					...parsed,
-					...context,
-					status: "running",
-					durationSeconds: 0,
-				})
-				.returning();
-			return created;
-		});
+		return await db.transaction((tx) =>
+			startTimerInTx(tx, workspaceId, input, options),
+		);
 	} catch (error) {
 		if (isRunningTimerConstraint(error)) {
 			throw new Error("TIMER_ALREADY_RUNNING");
@@ -236,12 +258,13 @@ export async function startTimer(
 	}
 }
 
-export async function stopTimeEntryTimer(
+export async function stopTimeEntryTimerInTx(
+	tx: TimeTransaction,
 	workspaceId: string,
 	id: string,
 	endedAt: Date,
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(timeEntries)
@@ -284,7 +307,7 @@ export async function stopTimeEntryTimer(
 			.returning();
 		if (!updated) throw new Error("TIME_ENTRY_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
 export async function listTimeEntries(workspaceId: string) {
@@ -306,13 +329,14 @@ export async function getTimeEntry(workspaceId: string, id: string) {
 	return entry;
 }
 
-export async function updateManualTimeEntry(
+export async function updateManualTimeEntryInTx(
+	tx: TimeTransaction,
 	workspaceId: string,
 	id: string,
 	input: ManualTimeEntryInput,
 ) {
 	const parsed = manualTimeEntryInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const context = await resolveWorkContext(
 			tx,
 			workspaceId,
@@ -339,16 +363,17 @@ export async function updateManualTimeEntry(
 			)
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function updateTimeEntryDetails(
+export async function updateTimeEntryDetailsInTx(
+	tx: TimeTransaction,
 	workspaceId: string,
 	id: string,
 	input: TimeEntryDetailsInput,
 ) {
 	const parsed = timeEntryDetailsInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const context = await resolveWorkContext(
 			tx,
 			workspaceId,
@@ -373,10 +398,11 @@ export async function updateTimeEntryDetails(
 			)
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function approveTimeEntry(
+export async function approveTimeEntryInTx(
+	tx: TimeTransaction,
 	workspaceId: string,
 	id: string,
 	options: { mode?: BillingRoundingMode; incrementMinutes?: number } = {},
@@ -385,7 +411,7 @@ export async function approveTimeEntry(
 		mode: options.mode,
 		incrementMinutes: options.incrementMinutes,
 	});
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(timeEntries)
@@ -442,11 +468,15 @@ export async function approveTimeEntry(
 			.returning();
 		if (!updated) throw new Error("TIME_ENTRY_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function unapproveTimeEntry(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function unapproveTimeEntryInTx(
+	tx: TimeTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [current] = await tx
 			.select({ status: timeEntries.status })
 			.from(timeEntries)
@@ -480,11 +510,15 @@ export async function unapproveTimeEntry(workspaceId: string, id: string) {
 			.returning();
 		if (!updated) throw new Error("TIME_ENTRY_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function voidTimeEntry(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function voidTimeEntryInTx(
+	tx: TimeTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [current] = await tx
 			.select({ status: timeEntries.status })
 			.from(timeEntries)
@@ -511,11 +545,15 @@ export async function voidTimeEntry(workspaceId: string, id: string) {
 			.returning();
 		if (!updated) throw new Error("TIME_ENTRY_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function restoreVoidedTimeEntry(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function restoreVoidedTimeEntryInTx(
+	tx: TimeTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [current] = await tx
 			.select({
 				status: timeEntries.status,
@@ -545,11 +583,15 @@ export async function restoreVoidedTimeEntry(workspaceId: string, id: string) {
 			.returning();
 		if (!updated) throw new Error("TIME_ENTRY_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function deleteTimeEntry(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteTimeEntryInTx(
+	tx: TimeTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [current] = await tx
 			.select({ status: timeEntries.status, invoiceId: timeEntries.invoiceId })
 			.from(timeEntries)
@@ -570,20 +612,21 @@ export async function deleteTimeEntry(workspaceId: string, id: string) {
 			)
 			.returning();
 		return deleted;
-	});
+	}
 }
 
 /**
  * Turn approved billable time into draft invoice lines in one transaction.
  * Either every line and entry is updated, or none of them are.
  */
-export async function invoiceApprovedTimeEntries(
+export async function invoiceApprovedTimeEntriesInTx(
+	tx: TimeTransaction,
 	workspaceId: string,
 	invoiceId: string,
 	entryIds: string[],
 ) {
 	const uniqueIds = normalizeEntryIds(entryIds);
-	return db.transaction(async (tx) => {
+	{
 		// Always lock the invoice before entries. Keeping a stable lock order avoids
 		// deadlocks when two requests touch the same draft invoice concurrently.
 		const [invoice] = await tx
@@ -667,17 +710,18 @@ export async function invoiceApprovedTimeEntries(
 			throw new Error("TIME_ENTRY_CONCURRENT_UPDATE");
 		}
 		return updated;
-	});
+	}
 }
 
 /** Detach previously invoiced time while the target invoice remains a draft. */
-export async function detachTimeEntriesFromDraftInvoice(
+export async function detachTimeEntriesFromDraftInvoiceInTx(
+	tx: TimeTransaction,
 	workspaceId: string,
 	invoiceId: string,
 	entryIds: string[],
 ) {
 	const uniqueIds = normalizeEntryIds(entryIds);
-	return db.transaction(async (tx) => {
+	{
 		const [invoice] = await tx
 			.select({ status: invoices.status })
 			.from(invoices)
@@ -734,5 +778,92 @@ export async function detachTimeEntriesFromDraftInvoice(
 			throw new Error("TIME_ENTRY_CONCURRENT_UPDATE");
 		}
 		return updated;
-	});
+	}
+}
+
+export async function createManualTimeEntry(
+	workspaceId: string,
+	input: ManualTimeEntryInput,
+) {
+	return db.transaction((tx) =>
+		createManualTimeEntryInTx(tx, workspaceId, input),
+	);
+}
+
+export async function stopTimeEntryTimer(
+	workspaceId: string,
+	id: string,
+	endedAt: Date,
+) {
+	return db.transaction((tx) =>
+		stopTimeEntryTimerInTx(tx, workspaceId, id, endedAt),
+	);
+}
+
+export async function updateManualTimeEntry(
+	workspaceId: string,
+	id: string,
+	input: ManualTimeEntryInput,
+) {
+	return db.transaction((tx) =>
+		updateManualTimeEntryInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function updateTimeEntryDetails(
+	workspaceId: string,
+	id: string,
+	input: TimeEntryDetailsInput,
+) {
+	return db.transaction((tx) =>
+		updateTimeEntryDetailsInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function approveTimeEntry(
+	workspaceId: string,
+	id: string,
+	options: { mode?: BillingRoundingMode; incrementMinutes?: number } = {},
+) {
+	return db.transaction((tx) =>
+		approveTimeEntryInTx(tx, workspaceId, id, options),
+	);
+}
+
+export async function unapproveTimeEntry(workspaceId: string, id: string) {
+	return db.transaction((tx) => unapproveTimeEntryInTx(tx, workspaceId, id));
+}
+
+export async function voidTimeEntry(workspaceId: string, id: string) {
+	return db.transaction((tx) => voidTimeEntryInTx(tx, workspaceId, id));
+}
+
+export async function restoreVoidedTimeEntry(workspaceId: string, id: string) {
+	return db.transaction((tx) =>
+		restoreVoidedTimeEntryInTx(tx, workspaceId, id),
+	);
+}
+
+export async function deleteTimeEntry(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteTimeEntryInTx(tx, workspaceId, id));
+}
+
+export async function invoiceApprovedTimeEntries(
+	workspaceId: string,
+	invoiceId: string,
+	entryIds: string[],
+) {
+	return db.transaction((tx) =>
+		invoiceApprovedTimeEntriesInTx(tx, workspaceId, invoiceId, entryIds),
+	);
+}
+
+export async function detachTimeEntriesFromDraftInvoice(
+	workspaceId: string,
+	invoiceId: string,
+	entryIds: string[],
+) {
+	return db.transaction((tx) =>
+		detachTimeEntriesFromDraftInvoiceInTx(tx, workspaceId, invoiceId, entryIds),
+	);
 }

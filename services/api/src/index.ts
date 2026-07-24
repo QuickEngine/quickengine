@@ -1,6 +1,7 @@
 import { getCacheProvider } from "@quickengine/cache";
 import { mutationUnitOfWork } from "@quickengine/db";
 import { createApp } from "./app";
+import { registerBookingsRoutes } from "./bookings-routes";
 import { registerClientRecordRoutes } from "./client-records-routes";
 import { loadApiConfig } from "./config";
 import { defaultPlatformDependencies } from "./default-dependencies";
@@ -17,6 +18,7 @@ import { registerQuotesRoutes } from "./quotes-routes";
 import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
 import { initializeTelemetry } from "./telemetry";
+import { registerTimeTrackingRoutes } from "./time-tracking-routes";
 
 const config = loadApiConfig();
 const app = createApp(config, {
@@ -42,6 +44,8 @@ const app = createApp(config, {
 		registerInventoryRoutes(app, dependencies);
 		registerShippingRoutes(app, dependencies);
 		registerProjectsRoutes(app, dependencies);
+		registerBookingsRoutes(app, dependencies);
+		registerTimeTrackingRoutes(app, dependencies);
 		registerStripeWebhookRoutes(app, { logger });
 	},
 	telemetry: initializeTelemetry(config),

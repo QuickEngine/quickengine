@@ -22,58 +22,14 @@ vi.mock("../src/stripe", () => ({
 }));
 
 import { testDbClient } from "@quickengine/db/testing";
-import { createCheckoutSession } from "../src/checkout";
 import { findOrCreateStripeCustomer } from "../src/subscriptions";
 import { getSubRow, insertOrg } from "./helpers";
 
-const ORG1 = "00000000-0000-4000-8000-0000000cc001";
-const ORG2 = "00000000-0000-4000-8000-0000000cc002";
 const ORG3 = "00000000-0000-4000-8000-0000000cc003";
 const ORG4 = "00000000-0000-4000-8000-0000000cc004";
 
 beforeEach(() => {
 	vi.clearAllMocks();
-});
-
-describe("createCheckoutSession", () => {
-	it("creates a session and persists the Stripe customer", async () => {
-		await insertOrg(ORG1);
-
-		const result = await createCheckoutSession({
-			organizationId: ORG1,
-			billingEmail: "co1@example.com",
-			billingName: "Co One",
-			planId: "pro",
-			cycle: "monthly",
-			seats: 3,
-			successUrl: "http://localhost:3000/checkout/success",
-			cancelUrl: "http://localhost:3000/checkout/cancel",
-		});
-
-		expect(result.url).toContain("checkout.stripe.test");
-		expect(sessionsCreate).toHaveBeenCalledOnce();
-
-		const row = await getSubRow(ORG1);
-		expect(row?.stripe_customer_id).toBe("cus_mock");
-	});
-
-	it("throws when the plan has no configured price", async () => {
-		await insertOrg(ORG2);
-
-		await expect(
-			createCheckoutSession({
-				organizationId: ORG2,
-				billingEmail: "co2@example.com",
-				planId: "growth", // no STRIPE_PRICE_GROWTH_* set
-				cycle: "monthly",
-				successUrl: "http://s",
-				cancelUrl: "http://c",
-			}),
-		).rejects.toThrow(/no stripe price/i);
-
-		// Bailed before creating a customer.
-		expect(customersCreate).not.toHaveBeenCalled();
-	});
 });
 
 describe("findOrCreateStripeCustomer", () => {

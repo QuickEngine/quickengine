@@ -6,6 +6,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Removed
+
+- **The unused hosted checkout path is gone.** Billing kept a second, uncalled way to start a
+  subscription alongside the payment form Account actually uses. Two competing checkout paths in
+  one place is a hazard when money is involved, so the dead one was removed.
+
 ### Fixed
 
 - **Quote and invoice problems now explain themselves instead of failing as server errors.**

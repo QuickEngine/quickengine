@@ -415,11 +415,8 @@ function QuoteEditor({
 			<DialogContent className="sm:max-w-3xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{quote ? (
-						<input type="hidden" name="quoteId" value={quote.id} />
-					) : (
-						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
-					)}
+					{quote && <input type="hidden" name="quoteId" value={quote.id} />}
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>
 							{quote ? `Edit ${quote.number}` : "Create quote"}

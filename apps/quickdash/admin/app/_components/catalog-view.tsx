@@ -233,11 +233,8 @@ function ItemDialog({
 			<DialogContent className="sm:max-w-xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{item ? (
-						<input type="hidden" name="itemId" value={item.id} />
-					) : (
-						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
-					)}
+					{item && <input type="hidden" name="itemId" value={item.id} />}
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>
 							{item ? "Edit catalog item" : "Add a product or service"}
@@ -338,11 +335,10 @@ function VariantDialog({
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
 					<input type="hidden" name="itemId" value={item.id} />
-					{variant ? (
+					{variant && (
 						<input type="hidden" name="variantId" value={variant.id} />
-					) : (
-						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					)}
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>
 							{variant ? "Edit variant" : `Add a ${item.name} variant`}

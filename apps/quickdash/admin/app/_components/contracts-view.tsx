@@ -471,13 +471,22 @@ function TransitionForm({
 		changeContractStatusAction,
 		INITIAL_STATE,
 	);
+	// void / expire / revise / delete are all durable commands now, so each submit needs its own
+	// key: a double-fire replays one mutation instead of running two.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
-		if (state.completionId) router.refresh();
+		if (state.completionId) {
+			setIdempotencyKey(crypto.randomUUID());
+			router.refresh();
+		}
 	}, [router, state.completionId]);
 	return (
 		<form action={action}>
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name="contractId" value={contractId} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			<input type="hidden" name="target" value={target} />
 			<SubmitButton label={label} variant={variant} />
 			{state.error && (

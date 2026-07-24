@@ -48,8 +48,9 @@ function Form({
 	children: React.ReactNode;
 }) {
 	const [state, formAction] = useActionState(action, INITIAL);
-	// A per-submit idempotency key so a double-fire creates only one folder / stores one copy
-	// of an upload; a fresh key is minted after each success.
+	// A per-submit key for every action behind this form: folder creates and status changes are
+	// durable commands that replay on retry, and an upload must store exactly one copy of the
+	// bytes. A fresh key is minted after each success.
 	const [idempotencyKey, setIdempotencyKey] = useState(() =>
 		crypto.randomUUID(),
 	);

@@ -974,6 +974,9 @@ importers:
 
   packages/modules/contracts-esign:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -993,6 +996,9 @@ importers:
 
   packages/modules/files:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/billing':
         specifier: workspace:*
         version: link:../../billing
@@ -1601,6 +1607,12 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../../packages/modules/client-records
+      '@quickengine/mod-contracts-esign':
+        specifier: workspace:*
+        version: link:../../packages/modules/contracts-esign
+      '@quickengine/mod-files':
+        specifier: workspace:*
+        version: link:../../packages/modules/files
       '@quickengine/mod-fulfillment':
         specifier: workspace:*
         version: link:../../packages/modules/fulfillment

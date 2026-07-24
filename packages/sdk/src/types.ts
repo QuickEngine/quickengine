@@ -832,6 +832,154 @@ export type QuickTimeInvoiceResult = {
 	invoiceId: string;
 };
 
+export type QuickContractStatus =
+	| "draft"
+	| "sent"
+	| "partially_signed"
+	| "completed"
+	| "declined"
+	| "expired"
+	| "voided"
+	| "superseded";
+
+export type QuickContractSignerStatus = "pending" | "signed" | "declined";
+
+/** A signer as returned by the API. Token material is never included. */
+export type QuickContractSigner = {
+	id: string;
+	contractId: string;
+	name: string;
+	email: string;
+	role: string | null;
+	position: number;
+	status: QuickContractSignerStatus;
+	viewedAt: string | null;
+	signedAt: string | null;
+	declinedAt: string | null;
+	[field: string]: unknown;
+};
+
+export type QuickContractInput = {
+	title: string;
+	clientId?: string | null;
+	fileVersionId?: string | null;
+	signers?: Array<{
+		name: string;
+		email: string;
+		role?: string | null;
+		position?: number;
+	}>;
+	expiresAt?: Date | string | null;
+	metadata?: Record<string, unknown>;
+};
+
+export type QuickContract = {
+	id: string;
+	workspaceId: string;
+	number: string;
+	title: string;
+	status: QuickContractStatus;
+	clientId: string | null;
+	clientName: string;
+	seriesId: string;
+	supersedesId: string | null;
+	sentAt: string | null;
+	completedAt: string | null;
+	expiresAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	signers?: QuickContractSigner[];
+	[field: string]: unknown;
+};
+
+/**
+ * Result of sending a contract. Deliberately carries no signing tokens — the links are delivered
+ * out of band, never returned, logged, or stored for replay.
+ */
+export type QuickContractSendResult = QuickContract & {
+	invitations: Array<{
+		signerId: string;
+		name: string;
+		email: string;
+		expiresAt: string;
+	}>;
+};
+
+export type QuickDocumentStatus =
+	| "active"
+	| "archived"
+	| "trashed"
+	| "deleting";
+
+export type QuickFileVersionStatus =
+	| "pending"
+	| "available"
+	| "failed"
+	| "quarantined";
+
+export type QuickFileFolderInput = {
+	name: string;
+	parentId?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+export type QuickFileFolder = {
+	id: string;
+	workspaceId: string;
+	name: string;
+	parentId: string | null;
+	createdAt: string;
+	updatedAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickDocumentInput = {
+	title: string;
+	folderId?: string | null;
+	description?: string | null;
+	tags?: string[];
+	metadata?: Record<string, unknown>;
+};
+
+/** A stored version. Internal storage addressing is never exposed. */
+export type QuickFileVersion = {
+	id: string;
+	documentId: string;
+	versionNumber: number;
+	status: QuickFileVersionStatus;
+	originalName: string;
+	contentType: string;
+	sizeBytes: number;
+	checksumSha256: string;
+	availableAt: string | null;
+	createdAt: string;
+	[field: string]: unknown;
+};
+
+export type QuickDocument = {
+	id: string;
+	workspaceId: string;
+	title: string;
+	status: QuickDocumentStatus;
+	folderId: string | null;
+	description: string | null;
+	currentVersionNumber: number | null;
+	createdAt: string;
+	updatedAt: string;
+	versions?: QuickFileVersion[];
+	[field: string]: unknown;
+};
+
+export type QuickFileAttachment = {
+	id: string;
+	workspaceId: string;
+	documentId: string;
+	targetModule: string;
+	targetId: string;
+	createdAt: string;
+	[field: string]: unknown;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

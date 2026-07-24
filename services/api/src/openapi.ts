@@ -1481,6 +1481,303 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/contracts": {
+				get: {
+					operationId: "listContracts",
+					summary: "List contracts, optionally by client or status",
+					responses: { "200": { description: "A cursor page of contracts." } },
+				},
+				post: {
+					operationId: "createContract",
+					summary: "Create a draft contract",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Contract created." },
+						"409": {
+							description: "The attached document version isn't available.",
+						},
+					},
+				},
+			},
+			"/v1/contracts/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getContract",
+					summary: "Fetch a contract with its signers",
+					description:
+						"Signer token material is never returned; signing links are delivered out of band.",
+					responses: {
+						"200": { description: "The contract and its signers." },
+						"404": { description: "Contract not found." },
+					},
+				},
+				patch: {
+					operationId: "updateDraftContract",
+					responses: {
+						"200": { description: "Draft contract updated." },
+						"409": { description: "Only a draft contract can be edited." },
+					},
+				},
+				delete: {
+					operationId: "deleteDraftContract",
+					responses: {
+						"200": { description: "Draft contract deleted." },
+						"409": { description: "Only a draft contract can be deleted." },
+					},
+				},
+			},
+			"/v1/contracts/{id}/send": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "sendContract",
+					summary: "Send a contract for signature",
+					description:
+						"Mints a signing link per signer. The response carries invitation metadata only — raw signing tokens are never returned, logged, audited, or stored for replay.",
+					responses: {
+						"200": { description: "Contract sent." },
+						"409": {
+							description:
+								"The contract has no signers, or can't be sent from its status.",
+						},
+					},
+				},
+			},
+			"/v1/contracts/{id}/expire": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "expireContract",
+					responses: {
+						"200": { description: "Contract expired." },
+						"409": {
+							description: "The contract can't be expired from its status.",
+						},
+					},
+				},
+			},
+			"/v1/contracts/{id}/void": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "voidContract",
+					responses: {
+						"200": { description: "Contract voided." },
+						"409": {
+							description: "The contract can't be voided from its status.",
+						},
+					},
+				},
+			},
+			"/v1/contracts/{id}/revise": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "reviseContract",
+					summary: "Supersede a contract with a new revision",
+					responses: {
+						"201": {
+							description: "Revision created; the source is superseded.",
+						},
+						"409": {
+							description: "The contract can't be revised from its status.",
+						},
+					},
+				},
+			},
+			"/v1/file-folders": {
+				get: {
+					operationId: "listFileFolders",
+					summary: "List folders, optionally by parent or root only",
+					responses: { "200": { description: "A cursor page of folders." } },
+				},
+				post: {
+					operationId: "createFileFolder",
+					summary: "Create a folder",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Folder created." },
+						"409": { description: "The workspace is archived." },
+					},
+				},
+			},
+			"/v1/file-folders/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "updateFileFolder",
+					summary: "Rename or move a folder",
+					responses: {
+						"200": { description: "Folder updated." },
+						"400": { description: "A folder can't be moved inside itself." },
+					},
+				},
+				delete: {
+					operationId: "deleteFileFolder",
+					responses: {
+						"200": { description: "Folder deleted." },
+						"409": {
+							description: "The folder still holds subfolders or documents.",
+						},
+					},
+				},
+			},
+			"/v1/documents": {
+				get: {
+					operationId: "listFileDocuments",
+					summary: "List documents, optionally by folder or status",
+					responses: { "200": { description: "A cursor page of documents." } },
+				},
+			},
+			"/v1/documents/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getFileDocument",
+					summary: "Fetch a document with its version history",
+					description:
+						"Internal storage addressing is never returned; downloads are granted separately as time-limited links.",
+					responses: {
+						"200": { description: "The document and its versions." },
+						"404": { description: "Document not found." },
+					},
+				},
+				patch: {
+					operationId: "updateFileDocument",
+					responses: {
+						"200": { description: "Document updated." },
+						"409": { description: "The document can no longer be edited." },
+					},
+				},
+			},
+			"/v1/documents/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setFileDocumentStatus",
+					summary:
+						"Move a document between active, archived, trashed, and deleting",
+					description:
+						"A document must be trashed before it can be scheduled for deletion. Storage cleanup is queued only once the request commits.",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/documents/{id}/attachments": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "listFileAttachments",
+					summary: "List what this document is attached to",
+					responses: { "200": { description: "The document's attachments." } },
+				},
+			},
+			"/v1/file-versions/{id}/release": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "releaseQuarantinedFileVersion",
+					summary: "Release a quarantined version for use",
+					responses: {
+						"200": { description: "Version released." },
+						"409": { description: "That version isn't quarantined." },
+					},
+				},
+			},
+			"/v1/file-attachments/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				delete: {
+					operationId: "removeFileAttachment",
+					responses: {
+						"200": { description: "Attachment removed." },
+						"404": { description: "Attachment not found." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

@@ -1,16 +1,20 @@
 "use server";
 
+import {
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
 import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
 	contractsEsignSettingsSchema,
-	createContract,
-	deleteDraftContract,
-	expireContract,
-	reviseContract,
+	createContractCommand,
+	deleteDraftContractCommand,
+	expireContractCommand,
+	reviseContractCommand,
+	// `sendContract` (not the command) is used on purpose — see sendContractAction.
 	sendContract,
-	updateDraftContract,
-	voidContract,
+	updateDraftContractCommand,
+	voidContractCommand,
 } from "@quickengine/mod-contracts-esign";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -59,9 +63,41 @@ async function authorize(workspaceId: string) {
 	}
 	return {
 		ok: true,
+		access,
+		actorId: session.user.id,
 		settings: contractsEsignSettingsSchema.parse(module.settings),
 	} as const;
 }
+
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	failure(
+		kind === "conflict"
+			? "This request was already used with different details. Try again."
+			: "This agreement change is still being processed. Try again shortly.",
+	);
+
+const key = (formData: FormData) =>
+	String(formData.get("idempotencyKey") ?? "");
 
 function readContractInput(formData: FormData) {
 	const names = formData.getAll("signerName");
@@ -92,6 +128,9 @@ function readContractInput(formData: FormData) {
 }
 
 const friendlyFailure = (error: unknown) => {
+	// Durable commands raise DomainError with copy already written for a person.
+	if (error instanceof Error && error.name === "DomainError")
+		return error.message;
 	if (!(error instanceof Error)) return "We couldn't save this agreement.";
 	switch (error.message) {
 		case "CLIENT_NOT_FOUND":
@@ -137,23 +176,20 @@ export async function createContractAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
-
-	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	const idempotencyScope = `contracts.create:${workspaceId}`;
-	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
-		revalidatePath(`/${workspaceId}/contracts-esign`);
-		return success();
-	}
-
 	try {
-		await createContract(workspaceId, {
+		const input = {
 			...readContractInput(formData),
 			numberPrefix: authorization.settings.contractNumberPrefix,
-		});
+		};
+		const context = await mutationContext(
+			authorization,
+			"contracts.create",
+			key(formData),
+			input,
+		);
+		const outcome = await createContractCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		// The claim meant "we're doing the work" — the work failed, so give the key back
-		// or the user's corrected retry would be swallowed as a duplicate.
-		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/contracts-esign`);
@@ -169,11 +205,19 @@ export async function updateContractAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await updateDraftContract(
-			workspaceId,
-			contractId,
-			readContractInput(formData),
+		const input = readContractInput(formData);
+		const context = await mutationContext(
+			authorization,
+			"contracts.update",
+			key(formData),
+			{ id: contractId, input },
 		);
+		const outcome = await updateDraftContractCommand(
+			context,
+			contractId,
+			input,
+		);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
 		return failure(friendlyFailure(error));
 	}
@@ -181,6 +225,20 @@ export async function updateContractAction(
 	return success();
 }
 
+/**
+ * Send is the one contract operation that does NOT go through a durable command, and on purpose.
+ *
+ * Sending mints a one-time signing token per signer. The durable layer persists a command's result
+ * in `api_mutations` for replay, so a token returned from a durable command would be written to the
+ * database in plaintext and handed back on every replay — a signing credential leak. `sendCommand`
+ * therefore drops the tokens, which is correct for the public API (links get emailed out of band).
+ *
+ * QuickDash has no email delivery yet, so it needs the raw tokens to show shareable links. It calls
+ * the module's `sendContract` directly to keep the tokens ephemeral (return value only, never
+ * persisted). Double-send is already prevented by the status machine: `sendContract` requires a
+ * draft and updates `WHERE status = 'draft'`, so a second call throws `CONTRACT_NOT_SENDABLE`. The
+ * durable idempotency key is therefore not needed here.
+ */
 export async function sendContractAction(
 	_previous: ContractActionState,
 	formData: FormData,
@@ -190,7 +248,9 @@ export async function sendContractAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		const { invitations } = await sendContract(workspaceId, contractId);
+		const { invitations } = await sendContract(workspaceId, contractId, {
+			actorId: authorization.actorId,
+		});
 		const base = process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ?? "";
 		revalidatePath(`/${workspaceId}/contracts-esign`);
 		return success(
@@ -221,22 +281,21 @@ export async function changeContractStatusAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		switch (target) {
-			case "void":
-				await voidContract(workspaceId, contractId);
-				break;
-			case "expire":
-				await expireContract(workspaceId, contractId);
-				break;
-			case "revise":
-				await reviseContract(workspaceId, contractId);
-				break;
-			case "delete": {
-				const deleted = await deleteDraftContract(workspaceId, contractId);
-				if (!deleted) return failure("This agreement no longer exists.");
-				break;
-			}
-		}
+		const context = await mutationContext(
+			authorization,
+			`contracts.${target}`,
+			key(formData),
+			{ id: contractId, target },
+		);
+		const outcome =
+			target === "void"
+				? await voidContractCommand(context, contractId)
+				: target === "expire"
+					? await expireContractCommand(context, contractId)
+					: target === "revise"
+						? await reviseContractCommand(context, contractId)
+						: await deleteDraftContractCommand(context, contractId);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
 		return failure(friendlyFailure(error));
 	}

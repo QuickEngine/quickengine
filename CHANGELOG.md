@@ -15,6 +15,23 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Files and Documents now has a durable API for folders and document records.** Routes cover
+  creating, renaming, and moving folders, editing document details, moving a document through
+  active, archived, trashed, and deletion, releasing a quarantined version, and removing an
+  attachment, each committing domain state, audit, and outbox together. A folder can't be moved
+  inside itself or deleted while it still holds anything, a document must be trashed before it can
+  be deleted, and the storage cleanup that follows a deletion is only scheduled once the request has
+  actually been saved. Internal storage addressing is never returned. Quick.js, the lean CLI, and
+  the QuickDash files screen now follow the same package contracts. Uploading keeps its own
+  reserve-store-verify sequence so a failed transfer can never leave a half-written record.
+
+- **Contracts and E-sign now has a durable agreement API.** Routes cover creating a draft, editing
+  it, sending it for signature, expiring, voiding, superseding it with a revision, and deleting a
+  draft, each committing domain state, audit, and outbox together. Signing links are treated as
+  credentials: they are never returned by the API, never written to the audit trail, and never
+  stored where a retry could replay them. Quick.js, the lean CLI, and the QuickDash agreements
+  screen now follow the same package contracts.
+
 - **Bookings now has a durable scheduling API.** Routes cover booking a slot, rescheduling one that
   hasn't started, moving it through requested, confirmed, checked in, completed, cancelled, and no
   show, and deleting one that never went ahead. Two live bookings can never overlap on the same

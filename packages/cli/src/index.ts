@@ -2,6 +2,7 @@
 import { QuickApiError } from "@quickengine/quick";
 import { Command } from "commander";
 import { registerCatalogCommands } from "./commands/catalog";
+import { registerClientCommands } from "./commands/clients";
 import { registerConfigCommands } from "./commands/config";
 import { registerDoctorCommand } from "./commands/doctor";
 import { errorLine } from "./output";
@@ -16,6 +17,7 @@ program
 	.version("0.1.0");
 
 registerConfigCommands(program);
+registerClientCommands(program);
 registerCatalogCommands(program);
 registerDoctorCommand(program);
 

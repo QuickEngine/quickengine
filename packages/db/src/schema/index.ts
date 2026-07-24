@@ -1,4 +1,5 @@
 export * from "./activity";
+export * from "./api-platform";
 export * from "./bookings";
 export * from "./catalog-items";
 export * from "./client-records";

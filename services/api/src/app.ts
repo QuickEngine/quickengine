@@ -6,11 +6,13 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
+import { ZodError } from "zod";
 import { createBodyLimit } from "./body-limit";
 import type { ApiConfig } from "./config";
 import { createCsrfProtection } from "./csrf";
 import { createRequestDeadline } from "./deadline";
 import { type ApiLogger, noopLogger } from "./logger";
+import { MutationPolicyError } from "./mutation-policy";
 import { createOpenApiDocument } from "./openapi";
 import type { PlatformEnv } from "./platform-types";
 import { type ReadinessCheck, respondReadiness } from "./readiness";
@@ -22,6 +24,7 @@ export function createApp(
 	options: {
 		logger?: ApiLogger;
 		readinessChecks?: readonly ReadinessCheck[];
+		registerRoutes?: (app: Hono<PlatformEnv>, logger: ApiLogger) => void;
 		telemetry?: ApiTelemetry;
 	} = {},
 ) {
@@ -111,11 +114,32 @@ export function createApp(
 	);
 
 	app.get("/openapi.json", (c) => c.json(createOpenApiDocument(config)));
+	options.registerRoutes?.(app, logger);
 
 	app.notFound((c) =>
 		respondError(c, "NOT_FOUND", "The requested resource was not found.", 404),
 	);
 	app.onError((error, c) => {
+		if (error instanceof ZodError) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"The request is invalid.",
+				400,
+				error.issues,
+			);
+		}
+		if (error instanceof MutationPolicyError) {
+			return respondError(c, error.code, error.message, 400);
+		}
+		if (error.name === "ClientRecordNotFoundError") {
+			return respondError(
+				c,
+				"NOT_FOUND",
+				"The requested record was not found.",
+				404,
+			);
+		}
 		const context = {
 			method: c.req.method,
 			route: c.req.routePath || "unmatched",

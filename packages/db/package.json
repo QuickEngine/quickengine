@@ -24,6 +24,7 @@
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.0.2",
+		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/env": "workspace:*",
 		"drizzle-orm": "^0.45.1",
 		"postgres": "^3.4",

@@ -8,6 +8,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Client Records now has the durable foundation for public writes.** Additive Postgres
+  tables persist mutation replay results, audit evidence, and versioned outbox events in the
+  same transaction as client and address changes. Package-owned commands cover workspace-
+  scoped clients and addresses, while Hono adds private read/write capabilities and guarded
+  CRUD routes with validation, budgets, tenant/module authorization, deadlines, and required
+  idempotency keys. OpenAPI, Quick.js, the lean CLI, and QuickDash compatibility actions all
+  follow the same package-owned contracts, and the production API artifact boots on plain Node.
+
 - **API writes now have enforceable reliability contracts.** The Hono boundary caps actual
   streamed request bytes, propagates cooperative deadlines, reports bounded dependency
   readiness, and provides atomic Redis/Upstash counters for tenant- and principal-scoped route

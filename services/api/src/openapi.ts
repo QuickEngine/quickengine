@@ -29,6 +29,14 @@ export function createOpenApiDocument(config: ApiConfig) {
 		},
 		servers: [{ url: config.baseUrl }],
 		components: {
+			securitySchemes: {
+				bearerApiKey: { type: "http", scheme: "bearer" },
+				workspaceSession: {
+					type: "apiKey",
+					in: "cookie",
+					name: "quickengine.session_token",
+				},
+			},
 			schemas: {
 				ApiError: toOpenApiSchema(apiErrorSchema),
 				ErrorEnvelope: toOpenApiSchema(errorEnvelopeSchema),
@@ -45,6 +53,96 @@ export function createOpenApiDocument(config: ApiConfig) {
 			},
 		},
 		paths: {
+			"/v1/clients": {
+				get: {
+					operationId: "listClients",
+					summary: "List client records",
+					responses: { "200": { description: "A cursor page of clients." } },
+				},
+				post: {
+					operationId: "createClient",
+					summary: "Create a client record",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Client created." },
+						"409": {
+							description: "Idempotency conflict or request in progress.",
+						},
+					},
+				},
+			},
+			"/v1/clients/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getClient",
+					responses: {
+						"200": { description: "The client." },
+						"404": { description: "Client not found." },
+					},
+				},
+				patch: {
+					operationId: "updateClient",
+					responses: { "200": { description: "Client updated." } },
+				},
+				delete: {
+					operationId: "deleteClient",
+					responses: { "200": { description: "Client deleted." } },
+				},
+			},
+			"/v1/clients/{id}/addresses": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "listClientAddresses",
+					responses: { "200": { description: "Client addresses." } },
+				},
+				post: {
+					operationId: "createClientAddress",
+					responses: { "201": { description: "Address created." } },
+				},
+			},
+			"/v1/addresses/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getClientAddress",
+					responses: { "200": { description: "The address." } },
+				},
+				patch: {
+					operationId: "updateClientAddress",
+					responses: { "200": { description: "Address updated." } },
+				},
+				delete: {
+					operationId: "deleteClientAddress",
+					responses: { "200": { description: "Address deleted." } },
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

@@ -1,7 +1,11 @@
 import process from "node:process";
 import { serve } from "@hono/node-server";
+import { getCacheProvider } from "@quickengine/cache";
+import { mutationUnitOfWork } from "@quickengine/db";
 import { createApp } from "./app";
+import { registerClientRecordRoutes } from "./client-records-routes";
 import { loadApiConfig } from "./config";
+import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
 import { createJsonLogger } from "./logger";
 import { initializeTelemetry } from "./telemetry";
@@ -14,6 +18,14 @@ const logger = createJsonLogger({
 const app = createApp(config, {
 	logger,
 	readinessChecks: createDefaultReadinessChecks(config),
+	registerRoutes(app, routeLogger) {
+		registerClientRecordRoutes(app, {
+			cache: getCacheProvider(),
+			logger: routeLogger,
+			platform: defaultPlatformDependencies,
+			uow: mutationUnitOfWork,
+		});
+	},
 	telemetry: initializeTelemetry(config),
 });
 const server = serve({ fetch: app.fetch, port: config.port });

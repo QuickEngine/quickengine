@@ -1,5 +1,5 @@
 // Re-export common query operators so apps don't need drizzle-orm as a direct dep.
-export { and, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+export { and, asc, eq, gt, isNotNull, isNull, or, sql } from "drizzle-orm";
 export * from "./activity";
 export * from "./client";
 export * from "./drizzle";
@@ -7,6 +7,7 @@ export * from "./first-action-state";
 export * from "./first-action-state-policy";
 export * from "./idempotency";
 export * from "./invitations";
+export * from "./mutation-unit-of-work";
 export * from "./notifications";
 export * from "./orgs";
 export * from "./orientation-state";

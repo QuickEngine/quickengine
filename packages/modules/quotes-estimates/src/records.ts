@@ -190,7 +190,10 @@ export type CreateQuoteEstimateInput = QuoteEstimateInput & {
 	numberPrefix?: string;
 };
 
-export async function createQuoteEstimate(
+// Core create logic, transaction-scoped so both the standalone wrapper and the durable API
+// command (which supplies the unit-of-work transaction) share one implementation.
+export async function createQuoteEstimateInTx(
+	tx: QuoteTransaction,
 	workspaceId: string,
 	input: CreateQuoteEstimateInput,
 ) {
@@ -199,56 +202,63 @@ export async function createQuoteEstimate(
 		input.numberPrefix ?? DEFAULT_PREFIXES[parsed.kind],
 	);
 	const totals = computeQuoteTotals(parsed.lines, parsed.taxCents);
-	return db.transaction(async (tx) => {
-		const [workspace] = await tx
-			.select({ id: quickengineWorkspaces.id })
-			.from(quickengineWorkspaces)
-			.where(eq(quickengineWorkspaces.id, workspaceId))
-			.limit(1);
-		if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
-		const { client, lines } = await resolveQuoteReferences(
-			tx,
+	const [workspace] = await tx
+		.select({ id: quickengineWorkspaces.id })
+		.from(quickengineWorkspaces)
+		.where(eq(quickengineWorkspaces.id, workspaceId))
+		.limit(1);
+	if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
+	const { client, lines } = await resolveQuoteReferences(
+		tx,
+		workspaceId,
+		parsed,
+	);
+	const now = new Date();
+	const [counter] = await tx
+		.insert(quoteEstimateSequences)
+		.values({ workspaceId, lastSequence: 1, updatedAt: now })
+		.onConflictDoUpdate({
+			target: quoteEstimateSequences.workspaceId,
+			set: {
+				lastSequence: sql`${quoteEstimateSequences.lastSequence} + 1`,
+				updatedAt: now,
+			},
+		})
+		.returning({ sequence: quoteEstimateSequences.lastSequence });
+	const [created] = await tx
+		.insert(quoteEstimates)
+		.values({
 			workspaceId,
-			parsed,
-		);
-		const now = new Date();
-		const [counter] = await tx
-			.insert(quoteEstimateSequences)
-			.values({ workspaceId, lastSequence: 1, updatedAt: now })
-			.onConflictDoUpdate({
-				target: quoteEstimateSequences.workspaceId,
-				set: {
-					lastSequence: sql`${quoteEstimateSequences.lastSequence} + 1`,
-					updatedAt: now,
-				},
-			})
-			.returning({ sequence: quoteEstimateSequences.lastSequence });
-		const [created] = await tx
-			.insert(quoteEstimates)
-			.values({
-				workspaceId,
-				seriesId: crypto.randomUUID(),
-				clientId: parsed.clientId,
-				clientName: client.name,
-				clientEmail: client.email,
-				clientCompany: client.company,
-				kind: parsed.kind,
-				title: parsed.title,
-				numberPrefix,
-				sequence: counter.sequence,
-				revision: 1,
-				number: formatQuoteNumber(numberPrefix, counter.sequence),
-				currency: parsed.currency,
-				...totals,
-				validUntil: parsed.validUntil,
-				notes: parsed.notes,
-				terms: parsed.terms,
-				metadata: parsed.metadata,
-			})
-			.returning();
-		await insertQuoteLines(tx, created.id, lines);
-		return created;
-	});
+			seriesId: crypto.randomUUID(),
+			clientId: parsed.clientId,
+			clientName: client.name,
+			clientEmail: client.email,
+			clientCompany: client.company,
+			kind: parsed.kind,
+			title: parsed.title,
+			numberPrefix,
+			sequence: counter.sequence,
+			revision: 1,
+			number: formatQuoteNumber(numberPrefix, counter.sequence),
+			currency: parsed.currency,
+			...totals,
+			validUntil: parsed.validUntil,
+			notes: parsed.notes,
+			terms: parsed.terms,
+			metadata: parsed.metadata,
+		})
+		.returning();
+	await insertQuoteLines(tx, created.id, lines);
+	return created;
+}
+
+export async function createQuoteEstimate(
+	workspaceId: string,
+	input: CreateQuoteEstimateInput,
+) {
+	return db.transaction((tx) =>
+		createQuoteEstimateInTx(tx, workspaceId, input),
+	);
 }
 
 export async function listQuoteEstimates(
@@ -289,76 +299,86 @@ export async function getQuoteEstimate(workspaceId: string, id: string) {
 	return { ...quote, lines };
 }
 
-export async function updateDraftQuoteEstimate(
+export async function updateDraftQuoteEstimateInTx(
+	tx: QuoteTransaction,
 	workspaceId: string,
 	id: string,
 	input: QuoteEstimateInput,
 ) {
 	const parsed = quoteEstimateInputSchema.parse(input);
 	const totals = computeQuoteTotals(parsed.lines, parsed.taxCents);
-	return db.transaction(async (tx) => {
-		const [current] = await tx
-			.select()
-			.from(quoteEstimates)
-			.where(
-				and(
-					eq(quoteEstimates.workspaceId, workspaceId),
-					eq(quoteEstimates.id, id),
-				),
-			)
-			.limit(1)
-			.for("update");
-		if (!current) throw new Error("QUOTE_ESTIMATE_NOT_FOUND");
-		if (current.status !== "draft")
-			throw new Error("QUOTE_ESTIMATE_NOT_EDITABLE");
-		if (parsed.kind !== current.kind) {
-			throw new Error("QUOTE_ESTIMATE_KIND_IMMUTABLE");
-		}
-		const { client, lines } = await resolveQuoteReferences(
-			tx,
-			workspaceId,
-			parsed,
-		);
-		const [updated] = await tx
-			.update(quoteEstimates)
-			.set({
-				clientId: parsed.clientId,
-				clientName: client.name,
-				clientEmail: client.email,
-				clientCompany: client.company,
-				title: parsed.title,
-				currency: parsed.currency,
-				...totals,
-				validUntil: parsed.validUntil,
-				notes: parsed.notes,
-				terms: parsed.terms,
-				metadata: parsed.metadata,
-				updatedAt: new Date(),
-			})
-			.where(
-				and(
-					eq(quoteEstimates.workspaceId, workspaceId),
-					eq(quoteEstimates.id, id),
-					eq(quoteEstimates.status, "draft"),
-				),
-			)
-			.returning();
-		if (!updated) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
-		await tx
-			.delete(quoteEstimateLineItems)
-			.where(eq(quoteEstimateLineItems.quoteEstimateId, id));
-		await insertQuoteLines(tx, id, lines);
-		return updated;
-	});
+	const [current] = await tx
+		.select()
+		.from(quoteEstimates)
+		.where(
+			and(
+				eq(quoteEstimates.workspaceId, workspaceId),
+				eq(quoteEstimates.id, id),
+			),
+		)
+		.limit(1)
+		.for("update");
+	if (!current) throw new Error("QUOTE_ESTIMATE_NOT_FOUND");
+	if (current.status !== "draft")
+		throw new Error("QUOTE_ESTIMATE_NOT_EDITABLE");
+	if (parsed.kind !== current.kind) {
+		throw new Error("QUOTE_ESTIMATE_KIND_IMMUTABLE");
+	}
+	const { client, lines } = await resolveQuoteReferences(
+		tx,
+		workspaceId,
+		parsed,
+	);
+	const [updated] = await tx
+		.update(quoteEstimates)
+		.set({
+			clientId: parsed.clientId,
+			clientName: client.name,
+			clientEmail: client.email,
+			clientCompany: client.company,
+			title: parsed.title,
+			currency: parsed.currency,
+			...totals,
+			validUntil: parsed.validUntil,
+			notes: parsed.notes,
+			terms: parsed.terms,
+			metadata: parsed.metadata,
+			updatedAt: new Date(),
+		})
+		.where(
+			and(
+				eq(quoteEstimates.workspaceId, workspaceId),
+				eq(quoteEstimates.id, id),
+				eq(quoteEstimates.status, "draft"),
+			),
+		)
+		.returning();
+	if (!updated) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
+	await tx
+		.delete(quoteEstimateLineItems)
+		.where(eq(quoteEstimateLineItems.quoteEstimateId, id));
+	await insertQuoteLines(tx, id, lines);
+	return updated;
 }
 
-export async function sendQuoteEstimate(
+export async function updateDraftQuoteEstimate(
+	workspaceId: string,
+	id: string,
+	input: QuoteEstimateInput,
+) {
+	return db.transaction((tx) =>
+		updateDraftQuoteEstimateInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function sendQuoteEstimateInTx(
+	tx: QuoteTransaction,
 	workspaceId: string,
 	id: string,
 	options: { now?: Date; today?: string } = {},
 ) {
 	const { now, today } = lifecycleClock(options);
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(quoteEstimates)
@@ -422,10 +442,21 @@ export async function sendQuoteEstimate(
 			.returning();
 		if (!sent) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return sent;
-	});
+	}
 }
 
-export async function acceptQuoteEstimate(
+export async function sendQuoteEstimate(
+	workspaceId: string,
+	id: string,
+	options: { now?: Date; today?: string } = {},
+) {
+	return db.transaction((tx) =>
+		sendQuoteEstimateInTx(tx, workspaceId, id, options),
+	);
+}
+
+export async function acceptQuoteEstimateInTx(
+	tx: QuoteTransaction,
 	workspaceId: string,
 	id: string,
 	input: QuoteAcceptanceInput,
@@ -433,7 +464,7 @@ export async function acceptQuoteEstimate(
 ) {
 	const acceptance = quoteAcceptanceInputSchema.parse(input);
 	const { now, today } = lifecycleClock(options);
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(quoteEstimates)
@@ -473,17 +504,29 @@ export async function acceptQuoteEstimate(
 			.returning();
 		if (!accepted) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return accepted;
-	});
+	}
 }
 
-async function setSimpleQuoteStatus(
+export async function acceptQuoteEstimate(
+	workspaceId: string,
+	id: string,
+	input: QuoteAcceptanceInput,
+	options: { now?: Date; today?: string } = {},
+) {
+	return db.transaction((tx) =>
+		acceptQuoteEstimateInTx(tx, workspaceId, id, input, options),
+	);
+}
+
+export async function setSimpleQuoteStatusInTx(
+	tx: QuoteTransaction,
 	workspaceId: string,
 	id: string,
 	status: "declined" | "expired" | "voided",
 	options: { now?: Date; today?: string } = {},
 ) {
 	const { now, today } = lifecycleClock(options);
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(quoteEstimates)
@@ -524,7 +567,18 @@ async function setSimpleQuoteStatus(
 			.returning();
 		if (!updated) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
+}
+
+function setSimpleQuoteStatus(
+	workspaceId: string,
+	id: string,
+	status: "declined" | "expired" | "voided",
+	options: { now?: Date; today?: string } = {},
+) {
+	return db.transaction((tx) =>
+		setSimpleQuoteStatusInTx(tx, workspaceId, id, status, options),
+	);
 }
 
 export function declineQuoteEstimate(workspaceId: string, id: string) {
@@ -625,11 +679,12 @@ export async function reviseQuoteEstimate(workspaceId: string, id: string) {
 	});
 }
 
-export async function deleteDraftQuoteEstimate(
+export async function deleteDraftQuoteEstimateInTx(
+	tx: QuoteTransaction,
 	workspaceId: string,
 	id: string,
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select({ status: quoteEstimates.status })
 			.from(quoteEstimates)
@@ -656,5 +711,14 @@ export async function deleteDraftQuoteEstimate(
 			.returning();
 		if (!deleted) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return deleted;
-	});
+	}
+}
+
+export async function deleteDraftQuoteEstimate(
+	workspaceId: string,
+	id: string,
+) {
+	return db.transaction((tx) =>
+		deleteDraftQuoteEstimateInTx(tx, workspaceId, id),
+	);
 }

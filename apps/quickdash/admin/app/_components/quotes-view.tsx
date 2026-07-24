@@ -475,14 +475,21 @@ function TransitionForm({
 		changeQuoteStatusAction,
 		INITIAL_STATE,
 	);
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
-		if (state.completionId) router.refresh();
+		if (state.completionId) {
+			router.refresh();
+			setIdempotencyKey(crypto.randomUUID());
+		}
 	}, [router, state.completionId]);
 	return (
 		<form action={action}>
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name="quoteId" value={quoteId} />
 			<input type="hidden" name="target" value={target} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			<SubmitButton label={label} variant={variant} />
 			{state.error && (
 				<p role="alert" className="mt-2 text-destructive text-xs">
@@ -503,10 +510,14 @@ function AcceptDialog({
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [state, action] = useActionState(acceptQuoteAction, INITIAL_STATE);
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
 	useEffect(() => {
 		if (state.completionId) {
 			setOpen(false);
 			router.refresh();
+			setIdempotencyKey(crypto.randomUUID());
 		}
 	}, [router, state.completionId]);
 	return (
@@ -518,6 +529,7 @@ function AcceptDialog({
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
 					<input type="hidden" name="quoteId" value={quoteId} />
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 					<DialogHeader>
 						<DialogTitle>Record acceptance</DialogTitle>
 						<DialogDescription>

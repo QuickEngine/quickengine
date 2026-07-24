@@ -87,7 +87,8 @@ async function assertModuleEnabled(
 	}
 }
 
-export async function convertQuoteEstimateToInvoice(
+export async function convertQuoteEstimateToInvoiceInTx(
+	tx: QuoteTransaction,
 	workspaceId: string,
 	id: string,
 	options: { numberPrefix?: string; now?: Date } = {},
@@ -96,7 +97,7 @@ export async function convertQuoteEstimateToInvoice(
 		options.numberPrefix ?? "INV",
 	);
 	const now = options.now ?? new Date();
-	return db.transaction(async (tx) => {
+	{
 		const { quote, lines } = await lockQuoteForConversion(tx, workspaceId, id);
 		if (quote.status === "converted") {
 			if (!quote.convertedInvoiceId) {
@@ -170,10 +171,21 @@ export async function convertQuoteEstimateToInvoice(
 			.returning({ id: quoteEstimates.id });
 		if (!converted) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return invoice;
-	});
+	}
 }
 
-export async function convertQuoteEstimateToOrder(
+export async function convertQuoteEstimateToInvoice(
+	workspaceId: string,
+	id: string,
+	options: { numberPrefix?: string; now?: Date } = {},
+) {
+	return db.transaction((tx) =>
+		convertQuoteEstimateToInvoiceInTx(tx, workspaceId, id, options),
+	);
+}
+
+export async function convertQuoteEstimateToOrderInTx(
+	tx: QuoteTransaction,
 	workspaceId: string,
 	id: string,
 	options: { numberPrefix?: string; now?: Date } = {},
@@ -182,7 +194,7 @@ export async function convertQuoteEstimateToOrder(
 		options.numberPrefix ?? "ORD",
 	);
 	const now = options.now ?? new Date();
-	return db.transaction(async (tx) => {
+	{
 		const { quote, lines } = await lockQuoteForConversion(tx, workspaceId, id);
 		if (quote.status === "converted") {
 			if (!quote.convertedOrderId) {
@@ -258,5 +270,15 @@ export async function convertQuoteEstimateToOrder(
 			.returning({ id: quoteEstimates.id });
 		if (!converted) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return order;
-	});
+	}
+}
+
+export async function convertQuoteEstimateToOrder(
+	workspaceId: string,
+	id: string,
+	options: { numberPrefix?: string; now?: Date } = {},
+) {
+	return db.transaction((tx) =>
+		convertQuoteEstimateToOrderInTx(tx, workspaceId, id, options),
+	);
 }

@@ -184,6 +184,84 @@ export type QuickCatalogVariantInput = {
 	metadata?: Record<string, unknown>;
 };
 
+export type QuickQuoteKind = "quote" | "estimate" | "proposal";
+export type QuickQuoteStatus =
+	| "draft"
+	| "sent"
+	| "accepted"
+	| "declined"
+	| "expired"
+	| "voided"
+	| "superseded"
+	| "converted";
+
+/** A line on a quote or estimate. `catalogItemId` links it to the catalog; omit for a free line. */
+export type QuickQuoteLineInput = {
+	name: string;
+	quantity: number | string;
+	unitPriceCents: number;
+	catalogItemId?: string | null;
+	catalogItemVariantId?: string | null;
+	description?: string | null;
+	sku?: string | null;
+	unitLabel?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+/** Body for creating a quote over `POST /v1/quotes`. */
+export type QuickQuoteInput = {
+	clientId: string;
+	title: string;
+	lines: QuickQuoteLineInput[];
+	kind?: QuickQuoteKind;
+	currency?: string;
+	validUntil?: string | null;
+	notes?: string | null;
+	terms?: string | null;
+	taxCents?: number;
+	metadata?: Record<string, unknown>;
+};
+
+/** Body for accepting a quote over `POST /v1/quotes/:id/accept`. */
+export type QuickQuoteAcceptance = {
+	acceptedByName: string;
+	acceptedByEmail: string;
+	note?: string | null;
+};
+
+/** A line item as returned on a quote. */
+export type QuickQuoteLine = {
+	id: string;
+	name: string;
+	quantity: string;
+	unitPriceCents: number;
+	lineTotalCents: number;
+	position: number;
+	[field: string]: unknown;
+};
+
+/** A quote or estimate. The full record is returned; the common fields are typed here. */
+export type QuickQuote = {
+	id: string;
+	workspaceId: string;
+	number: string;
+	kind: QuickQuoteKind;
+	title: string;
+	status: QuickQuoteStatus;
+	clientId: string;
+	clientName: string;
+	currency: string;
+	subtotalCents: number;
+	taxCents: number;
+	totalCents: number;
+	validUntil: string | null;
+	notes: string | null;
+	createdAt: string;
+	updatedAt: string;
+	lines?: QuickQuoteLine[];
+	[field: string]: unknown;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

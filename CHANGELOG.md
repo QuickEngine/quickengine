@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Quotes and Estimates now has a full lifecycle API.** Durable commands cover creating,
+  editing, sending, accepting, declining, deleting, and converting a quote into an invoice or an
+  order, each committing domain state, audit, and outbox together. Hono adds guarded routes with
+  private read and write capabilities, and Quick.js, the lean CLI, and the QuickDash quote screens
+  now follow the same package contracts. The conversion into invoices and orders runs in one
+  transaction and records the converted event.
+
 - **Products and Services now has a full catalog API.** Package-owned durable commands cover
   catalog items and their variants with SKU uniqueness, the draft to active to archived status
   machine, archive before delete, and variant parent rules, each committing domain state, audit,

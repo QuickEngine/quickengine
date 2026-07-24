@@ -1,19 +1,22 @@
 "use server";
 
-import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
-	acceptQuoteEstimate,
-	convertQuoteEstimateToInvoice,
-	convertQuoteEstimateToOrder,
-	createQuoteEstimate,
-	declineQuoteEstimate,
-	deleteDraftQuoteEstimate,
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
+import { getSession } from "@quickengine/auth/server";
+import {
+	acceptQuoteEstimateCommand,
+	convertQuoteEstimateToInvoiceCommand,
+	convertQuoteEstimateToOrderCommand,
+	createQuoteEstimateCommand,
+	declineQuoteEstimateCommand,
+	deleteQuoteEstimateCommand,
 	expireQuoteEstimate,
 	quotesEstimatesSettingsSchema,
 	reviseQuoteEstimate,
-	sendQuoteEstimate,
-	updateDraftQuoteEstimate,
+	sendQuoteEstimateCommand,
+	updateDraftQuoteEstimateCommand,
 	voidQuoteEstimate,
 } from "@quickengine/mod-quotes-estimates";
 import { revalidatePath } from "next/cache";
@@ -55,9 +58,41 @@ async function authorize(workspaceId: string) {
 	}
 	return {
 		ok: true,
+		access,
+		actorId: session.user.id,
 		settings: quotesEstimatesSettingsSchema.parse(module.settings),
 	} as const;
 }
+
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	failure(
+		kind === "conflict"
+			? "This request was already used with different details. Try again."
+			: "This quote change is still being processed. Try again shortly.",
+	);
+
+const key = (formData: FormData) =>
+	String(formData.get("idempotencyKey") ?? "");
 
 function decimalToCents(value: FormDataEntryValue | null, label: string) {
 	const text = String(value ?? "").trim();
@@ -119,6 +154,8 @@ function readQuoteInput(formData: FormData) {
 }
 
 const friendlyFailure = (error: unknown) => {
+	if (error instanceof Error && error.name === "DomainError")
+		return error.message;
 	if (!(error instanceof Error)) return "We couldn't save this quote.";
 	switch (error.message) {
 		case "CLIENT_NOT_FOUND":
@@ -166,25 +203,22 @@ export async function createQuoteAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
-
-	const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-	const idempotencyScope = `quotes.create:${workspaceId}`;
-	if (!(await claimIdempotencyKey(idempotencyKey, idempotencyScope))) {
-		revalidatePath(`/${workspaceId}/quotes-estimates`);
-		return success();
-	}
-
 	try {
-		const input = readQuoteInput(formData);
-		await createQuoteEstimate(workspaceId, {
-			...input,
-			currency: input.currency || authorization.settings.defaultCurrency,
-			numberPrefix: prefixFor(authorization.settings, input.kind),
-		});
+		const parsed = readQuoteInput(formData);
+		const input = {
+			...parsed,
+			currency: parsed.currency || authorization.settings.defaultCurrency,
+			numberPrefix: prefixFor(authorization.settings, parsed.kind),
+		};
+		const context = await mutationContext(
+			authorization,
+			"quotes.create",
+			key(formData),
+			input,
+		);
+		const outcome = await createQuoteEstimateCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
-		// The claim meant "we're doing the work" — the work failed, so give the key back
-		// or the user's corrected retry would be swallowed as a duplicate.
-		await releaseIdempotencyKey(idempotencyKey, idempotencyScope);
 		return failure(friendlyFailure(error));
 	}
 	revalidatePath(`/${workspaceId}/quotes-estimates`);
@@ -200,11 +234,19 @@ export async function updateQuoteAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await updateDraftQuoteEstimate(
-			workspaceId,
-			quoteId,
-			readQuoteInput(formData),
+		const input = readQuoteInput(formData);
+		const context = await mutationContext(
+			authorization,
+			"quotes.update",
+			key(formData),
+			{ id: quoteId, input },
 		);
+		const outcome = await updateDraftQuoteEstimateCommand(
+			context,
+			quoteId,
+			input,
+		);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
 		return failure(friendlyFailure(error));
 	}
@@ -221,12 +263,24 @@ export async function acceptQuoteAction(
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await acceptQuoteEstimate(workspaceId, quoteId, {
+		const acceptance = {
 			acceptedByName: String(formData.get("acceptedByName") ?? "").trim(),
 			acceptedByEmail:
 				String(formData.get("acceptedByEmail") ?? "").trim() || null,
 			note: String(formData.get("acceptanceNote") ?? "").trim() || null,
-		});
+		};
+		const context = await mutationContext(
+			authorization,
+			"quotes.accept",
+			key(formData),
+			{ acceptance, id: quoteId },
+		);
+		const outcome = await acceptQuoteEstimateCommand(
+			context,
+			quoteId,
+			acceptance,
+		);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 	} catch (error) {
 		return failure(friendlyFailure(error));
 	}
@@ -260,12 +314,71 @@ export async function changeQuoteStatusAction(
 	if (!authorization.ok) return failure(authorization.error);
 	try {
 		switch (target) {
-			case "sent":
-				await sendQuoteEstimate(workspaceId, quoteId);
+			case "sent": {
+				const context = await mutationContext(
+					authorization,
+					"quotes.send",
+					key(formData),
+					{ id: quoteId },
+				);
+				const outcome = await sendQuoteEstimateCommand(context, quoteId);
+				if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 				break;
-			case "decline":
-				await declineQuoteEstimate(workspaceId, quoteId);
+			}
+			case "decline": {
+				const context = await mutationContext(
+					authorization,
+					"quotes.decline",
+					key(formData),
+					{ id: quoteId },
+				);
+				const outcome = await declineQuoteEstimateCommand(context, quoteId);
+				if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 				break;
+			}
+			case "delete": {
+				const context = await mutationContext(
+					authorization,
+					"quotes.delete",
+					key(formData),
+					{ id: quoteId },
+				);
+				const outcome = await deleteQuoteEstimateCommand(context, quoteId);
+				if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+				break;
+			}
+			case "convert-invoice": {
+				const context = await mutationContext(
+					authorization,
+					"quotes.convert.invoice",
+					key(formData),
+					{ id: quoteId, target },
+				);
+				const outcome = await convertQuoteEstimateToInvoiceCommand(
+					context,
+					quoteId,
+				);
+				if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+				revalidatePath(`/${workspaceId}/invoicing`);
+				break;
+			}
+			case "convert-order": {
+				const context = await mutationContext(
+					authorization,
+					"quotes.convert.order",
+					key(formData),
+					{ id: quoteId, target },
+				);
+				const outcome = await convertQuoteEstimateToOrderCommand(
+					context,
+					quoteId,
+				);
+				if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+				revalidatePath(`/${workspaceId}/orders`);
+				break;
+			}
+			// expire/void/revise are UI-only lifecycle operations, not part of the public API
+			// surface, so they keep the existing module functions rather than a durable command.
 			case "expire":
 				await expireQuoteEstimate(workspaceId, quoteId);
 				break;
@@ -274,19 +387,6 @@ export async function changeQuoteStatusAction(
 				break;
 			case "revise":
 				await reviseQuoteEstimate(workspaceId, quoteId);
-				break;
-			case "delete": {
-				const deleted = await deleteDraftQuoteEstimate(workspaceId, quoteId);
-				if (!deleted) return failure("This quote no longer exists.");
-				break;
-			}
-			case "convert-invoice":
-				await convertQuoteEstimateToInvoice(workspaceId, quoteId);
-				revalidatePath(`/${workspaceId}/invoicing`);
-				break;
-			case "convert-order":
-				await convertQuoteEstimateToOrder(workspaceId, quoteId);
-				revalidatePath(`/${workspaceId}/orders`);
 				break;
 		}
 	} catch (error) {

@@ -7,6 +7,7 @@ import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
 import { createJsonLogger } from "./logger";
 import { registerProductsServicesRoutes } from "./products-services-routes";
+import { registerQuotesRoutes } from "./quotes-routes";
 import { initializeTelemetry } from "./telemetry";
 
 const config = loadApiConfig();
@@ -25,6 +26,7 @@ const app = createApp(config, {
 		};
 		registerClientRecordRoutes(app, dependencies);
 		registerProductsServicesRoutes(app, dependencies);
+		registerQuotesRoutes(app, dependencies);
 	},
 	telemetry: initializeTelemetry(config),
 });

@@ -17,6 +17,8 @@ export const API_CAPABILITIES = [
 	"clients:read",
 	"clients:write",
 	"events:write",
+	"quotes:read",
+	"quotes:write",
 ] as const;
 export type ApiCapability = (typeof API_CAPABILITIES)[number];
 

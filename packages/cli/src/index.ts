@@ -5,6 +5,7 @@ import { registerCatalogCommands } from "./commands/catalog";
 import { registerClientCommands } from "./commands/clients";
 import { registerConfigCommands } from "./commands/config";
 import { registerDoctorCommand } from "./commands/doctor";
+import { registerQuoteCommands } from "./commands/quotes";
 import { errorLine } from "./output";
 
 const program = new Command();
@@ -19,6 +20,7 @@ program
 registerConfigCommands(program);
 registerClientCommands(program);
 registerCatalogCommands(program);
+registerQuoteCommands(program);
 registerDoctorCommand(program);
 
 async function main(): Promise<void> {

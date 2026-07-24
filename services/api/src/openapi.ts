@@ -278,6 +278,119 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/quotes": {
+				get: {
+					operationId: "listQuotes",
+					summary: "List quotes and estimates",
+					responses: { "200": { description: "A cursor page of quotes." } },
+				},
+				post: {
+					operationId: "createQuote",
+					summary: "Create a quote or estimate",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Quote created." },
+						"409": {
+							description: "Idempotency conflict or invalid reference.",
+						},
+					},
+				},
+			},
+			"/v1/quotes/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getQuote",
+					responses: {
+						"200": { description: "The quote with its line items." },
+						"404": { description: "Quote not found." },
+					},
+				},
+				patch: {
+					operationId: "updateDraftQuote",
+					responses: {
+						"200": { description: "Draft quote updated." },
+						"409": { description: "Only a draft quote can be edited." },
+					},
+				},
+				delete: {
+					operationId: "deleteDraftQuote",
+					responses: { "200": { description: "Draft quote deleted." } },
+				},
+			},
+			"/v1/quotes/{id}/send": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "sendQuote",
+					responses: { "200": { description: "Quote sent." } },
+				},
+			},
+			"/v1/quotes/{id}/accept": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "acceptQuote",
+					responses: { "200": { description: "Quote accepted." } },
+				},
+			},
+			"/v1/quotes/{id}/decline": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "declineQuote",
+					responses: { "200": { description: "Quote declined." } },
+				},
+			},
+			"/v1/quotes/{id}/convert": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "convertQuote",
+					summary: "Convert an accepted quote into an invoice or order",
+					responses: {
+						"201": { description: "Quote converted." },
+						"409": { description: "The quote is not in a convertible state." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

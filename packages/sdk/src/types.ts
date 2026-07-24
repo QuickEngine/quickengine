@@ -980,6 +980,64 @@ export type QuickFileAttachment = {
 	[field: string]: unknown;
 };
 
+/** A report section. `available: false` means the module is off, not that the value is zero. */
+export type QuickReportSection<T> =
+	| { available: true; data: T }
+	| { available: false; data: null };
+
+export type QuickReportRange = {
+	from?: Date | string;
+	to?: Date | string;
+	/** IANA zone the range is bucketed in. Defaults to UTC. */
+	timeZone?: string;
+	granularity?: "day" | "week" | "month";
+};
+
+/** One bucket of a time series. `amountCents` is per-currency; currencies are never summed. */
+export type QuickSeriesPoint = {
+	bucket: string;
+	currency?: string;
+	amountCents?: number;
+	count?: number;
+	[field: string]: unknown;
+};
+
+export type QuickRevenueSeries = {
+	collected: QuickSeriesPoint[];
+	refunded: QuickSeriesPoint[];
+};
+
+export type QuickTrafficSummary = {
+	views: number;
+	visitors: number;
+	sessions: number;
+	[field: string]: unknown;
+};
+
+/**
+ * Cross-module snapshot. Every section reports its own availability, so a caller can tell
+ * "this workspace has no invoices" apart from "invoicing isn't switched on".
+ */
+export type QuickWorkspaceReport = {
+	workspace: { id: string; name: string };
+	range: { from: string; to: string; timeZone: string; granularity: string };
+	clients: QuickReportSection<Record<string, unknown>>;
+	invoices: QuickReportSection<Record<string, unknown>>;
+	payments: QuickReportSection<Record<string, unknown>>;
+	revenueSeries: QuickReportSection<QuickRevenueSeries>;
+	orders: QuickReportSection<Record<string, unknown>>;
+	fulfillment: QuickReportSection<Record<string, unknown>>;
+	projects: QuickReportSection<Record<string, unknown>>;
+	bookings: QuickReportSection<Record<string, unknown>>;
+	contracts: QuickReportSection<Record<string, unknown>>;
+	inventory: QuickReportSection<Record<string, unknown>>;
+	traffic: QuickReportSection<{
+		summary: QuickTrafficSummary;
+		series: QuickSeriesPoint[];
+	}>;
+	[field: string]: unknown;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

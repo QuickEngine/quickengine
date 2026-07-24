@@ -1,5 +1,5 @@
 import {
-	getWorkspaceReport,
+	getWorkspaceReportDto,
 	reportingAnalyticsSettingsSchema,
 } from "@quickengine/mod-reporting-analytics";
 import Link from "next/link";
@@ -79,7 +79,9 @@ export default async function ReportingPage({
 		? (granularityRaw as Granularity)
 		: "day";
 	const now = new Date();
-	const report = await getWorkspaceReport(workspaceId, {
+	// The DTO shares one range validator with the API, so an invalid time zone or granularity
+	// surfaces as a DomainError with readable copy instead of a raw ZodError crashing the page.
+	const report = await getWorkspaceReportDto(workspaceId, {
 		from: new Date(now.getTime() - days * 86_400_000),
 		to: now,
 		timeZone: config.defaultTimeZone,

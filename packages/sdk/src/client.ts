@@ -12,6 +12,7 @@ import { OrdersResource } from "./resources/orders";
 import { PaymentsResource } from "./resources/payments";
 import { ProjectsResource } from "./resources/projects";
 import { QuotesResource } from "./resources/quotes";
+import { ReportsResource } from "./resources/reports";
 import { ShipmentsResource } from "./resources/shipments";
 import { TimeResource } from "./resources/time";
 import type {
@@ -86,6 +87,7 @@ export class QuickClient {
 	readonly time: TimeResource;
 	readonly contracts: ContractsResource;
 	readonly files: FilesResource;
+	readonly reports: ReportsResource;
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
@@ -110,6 +112,7 @@ export class QuickClient {
 		this.time = new TimeResource(this);
 		this.contracts = new ContractsResource(this);
 		this.files = new FilesResource(this);
+		this.reports = new ReportsResource(this);
 	}
 
 	/**

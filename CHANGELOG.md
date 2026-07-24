@@ -6,6 +6,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Security
+
+- **Updated the CSS build tool to a patched release.** A pinned version of PostCSS could be made to
+  read files outside the project when processing a stylesheet's source-map reference. QuickEngine
+  only ever builds its own stylesheets, so this was not reachable in practice, but the pin now
+  points at the fixed release.
+
 ### Added
 
 - **Bookings now has a durable scheduling API.** Routes cover booking a slot, rescheduling one that

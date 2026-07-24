@@ -143,6 +143,141 @@ export function createOpenApiDocument(config: ApiConfig) {
 					responses: { "200": { description: "Address deleted." } },
 				},
 			},
+			"/v1/catalog": {
+				get: {
+					operationId: "listCatalogItems",
+					summary: "List catalog items",
+					responses: {
+						"200": { description: "A cursor page of catalog items." },
+					},
+				},
+				post: {
+					operationId: "createCatalogItem",
+					summary: "Create a catalog item",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Catalog item created." },
+						"409": { description: "Idempotency or SKU conflict." },
+					},
+				},
+			},
+			"/v1/catalog/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getCatalogItem",
+					responses: {
+						"200": { description: "The catalog item." },
+						"404": { description: "Catalog item not found." },
+					},
+				},
+				patch: {
+					operationId: "updateCatalogItem",
+					responses: { "200": { description: "Catalog item updated." } },
+				},
+				delete: {
+					operationId: "deleteCatalogItem",
+					responses: {
+						"200": { description: "Catalog item deleted." },
+						"409": { description: "The item must be archived first." },
+					},
+				},
+			},
+			"/v1/catalog/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setCatalogItemStatus",
+					summary: "Move a catalog item between draft, active, and archived",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/catalog/{id}/variants": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "listCatalogItemVariants",
+					responses: { "200": { description: "The item's variants." } },
+				},
+				post: {
+					operationId: "createProductVariant",
+					responses: { "201": { description: "Variant created." } },
+				},
+			},
+			"/v1/variants/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getProductVariant",
+					responses: {
+						"200": { description: "The variant." },
+						"404": { description: "Variant not found." },
+					},
+				},
+				patch: {
+					operationId: "updateProductVariant",
+					responses: { "200": { description: "Variant updated." } },
+				},
+				delete: {
+					operationId: "deleteProductVariant",
+					responses: {
+						"200": { description: "Variant deleted." },
+						"409": { description: "The variant must be archived first." },
+					},
+				},
+			},
+			"/v1/variants/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setProductVariantStatus",
+					summary: "Move a variant between draft, active, and archived",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": { description: "Illegal transition or inactive parent." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

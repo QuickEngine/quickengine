@@ -32,7 +32,7 @@ export type OnboardingModule = {
 
 /**
  * Modules that are planned but genuinely not built yet — the canonical second-wave list in
- * `docs/product/MODULES.md`. Listing them keeps the picker honest (nothing here pretends to
+ * `internal/product/MODULES.md`. Listing them keeps the picker honest (nothing here pretends to
  * work) while shaping the grid for the catalog's real eventual size rather than today's 15.
  *
  * When one of these ships, it gains a manifest and moves into the registry — at which point

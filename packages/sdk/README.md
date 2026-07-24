@@ -5,7 +5,7 @@ trusted servers on top of a QuickDash workspace. One business backend, many fron
 
 > **Status:** unpublished, evolving. It only exposes endpoints that actually exist on the
 > QuickDash API — no speculative methods. Today that means **reading a workspace's published
-> catalog**. More resources land as their routes ship (see `docs/product/QUICK_JS.md`).
+> catalog**. More resources land as their routes ship (see `internal/product/QUICK_JS.md`).
 
 ## Install
 
@@ -17,7 +17,7 @@ Inside this monorepo it's a workspace package:
 ```
 
 (A public `npm` release comes only after the contract has compatibility and release
-policies — see the build sequence in `docs/product/QUICK_JS.md`.)
+policies — see the build sequence in `internal/product/QUICK_JS.md`.)
 
 ## Quick start — a storefront reading its catalog
 

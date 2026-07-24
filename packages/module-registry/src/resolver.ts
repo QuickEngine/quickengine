@@ -6,7 +6,7 @@ import type { ModuleManifest } from "./manifest";
 // four are chained client-records ← invoicing ← payments ← fulfillment, so a lower one
 // can't be removed while a higher enabled one still depends on it). The bigger question
 // — per-business-type starting sets, choose-your-own, and what's free vs. paid — is a
-// deliberate future pass (docs/planning/BACKLOG.md → module model & gating).
+// deliberate future pass (internal/planning/BACKLOG.md → module model & gating).
 export const FOUNDATION_MODULE_IDS = [
 	"client-records",
 	"invoicing",

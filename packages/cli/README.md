@@ -52,4 +52,4 @@ Every command takes `--json` where it prints data, so the CLI composes in script
 
 The command surface grows with the API: `quick events`, then `quick workspace` / `quick
 module` / `quick keys` once their management routes exist, then the heavier `quick init` /
-`dev` / `deploy` tier. See `docs/product/QUICK_JS.md` and `docs/planning/BACKLOG.md`.
+`dev` / `deploy` tier. See `internal/product/QUICK_JS.md` and `internal/planning/BACKLOG.md`.

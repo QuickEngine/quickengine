@@ -9,7 +9,7 @@ if (
 	serverEnv.VERCEL_ENV !== "production"
 ) {
 	throw new Error(
-		`Refusing to connect to the production database from a "${serverEnv.VERCEL_ENV}" deployment. Point this environment's DATABASE_URL at a preview/dev database — see docs/COST_GUARDRAILS.md.`,
+		`Refusing to connect to the production database from a "${serverEnv.VERCEL_ENV}" deployment. Point this environment's DATABASE_URL at a preview/dev database — see internal/COST_GUARDRAILS.md.`,
 	);
 }
 

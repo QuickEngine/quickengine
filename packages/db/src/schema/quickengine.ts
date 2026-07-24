@@ -345,7 +345,7 @@ export const quickengineUsage = pgTable(
 // contracts signer-token pattern. `prefix` holds the non-secret leading chars shown
 // in Account so operators can tell keys apart. `capabilities` narrows what the key
 // may do (e.g. ["catalog:read"]); publishable keys are further limited to a read-only
-// allowlist in the verification layer. See docs/product/API_KEYS.md.
+// allowlist in the verification layer. See internal/product/API_KEYS.md.
 export const quickengineApiKeys = pgTable(
 	"quickengine_api_keys",
 	{
@@ -380,7 +380,7 @@ export const quickengineApiKeys = pgTable(
 // one-time token; only its sha256 hash is stored (never the raw token), mirroring the API-key
 // and contracts signer-token pattern. Redeeming a valid token creates the membership row.
 // A shared "redeemable link" primitive (referrals/affiliates) may be extracted from this
-// later — see docs/planning/BACKLOG.md.
+// later — see internal/planning/BACKLOG.md.
 export const quickengineOrganizationInvitations = pgTable(
 	"quickengine_organization_invitations",
 	{

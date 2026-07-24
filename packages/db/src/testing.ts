@@ -72,7 +72,7 @@ export const resolveTestDatabaseUrl = (): string =>
 /**
  * Create `quickengine_test` if it doesn't exist, then apply the committed
  * Drizzle migrations to it. Applying real migrations (not a schema push) also
- * verifies the migrations apply cleanly — a blocking area in docs/TESTING.md.
+ * verifies the migrations apply cleanly — a blocking area in internal/TESTING.md.
  * Idempotent: safe to run before every suite.
  */
 export const provisionTestDb = async (): Promise<void> => {

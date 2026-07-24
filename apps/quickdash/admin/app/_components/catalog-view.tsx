@@ -277,10 +277,17 @@ function StatusForm({
 	destructive?: boolean;
 }) {
 	const [state, formAction] = useActionState(action, INITIAL);
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
+	useEffect(() => {
+		if (state.completionId) setIdempotencyKey(crypto.randomUUID());
+	}, [state.completionId]);
 	return (
 		<form action={formAction} className="inline-flex flex-col gap-1">
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name={name} value={id} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			{target && <input type="hidden" name="target" value={target} />}
 			<Submit destructive={destructive}>{children}</Submit>
 			{state.error && (

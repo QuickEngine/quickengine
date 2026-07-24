@@ -37,8 +37,9 @@ apps/docs/
 packages/eslint-config/
 packages/typescript-config/
 
-# Internal company docs
-docs/
+# Internal company docs (private, never tracked). Root-anchored so it only matches the
+# repo-root internal/ folder, never a nested internal/ dir elsewhere.
+/internal/
 
 # Local agent/workspace state
 .agents/

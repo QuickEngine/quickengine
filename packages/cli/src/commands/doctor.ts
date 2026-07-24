@@ -38,7 +38,10 @@ export function registerDoctorCommand(program: Command): void {
 				try {
 					const { client } = buildClient();
 					const { data } = await client.catalog.list();
-					check(`API reachable — read ${data.length} catalog item(s)`, true);
+					check(
+						`API reachable — read ${data.items.length} catalog item(s)`,
+						true,
+					);
 				} catch (error) {
 					ok = false;
 					if (error instanceof QuickApiError) {

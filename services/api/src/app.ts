@@ -1,3 +1,4 @@
+import { DomainError } from "@quickengine/api-contracts/errors";
 import {
 	API_HEADERS,
 	RATE_LIMIT_HEADERS,
@@ -6,6 +7,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ZodError } from "zod";
 import { createBodyLimit } from "./body-limit";
 import type { ApiConfig } from "./config";
@@ -131,6 +133,14 @@ export function createApp(
 		}
 		if (error instanceof MutationPolicyError) {
 			return respondError(c, error.code, error.message, 400);
+		}
+		if (error instanceof DomainError) {
+			return respondError(
+				c,
+				error.code,
+				error.message,
+				error.status as ContentfulStatusCode,
+			);
 		}
 		if (error.name === "ClientRecordNotFoundError") {
 			return respondError(

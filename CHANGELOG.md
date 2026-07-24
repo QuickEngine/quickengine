@@ -15,6 +15,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Contracts and E-sign now has a durable agreement API.** Routes cover creating a draft, editing
+  it, sending it for signature, expiring, voiding, superseding it with a revision, and deleting a
+  draft, each committing domain state, audit, and outbox together. Signing links are treated as
+  credentials: they are never returned by the API, never written to the audit trail, and never
+  stored where a retry could replay them. Quick.js, the lean CLI, and the QuickDash agreements
+  screen now follow the same package contracts.
+
 - **Bookings now has a durable scheduling API.** Routes cover booking a slot, rescheduling one that
   hasn't started, moving it through requested, confirmed, checked in, completed, cancelled, and no
   show, and deleting one that never went ahead. Two live bookings can never overlap on the same

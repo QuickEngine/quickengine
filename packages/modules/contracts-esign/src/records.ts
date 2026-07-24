@@ -33,6 +33,10 @@ import {
 	contractStatusFromSigners,
 } from "./status";
 
+export type ContractsTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
 type ContractTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type QueryExecutor = Pick<typeof db, "select">;
 
@@ -137,7 +141,8 @@ async function replaceSigners(
 
 export type CreateContractInput = ContractInput & { numberPrefix?: string };
 
-export async function createContract(
+export async function createContractInTx(
+	tx: ContractsTransaction,
 	workspaceId: string,
 	input: CreateContractInput,
 ) {
@@ -146,7 +151,7 @@ export async function createContract(
 	const numberPrefix = contractNumberPrefixSchema.parse(
 		input.numberPrefix ?? defaults.contractNumberPrefix,
 	);
-	return db.transaction(async (tx) => {
+	{
 		const [workspace] = await tx
 			.select({ id: quickengineWorkspaces.id })
 			.from(quickengineWorkspaces)
@@ -200,7 +205,7 @@ export async function createContract(
 			actorType: "workspace_user",
 		});
 		return created;
-	});
+	}
 }
 
 export async function listContracts(workspaceId: string) {
@@ -243,13 +248,14 @@ export async function getContract(workspaceId: string, id: string) {
 	return { ...contract, signers, auditEvents };
 }
 
-export async function updateDraftContract(
+export async function updateDraftContractInTx(
+	tx: ContractsTransaction,
 	workspaceId: string,
 	id: string,
 	input: ContractInput,
 ) {
 	const parsed = contractInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(contracts)
@@ -296,10 +302,11 @@ export async function updateDraftContract(
 			actorType: "workspace_user",
 		});
 		return updated;
-	});
+	}
 }
 
-export async function sendContract(
+export async function sendContractInTx(
+	tx: ContractsTransaction,
 	workspaceId: string,
 	id: string,
 	options: z.input<typeof sendContractOptionsSchema> = {},
@@ -312,7 +319,7 @@ export async function sendContract(
 		new Date(now.getTime() + defaults.defaultSigningExpiryDays * 86_400_000);
 	if (expiresAt <= now) throw new Error("CONTRACT_EXPIRY_INVALID");
 	const consentText = parsed.consentText ?? defaults.defaultConsentText;
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(contracts)
@@ -412,7 +419,7 @@ export async function sendContract(
 				expiresAt,
 			})),
 		};
-	});
+	}
 }
 
 async function resolveSignerToken(tx: ContractTransaction, rawToken: string) {
@@ -435,12 +442,13 @@ async function resolveSignerToken(tx: ContractTransaction, rawToken: string) {
 	return { signer, contract };
 }
 
-export async function viewContractForSigning(
+export async function viewContractForSigningInTx(
+	tx: ContractsTransaction,
 	rawToken: string,
 	options: { now?: Date } = {},
 ) {
 	const now = options.now ?? new Date();
-	return db.transaction(async (tx) => {
+	{
 		const { signer, contract } = await resolveSignerToken(tx, rawToken);
 		if (
 			signer.status !== "pending" ||
@@ -492,7 +500,7 @@ export async function viewContractForSigning(
 				role: signer.role,
 			},
 		};
-	});
+	}
 }
 
 async function decideContract(
@@ -609,13 +617,14 @@ export function declineContract(
 	return decideContract(rawToken, "declined", undefined, options);
 }
 
-export async function expireContract(
+export async function expireContractInTx(
+	tx: ContractsTransaction,
 	workspaceId: string,
 	id: string,
 	options: { now?: Date } = {},
 ) {
 	const now = options.now ?? new Date();
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(contracts)
@@ -646,16 +655,17 @@ export async function expireContract(
 			actorType: "system",
 		});
 		return updated;
-	});
+	}
 }
 
-export async function voidContract(
+export async function voidContractInTx(
+	tx: ContractsTransaction,
 	workspaceId: string,
 	id: string,
 	options: { now?: Date; actorId?: string | null } = {},
 ) {
 	const now = options.now ?? new Date();
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select()
 			.from(contracts)
@@ -683,11 +693,15 @@ export async function voidContract(
 			actorId: options.actorId,
 		});
 		return updated;
-	});
+	}
 }
 
-export async function reviseContract(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function reviseContractInTx(
+	tx: ContractsTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [current] = await tx
 			.select()
 			.from(contracts)
@@ -757,11 +771,15 @@ export async function reviseContract(workspaceId: string, id: string) {
 			details: { supersedesContractId: current.id },
 		});
 		return created;
-	});
+	}
 }
 
-export async function deleteDraftContract(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteDraftContractInTx(
+	tx: ContractsTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [current] = await tx
 			.select({ status: contracts.status })
 			.from(contracts)
@@ -782,11 +800,71 @@ export async function deleteDraftContract(workspaceId: string, id: string) {
 			.returning();
 		if (!deleted) throw new Error("CONTRACT_CONCURRENT_UPDATE");
 		return deleted;
-	});
+	}
 }
 
 export function isTerminalContractStatus(status: ContractStatus): boolean {
 	return ["completed", "declined", "expired", "voided", "superseded"].includes(
 		status,
 	);
+}
+
+export async function createContract(
+	workspaceId: string,
+	input: CreateContractInput,
+) {
+	return db.transaction((tx) => createContractInTx(tx, workspaceId, input));
+}
+
+export async function updateDraftContract(
+	workspaceId: string,
+	id: string,
+	input: ContractInput,
+) {
+	return db.transaction((tx) =>
+		updateDraftContractInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function sendContract(
+	workspaceId: string,
+	id: string,
+	options: z.input<typeof sendContractOptionsSchema> = {},
+) {
+	return db.transaction((tx) => sendContractInTx(tx, workspaceId, id, options));
+}
+
+export async function viewContractForSigning(
+	rawToken: string,
+	options: { now?: Date } = {},
+) {
+	return db.transaction((tx) =>
+		viewContractForSigningInTx(tx, rawToken, options),
+	);
+}
+
+export async function expireContract(
+	workspaceId: string,
+	id: string,
+	options: { now?: Date } = {},
+) {
+	return db.transaction((tx) =>
+		expireContractInTx(tx, workspaceId, id, options),
+	);
+}
+
+export async function voidContract(
+	workspaceId: string,
+	id: string,
+	options: { now?: Date; actorId?: string | null } = {},
+) {
+	return db.transaction((tx) => voidContractInTx(tx, workspaceId, id, options));
+}
+
+export async function reviseContract(workspaceId: string, id: string) {
+	return db.transaction((tx) => reviseContractInTx(tx, workspaceId, id));
+}
+
+export async function deleteDraftContract(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteDraftContractInTx(tx, workspaceId, id));
 }

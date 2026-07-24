@@ -1481,6 +1481,148 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/contracts": {
+				get: {
+					operationId: "listContracts",
+					summary: "List contracts, optionally by client or status",
+					responses: { "200": { description: "A cursor page of contracts." } },
+				},
+				post: {
+					operationId: "createContract",
+					summary: "Create a draft contract",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Contract created." },
+						"409": {
+							description: "The attached document version isn't available.",
+						},
+					},
+				},
+			},
+			"/v1/contracts/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getContract",
+					summary: "Fetch a contract with its signers",
+					description:
+						"Signer token material is never returned; signing links are delivered out of band.",
+					responses: {
+						"200": { description: "The contract and its signers." },
+						"404": { description: "Contract not found." },
+					},
+				},
+				patch: {
+					operationId: "updateDraftContract",
+					responses: {
+						"200": { description: "Draft contract updated." },
+						"409": { description: "Only a draft contract can be edited." },
+					},
+				},
+				delete: {
+					operationId: "deleteDraftContract",
+					responses: {
+						"200": { description: "Draft contract deleted." },
+						"409": { description: "Only a draft contract can be deleted." },
+					},
+				},
+			},
+			"/v1/contracts/{id}/send": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "sendContract",
+					summary: "Send a contract for signature",
+					description:
+						"Mints a signing link per signer. The response carries invitation metadata only — raw signing tokens are never returned, logged, audited, or stored for replay.",
+					responses: {
+						"200": { description: "Contract sent." },
+						"409": {
+							description:
+								"The contract has no signers, or can't be sent from its status.",
+						},
+					},
+				},
+			},
+			"/v1/contracts/{id}/expire": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "expireContract",
+					responses: {
+						"200": { description: "Contract expired." },
+						"409": {
+							description: "The contract can't be expired from its status.",
+						},
+					},
+				},
+			},
+			"/v1/contracts/{id}/void": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "voidContract",
+					responses: {
+						"200": { description: "Contract voided." },
+						"409": {
+							description: "The contract can't be voided from its status.",
+						},
+					},
+				},
+			},
+			"/v1/contracts/{id}/revise": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "reviseContract",
+					summary: "Supersede a contract with a new revision",
+					responses: {
+						"201": {
+							description: "Revision created; the source is superseded.",
+						},
+						"409": {
+							description: "The contract can't be revised from its status.",
+						},
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

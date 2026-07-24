@@ -6,6 +6,7 @@ import { createApp } from "./app";
 import { registerBookingsRoutes } from "./bookings-routes";
 import { registerClientRecordRoutes } from "./client-records-routes";
 import { loadApiConfig } from "./config";
+import { registerContractsRoutes } from "./contracts-routes";
 import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
 import { registerFulfillmentRoutes } from "./fulfillment-routes";
@@ -49,6 +50,7 @@ const app = createApp(config, {
 		registerProjectsRoutes(app, dependencies);
 		registerBookingsRoutes(app, dependencies);
 		registerTimeTrackingRoutes(app, dependencies);
+		registerContractsRoutes(app, dependencies);
 		registerStripeWebhookRoutes(app, { logger: routeLogger });
 	},
 	telemetry: initializeTelemetry(config),

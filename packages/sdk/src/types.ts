@@ -832,6 +832,79 @@ export type QuickTimeInvoiceResult = {
 	invoiceId: string;
 };
 
+export type QuickContractStatus =
+	| "draft"
+	| "sent"
+	| "partially_signed"
+	| "completed"
+	| "declined"
+	| "expired"
+	| "voided"
+	| "superseded";
+
+export type QuickContractSignerStatus = "pending" | "signed" | "declined";
+
+/** A signer as returned by the API. Token material is never included. */
+export type QuickContractSigner = {
+	id: string;
+	contractId: string;
+	name: string;
+	email: string;
+	role: string | null;
+	position: number;
+	status: QuickContractSignerStatus;
+	viewedAt: string | null;
+	signedAt: string | null;
+	declinedAt: string | null;
+	[field: string]: unknown;
+};
+
+export type QuickContractInput = {
+	title: string;
+	clientId?: string | null;
+	fileVersionId?: string | null;
+	signers?: Array<{
+		name: string;
+		email: string;
+		role?: string | null;
+		position?: number;
+	}>;
+	expiresAt?: Date | string | null;
+	metadata?: Record<string, unknown>;
+};
+
+export type QuickContract = {
+	id: string;
+	workspaceId: string;
+	number: string;
+	title: string;
+	status: QuickContractStatus;
+	clientId: string | null;
+	clientName: string;
+	seriesId: string;
+	supersedesId: string | null;
+	sentAt: string | null;
+	completedAt: string | null;
+	expiresAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	signers?: QuickContractSigner[];
+	[field: string]: unknown;
+};
+
+/**
+ * Result of sending a contract. Deliberately carries no signing tokens — the links are delivered
+ * out of band, never returned, logged, or stored for replay.
+ */
+export type QuickContractSendResult = QuickContract & {
+	invitations: Array<{
+		signerId: string;
+		name: string;
+		email: string;
+		expiresAt: string;
+	}>;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

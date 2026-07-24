@@ -37,6 +37,10 @@ import {
 } from "./document";
 import { type FolderInput, folderInputSchema } from "./folder";
 
+export type FilesTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
 type QueryExecutor = Pick<typeof db, "select">;
 export type FileTransaction = Parameters<
 	Parameters<typeof db.transaction>[0]
@@ -139,12 +143,13 @@ async function getDocumentReference(
 	return document;
 }
 
-export async function createFileFolder(
+export async function createFileFolderInTx(
+	tx: FilesTransaction,
 	workspaceId: string,
 	input: FolderInput,
 ) {
 	const parsed = folderInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		await getWorkspace(tx, workspaceId, true);
 		await assertFolderParent(tx, workspaceId, parsed.parentId);
 		const [created] = await tx
@@ -156,7 +161,7 @@ export async function createFileFolder(
 			})
 			.returning();
 		return created;
-	});
+	}
 }
 
 export async function listFileFolders(workspaceId: string) {
@@ -167,13 +172,14 @@ export async function listFileFolders(workspaceId: string) {
 		.orderBy(asc(fileFolders.name));
 }
 
-export async function updateFileFolder(
+export async function updateFileFolderInTx(
+	tx: FilesTransaction,
 	workspaceId: string,
 	id: string,
 	input: FolderInput,
 ) {
 	const parsed = folderInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		await getWorkspace(tx, workspaceId, true);
 		const [current] = await tx
 			.select({ id: fileFolders.id })
@@ -197,11 +203,15 @@ export async function updateFileFolder(
 			)
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function deleteFileFolder(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function deleteFileFolderInTx(
+	tx: FilesTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		await getWorkspace(tx, workspaceId, true);
 		const [current] = await tx
 			.select({ id: fileFolders.id })
@@ -231,7 +241,7 @@ export async function deleteFileFolder(workspaceId: string, id: string) {
 			)
 			.returning();
 		return deleted;
-	});
+	}
 }
 
 // Total file storage across an organization's workspaces. Billing is org-scoped, so storage
@@ -610,11 +620,12 @@ export async function retryFailedFileVersion(
 	return stored;
 }
 
-export async function releaseQuarantinedFileVersion(
+export async function releaseQuarantinedFileVersionInTx(
+	tx: FilesTransaction,
 	workspaceId: string,
 	versionId: string,
 ) {
-	return db.transaction(async (tx) => {
+	{
 		await getWorkspace(tx, workspaceId, true);
 		const [version] = await tx
 			.select()
@@ -666,7 +677,7 @@ export async function releaseQuarantinedFileVersion(
 				.where(eq(fileDocuments.id, version.documentId));
 		}
 		return released;
-	});
+	}
 }
 
 export async function listFileDocuments(
@@ -723,13 +734,14 @@ export async function getFileDocument(workspaceId: string, documentId: string) {
 	return { ...document, versions };
 }
 
-export async function updateFileDocument(
+export async function updateFileDocumentInTx(
+	tx: FilesTransaction,
 	workspaceId: string,
 	documentId: string,
 	input: DocumentInput,
 ) {
 	const parsed = documentInputSchema.parse(input);
-	return db.transaction(async (tx) => {
+	{
 		await getWorkspace(tx, workspaceId, true);
 		const current = await getDocumentReference(tx, workspaceId, documentId);
 		if (current.status !== "active") {
@@ -747,15 +759,16 @@ export async function updateFileDocument(
 			)
 			.returning();
 		return updated;
-	});
+	}
 }
 
-export async function setFileDocumentStatus(
+export async function setFileDocumentStatusInTx(
+	tx: FilesTransaction,
 	workspaceId: string,
 	documentId: string,
 	status: DocumentStatus,
 ) {
-	return db.transaction(async (tx) => {
+	{
 		await getWorkspace(tx, workspaceId, true);
 		const current = await getDocumentReference(tx, workspaceId, documentId);
 		if (current.status === status)
@@ -783,7 +796,7 @@ export async function setFileDocumentStatus(
 			.returning();
 		if (!updated) throw new Error("FILE_DOCUMENT_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
 export async function requestFileDocumentDeletion(
@@ -1041,8 +1054,12 @@ export async function listFileAttachmentsForTarget(
 		.orderBy(asc(fileAttachments.position), asc(fileAttachments.createdAt));
 }
 
-export async function removeFileAttachment(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function removeFileAttachmentInTx(
+	tx: FilesTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		await getWorkspace(tx, workspaceId, true);
 		const [deleted] = await tx
 			.delete(fileAttachments)
@@ -1055,5 +1072,59 @@ export async function removeFileAttachment(workspaceId: string, id: string) {
 			.returning();
 		if (!deleted) throw new Error("FILE_ATTACHMENT_NOT_FOUND");
 		return deleted;
-	});
+	}
+}
+
+export async function createFileFolder(
+	workspaceId: string,
+	input: FolderInput,
+) {
+	return db.transaction((tx) => createFileFolderInTx(tx, workspaceId, input));
+}
+
+export async function updateFileFolder(
+	workspaceId: string,
+	id: string,
+	input: FolderInput,
+) {
+	return db.transaction((tx) =>
+		updateFileFolderInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function deleteFileFolder(workspaceId: string, id: string) {
+	return db.transaction((tx) => deleteFileFolderInTx(tx, workspaceId, id));
+}
+
+export async function updateFileDocument(
+	workspaceId: string,
+	documentId: string,
+	input: DocumentInput,
+) {
+	return db.transaction((tx) =>
+		updateFileDocumentInTx(tx, workspaceId, documentId, input),
+	);
+}
+
+export async function setFileDocumentStatus(
+	workspaceId: string,
+	documentId: string,
+	status: DocumentStatus,
+) {
+	return db.transaction((tx) =>
+		setFileDocumentStatusInTx(tx, workspaceId, documentId, status),
+	);
+}
+
+export async function removeFileAttachment(workspaceId: string, id: string) {
+	return db.transaction((tx) => removeFileAttachmentInTx(tx, workspaceId, id));
+}
+
+export async function releaseQuarantinedFileVersion(
+	workspaceId: string,
+	versionId: string,
+) {
+	return db.transaction((tx) =>
+		releaseQuarantinedFileVersionInTx(tx, workspaceId, versionId),
+	);
 }

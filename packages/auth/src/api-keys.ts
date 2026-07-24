@@ -18,6 +18,8 @@ export const API_CAPABILITIES = [
 	"catalog:write",
 	"clients:read",
 	"clients:write",
+	"contracts:read",
+	"contracts:write",
 	"events:write",
 	"fulfillment:read",
 	"fulfillment:write",

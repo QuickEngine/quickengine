@@ -3,6 +3,7 @@ import { CatalogResource } from "./resources/catalog";
 import { ClientsResource } from "./resources/clients";
 import { EventsResource } from "./resources/events";
 import { InvoicesResource } from "./resources/invoices";
+import { OrdersResource } from "./resources/orders";
 import { PaymentsResource } from "./resources/payments";
 import { QuotesResource } from "./resources/quotes";
 import type {
@@ -68,6 +69,7 @@ export class QuickClient {
 	readonly quotes: QuotesResource;
 	readonly invoices: InvoicesResource;
 	readonly payments: PaymentsResource;
+	readonly orders: OrdersResource;
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
@@ -83,6 +85,7 @@ export class QuickClient {
 		this.quotes = new QuotesResource(this);
 		this.invoices = new InvoicesResource(this);
 		this.payments = new PaymentsResource(this);
+		this.orders = new OrdersResource(this);
 	}
 
 	/**

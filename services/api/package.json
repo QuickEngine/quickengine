@@ -24,6 +24,7 @@
 		"@quickengine/billing": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",
+		"@quickengine/mod-orders": "workspace:*",
 		"@quickengine/mod-payments": "workspace:*",
 		"@quickengine/mod-products-services": "workspace:*",
 		"@quickengine/mod-quotes-estimates": "workspace:*",

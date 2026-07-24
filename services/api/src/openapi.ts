@@ -540,6 +540,102 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/orders": {
+				get: {
+					operationId: "listOrders",
+					summary: "List orders",
+					responses: { "200": { description: "A cursor page of orders." } },
+				},
+				post: {
+					operationId: "createOrder",
+					summary: "Create an order",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"201": { description: "Order created." },
+						"409": { description: "Idempotency conflict." },
+						"400": {
+							description: "A referenced client or catalog item is invalid.",
+						},
+					},
+				},
+			},
+			"/v1/orders/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getOrder",
+					responses: {
+						"200": { description: "The order with its line items." },
+						"404": { description: "Order not found." },
+					},
+				},
+				patch: {
+					operationId: "updateDraftOrder",
+					responses: {
+						"200": { description: "Draft order updated." },
+						"409": { description: "Only a draft order can be edited." },
+					},
+				},
+				delete: {
+					operationId: "deleteOrder",
+					responses: { "200": { description: "Draft order deleted." } },
+				},
+			},
+			"/v1/orders/{id}/status": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "setOrderStatus",
+					summary:
+						"Move an order between draft, placed, confirmed, processing, fulfilled, and cancelled",
+					responses: {
+						"200": { description: "Status changed." },
+						"409": {
+							description:
+								"Illegal or redundant transition, or fulfillment is incomplete.",
+						},
+					},
+				},
+			},
+			"/v1/orders/{id}/fulfillment": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "ensureOrderFulfillment",
+					summary: "Open the fulfillment record for a confirmed order",
+					responses: {
+						"200": { description: "The order's fulfillment identifier." },
+						"409": {
+							description: "The order is not ready for fulfillment.",
+						},
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

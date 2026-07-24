@@ -364,6 +364,74 @@ export type QuickPayment = {
 	[field: string]: unknown;
 };
 
+export type QuickOrderStatus =
+	| "draft"
+	| "placed"
+	| "confirmed"
+	| "processing"
+	| "fulfilled"
+	| "cancelled";
+
+/** A purchased line on an order. Snapshots stay immutable once the order is placed. */
+export type QuickOrderLineInput = {
+	name: string;
+	type: "physical" | "digital" | "service" | "rental";
+	quantity: number;
+	unitPriceCents: number;
+	catalogItemId?: string | null;
+	catalogItemVariantId?: string | null;
+	sku?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+/** Body for creating an order over `POST /v1/orders`. */
+export type QuickOrderInput = {
+	clientId: string;
+	lines: QuickOrderLineInput[];
+	currency?: string;
+	notes?: string | null;
+	metadata?: Record<string, unknown>;
+	numberPrefix?: string;
+};
+
+/** A line item as returned on an order. */
+export type QuickOrderLine = {
+	id: string;
+	name: string;
+	type: string;
+	quantity: number;
+	unitPriceCents: number;
+	lineTotalCents: number;
+	position: number;
+	[field: string]: unknown;
+};
+
+/** An order. The full record is returned; the common fields are typed here. */
+export type QuickOrder = {
+	id: string;
+	workspaceId: string;
+	number: string;
+	status: QuickOrderStatus;
+	clientId: string | null;
+	clientName: string;
+	clientEmail: string | null;
+	fulfillmentId: string | null;
+	currency: string;
+	subtotalCents: number;
+	totalCents: number;
+	notes: string | null;
+	createdAt: string;
+	updatedAt: string;
+	lineItems?: QuickOrderLine[];
+	[field: string]: unknown;
+};
+
+/** The fulfillment record opened for a confirmed order. */
+export type QuickOrderFulfillmentRef = {
+	fulfillmentId: string;
+	orderId: string;
+};
+
 /**
  * A privacy-minimal traffic event a site reports about itself. Visitor and session ids are
  * hashed server-side with a per-workspace salt — send stable opaque ids, never PII. `path`

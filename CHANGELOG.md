@@ -18,6 +18,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Orders now has a durable commerce API.** Routes cover draft create and edit, the draft to
+  placed to confirmed to processing to fulfilled status machine, cancellation, delete, and opening
+  the fulfillment record a confirmed order is delivered through, each committing domain state,
+  audit, and outbox together. Client and catalog references are verified inside the same
+  transaction, so a bad reference leaves nothing behind. Quick.js, the lean CLI, and the QuickDash
+  order screens now follow the same package contracts.
+
+### Fixed
+
+- **Editing a catalog item, variant, quote, or invoice in QuickDash now saves.** The edit forms
+  left out the retry key their save step required, so every edit failed with a validation message
+  no correction could satisfy. Creating those records was unaffected.
+
 - **Invoicing and Payments now have durable APIs.** Invoicing gains guarded routes for draft
   create, edit, the draft to sent to paid to void status machine, and delete, each committing
   domain state, audit, and outbox together. Payments gains routes to record a payment, move its

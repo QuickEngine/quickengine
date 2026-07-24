@@ -116,14 +116,14 @@ async function assertReferences(
 	return { client, variantOptionsById };
 }
 
-export async function createOrder(
+export async function createOrderInTx(
+	tx: OrderTransaction,
 	workspaceId: string,
 	input: CreateOrderInput,
 ) {
 	const parsed = orderInputSchema.parse(input);
 	const totals = computeOrderTotals(parsed.lines);
-
-	return db.transaction(async (tx) => {
+	{
 		const [workspace] = await tx
 			.select({ id: quickengineWorkspaces.id })
 			.from(quickengineWorkspaces)
@@ -177,7 +177,14 @@ export async function createOrder(
 			})),
 		);
 		return order;
-	});
+	}
+}
+
+export async function createOrder(
+	workspaceId: string,
+	input: CreateOrderInput,
+) {
+	return db.transaction((tx) => createOrderInTx(tx, workspaceId, input));
 }
 
 export async function listOrders(workspaceId: string) {
@@ -205,14 +212,15 @@ export async function getOrder(workspaceId: string, id: string) {
 	return { ...order, lines };
 }
 
-export async function updateDraftOrder(
+export async function updateDraftOrderInTx(
+	tx: OrderTransaction,
 	workspaceId: string,
 	id: string,
 	input: OrderInput,
 ) {
 	const parsed = orderInputSchema.parse(input);
 	const totals = computeOrderTotals(parsed.lines);
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select({ status: orders.status })
 			.from(orders)
@@ -265,15 +273,26 @@ export async function updateDraftOrder(
 			})),
 		);
 		return updated;
-	});
+	}
 }
 
-export async function setOrderStatus(
+export async function updateDraftOrder(
+	workspaceId: string,
+	id: string,
+	input: OrderInput,
+) {
+	return db.transaction((tx) =>
+		updateDraftOrderInTx(tx, workspaceId, id, input),
+	);
+}
+
+export async function setOrderStatusInTx(
+	tx: OrderTransaction,
 	workspaceId: string,
 	id: string,
 	status: OrderStatus,
 ) {
-	return db.transaction(async (tx) => {
+	{
 		const [current] = await tx
 			.select({ status: orders.status, fulfillmentId: orders.fulfillmentId })
 			.from(orders)
@@ -347,11 +366,25 @@ export async function setOrderStatus(
 			.returning();
 		if (!updated) throw new Error("ORDER_CONCURRENT_UPDATE");
 		return updated;
-	});
+	}
 }
 
-export async function ensureOrderFulfillment(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
+export async function setOrderStatus(
+	workspaceId: string,
+	id: string,
+	status: OrderStatus,
+) {
+	return db.transaction((tx) =>
+		setOrderStatusInTx(tx, workspaceId, id, status),
+	);
+}
+
+export async function ensureOrderFulfillmentInTx(
+	tx: OrderTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	{
 		const [order] = await tx
 			.select()
 			.from(orders)
@@ -401,20 +434,35 @@ export async function ensureOrderFulfillment(workspaceId: string, id: string) {
 		if (!linked?.fulfillmentId)
 			throw new Error("ORDER_FULFILLMENT_LINK_FAILED");
 		return linked.fulfillmentId;
-	});
+	}
+}
+
+export async function ensureOrderFulfillment(workspaceId: string, id: string) {
+	return db.transaction((tx) =>
+		ensureOrderFulfillmentInTx(tx, workspaceId, id),
+	);
+}
+
+export async function deleteOrderInTx(
+	tx: OrderTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	const [current] = await tx
+		.select({ status: orders.status })
+		.from(orders)
+		.where(and(eq(orders.workspaceId, workspaceId), eq(orders.id, id)))
+		.limit(1)
+		.for("update");
+	if (!current) throw new Error("ORDER_NOT_FOUND");
+	if (current.status !== "draft") throw new Error("ORDER_NOT_DELETABLE");
+	const [deleted] = await tx
+		.delete(orders)
+		.where(and(eq(orders.workspaceId, workspaceId), eq(orders.id, id)))
+		.returning({ id: orders.id });
+	return deleted;
 }
 
 export async function deleteOrder(workspaceId: string, id: string) {
-	const current = await getOrder(workspaceId, id);
-	if (!current) {
-		throw new Error("ORDER_NOT_FOUND");
-	}
-	if (current.status !== "draft") {
-		throw new Error("ORDER_NOT_DELETABLE");
-	}
-	const [deleted] = await db
-		.delete(orders)
-		.where(and(eq(orders.workspaceId, workspaceId), eq(orders.id, id)))
-		.returning();
-	return deleted;
+	return db.transaction((tx) => deleteOrderInTx(tx, workspaceId, id));
 }

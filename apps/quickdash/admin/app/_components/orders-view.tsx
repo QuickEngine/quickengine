@@ -397,11 +397,9 @@ function OrderDialog({
 			<DialogContent className="sm:max-w-2xl">
 				<form action={action}>
 					<input type="hidden" name="workspaceId" value={workspaceId} />
-					{order ? (
-						<input type="hidden" name="orderId" value={order.id} />
-					) : (
-						<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
-					)}
+					{order && <input type="hidden" name="orderId" value={order.id} />}
+					<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+
 					<DialogHeader>
 						<DialogTitle>
 							{order ? `Edit ${order.number}` : "Create an order draft"}
@@ -444,10 +442,19 @@ function LifecycleForm({
 }) {
 	const action = target ? changeOrderStatusAction : deleteOrderAction;
 	const [state, formAction] = useActionState(action, INITIAL);
+	// A per-submit key so a double-fire replays one durable mutation instead of running two;
+	// a fresh key is minted after each success.
+	const [idempotencyKey, setIdempotencyKey] = useState(() =>
+		crypto.randomUUID(),
+	);
+	useEffect(() => {
+		if (state.completionId) setIdempotencyKey(crypto.randomUUID());
+	}, [state.completionId]);
 	return (
 		<form action={formAction} className="inline-flex flex-col gap-1">
 			<input type="hidden" name="workspaceId" value={workspaceId} />
 			<input type="hidden" name="orderId" value={orderId} />
+			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 			{target && <input type="hidden" name="target" value={target} />}
 			<Submit destructive={destructive}>{children}</Submit>
 			{state.error && (

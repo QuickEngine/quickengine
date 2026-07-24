@@ -9,6 +9,7 @@ import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
 import { registerInvoicesRoutes } from "./invoices-routes";
 import { createJsonLogger } from "./logger";
+import { registerOrdersRoutes } from "./orders-routes";
 import { registerPaymentsRoutes } from "./payments-routes";
 import { registerProductsServicesRoutes } from "./products-services-routes";
 import { registerQuotesRoutes } from "./quotes-routes";
@@ -35,6 +36,7 @@ const app = createApp(config, {
 		registerQuotesRoutes(app, dependencies);
 		registerInvoicesRoutes(app, dependencies);
 		registerPaymentsRoutes(app, dependencies);
+		registerOrdersRoutes(app, dependencies);
 		registerStripeWebhookRoutes(app, { logger: routeLogger });
 	},
 	telemetry: initializeTelemetry(config),

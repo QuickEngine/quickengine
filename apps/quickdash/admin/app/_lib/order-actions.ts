@@ -1,13 +1,17 @@
 "use server";
 
-import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
-	createOrder,
-	deleteOrder,
-	ensureOrderFulfillment,
-	setOrderStatus,
-	updateDraftOrder,
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
+import { getSession } from "@quickengine/auth/server";
+import {
+	createOrderCommand,
+	deleteOrderCommand,
+	ensureOrderFulfillmentCommand,
+	ordersSettingsSchema,
+	setOrderStatusCommand,
+	updateDraftOrderCommand,
 } from "@quickengine/mod-orders";
 import {
 	formatVariantLabel,
@@ -47,8 +51,43 @@ async function authorize(workspaceId: string) {
 			ok: false,
 			error: "Orders is not enabled for this workspace.",
 		} as const;
-	return { ok: true, settings: module.settings } as const;
+	return {
+		ok: true,
+		access,
+		actorId: session.user.id,
+		settings: ordersSettingsSchema.parse(module.settings),
+	} as const;
 }
+
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	failure(
+		kind === "conflict"
+			? "This request was already used with different details. Try again."
+			: "This order change is still being processed. Try again shortly.",
+	);
+
+const key = (formData: FormData) =>
+	String(formData.get("idempotencyKey") ?? "");
 
 function cents(value: FormDataEntryValue | null) {
 	const text = String(value ?? "").trim();
@@ -121,6 +160,9 @@ async function orderInput(workspaceId: string, formData: FormData) {
 }
 
 function message(error: unknown) {
+	// Durable commands raise DomainError with copy already written for a person.
+	if (error instanceof Error && error.name === "DomainError")
+		return error.message;
 	if (!(error instanceof Error)) return "We couldn't save this order.";
 	if (error.message === "INVALID_PRICE")
 		return "Enter valid line prices with no more than two decimals.";
@@ -141,32 +183,33 @@ export async function saveOrderAction(
 	const workspaceId = String(formData.get("workspaceId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
-	// Tracks a key this call actually claimed, so a failure can give it back. The update
-	// branch never claims, so it stays null and releases nothing.
-	let claimed: { key: string; scope: string } | null = null;
 	try {
 		const input = await orderInput(workspaceId, formData);
 		const orderId = String(formData.get("orderId") ?? "");
 		if (orderId) {
-			// Updates are naturally idempotent (same orderId + input → same result).
-			await updateDraftOrder(workspaceId, orderId, input);
+			const context = await mutationContext(
+				authorization,
+				"orders.update",
+				key(formData),
+				{ id: orderId, input },
+			);
+			const outcome = await updateDraftOrderCommand(context, orderId, input);
+			if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 		} else {
-			// Guard create against double-fire: only the first request with this key creates.
-			const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
-			const idempotencyScope = `orders.create:${workspaceId}`;
-			if (await claimIdempotencyKey(idempotencyKey, idempotencyScope)) {
-				claimed = { key: idempotencyKey, scope: idempotencyScope };
-				const prefix =
-					typeof authorization.settings.numberPrefix === "string"
-						? authorization.settings.numberPrefix
-						: "ORD";
-				await createOrder(workspaceId, { ...input, numberPrefix: prefix });
-			}
+			const created = {
+				...input,
+				numberPrefix: authorization.settings.numberPrefix,
+			};
+			const context = await mutationContext(
+				authorization,
+				"orders.create",
+				key(formData),
+				created,
+			);
+			const outcome = await createOrderCommand(context, created);
+			if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
 		}
 	} catch (error) {
-		// The claim meant "we're doing the work" — the work failed, so give the key back
-		// or the user's corrected retry would be swallowed as a duplicate.
-		if (claimed) await releaseIdempotencyKey(claimed.key, claimed.scope);
 		return failure(message(error));
 	}
 	revalidatePath(`/${workspaceId}/orders`);
@@ -187,21 +230,60 @@ export async function changeOrderStatusAction(
 		| "cancelled";
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
+	// One button press can drive several durable commands (status, auto-confirm, opening
+	// fulfillment). Each needs its own stable key derived from the form's key so a retry
+	// replays every step instead of colliding on one.
+	const step = async (
+		operation: string,
+		suffix: string,
+		canonicalInput: unknown,
+		run: (
+			context: Awaited<ReturnType<typeof mutationContext>>,
+		) => Promise<{ kind: string }>,
+	) => {
+		const context = await mutationContext(
+			authorization,
+			operation,
+			`${key(formData)}:${suffix}`,
+			canonicalInput,
+		);
+		return run(context);
+	};
 	try {
-		await setOrderStatus(workspaceId, orderId, target);
-		if (target === "confirmed")
-			await ensureOrderFulfillment(workspaceId, orderId);
-		if (target === "placed" && authorization.settings.autoConfirm === true) {
-			await setOrderStatus(workspaceId, orderId, "confirmed");
-			await ensureOrderFulfillment(workspaceId, orderId);
+		const moved = await step(
+			"orders.set-status",
+			target,
+			{ id: orderId, status: target },
+			(context) => setOrderStatusCommand(context, orderId, target),
+		);
+		if (moved.kind !== "success")
+			return outcomeFailure(moved.kind as "conflict" | "in_progress");
+
+		if (target === "confirmed") {
+			await step(
+				"orders.ensure-fulfillment",
+				"fulfillment",
+				{ id: orderId },
+				(context) => ensureOrderFulfillmentCommand(context, orderId),
+			);
+		}
+		if (target === "placed" && authorization.settings.autoConfirm) {
+			await step(
+				"orders.set-status",
+				"auto-confirm",
+				{ id: orderId, status: "confirmed" },
+				(context) => setOrderStatusCommand(context, orderId, "confirmed"),
+			);
+			await step(
+				"orders.ensure-fulfillment",
+				"auto-fulfillment",
+				{ id: orderId },
+				(context) => ensureOrderFulfillmentCommand(context, orderId),
+			);
 		}
 	} catch (error) {
-		if (error instanceof Error) {
-			if (error.message === "ORDER_FULFILLMENT_NOT_COMPLETE")
-				return failure("Complete this order's Fulfillment record first.");
-			if (error.message === "ORDER_FULFILLMENT_ALREADY_COMPLETE")
-				return failure("A completed delivery cannot be cancelled as an order.");
-		}
+		if (error instanceof Error && error.name === "DomainError")
+			return failure(error.message);
 		return failure("That order can no longer make this lifecycle change.");
 	}
 	revalidatePath(`/${workspaceId}/orders`);
@@ -214,11 +296,21 @@ export async function deleteOrderAction(
 	formData: FormData,
 ): Promise<OrderActionState> {
 	const workspaceId = String(formData.get("workspaceId") ?? "");
+	const orderId = String(formData.get("orderId") ?? "");
 	const authorization = await authorize(workspaceId);
 	if (!authorization.ok) return failure(authorization.error);
 	try {
-		await deleteOrder(workspaceId, String(formData.get("orderId") ?? ""));
-	} catch {
+		const context = await mutationContext(
+			authorization,
+			"orders.delete",
+			key(formData),
+			{ id: orderId },
+		);
+		const outcome = await deleteOrderCommand(context, orderId);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		if (error instanceof Error && error.name === "DomainError")
+			return failure(error.message);
 		return failure("Only draft orders can be permanently deleted.");
 	}
 	revalidatePath(`/${workspaceId}/orders`);

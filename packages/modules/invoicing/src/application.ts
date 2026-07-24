@@ -45,6 +45,10 @@ const FRIENDLY: Record<string, string> = {
 	INVOICE_ILLEGAL_TRANSITION: "That invoice status change isn't allowed.",
 	INVOICE_NOT_DELETABLE: "Only a draft invoice can be deleted.",
 	INVOICE_TOTAL_OUT_OF_RANGE: "The invoice total is too large.",
+	CLIENT_WORKSPACE_MISMATCH: "That client belongs to another workspace.",
+	INVOICE_LINES_REQUIRED: "An invoice needs at least one line item.",
+	INVOICE_SOURCE_LINES_MISMATCH:
+		"The lines from the source record no longer match this invoice.",
 };
 
 function mapInvoiceError(error: unknown): never {
@@ -53,6 +57,10 @@ function mapInvoiceError(error: unknown): never {
 		const message = FRIENDLY[error.message] ?? error.message;
 		if (error.message.endsWith("NOT_FOUND")) {
 			throw new DomainError("NOT_FOUND", message);
+		}
+		// A bad reference or a missing line is the caller's input, not a state conflict.
+		if (/(MISMATCH|LINES_REQUIRED)/.test(error.message)) {
+			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (
 			/(NOT_EDITABLE|MANAGED_LINES|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|OUT_OF_RANGE)/.test(

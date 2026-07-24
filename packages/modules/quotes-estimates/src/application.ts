@@ -57,6 +57,48 @@ const FRIENDLY: Record<string, string> = {
 	QUOTE_ESTIMATE_NOT_SENDABLE:
 		"This quote can't be sent from its current status.",
 	QUOTE_ESTIMATE_ALREADY_EXPIRED: "This quote is past its valid-until date.",
+	CATALOG_ITEM_WORKSPACE_MISMATCH:
+		"A catalog item on this quote belongs to another workspace.",
+	CATALOG_ITEM_VARIANT_WORKSPACE_MISMATCH:
+		"A variant on this quote belongs to another workspace.",
+	CATALOG_ITEM_VARIANT_PARENT_MISMATCH:
+		"A variant on this quote doesn't belong to its catalog item.",
+	QUOTE_ESTIMATE_EXPIRED: "This quote has expired and can't be changed.",
+	QUOTE_ESTIMATE_NOT_EXPIRED: "This quote hasn't expired yet.",
+	QUOTE_ESTIMATE_ILLEGAL_TRANSITION: "That quote status change isn't allowed.",
+	QUOTE_ESTIMATE_NOT_ACCEPTABLE:
+		"This quote can't be accepted from its current status.",
+	QUOTE_ESTIMATE_NOT_DELETABLE: "Only a draft quote can be deleted.",
+	QUOTE_ESTIMATE_NOT_REVISABLE: "This quote can't be revised from its status.",
+	QUOTE_ESTIMATE_NOT_CONVERTIBLE: "Only an accepted quote can be converted.",
+	QUOTE_ESTIMATE_LINES_MISSING: "A quote needs at least one line.",
+	QUOTE_ESTIMATE_ALREADY_CONVERTED_TO_INVOICE:
+		"This quote was already converted into an invoice.",
+	QUOTE_ESTIMATE_ALREADY_CONVERTED_TO_ORDER:
+		"This quote was already converted into an order.",
+	QUOTE_ESTIMATE_REVISION_SOURCE_INVALID:
+		"The quote being revised is no longer a valid source.",
+	QUOTE_ESTIMATE_REVISION_SOURCE_CHANGED:
+		"The quote being revised changed while this revision was in flight. Try again.",
+	CONVERTED_INVOICE_NOT_FOUND:
+		"The invoice this quote was converted into no longer exists.",
+	CONVERTED_ORDER_NOT_FOUND:
+		"The order this quote was converted into no longer exists.",
+	QUOTE_INVOICE_TOTAL_MISMATCH:
+		"The converted invoice total doesn't match the quote. Nothing was changed.",
+	QUOTE_ORDER_TOTAL_MISMATCH:
+		"The converted order total doesn't match the quote. Nothing was changed.",
+	QUOTE_ORDER_QUANTITY_EXCEEDED:
+		"A line quantity is too large to convert into an order.",
+	QUOTE_ORDER_REQUIRES_WHOLE_QUANTITIES:
+		"Orders need whole-unit quantities. Adjust the fractional lines first.",
+	QUOTE_ORDER_TAX_UNSUPPORTED:
+		"Orders can't carry this quote's tax. Convert it to an invoice instead.",
+	QUOTE_QUANTITY_INVALID: "Check the quantity on each quote line.",
+	QUOTE_UNIT_PRICE_INVALID: "Check the unit price on each quote line.",
+	QUOTE_TAX_INVALID: "Check the tax amount on this quote.",
+	QUOTE_LINE_TOTAL_EXCEEDED: "A line total on this quote is too large.",
+	QUOTE_TOTAL_EXCEEDED: "The quote total is too large.",
 };
 
 function mapQuoteError(error: unknown): never {
@@ -66,8 +108,13 @@ function mapQuoteError(error: unknown): never {
 		if (error.message.endsWith("NOT_FOUND")) {
 			throw new DomainError("NOT_FOUND", message);
 		}
+		// Values the caller supplied are out of bounds: that's a bad request, not a conflict.
+		if (/(_INVALID|_EXCEEDED)$/.test(error.message)) {
+			throw new DomainError("VALIDATION_ERROR", message);
+		}
+		// Everything else is the quote's current state refusing the operation.
 		if (
-			/(MISMATCH|ARCHIVED|IMMUTABLE|NOT_EDITABLE|NOT_SENDABLE|EXPIRED|CONCURRENT|REVISION|LINES_MISSING|NOT_CONVERTIBLE|CONVERT|MODULE)/.test(
+			/(MISMATCH|ARCHIVED|IMMUTABLE|NOT_EDITABLE|NOT_SENDABLE|EXPIRED|CONCURRENT|REVIS|LINES_MISSING|ILLEGAL_TRANSITION|NOT_ACCEPTABLE|NOT_DELETABLE|NOT_CONVERTIBLE|CONVERT|REQUIRES_|UNSUPPORTED|MODULE)/.test(
 				error.message,
 			)
 		) {

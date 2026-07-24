@@ -6,6 +6,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Changed
+
+- **Stripe billing now runs on the QuickEngine API.** The Stripe webhook moved off the marketing
+  site onto the API service at `/webhooks/stripe`, keeping signature verification on the exact
+  bytes Stripe sends. An invalid signature is refused outright, while a temporary failure asks
+  Stripe to redeliver, and the subscription handlers stay safe to replay. The unused hosted
+  checkout endpoint was removed in favour of the payment form already built into Account, and
+  every plan price is now declared in the environment contract so a missing one is caught at
+  startup rather than at a customer's checkout.
+
 ### Added
 
 - **Invoicing and Payments now have durable APIs.** Invoicing gains guarded routes for draft

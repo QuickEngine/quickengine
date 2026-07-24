@@ -25,6 +25,8 @@ export const API_CAPABILITIES = [
 	"invoicing:write",
 	"orders:read",
 	"orders:write",
+	"projects:read",
+	"projects:write",
 	"payments:read",
 	"payments:write",
 	"quotes:read",

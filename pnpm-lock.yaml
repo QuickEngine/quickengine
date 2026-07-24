@@ -1165,6 +1165,9 @@ importers:
 
   packages/modules/projects-tasks:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
@@ -1607,6 +1610,9 @@ importers:
       '@quickengine/mod-products-services':
         specifier: workspace:*
         version: link:../../packages/modules/products-services
+      '@quickengine/mod-projects-tasks':
+        specifier: workspace:*
+        version: link:../../packages/modules/projects-tasks
       '@quickengine/mod-quotes-estimates':
         specifier: workspace:*
         version: link:../../packages/modules/quotes-estimates

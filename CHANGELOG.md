@@ -6,6 +6,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Projects and Tasks now has a durable delivery API.** Routes cover projects, the milestones
+  inside them, and tasks that can nest under other tasks, each committing domain state, audit, and
+  outbox together. Finished work is protected on the way out: a project must be completed or
+  cancelled before it can be archived, and archived before it can be deleted, a milestone can't be
+  removed while it still holds tasks, and a task can't be removed while it still has subtasks. A
+  task can be re-parented but never made its own ancestor. Quick.js, the lean CLI, and the
+  QuickDash projects screen now follow the same package contracts.
+
 ### Removed
 
 - **The unused hosted checkout path is gone.** Billing kept a second, uncalled way to start a

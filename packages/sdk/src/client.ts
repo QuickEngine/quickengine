@@ -7,6 +7,7 @@ import { InventoryResource } from "./resources/inventory";
 import { InvoicesResource } from "./resources/invoices";
 import { OrdersResource } from "./resources/orders";
 import { PaymentsResource } from "./resources/payments";
+import { ProjectsResource } from "./resources/projects";
 import { QuotesResource } from "./resources/quotes";
 import { ShipmentsResource } from "./resources/shipments";
 import type {
@@ -76,6 +77,7 @@ export class QuickClient {
 	readonly fulfillments: FulfillmentsResource;
 	readonly inventory: InventoryResource;
 	readonly shipments: ShipmentsResource;
+	readonly projects: ProjectsResource;
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
@@ -95,6 +97,7 @@ export class QuickClient {
 		this.fulfillments = new FulfillmentsResource(this);
 		this.inventory = new InventoryResource(this);
 		this.shipments = new ShipmentsResource(this);
+		this.projects = new ProjectsResource(this);
 	}
 
 	/**

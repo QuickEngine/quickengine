@@ -1,12 +1,15 @@
 "use server";
-import { getSession } from "@quickengine/auth/server";
-import { claimIdempotencyKey, releaseIdempotencyKey } from "@quickengine/db";
 import {
-	createProject,
-	createTask,
+	fingerprintCanonicalInput,
+	idempotencyKeySchema,
+} from "@quickengine/api-contracts/mutations";
+import { getSession } from "@quickengine/auth/server";
+import {
+	createProjectCommand,
+	createTaskCommand,
 	projectsTasksSettingsSchema,
-	setProjectStatus,
-	setTaskStatus,
+	setProjectStatusCommand,
+	setTaskStatusCommand,
 } from "@quickengine/mod-projects-tasks";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -32,10 +35,49 @@ async function auth(workspaceId: string) {
 		return { ok: false, error: "Projects & Tasks is not enabled." } as const;
 	return {
 		ok: true,
+		access,
+		actorId: session.user.id,
 		settings: projectsTasksSettingsSchema.parse(mod.settings),
 	} as const;
 }
+
+async function mutationContext(
+	authorization: Extract<Awaited<ReturnType<typeof auth>>, { ok: true }>,
+	operation: string,
+	idempotencyKey: string,
+	canonicalInput: unknown,
+) {
+	return {
+		abortSignal: new AbortController().signal,
+		actor: { id: authorization.actorId, type: "user" as const },
+		deadlineAtMs: Date.now() + 10_000,
+		fingerprint: await fingerprintCanonicalInput(canonicalInput),
+		idempotencyKey: idempotencyKeySchema.parse(idempotencyKey),
+		operation,
+		organizationId: authorization.access.organizationId,
+		requestId: crypto.randomUUID(),
+		source: "quickdash" as const,
+		workspaceId: authorization.access.workspace.id,
+	};
+}
+
+const outcomeFailure = (kind: "conflict" | "in_progress") =>
+	fail(
+		kind === "conflict"
+			? "This request was already used with different details. Try again."
+			: "This change is still being processed. Try again shortly.",
+	);
+
+const key = (f: FormData) => String(f.get("idempotencyKey") ?? "");
+
+// Durable commands raise DomainError with copy already written for a person.
+const message = (error: unknown, fallback: string) =>
+	error instanceof Error && error.name === "DomainError"
+		? error.message
+		: fallback;
+
 const opt = (v: FormDataEntryValue | null) => String(v ?? "").trim() || null;
+
 export async function createProjectAction(_: ProjectActionState, f: FormData) {
 	const w = String(f.get("workspaceId") ?? "");
 	const a = await auth(w);
@@ -43,41 +85,31 @@ export async function createProjectAction(_: ProjectActionState, f: FormData) {
 	const clientId = opt(f.get("clientId"));
 	if (!a.settings.allowInternalProjects && !clientId)
 		return fail("Choose a client for this project.");
-	const key = String(f.get("idempotencyKey") ?? "");
-	const scope = `projects.create:${w}`;
-	if (!(await claimIdempotencyKey(key, scope))) {
-		revalidatePath(`/${w}/projects-tasks`);
-		return ok();
-	}
 	try {
-		await createProject(w, {
+		const input = {
 			clientId,
 			name: String(f.get("name") ?? ""),
 			description: opt(f.get("description")),
 			startDate: opt(f.get("startDate")),
 			dueDate: opt(f.get("dueDate")),
-			status: "draft",
-		});
-	} catch {
-		// Failed work must give the key back, or the corrected retry is read as a duplicate.
-		await releaseIdempotencyKey(key, scope);
-		return fail("Check the project name, client, and dates.");
+			status: "draft" as const,
+		};
+		const context = await mutationContext(a, "projects.create", key(f), input);
+		const outcome = await createProjectCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		return fail(message(error, "Check the project name, client, and dates."));
 	}
 	revalidatePath(`/${w}/projects-tasks`);
 	return ok();
 }
+
 export async function createTaskAction(_: ProjectActionState, f: FormData) {
 	const w = String(f.get("workspaceId") ?? "");
 	const a = await auth(w);
 	if (!a.ok) return fail(a.error);
-	const key = String(f.get("idempotencyKey") ?? "");
-	const scope = `tasks.create:${w}`;
-	if (!(await claimIdempotencyKey(key, scope))) {
-		revalidatePath(`/${w}/projects-tasks`);
-		return ok();
-	}
 	try {
-		await createTask(w, {
+		const input = {
 			projectId: String(f.get("projectId") ?? ""),
 			title: String(f.get("title") ?? ""),
 			description: opt(f.get("description")),
@@ -88,44 +120,55 @@ export async function createTaskAction(_: ProjectActionState, f: FormData) {
 				| "high"
 				| "urgent",
 			dueDate: opt(f.get("dueDate")),
-			status: "todo",
-		});
-	} catch {
-		// Failed work must give the key back, or the corrected retry is read as a duplicate.
-		await releaseIdempotencyKey(key, scope);
-		return fail("Check the task details and ensure the project is open.");
+			status: "todo" as const,
+		};
+		const context = await mutationContext(a, "tasks.create", key(f), input);
+		const outcome = await createTaskCommand(context, input);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		return fail(
+			message(error, "Check the task details and ensure the project is open."),
+		);
 	}
 	revalidatePath(`/${w}/projects-tasks`);
 	return ok();
 }
+
 export async function projectStatusAction(_: ProjectActionState, f: FormData) {
 	const w = String(f.get("workspaceId") ?? "");
 	const a = await auth(w);
 	if (!a.ok) return fail(a.error);
+	const id = String(f.get("id"));
 	try {
-		await setProjectStatus(
-			w,
-			String(f.get("id")),
-			String(f.get("target")) as never,
-		);
-	} catch {
-		return fail("That project transition is not available.");
+		const status = String(f.get("target")) as never;
+		const context = await mutationContext(a, "projects.set-status", key(f), {
+			id,
+			status,
+		});
+		const outcome = await setProjectStatusCommand(context, id, status);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		return fail(message(error, "That project transition is not available."));
 	}
 	revalidatePath(`/${w}/projects-tasks`);
 	return ok();
 }
+
 export async function taskStatusAction(_: ProjectActionState, f: FormData) {
 	const w = String(f.get("workspaceId") ?? "");
 	const a = await auth(w);
 	if (!a.ok) return fail(a.error);
+	const id = String(f.get("id"));
 	try {
-		await setTaskStatus(
-			w,
-			String(f.get("id")),
-			String(f.get("target")) as never,
-		);
-	} catch {
-		return fail("That task transition is not available.");
+		const status = String(f.get("target")) as never;
+		const context = await mutationContext(a, "tasks.set-status", key(f), {
+			id,
+			status,
+		});
+		const outcome = await setTaskStatusCommand(context, id, status);
+		if (outcome.kind !== "success") return outcomeFailure(outcome.kind);
+	} catch (error) {
+		return fail(message(error, "That task transition is not available."));
 	}
 	revalidatePath(`/${w}/projects-tasks`);
 	return ok();

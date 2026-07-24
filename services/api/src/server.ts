@@ -14,6 +14,7 @@ import { createJsonLogger } from "./logger";
 import { registerOrdersRoutes } from "./orders-routes";
 import { registerPaymentsRoutes } from "./payments-routes";
 import { registerProductsServicesRoutes } from "./products-services-routes";
+import { registerProjectsRoutes } from "./projects-routes";
 import { registerQuotesRoutes } from "./quotes-routes";
 import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
@@ -43,6 +44,7 @@ const app = createApp(config, {
 		registerFulfillmentRoutes(app, dependencies);
 		registerInventoryRoutes(app, dependencies);
 		registerShippingRoutes(app, dependencies);
+		registerProjectsRoutes(app, dependencies);
 		registerStripeWebhookRoutes(app, { logger: routeLogger });
 	},
 	telemetry: initializeTelemetry(config),

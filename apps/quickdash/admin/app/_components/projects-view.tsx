@@ -30,14 +30,10 @@ function F({
 	action,
 	children,
 	hidden,
-	idempotent,
 }: {
 	action: Action;
 	children: React.ReactNode;
 	hidden: Record<string, string>;
-	// Opt-in for the create forms: sends a per-submit key so a double-fire creates one
-	// record. The status forms share this wrapper and don't need it.
-	idempotent?: boolean;
 }) {
 	const [s, a] = useActionState(action, I);
 	const [key, setKey] = useState(() => crypto.randomUUID());
@@ -49,7 +45,9 @@ function F({
 			{Object.entries(hidden).map(([k, v]) => (
 				<input key={k} type="hidden" name={k} value={v} />
 			))}
-			{idempotent && <input type="hidden" name="idempotencyKey" value={key} />}
+			{/* Every action behind this form is a durable command, so all of them need a
+			    per-submit key: a double-fire replays one mutation instead of running two. */}
+			<input type="hidden" name="idempotencyKey" value={key} />
 			{children}
 			{s.error && <span className="text-destructive text-xs">{s.error}</span>}
 		</form>
@@ -72,7 +70,7 @@ export function ProjectsView({
 					Organize client or internal work and its actionable tasks.
 				</p>
 			</div>
-			<F action={createProjectAction} hidden={{ workspaceId }} idempotent>
+			<F action={createProjectAction} hidden={{ workspaceId }}>
 				<Input name="name" placeholder="Project name" required />
 				<NativeSelect name="clientId">
 					<option value="">Internal project</option>
@@ -119,7 +117,6 @@ export function ProjectsView({
 						<F
 							action={createTaskAction}
 							hidden={{ workspaceId, projectId: p.id }}
-							idempotent
 						>
 							<Input name="title" placeholder="Task or deliverable" required />
 							<NativeSelect name="kind">

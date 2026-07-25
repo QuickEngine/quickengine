@@ -1,6 +1,7 @@
 "use client";
 
 import PusherClient from "pusher-js";
+import type { ChannelAuthorizationHandler } from "pusher-js/types/src/core/auth/options";
 import { useEffect, useRef } from "react";
 import { workspaceChannel } from "./index";
 
@@ -8,6 +9,48 @@ import { workspaceChannel } from "./index";
 // environment without the keys), in which case the hook is a no-op.
 const KEY = process.env.NEXT_PUBLIC_PUSHER_KEY;
 const CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+// The API is its own deployment, so authorizing a subscription is a cross-origin
+// call rather than a route inside this app.
+const API_URL =
+	process.env.NEXT_PUBLIC_QUICKENGINE_API_URL ?? "http://localhost:3020";
+
+/**
+ * Authorize a subscription against the QuickEngine API.
+ *
+ * pusher-js's built-in ajax transport is not usable here: it never sets
+ * `withCredentials`, so cross-origin requests carry no session cookie and the API
+ * would reject every subscription as unauthenticated. Supplying a `customHandler`
+ * is the supported way to control the request, and `credentials: "include"` is the
+ * whole reason this function exists.
+ *
+ * The API allows credentialed CORS from the first-party apps and requires a known
+ * `Origin` on cookie-authenticated writes, so a third-party page cannot use this
+ * endpoint even with a valid channel name.
+ */
+const authorizeChannel: ChannelAuthorizationHandler = async (
+	params,
+	callback,
+) => {
+	try {
+		const response = await fetch(`${API_URL}/v1/realtime/auth`, {
+			method: "POST",
+			credentials: "include",
+			headers: { "content-type": "application/x-www-form-urlencoded" },
+			body: new URLSearchParams({
+				socket_id: params.socketId,
+				channel_name: params.channelName,
+			}),
+		});
+		if (!response.ok) {
+			// A 403 here means the channel belongs to another workspace, which is the
+			// tenant boundary doing its job — not a transient failure worth retrying.
+			throw new Error(`realtime authorization failed (${response.status})`);
+		}
+		callback(null, await response.json());
+	} catch (error) {
+		callback(error instanceof Error ? error : new Error(String(error)), null);
+	}
+};
 
 // Pusher's own lifecycle events arrive on the same binding; ignore them so callers
 // only ever hear about real domain events.
@@ -57,7 +100,11 @@ export function useWorkspaceRealtime(
 
 		const pusher = new PusherClient(KEY, {
 			cluster: CLUSTER,
-			authEndpoint: "/api/pusher/auth",
+			channelAuthorization: {
+				endpoint: `${API_URL}/v1/realtime/auth`,
+				transport: "ajax",
+				customHandler: authorizeChannel,
+			},
 		});
 		const name = workspaceChannel(workspaceId);
 		const channel = pusher.subscribe(name);

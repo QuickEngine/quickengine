@@ -183,6 +183,7 @@ export const serverEnv = serverEnvSchema.parse({
 		process.env.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL,
 	NEXT_PUBLIC_QUICKDASH_WEB_URL: process.env.NEXT_PUBLIC_QUICKDASH_WEB_URL,
 	NEXT_PUBLIC_QUICKDASH_ADMIN_URL: process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL,
+	NEXT_PUBLIC_QUICKENGINE_API_URL: process.env.NEXT_PUBLIC_QUICKENGINE_API_URL,
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

@@ -236,7 +236,7 @@ importers:
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nuqs:
         specifier: ^2.9.0
-        version: 2.9.1(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+        version: 2.9.1(next@16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@19.2.8)
@@ -324,7 +324,7 @@ importers:
         version: 16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nuqs:
         specifier: ^2.9.0
-        version: 2.9.1(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+        version: 2.9.1(next@16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -409,7 +409,7 @@ importers:
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nuqs:
         specifier: ^2.9.0
-        version: 2.9.1(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+        version: 2.9.1(next@16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -658,6 +658,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@clack/prompts':
+        specifier: ^1.7.0
+        version: 1.7.0
       '@quickengine/quick':
         specifier: workspace:*
         version: link:../sdk
@@ -2117,6 +2120,14 @@ packages:
 
   '@bufbuild/protobuf@2.12.1':
     resolution: {integrity: sha512-BvAMfS6LrgZiryOAZ4pBYucu4wG/Ei/9o9DZ9akbREnMLbPJiom2i8b9C8IsKErQoiKqVhrerzt3kOT/RrzLHg==}
+
+  '@clack/core@1.4.3':
+    resolution: {integrity: sha512-/kr3UWNtdJfxZtPgDqUOmG2pvwlmcLGheex5yiZKdwbzZJxhV+HMNR9QNmyY5cGwTNV6LrR7Jtp+KjhUAP1qBQ==}
+    engines: {node: '>= 20.12.0'}
+
+  '@clack/prompts@1.7.0':
+    resolution: {integrity: sha512-y7/yvZ2TPAnR9+jnc00klvNNLkJiXFFrQA/hlLCcxA9a2A4zQIOimyFQ9XfwYKiGD1fb5GY8vbKIIgO8d5Tb2A==}
+    engines: {node: '>= 20.12.0'}
 
   '@date-fns/tz@1.5.0':
     resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
@@ -8202,6 +8213,18 @@ snapshots:
 
   '@bufbuild/protobuf@2.12.1': {}
 
+  '@clack/core@1.4.3':
+    dependencies:
+      fast-wrap-ansi: 0.2.2
+      sisteransi: 1.0.5
+
+  '@clack/prompts@1.7.0':
+    dependencies:
+      '@clack/core': 1.4.3
+      fast-string-width: 3.0.2
+      fast-wrap-ansi: 0.2.2
+      sisteransi: 1.0.5
+
   '@date-fns/tz@1.5.0': {}
 
   '@dotenvx/dotenvx@1.75.1':
@@ -12752,7 +12775,7 @@ snapshots:
       path-key: 4.0.0
       unicorn-magic: 0.3.0
 
-  nuqs@2.9.1(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
+  nuqs@2.9.1(next@16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
     dependencies:
       '@standard-schema/spec': 1.1.0
       react: 19.2.8

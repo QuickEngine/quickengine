@@ -34,6 +34,30 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Start a project in one command.** `quick create app` generates a working project — the SDK
+  installed, credentials in place, and a single file showing a read and an idempotent write, so
+  running it twice doesn't create two of anything. It is short enough to read in one sitting and
+  makes no assumptions about the rest of your stack.
+
+- **The CLI sets itself up and guides you through it.** `quick init` walks through connecting to a
+  workspace and checks it works before saving anything, so a mistyped key fails during setup instead
+  of on some unrelated command later. Running `quick` on its own now opens a menu of everything it
+  can do, built from the real commands, so nothing has to be memorised. Scripts and pipelines are
+  unaffected — they still get the usual help output.
+
+### Added
+
+- **The API now documents itself properly.** Every endpoint that accepts data describes exactly what
+  it expects, generated from the same rules the API validates with, so the reference cannot quietly
+  fall out of step with the behaviour. Responses say which version answered, and anything scheduled
+  for removal is announced in the response itself with at least six months' notice.
+
+- **Read what happened while you were away.** The workspace event history is now available from
+  Quick.js and the CLI, including everything after a given point — so an integration that was
+  offline can catch up precisely instead of refetching everything.
+
+### Added
+
 - **Nothing is missed after a dropped connection.** Live updates are a hint to refresh, not the
   record of what happened, so a browser that was asleep, offline, or mid-deploy used to silently fall
   behind with no way to notice. The activity feed can now be read from any point onward, and the

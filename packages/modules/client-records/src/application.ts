@@ -141,7 +141,7 @@ export async function getClientAddressDto(workspaceId: string, id: string) {
 	return address ? serializeAddress(address) : null;
 }
 
-export function createClientCommand(
+export async function createClientCommand(
 	context: MutationExecutionContext,
 	input: unknown,
 	uow: ClientMutationUnitOfWork = mutationUnitOfWork,
@@ -176,7 +176,7 @@ export function createClientCommand(
 	});
 }
 
-export function updateClientCommand(
+export async function updateClientCommand(
 	context: MutationExecutionContext,
 	id: string,
 	patch: unknown,
@@ -243,7 +243,7 @@ export function deleteClientCommand(
 	});
 }
 
-export function createClientAddressCommand(
+export async function createClientAddressCommand(
 	context: MutationExecutionContext,
 	clientId: string,
 	input: unknown,
@@ -282,7 +282,7 @@ export function createClientAddressCommand(
 	});
 }
 
-export function updateClientAddressCommand(
+export async function updateClientAddressCommand(
 	context: MutationExecutionContext,
 	id: string,
 	patch: unknown,

@@ -109,6 +109,12 @@ export const apiOutboxEvents = pgTable(
 		version: integer("version").notNull(),
 		payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
 		requestId: text("request_id").notNull(),
+		// Who caused the event. Denormalized from api_mutations (reachable via
+		// request_id) so a dispatcher can fan out without a join per event, and so
+		// webhook payloads can name the actor. Nullable only for rows written before
+		// this column existed.
+		actorId: text("actor_id"),
+		actorType: text("actor_type"),
 		occurredAt: timestamp("occurred_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

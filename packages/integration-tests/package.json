@@ -11,7 +11,7 @@
 		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/auth": "workspace:*",
 		"@quickengine/db": "workspace:*",
-		"@quickengine/events": "workspace:*",
+		"@quickengine/event-dispatch": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-fulfillment": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",

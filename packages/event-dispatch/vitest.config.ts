@@ -1,9 +1,9 @@
 import { resolveTestDatabaseUrl } from "@quickengine/db/testing";
 import { defineConfig } from "vitest/config";
 
-// The event-bus suite is pure in-process, but the outbox drain is database-backed,
-// so the package now provisions a test database like the module packages do.
-process.env.TEST_DB_NAME = "quickengine_test_events";
+// Handlers write to the database (activity feed) and read module state, so this
+// package provisions a test database like the module packages do.
+process.env.TEST_DB_NAME = "quickengine_test_event_dispatch";
 const testDatabaseUrl = resolveTestDatabaseUrl();
 const testAuthSecret =
 	process.env.BETTER_AUTH_SECRET ?? "test-better-auth-secret-0000000000000000";
@@ -21,7 +21,7 @@ export default defineConfig({
 		setupFiles: ["./test/setup.ts"],
 		include: ["src/**/*.test.ts", "test/**/*.test.ts"],
 		env: {
-			TEST_DB_NAME: "quickengine_test_events",
+			TEST_DB_NAME: "quickengine_test_event_dispatch",
 			NODE_ENV: "test",
 			DATABASE_URL: testDatabaseUrl,
 			BETTER_AUTH_SECRET: testAuthSecret,

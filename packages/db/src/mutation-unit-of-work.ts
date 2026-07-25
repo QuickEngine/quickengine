@@ -100,6 +100,8 @@ export const mutationUnitOfWork: MutationUnitOfWork<DatabaseTransaction> = {
 				},
 				async outbox(intent: OutboxIntent) {
 					await tx.insert(apiOutboxEvents).values({
+						actorId: context.actor.id,
+						actorType: context.actor.type,
 						aggregateId: intent.aggregateId,
 						aggregateType: intent.aggregateType,
 						eventName: intent.eventName,

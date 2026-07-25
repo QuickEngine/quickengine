@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ApiConfig } from "./config";
 import { createOpenApiDocument } from "./openapi";
+import { REQUEST_EXAMPLES } from "./openapi-examples";
 import { REQUEST_SCHEMAS } from "./openapi-requests";
+import { RESPONSE_SCHEMAS } from "./openapi-responses";
 
 const config = {
 	baseUrl: "https://api.quickengine.test",
@@ -149,5 +151,77 @@ describe("OpenAPI document", () => {
 		expect(content["application/json"].schema.$ref).toBe(
 			"#/components/schemas/ErrorEnvelope",
 		);
+	});
+
+	it("documents an example for every request body", () => {
+		const missing = Object.keys(REQUEST_SCHEMAS).filter(
+			(id) => !(id in REQUEST_EXAMPLES),
+		);
+		expect(missing).toEqual([]);
+	});
+
+	it("validates every example against the schema it illustrates", () => {
+		const invalid: string[] = [];
+		for (const [id, example] of Object.entries(REQUEST_EXAMPLES)) {
+			const schema = REQUEST_SCHEMAS[id];
+			if (!schema) {
+				invalid.push(`${id}: example with no schema`);
+				continue;
+			}
+			const parsed = schema.safeParse(example);
+			if (!parsed.success) {
+				invalid.push(`${id}: ${parsed.error.issues[0]?.message}`);
+			}
+		}
+		// An unchecked example is a promise nobody is keeping. If a schema gains a
+		// required field, its example must be updated in the same change.
+		expect(invalid).toEqual([]);
+	});
+
+	it("documents the success envelope on every 2xx response", () => {
+		const bare = operations.flatMap((op) =>
+			Object.entries(op.responses ?? {})
+				.filter(([status, response]) => /^2/.test(status) && !response.content)
+				.map(([status]) => `${op.operationId}:${status}`),
+		);
+		expect(bare).toEqual([]);
+	});
+
+	it("does not publish fields the API withholds", () => {
+		const serialized = JSON.stringify(document);
+		// Table-derived response schemas would leak these. The success envelope
+		// leaves `data` open precisely so it cannot claim a shape it can't keep.
+		expect(serialized).not.toContain("secretCiphertext");
+		expect(serialized).not.toContain("secret_ciphertext");
+	});
+
+	it("documents the resource shape for every registered response", () => {
+		const missing = Object.keys(RESPONSE_SCHEMAS).filter((id) => {
+			const op = operations.find((o) => o.operationId === id);
+			const success = Object.entries(op?.responses ?? {}).find(([status]) =>
+				status.startsWith("2"),
+			);
+			const schema = (
+				success?.[1].content as
+					| Record<string, { schema?: { properties?: { data?: unknown } } }>
+					| undefined
+			)?.["application/json"]?.schema?.properties?.data;
+			return !schema;
+		});
+		expect(missing).toEqual([]);
+	});
+
+	it("falls back to the bare envelope rather than guessing a shape", () => {
+		// Operations without a registered schema must still say what the wrapper is.
+		// Claiming a resource shape we have not proved would be worse than silence.
+		const undocumented = operations.filter(
+			(op) =>
+				op.operationId &&
+				!(op.operationId in RESPONSE_SCHEMAS) &&
+				Object.entries(op.responses ?? {}).some(
+					([status, response]) => /^2/.test(status) && !response.content,
+				),
+		);
+		expect(undocumented).toEqual([]);
 	});
 });

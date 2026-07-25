@@ -1,6 +1,7 @@
 {
 	"name": "@quickengine/api",
 	"version": "0.1.0",
+	"license": "UNLICENSED",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -41,6 +42,7 @@
 		"@quickengine/realtime": "workspace:*",
 		"@sentry/node": "^10.65.0",
 		"@upstash/redis": "^1.38.0",
+		"drizzle-orm": "^0.45.1",
 		"hono": "^4.12.27",
 		"inngest": "^4.13.0",
 		"postgres": "^3.4.9",

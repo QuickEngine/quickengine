@@ -26,16 +26,76 @@ Foundation endpoints:
 - `GET /version` — deployed API version;
 - `GET /openapi.json` — initial OpenAPI 3.1 document.
 
-## Vercel baseline
+## Deployment (Vercel)
 
-Create a separate Vercel project rooted at `services/api`. Hono's Vercel adapter is the
-default application export in `src/index.ts`; no Next.js application owns this service.
-Set `API_BASE_URL` to the canonical API origin and `API_CORS_ORIGINS` to a comma-separated
-allowlist for the deployed first-party clients. Production deployment and module routes are
-deliberately later Step 8 slices. The platform core already defines dependency-injected
-session/API-key authentication, workspace and RBAC context, CSRF/CORS policy, audit actors,
-structured redacted logging, OpenTelemetry spans, and optional Sentry capture; module routes
-begin consuming that gate in later verticals.
+The API is its own Vercel project — `api.quickengine.xyz`. Hono is runtime-agnostic, so
+only the entry files know how the app is served: `api/index.ts` (Vercel) and
+`src/server.ts` (self-hosted Node). Routes never change when the host does.
+
+### One-time project setup
+
+Vercel dashboard settings that are **not** expressible in `vercel.json`:
+
+| Setting | Value | Why |
+|---|---|---|
+| Root Directory | `services/api` | The project is one workspace package. |
+| Include source files outside Root Directory | **on** | The function imports `@quickengine/*` workspace packages. Without this the build cannot see them. |
+| Framework Preset | Other | This is not a Next app. |
+| Node.js Version | 24.x | Match the other four projects. |
+
+`vercel.json` rewrites every path to the single function, so Hono does all routing —
+including `/health`, `/ready`, `/version`, and `/openapi.json`, which are not under `/v1`.
+
+### Environment variables
+
+The env contract is validated **at module load**, so a missing required variable crashes
+the function on cold start rather than failing per-request. Set them before the first
+deploy. At minimum this service needs what `packages/env/src/server.ts` marks required —
+`DATABASE_URL` and `BETTER_AUTH_SECRET` among them — plus:
+
+- `API_BASE_URL` — the canonical origin, `https://api.quickengine.xyz`.
+- `API_CORS_ORIGINS` — comma-separated allowlist of first-party clients (web, auth,
+  account, dash). Credentialed CORS is rejected for anything absent.
+
+`DATABASE_IS_PRODUCTION=true` plus a non-production `VERCEL_ENV` makes the connection
+refuse to boot, so preview deployments cannot reach the production database. Point preview
+`DATABASE_URL` at a preview branch.
+
+### Runtime notes
+
+- **Node runtime, not edge.** Postgres, the Redis TCP fallback, and `node:crypto` in the
+  webhook signer all require it. `api/index.ts` pins this.
+- **Connections.** Use Neon's pooled host and Upstash REST for cache; the cache provider
+  already prefers REST precisely because a TCP socket per invocation exhausts limits.
+- **Function duration.** The Inngest endpoint, once it moves here, drains outbox batches
+  and delivers webhooks inside a request. If a cycle approaches the platform timeout,
+  lower `batchSize`/`maxBatches` rather than raising the limit — the work is resumable by
+  design and the next cycle continues it.
+
+### Verifying a deploy
+
+```sh
+curl https://api.quickengine.xyz/health    # {"data":{"status":"ok",...}}
+curl https://api.quickengine.xyz/ready     # 200 healthy, 503 if a dependency is down
+curl https://api.quickengine.xyz/version
+```
+
+`/ready` is the meaningful one: it probes the database and the request-control store.
+
+### After the API is live
+
+Three things move off Next, in this order:
+
+1. **Inngest** — repoint the Inngest app at `https://api.quickengine.xyz/api/inngest`, then
+   delete `apps/quickdash/admin/app/api/inngest/route.ts`. ⚠️ Between the old endpoint going
+   away and the new one being registered, outbox dispatch and webhook delivery pause.
+   Nothing is lost — that is what the outbox is for — but events queue until it resumes.
+2. **Realtime auth** — point `authEndpoint` in `packages/realtime/src/client.ts` at
+   `/v1/realtime/auth` on this origin, then delete
+   `apps/quickdash/admin/app/api/pusher/auth/route.ts`, removing the duplicated tenant gate
+   (TECH_DEBT 10).
+3. **Activity feed** — QuickDash reads `listWorkspaceActivity` directly server-side; move it
+   to `GET /v1/activity` so the cursor recovery path has a real consumer (TECH_DEBT 11).
 
 The write-reliability baseline caps ordinary request bodies at 1 MiB, supplies cooperative
 10-second deadlines, defines principal/workspace-scoped Redis rate budgets, and standardizes

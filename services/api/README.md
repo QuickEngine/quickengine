@@ -69,6 +69,23 @@ deploy. At minimum this service needs what `packages/env/src/server.ts` marks re
 refuse to boot, so preview deployments cannot reach the production database. Point preview
 `DATABASE_URL` at a preview branch.
 
+### Why the Vercel entry is hand-written
+
+`handle()` from `hono/vercel` is the **Edge** adapter — it assumes the platform passes a
+Web `Request`. This function runs on the **Node** runtime, which Postgres, the Redis TCP
+fallback, and `node:crypto` in the webhook signer all require. There, Vercel passes Node's
+`IncomingMessage`/`ServerResponse`, and the Edge adapter fails on the first request with
+`this.raw.headers.get is not a function`. `@hono/node-server` shipped a Vercel adapter in
+v1 but dropped it in v2, so `api/index.ts` does the translation itself.
+
+Two details in it are load-bearing: the request body is **streamed**, not buffered, so the
+body-limit middleware can reject an oversized upload as bytes arrive; and `Set-Cookie` is
+copied via `getSetCookie()` rather than `Headers.forEach`, which would join multiple
+cookies into one unusable value and break session writes.
+
+Verify it without deploying by mounting the handler on a real `node:http` server and
+issuing requests against it — that reproduces the exact object shapes Vercel supplies.
+
 ### Why `api/index.ts` imports `dist`, not `src`
 
 Vercel **transpiles** the function entry but does not bundle what it imports. An

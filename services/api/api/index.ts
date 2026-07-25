@@ -1,31 +1,87 @@
-import { handle } from "hono/vercel";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { Readable } from "node:stream";
 import app from "../dist/index.js";
 
 /**
  * Vercel entry point for the QuickEngine API.
  *
- * The application itself is runtime-agnostic: `src/app.ts` speaks the Web
- * `Request`/`Response` contract, so this file and `src/server.ts` (the local Node
- * server) are the only places that know how the app is being served. Moving hosts
- * means writing another adapter, never touching a route.
+ * The application is runtime-agnostic — `src/app.ts` speaks the Web
+ * `Request`/`Response` contract — so this file and `src/server.ts` (the local Node
+ * server) are the only places that know how it is being served. Moving hosts means
+ * writing another adapter, never touching a route.
  *
- * `vercel.json` rewrites every path here, so Hono does all the routing — including
- * `/health`, `/ready`, `/version`, and `/openapi.json`, which are not under `/v1`.
+ * **Why this is hand-written rather than `handle()` from a library.**
+ * `hono/vercel`'s `handle` is the *Edge* adapter: it assumes the platform passes a
+ * Web `Request`. This function runs on the Node runtime — required for Postgres,
+ * the Redis TCP fallback, and `node:crypto` in the webhook signer — where Vercel
+ * passes Node's `IncomingMessage`/`ServerResponse` instead. Using the Edge adapter
+ * here failed on the first request with `this.raw.headers.get is not a function`,
+ * because Hono was handed plain Node headers. `@hono/node-server` shipped a Vercel
+ * adapter in v1 but dropped it in v2, so the translation lives here.
  *
  * **This must import `dist`, not `src`.** Vercel transpiles this file but does not
  * bundle what it imports, so a `../src/index` import survives into the deployment
- * as a runtime ESM specifier pointing at TypeScript that was never compiled —
- * `ERR_MODULE_NOT_FOUND` on every invocation. `tsup` inlines every workspace
- * package into `dist`, which is the only form the function can actually load.
- *
- * The cost is that typechecking this file needs `dist/index.d.ts` to exist, so
- * `services/api/turbo.json` makes this package's `typecheck` depend on its own
- * `build`. Turbo's root config only depends on `^build` (upstream packages).
+ * as a specifier pointing at TypeScript that was never compiled. `tsup` inlines
+ * every workspace package into `dist`, which is the only form the function can
+ * load; `vercel.json` pins `includeFiles: "dist/**"` so it definitely ships.
  */
 export const config = {
-	// Postgres, the Redis TCP fallback, and node:crypto in the webhook signer all
-	// need real Node, not the edge runtime.
 	runtime: "nodejs",
 };
 
-export default handle(app);
+/** Node's header bag allows repeated values; a Web `Headers` must preserve them. */
+function toWebHeaders(message: IncomingMessage): Headers {
+	const headers = new Headers();
+	for (const [name, value] of Object.entries(message.headers)) {
+		if (Array.isArray(value)) {
+			for (const entry of value) headers.append(name, entry);
+		} else if (value !== undefined) {
+			headers.set(name, value);
+		}
+	}
+	return headers;
+}
+
+export default async function handler(
+	req: IncomingMessage,
+	res: ServerResponse,
+): Promise<void> {
+	// Vercel terminates TLS upstream, so the scheme is always https in practice;
+	// the host header is what makes the URL absolute, which `new Request` requires.
+	const host = req.headers.host ?? "localhost";
+	const url = new URL(req.url ?? "/", `https://${host}`);
+	const method = req.method ?? "GET";
+	const hasBody = method !== "GET" && method !== "HEAD";
+
+	const request = new Request(url, {
+		method,
+		headers: toWebHeaders(req),
+		// Streamed rather than buffered: the body-limit middleware counts bytes as
+		// they arrive, so an oversized upload is rejected without being held first.
+		body: hasBody ? (Readable.toWeb(req) as ReadableStream) : undefined,
+		// Node requires this whenever a streaming body is supplied.
+		...(hasBody ? { duplex: "half" } : {}),
+	} as RequestInit);
+
+	const response = await app.fetch(request);
+
+	res.statusCode = response.status;
+	// `Headers.forEach` joins repeated values with commas. That is correct for every
+	// header except Set-Cookie, where it would merge separate cookies into one
+	// unusable value — `getSetCookie()` returns them intact.
+	response.headers.forEach((value, name) => {
+		if (name.toLowerCase() !== "set-cookie") res.setHeader(name, value);
+	});
+	const cookies = response.headers.getSetCookie?.() ?? [];
+	if (cookies.length > 0) res.setHeader("set-cookie", cookies);
+
+	if (response.body) {
+		const reader = response.body.getReader();
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			res.write(value);
+		}
+	}
+	res.end();
+}

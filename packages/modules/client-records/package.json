@@ -21,7 +21,6 @@
 	"dependencies": {
 		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/db": "workspace:*",
-		"@quickengine/events": "workspace:*",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

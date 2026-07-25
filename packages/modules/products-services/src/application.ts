@@ -193,7 +193,7 @@ export async function getVariantDto(
 	return row ? serializeVariant(row) : null;
 }
 
-export function createCatalogItemCommand(
+export async function createCatalogItemCommand(
 	context: MutationExecutionContext,
 	input: unknown,
 	uow: CatalogMutationUnitOfWork = mutationUnitOfWork,
@@ -223,7 +223,7 @@ export function createCatalogItemCommand(
 	});
 }
 
-export function updateCatalogItemCommand(
+export async function updateCatalogItemCommand(
 	context: MutationExecutionContext,
 	id: string,
 	patch: unknown,
@@ -398,7 +398,7 @@ export function deleteCatalogItemCommand(
 	});
 }
 
-export function createProductVariantCommand(
+export async function createProductVariantCommand(
 	context: MutationExecutionContext,
 	catalogItemId: string,
 	input: unknown,
@@ -445,7 +445,7 @@ export function createProductVariantCommand(
 	});
 }
 
-export function updateProductVariantCommand(
+export async function updateProductVariantCommand(
 	context: MutationExecutionContext,
 	id: string,
 	patch: unknown,

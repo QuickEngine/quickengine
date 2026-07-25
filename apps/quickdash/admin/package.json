@@ -13,12 +13,12 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
-		"@quickengine/api-contracts": "workspace:*",
 		"@phosphor-icons/react": "^2.1.10",
+		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/auth": "workspace:*",
 		"@quickengine/cache": "workspace:*",
 		"@quickengine/db": "workspace:*",
-		"@quickengine/events": "workspace:*",
+		"@quickengine/event-dispatch": "workspace:*",
 		"@quickengine/jobs": "workspace:*",
 		"@quickengine/mod-bookings": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",

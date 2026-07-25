@@ -79,6 +79,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Events now survive a restart.** Every change a workspace makes records its event in the same
+  transaction as the change itself, and a scheduled dispatcher delivers it afterwards. Before, the
+  activity feed and search index were updated by whichever server happened to handle the request, so
+  a restart at the wrong moment lost the update silently. Delivery now retries on its own, backs off
+  when something downstream is struggling, and a single failing consumer no longer stops the others
+  from getting their events.
+
 - **Removed the last duplicate write paths left over from the API migration.** Eleven superseded
   module functions are gone, so every quote, timer, and file-deletion write now runs through the one
   durable path that records an audit entry and an event alongside the change. Behaviour is unchanged;

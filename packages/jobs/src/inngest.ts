@@ -32,17 +32,5 @@ export function createInngestJobQueue(client: EventSender = inngest): JobQueue {
 	};
 }
 
-// Durable consumer of committed domain events (the event bus enqueues them as
-// "event.dispatch"). Minimal for now: it acknowledges receipt so the pipeline is
-// provably durable end to end. Later branches add steps that route each event to
-// audit persistence, search indexing, and notifications.
-export const eventDispatch = inngest.createFunction(
-	{ id: "event-dispatch", retries: 3, triggers: [{ event: "event.dispatch" }] },
-	async ({ event }) => {
-		const eventId = (event.data as { eventId?: string } | undefined)?.eventId;
-		return { received: eventId ?? null };
-	},
-);
-
 // Every durable function the serve endpoint should register.
-export const inngestFunctions = [eventDispatch];
+export const inngestFunctions: ReturnType<typeof inngest.createFunction>[] = [];

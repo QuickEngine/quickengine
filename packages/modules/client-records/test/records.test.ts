@@ -1,12 +1,14 @@
+import { apiOutboxEvents, asc, db, eq } from "@quickengine/db";
 import { testDbClient } from "@quickengine/db/testing";
-import { type DomainEvent, getEventBus } from "@quickengine/events";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	createClientCommand,
 	createClientRecord,
+	deleteClientCommand,
 	deleteClientRecord,
 	getClientRecord,
 	listClientRecords,
+	updateClientCommand,
 	updateClientRecord,
 } from "../src";
 
@@ -21,6 +23,11 @@ const mutationContext = (key: string, fingerprint = "same") => ({
 	requestId: crypto.randomUUID(),
 	source: "api" as const,
 	workspaceId,
+});
+
+const otherContext = (key: string) => ({
+	...mutationContext(key),
+	workspaceId: otherWorkspaceId,
 });
 
 const ownerId = "client-records-owner";
@@ -93,12 +100,12 @@ describe("Client Records persistence", () => {
 		expect(await listClientRecords(workspaceId)).toHaveLength(1);
 	});
 	it("normalizes input and lists records deterministically", async () => {
-		await createClientRecord(workspaceId, {
+		await createClientCommand(mutationContext("norm-1"), {
 			name: "  Zoe Example  ",
 			email: "",
 			company: "  Example Co  ",
 		});
-		await createClientRecord(workspaceId, {
+		await createClientCommand(mutationContext("norm-2"), {
 			name: "Ada Example",
 			email: "ada@example.com",
 		});
@@ -116,45 +123,61 @@ describe("Client Records persistence", () => {
 	});
 
 	it("requires the workspace on every read, update, and delete", async () => {
-		const record = await createClientRecord(workspaceId, {
+		const created = await createClientCommand(mutationContext("tenant-1"), {
 			name: "Tenant Safe",
 			email: "safe@example.com",
 		});
+		const recordId =
+			created.kind === "success" ? (created.result as { id: string }).id : "";
 
-		expect(await getClientRecord(otherWorkspaceId, record.id)).toBeUndefined();
-		expect(
-			await updateClientRecord(otherWorkspaceId, record.id, {
+		expect(await getClientRecord(otherWorkspaceId, recordId)).toBeUndefined();
+		// A command refuses a cross-tenant write outright rather than silently
+		// matching no rows.
+		await expect(
+			updateClientCommand(otherContext("tenant-2"), recordId, {
 				name: "Cross-tenant overwrite",
 			}),
-		).toBeUndefined();
-		expect(
-			await deleteClientRecord(otherWorkspaceId, record.id),
-		).toBeUndefined();
-		expect(await getClientRecord(workspaceId, record.id)).toMatchObject({
+		).rejects.toThrow();
+		await expect(
+			deleteClientCommand(otherContext("tenant-3"), recordId),
+		).rejects.toThrow();
+		expect(await getClientRecord(workspaceId, recordId)).toMatchObject({
 			name: "Tenant Safe",
 		});
 	});
 
 	it("updates and deletes only the intended workspace record", async () => {
-		const record = await createClientRecord(workspaceId, { name: "Before" });
-		expect(
-			await updateClientRecord(workspaceId, record.id, {
-				name: "After",
-				notes: "Known client",
-			}),
-		).toMatchObject({ name: "After", notes: "Known client" });
-		expect(await deleteClientRecord(workspaceId, record.id)).toEqual({
-			id: record.id,
+		const created = await createClientCommand(mutationContext("edit-1"), {
+			name: "Before",
 		});
-		expect(await getClientRecord(workspaceId, record.id)).toBeUndefined();
+		const recordId =
+			created.kind === "success" ? (created.result as { id: string }).id : "";
+
+		const updated = await updateClientCommand(
+			mutationContext("edit-2"),
+			recordId,
+			{ name: "After", notes: "Known client" },
+		);
+		expect(updated).toMatchObject({
+			kind: "success",
+			result: { name: "After", notes: "Known client" },
+		});
+
+		await expect(
+			deleteClientCommand(mutationContext("edit-3"), recordId),
+		).resolves.toMatchObject({ kind: "success" });
+		expect(await getClientRecord(workspaceId, recordId)).toBeUndefined();
 	});
 
 	it("rejects invalid or unbounded client data", async () => {
 		await expect(
-			createClientRecord(workspaceId, { name: "", email: "not-an-email" }),
+			createClientCommand(mutationContext("bad-1"), {
+				name: "",
+				email: "not-an-email",
+			}),
 		).rejects.toThrow();
 		await expect(
-			createClientRecord(workspaceId, {
+			createClientCommand(mutationContext("bad-2"), {
 				name: "Too many fields",
 				fields: Object.fromEntries(
 					Array.from({ length: 51 }, (_, index) => [`field-${index}`, "value"]),
@@ -165,77 +188,68 @@ describe("Client Records persistence", () => {
 });
 
 describe("Client Records domain events", () => {
-	// Capture whatever the module emits through the process-wide bus for the duration
-	// of a single test, then unsubscribe so the singleton doesn't leak across tests.
-	async function capture(run: () => Promise<void>): Promise<DomainEvent[]> {
-		const events: DomainEvent[] = [];
-		const unsubscribe = getEventBus().subscribe((event) => {
-			events.push(event);
+	// Events are now committed to the outbox inside the same transaction as the
+	// write, so this reads the durable record rather than subscribing to a bus.
+	const emitted = async (workspace = workspaceId) =>
+		db
+			.select()
+			.from(apiOutboxEvents)
+			.where(eq(apiOutboxEvents.workspaceId, workspace))
+			.orderBy(asc(apiOutboxEvents.occurredAt));
+
+	it("records created / updated / deleted with aggregateId + actor", async () => {
+		const created = await createClientCommand(mutationContext("evt-create"), {
+			name: "Event Source",
 		});
-		try {
-			await run();
-		} finally {
-			unsubscribe();
+		const recordId =
+			created.kind === "success" ? (created.result as { id: string }).id : "";
+
+		await updateClientCommand(mutationContext("evt-update"), recordId, {
+			name: "Renamed",
+		});
+		await deleteClientCommand(mutationContext("evt-delete"), recordId);
+
+		const events = await emitted();
+		expect(events.map((e) => e.eventName)).toEqual([
+			"client.created",
+			"client.updated",
+			"client.deleted",
+		]);
+		for (const event of events) {
+			expect(event).toMatchObject({
+				workspaceId,
+				aggregateId: recordId,
+				aggregateType: "client",
+				// The actor rides on the event, so a dispatcher never joins back to
+				// the mutation ledger to learn who caused it.
+				actorId: ownerId,
+				actorType: "user",
+				publishedAt: null,
+			});
 		}
-		return events;
-	}
-
-	it("emits created / updated / deleted with recordId + actor", async () => {
-		let recordId = "";
-
-		const created = await capture(async () => {
-			const record = await createClientRecord(
-				workspaceId,
-				{ name: "Event Source" },
-				{ actorId: ownerId },
-			);
-			recordId = record.id;
-		});
-		expect(created).toEqual([
-			expect.objectContaining({
-				workspaceId,
-				name: "client_records.record.created",
-				recordId,
-				actorId: ownerId,
-			}),
-		]);
-
-		const updated = await capture(async () => {
-			await updateClientRecord(
-				workspaceId,
-				recordId,
-				{ name: "Renamed" },
-				{ actorId: ownerId },
-			);
-		});
-		expect(updated).toEqual([
-			expect.objectContaining({
-				name: "client_records.record.updated",
-				recordId,
-				actorId: ownerId,
-			}),
-		]);
-
-		const deleted = await capture(async () => {
-			await deleteClientRecord(workspaceId, recordId, { actorId: ownerId });
-		});
-		expect(deleted).toEqual([
-			expect.objectContaining({
-				name: "client_records.record.deleted",
-				recordId,
-				actorId: ownerId,
-			}),
-		]);
 	});
 
-	it("does not emit when a write touches no row in the workspace", async () => {
-		const record = await createClientRecord(workspaceId, { name: "Owned" });
-
-		const events = await capture(async () => {
-			// Wrong workspace → no row updated/deleted → no event.
-			await updateClientRecord(otherWorkspaceId, record.id, { name: "Nope" });
-			await deleteClientRecord(otherWorkspaceId, record.id);
+	it("records nothing when a write touches no row in the workspace", async () => {
+		const created = await createClientCommand(mutationContext("evt-owned"), {
+			name: "Owned",
 		});
-		expect(events).toEqual([]);
+		const recordId =
+			created.kind === "success" ? (created.result as { id: string }).id : "";
+
+		// Wrong workspace → no row matched → the transaction rolls back, taking any
+		// would-be event with it. That atomicity is the point of the outbox.
+		await expect(
+			updateClientCommand(otherContext("evt-cross-update"), recordId, {
+				name: "Nope",
+			}),
+		).rejects.toThrow();
+		await expect(
+			deleteClientCommand(otherContext("evt-cross-delete"), recordId),
+		).rejects.toThrow();
+
+		expect(await emitted(otherWorkspaceId)).toEqual([]);
+		expect((await emitted()).map((e) => e.eventName)).toEqual([
+			"client.created",
+		]);
 	});
 });

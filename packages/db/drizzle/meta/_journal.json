@@ -281,6 +281,13 @@
 			"when": 1784702943560,
 			"tag": "0039_soft_human_cannonball",
 			"breakpoints": true
+		},
+		{
+			"idx": 40,
+			"version": "7",
+			"when": 1784958776419,
+			"tag": "0040_special_dexter_bennett",
+			"breakpoints": true
 		}
 	]
 }

@@ -53,9 +53,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../../packages/db
-      '@quickengine/events':
+      '@quickengine/event-dispatch':
         specifier: workspace:*
-        version: link:../../../packages/events
+        version: link:../../../packages/event-dispatch
       '@quickengine/jobs':
         specifier: workspace:*
         version: link:../../../packages/jobs
@@ -774,14 +774,42 @@ importers:
         specifier: ^5
         version: 5.9.3
 
-  packages/events:
+  packages/event-dispatch:
     dependencies:
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../db
+      '@quickengine/events':
+        specifier: workspace:*
+        version: link:../events
       '@quickengine/jobs':
         specifier: workspace:*
         version: link:../jobs
+      '@quickengine/mod-client-records':
+        specifier: workspace:*
+        version: link:../modules/client-records
       '@quickengine/realtime':
         specifier: workspace:*
         version: link:../realtime
+      '@quickengine/search':
+        specifier: workspace:*
+        version: link:../search
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
+
+  packages/events:
+    dependencies:
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../db
     devDependencies:
       '@quickengine/config':
         specifier: workspace:*
@@ -804,9 +832,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../db
-      '@quickengine/events':
+      '@quickengine/event-dispatch':
         specifier: workspace:*
-        version: link:../events
+        version: link:../event-dispatch
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../modules/client-records
@@ -958,9 +986,6 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
-      '@quickengine/events':
-        specifier: workspace:*
-        version: link:../../events
       zod:
         specifier: ^4.3.6
         version: 4.4.3

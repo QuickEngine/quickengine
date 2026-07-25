@@ -3,10 +3,7 @@ export type JobName =
 	| "user.onboarded"
 	| "app.provisioned"
 	| "search.index"
-	| "storage.cleanup"
-	// Durable fan-out of a committed domain event; the consumer routes it to
-	// audit / search / notifications. Enqueued by the event bus, keyed on event id.
-	| "event.dispatch";
+	| "storage.cleanup";
 
 export type JobPayload = Record<string, unknown>;
 
@@ -41,7 +38,6 @@ export const createInMemoryJobQueue = (): JobQueue => ({
 // below the in-memory queue so the runtime re-export cycle resolves cleanly.
 export {
 	createInngestJobQueue,
-	eventDispatch,
 	inngest,
 	inngestFunctions,
 } from "./inngest";

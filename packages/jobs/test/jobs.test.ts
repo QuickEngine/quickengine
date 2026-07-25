@@ -11,17 +11,17 @@ describe("createInngestJobQueue", () => {
 		const queue = createInngestJobQueue({ send } as never);
 
 		const result = await queue.enqueue({
-			name: "event.dispatch",
+			name: "search.index",
 			payload: { eventId: "evt-1", workspaceId: "ws-1" },
 			idempotencyKey: "evt-1",
 		});
 
 		expect(send).toHaveBeenCalledWith({
-			name: "event.dispatch",
+			name: "search.index",
 			data: { eventId: "evt-1", workspaceId: "ws-1" },
 			id: "evt-1",
 		});
-		expect(result).toEqual({ id: "evt-1", name: "event.dispatch" });
+		expect(result).toEqual({ id: "evt-1", name: "search.index" });
 	});
 
 	it("omits the idempotency id when no key is given, and derives a result id", async () => {

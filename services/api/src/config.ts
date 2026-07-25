@@ -40,6 +40,10 @@ const apiEnvSchema = z.object({
 	API_PORT: z.coerce.number().int().min(1).max(65_535).default(3020),
 	API_READINESS_TIMEOUT_MS: z.coerce.number().int().min(100).default(2000),
 	API_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(100).default(10_000),
+	// Provider callbacks (Inngest) do network round-trips and batch work, so they
+	// get their own budget. Kept under the platform's function limit so the app
+	// answers with a real 504 rather than being killed mid-response.
+	API_CALLBACK_TIMEOUT_MS: z.coerce.number().int().min(1000).default(50_000),
 	API_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 	API_VERSION: z.string().trim().min(1).default("0.1.0"),
 	NODE_ENV: z
@@ -56,6 +60,7 @@ export type ApiConfig = {
 	environment: "development" | "test" | "production";
 	logLevel: "debug" | "info" | "warn" | "error";
 	port: number;
+	callbackTimeoutMs: number;
 	readinessTimeoutMs: number;
 	release?: string;
 	sentryDsn?: string;
@@ -83,6 +88,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 		release: parsed.VERCEL_GIT_COMMIT_SHA,
 		sentryDsn: parsed.SENTRY_DSN,
 		tracesSampleRate: parsed.API_TRACES_SAMPLE_RATE,
+		callbackTimeoutMs: parsed.API_CALLBACK_TIMEOUT_MS,
 		requestTimeoutMs: parsed.API_REQUEST_TIMEOUT_MS,
 		version: parsed.API_VERSION,
 	};

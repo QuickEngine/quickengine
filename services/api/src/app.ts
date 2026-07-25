@@ -92,7 +92,17 @@ export function createApp(
 			status: c.res.status,
 		});
 	});
-	app.use("*", createRequestDeadline(config.requestTimeoutMs, logger));
+	app.use(
+		"*",
+		createRequestDeadline(config.requestTimeoutMs, logger, {
+			// Inngest's callbacks are control-plane traffic: a sync registers with
+			// Inngest over the network, and a run drains a batch of events. Both
+			// legitimately outlast a CRUD budget, and returning 504 makes Inngest
+			// report the endpoint as unreachable.
+			prefixes: ["/api/inngest"],
+			timeoutMs: config.callbackTimeoutMs,
+		}),
+	);
 	app.use("*", createBodyLimit(config.bodyLimitBytes));
 	app.use("*", createCsrfProtection(config));
 

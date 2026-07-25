@@ -10,10 +10,32 @@ import type { PlatformEnv } from "./platform-types";
  * statement and lock timeouts. A timed-out mutation keeps its durable idempotency state pending
  * until the database adapter can determine the commit outcome.
  */
-export function createRequestDeadline(timeoutMs: number, logger: ApiLogger) {
+export function createRequestDeadline(
+	timeoutMs: number,
+	logger: ApiLogger,
+	/**
+	 * Paths that are control-plane callbacks rather than API requests, with the
+	 * budget they get instead.
+	 *
+	 * The ordinary deadline exists to stop a slow CRUD request holding a
+	 * connection. Provider callbacks are a different shape of work: an Inngest
+	 * sync calls back to Inngest to register, and a function run drains a batch of
+	 * events. Holding those to a CRUD budget makes the endpoint look unreachable —
+	 * the provider receives a 504 and reports the URL as unusable.
+	 */
+	longRunning: { prefixes: readonly string[]; timeoutMs: number } = {
+		prefixes: [],
+		timeoutMs,
+	},
+) {
 	return createMiddleware<PlatformEnv>(async (c, next) => {
 		const controller = new AbortController();
-		const deadlineAtMs = Date.now() + timeoutMs;
+		const effectiveTimeoutMs = longRunning.prefixes.some((prefix) =>
+			c.req.path.startsWith(prefix),
+		)
+			? longRunning.timeoutMs
+			: timeoutMs;
+		const deadlineAtMs = Date.now() + effectiveTimeoutMs;
 		const clientSignal = c.req.raw.signal;
 		const abortFromClient = () => controller.abort(clientSignal.reason);
 		if (clientSignal.aborted) abortFromClient();
@@ -36,7 +58,7 @@ export function createRequestDeadline(timeoutMs: number, logger: ApiLogger) {
 					method: c.req.method,
 					requestId: c.get("requestId"),
 					route: c.req.routePath || "unmatched",
-					timeoutMs,
+					timeoutMs: effectiveTimeoutMs,
 				});
 				const response = new Response(
 					JSON.stringify({
@@ -55,7 +77,7 @@ export function createRequestDeadline(timeoutMs: number, logger: ApiLogger) {
 						new DOMException("Request deadline exceeded", "TimeoutError"),
 					),
 				);
-			}, timeoutMs);
+			}, effectiveTimeoutMs);
 		});
 
 		try {

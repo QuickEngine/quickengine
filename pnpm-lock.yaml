@@ -795,6 +795,9 @@ importers:
 
   packages/integration-tests:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../api-contracts
       '@quickengine/auth':
         specifier: workspace:*
         version: link:../auth

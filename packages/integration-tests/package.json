@@ -8,6 +8,7 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/auth": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/events": "workspace:*",

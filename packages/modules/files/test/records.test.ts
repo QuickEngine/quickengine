@@ -7,6 +7,7 @@ import {
 	type StorageProvider,
 } from "@quickengine/storage";
 import { beforeEach, describe, expect, it } from "vitest";
+import { requestFileDocumentDeletionCommand } from "../src/application";
 import {
 	addFileDocumentVersion,
 	attachFileToValidatedTarget,
@@ -17,10 +18,23 @@ import {
 	listFileAttachmentsForTarget,
 	purgeDeletingFileDocument,
 	releaseQuarantinedFileVersion,
-	requestFileDocumentDeletion,
 	setFileDocumentStatus,
 	updateFileFolder,
 } from "../src/records";
+
+/** Deletion now runs through the durable command; this supplies its execution context. */
+const deletionContext = (key: string) => ({
+	abortSignal: new AbortController().signal,
+	actor: { id: userId, type: "user" as const },
+	deadlineAtMs: Date.now() + 10_000,
+	fingerprint: key,
+	idempotencyKey: key,
+	operation: "files.document.delete",
+	organizationId: orgId,
+	requestId: crypto.randomUUID(),
+	source: "api" as const,
+	workspaceId,
+});
 
 const userId = "files-user";
 const orgId = "00000000-0000-4000-8000-000000000102";
@@ -208,18 +222,22 @@ describe("files persistence", () => {
 			created.version.documentId,
 			"trashed",
 		);
-		await requestFileDocumentDeletion(
-			workspaceId,
+		await requestFileDocumentDeletionCommand(
+			deletionContext("files-delete-1"),
 			created.version.documentId,
 			createInMemoryJobQueue(),
 		);
+		// Asking again is harmless: the document is already deleting, so it comes back unchanged.
 		await expect(
-			requestFileDocumentDeletion(
-				workspaceId,
+			requestFileDocumentDeletionCommand(
+				deletionContext("files-delete-2"),
 				created.version.documentId,
 				createInMemoryJobQueue(),
 			),
-		).resolves.toMatchObject({ status: "deleting" });
+		).resolves.toMatchObject({
+			kind: "success",
+			result: { status: "deleting" },
+		});
 		const purged = await purgeDeletingFileDocument(
 			workspaceId,
 			created.version.documentId,

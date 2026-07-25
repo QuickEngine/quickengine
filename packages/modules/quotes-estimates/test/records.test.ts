@@ -1,3 +1,4 @@
+import type { MutationResult } from "@quickengine/api-contracts";
 import {
 	db,
 	eq,
@@ -8,13 +9,13 @@ import {
 import { testDbClient } from "@quickengine/db/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-	acceptQuoteEstimate,
-	convertQuoteEstimateToInvoice,
-	convertQuoteEstimateToOrder,
-	createQuoteEstimate,
+	acceptQuoteEstimateCommand,
+	convertQuoteEstimateToInvoiceCommand,
+	convertQuoteEstimateToOrderCommand,
+	createQuoteEstimateCommand,
 	getQuoteEstimate,
 	reviseQuoteEstimate,
-	sendQuoteEstimate,
+	sendQuoteEstimateCommand,
 } from "../src";
 
 const ownerId = "quotes-owner";
@@ -52,14 +53,35 @@ beforeEach(async () => {
 	`;
 });
 
-function quoteInput(
-	overrides: Partial<Parameters<typeof createQuoteEstimate>[1]> = {},
-): Parameters<typeof createQuoteEstimate>[1] {
+/** Writes go through durable commands, which need an execution context. */
+const context = (operation: string, key: string) => ({
+	abortSignal: new AbortController().signal,
+	actor: { id: ownerId, type: "user" as const },
+	deadlineAtMs: Date.now() + 10_000,
+	fingerprint: key,
+	idempotencyKey: key,
+	operation,
+	organizationId: null,
+	requestId: crypto.randomUUID(),
+	source: "api" as const,
+	workspaceId,
+});
+
+/** Unwraps a command outcome, failing loudly rather than returning undefined. */
+function committed<T>(outcome: MutationResult<T>): T {
+	if (outcome.kind !== "success") {
+		throw new Error(`expected a committed mutation, got ${outcome.kind}`);
+	}
+	return outcome.result;
+}
+
+type QuoteRow = { id: string } & Record<string, unknown>;
+
+function quoteInput(overrides: Record<string, unknown> = {}) {
 	return {
 		clientId,
-		kind: "quote",
+		kind: "quote" as const,
 		title: "Website redesign",
-		validUntil: "2026-08-31",
 		lines: [
 			{
 				name: "Implementation",
@@ -72,18 +94,26 @@ function quoteInput(
 	};
 }
 
-async function acceptedQuote(
-	overrides: Partial<Parameters<typeof createQuoteEstimate>[1]> = {},
-) {
-	const created = await createQuoteEstimate(workspaceId, quoteInput(overrides));
-	await sendQuoteEstimate(workspaceId, created.id, {
-		today: "2026-07-14",
-	});
-	await acceptQuoteEstimate(
-		workspaceId,
+// Idempotency keys are unique per call, so a helper used twice in one test still
+// executes twice instead of replaying the first result.
+let keySeq = 0;
+const nextKey = (name: string) => `${name}-${++keySeq}`;
+
+async function acceptedQuote(overrides: Record<string, unknown> = {}) {
+	const created = committed(
+		await createQuoteEstimateCommand(
+			context("quotes.create", nextKey("create")),
+			quoteInput(overrides),
+		),
+	) as QuoteRow;
+	await sendQuoteEstimateCommand(
+		context("quotes.send", nextKey("send")),
+		created.id,
+	);
+	await acceptQuoteEstimateCommand(
+		context("quotes.accept", nextKey("accept")),
 		created.id,
 		{ acceptedByName: "Ada Lovelace", acceptedByEmail: "ada@example.com" },
-		{ today: "2026-07-14" },
 	);
 	return created;
 }
@@ -91,8 +121,11 @@ async function acceptedQuote(
 describe("Quotes & Estimates persistence", () => {
 	it("keeps tenant boundaries and immutable revision history", async () => {
 		await expect(
-			createQuoteEstimate(workspaceId, quoteInput({ clientId: otherClientId })),
-		).rejects.toThrow("CLIENT_WORKSPACE_MISMATCH");
+			createQuoteEstimateCommand(
+				context("quotes.create", nextKey("cross-tenant")),
+				quoteInput({ clientId: otherClientId }),
+			),
+		).rejects.toThrow("another workspace");
 
 		const original = await acceptedQuote();
 		expect(original).toMatchObject({
@@ -104,6 +137,7 @@ describe("Quotes & Estimates persistence", () => {
 			await getQuoteEstimate(otherWorkspaceId, original.id),
 		).toBeUndefined();
 
+		// Revision has no durable command yet: it stays a UI-only lifecycle operation.
 		const revision = await reviseQuoteEstimate(workspaceId, original.id);
 		expect(revision).toMatchObject({
 			number: "QTE-0001-R2",
@@ -111,14 +145,30 @@ describe("Quotes & Estimates persistence", () => {
 			status: "draft",
 			supersedesId: original.id,
 		});
-		await sendQuoteEstimate(workspaceId, revision.id, {
-			today: "2026-07-14",
-		});
+		await sendQuoteEstimateCommand(
+			context("quotes.send", nextKey("send-revision")),
+			revision.id,
+		);
 		const [superseded] = await db
 			.select()
 			.from(quoteEstimates)
 			.where(eq(quoteEstimates.id, original.id));
 		expect(superseded.status).toBe("superseded");
+	});
+
+	it("refuses to send a quote that is already past its valid-until date", async () => {
+		const created = committed(
+			await createQuoteEstimateCommand(
+				context("quotes.create", nextKey("expired")),
+				quoteInput({ validUntil: "2020-01-01" }),
+			),
+		) as QuoteRow;
+		await expect(
+			sendQuoteEstimateCommand(
+				context("quotes.send", nextKey("send-expired")),
+				created.id,
+			),
+		).rejects.toThrow("valid-until");
 	});
 
 	it("converts an accepted fractional quote to one invoice exactly once", async () => {
@@ -133,8 +183,19 @@ describe("Quotes & Estimates persistence", () => {
 				},
 			],
 		});
-		const invoice = await convertQuoteEstimateToInvoice(workspaceId, quote.id);
-		const retry = await convertQuoteEstimateToInvoice(workspaceId, quote.id);
+		const invoice = committed(
+			await convertQuoteEstimateToInvoiceCommand(
+				context("quotes.convert.invoice", nextKey("to-invoice")),
+				quote.id,
+			),
+		) as QuoteRow;
+		// A second conversion returns the same invoice rather than minting another.
+		const retry = committed(
+			await convertQuoteEstimateToInvoiceCommand(
+				context("quotes.convert.invoice", nextKey("to-invoice-retry")),
+				quote.id,
+			),
+		) as QuoteRow;
 		expect(retry.id).toBe(invoice.id);
 		expect(invoice).toMatchObject({
 			number: "INV-0001",
@@ -156,8 +217,18 @@ describe("Quotes & Estimates persistence", () => {
 
 	it("converts whole quantities to one order exactly once", async () => {
 		const quote = await acceptedQuote();
-		const order = await convertQuoteEstimateToOrder(workspaceId, quote.id);
-		const retry = await convertQuoteEstimateToOrder(workspaceId, quote.id);
+		const order = committed(
+			await convertQuoteEstimateToOrderCommand(
+				context("quotes.convert.order", nextKey("to-order")),
+				quote.id,
+			),
+		) as QuoteRow;
+		const retry = committed(
+			await convertQuoteEstimateToOrderCommand(
+				context("quotes.convert.order", nextKey("to-order-retry")),
+				quote.id,
+			),
+		) as QuoteRow;
 		expect(retry.id).toBe(order.id);
 		expect(order).toMatchObject({
 			number: "ORD-0001",

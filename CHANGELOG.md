@@ -79,6 +79,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Removed the last duplicate write paths left over from the API migration.** Eleven superseded
+  module functions are gone, so every quote, timer, and file-deletion write now runs through the one
+  durable path that records an audit entry and an event alongside the change. Behaviour is unchanged;
+  there is simply no longer a second way in.
+
+- **New QuickEngine logo across every app.** The redrawn brand mark replaces the old one everywhere
+  it appears, and it now doubles as the browser tab icon, so the separate favicon file is gone and
+  all four apps ship a single logo asset. The full QuickEngine lockup ships alongside it for the
+  places that need the name spelled out.
+
 - **Stripe billing now runs on the QuickEngine API.** The Stripe webhook moved off the marketing
   site onto the API service at `/webhooks/stripe`, keeping signature verification on the exact
   bytes Stripe sends. An invalid signature is refused outright, while a temporary failure asks

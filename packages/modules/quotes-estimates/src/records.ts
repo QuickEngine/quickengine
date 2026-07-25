@@ -252,15 +252,6 @@ export async function createQuoteEstimateInTx(
 	return created;
 }
 
-export async function createQuoteEstimate(
-	workspaceId: string,
-	input: CreateQuoteEstimateInput,
-) {
-	return db.transaction((tx) =>
-		createQuoteEstimateInTx(tx, workspaceId, input),
-	);
-}
-
 export async function listQuoteEstimates(
 	workspaceId: string,
 	status?: QuoteEstimateStatus,
@@ -361,16 +352,6 @@ export async function updateDraftQuoteEstimateInTx(
 	return updated;
 }
 
-export async function updateDraftQuoteEstimate(
-	workspaceId: string,
-	id: string,
-	input: QuoteEstimateInput,
-) {
-	return db.transaction((tx) =>
-		updateDraftQuoteEstimateInTx(tx, workspaceId, id, input),
-	);
-}
-
 export async function sendQuoteEstimateInTx(
 	tx: QuoteTransaction,
 	workspaceId: string,
@@ -445,16 +426,6 @@ export async function sendQuoteEstimateInTx(
 	}
 }
 
-export async function sendQuoteEstimate(
-	workspaceId: string,
-	id: string,
-	options: { now?: Date; today?: string } = {},
-) {
-	return db.transaction((tx) =>
-		sendQuoteEstimateInTx(tx, workspaceId, id, options),
-	);
-}
-
 export async function acceptQuoteEstimateInTx(
 	tx: QuoteTransaction,
 	workspaceId: string,
@@ -505,17 +476,6 @@ export async function acceptQuoteEstimateInTx(
 		if (!accepted) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return accepted;
 	}
-}
-
-export async function acceptQuoteEstimate(
-	workspaceId: string,
-	id: string,
-	input: QuoteAcceptanceInput,
-	options: { now?: Date; today?: string } = {},
-) {
-	return db.transaction((tx) =>
-		acceptQuoteEstimateInTx(tx, workspaceId, id, input, options),
-	);
 }
 
 export async function setSimpleQuoteStatusInTx(
@@ -579,10 +539,6 @@ function setSimpleQuoteStatus(
 	return db.transaction((tx) =>
 		setSimpleQuoteStatusInTx(tx, workspaceId, id, status, options),
 	);
-}
-
-export function declineQuoteEstimate(workspaceId: string, id: string) {
-	return setSimpleQuoteStatus(workspaceId, id, "declined");
 }
 
 export function expireQuoteEstimate(
@@ -712,13 +668,4 @@ export async function deleteDraftQuoteEstimateInTx(
 		if (!deleted) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return deleted;
 	}
-}
-
-export async function deleteDraftQuoteEstimate(
-	workspaceId: string,
-	id: string,
-) {
-	return db.transaction((tx) =>
-		deleteDraftQuoteEstimateInTx(tx, workspaceId, id),
-	);
 }

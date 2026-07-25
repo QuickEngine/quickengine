@@ -1,8 +1,10 @@
 import { listWorkspaceActivity } from "@quickengine/db";
 
-// Turn a canonical "<module>.<entity>.<verb>" event name into something readable,
-// e.g. "client_records.record.created" → "Client records · created". Deliberately
-// generic so new modules' events render without a per-event mapping.
+// Turn a canonical "<entity>.<verb>" event name into something readable, e.g.
+// "quote.accepted" → "Quote · accepted". Deliberately generic so new modules'
+// events render without a per-event mapping. Rows written before the event rename
+// carry a third segment ("client_records.record.created"); taking the first and
+// last parts renders those correctly too.
 function humanizeEvent(name: string): string {
 	const parts = name.split(".");
 	const module = parts[0]?.replace(/_/g, " ") ?? name;

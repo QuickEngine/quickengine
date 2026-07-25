@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { db } from "./client";
 import { workspaceActivity } from "./schema/activity";
 
@@ -51,4 +51,45 @@ export async function listWorkspaceActivity(
 		.where(eq(workspaceActivity.workspaceId, workspaceId))
 		.orderBy(desc(workspaceActivity.seq))
 		.limit(limit);
+}
+
+/**
+ * Everything that happened after `cursor`, oldest first — the catch-up read.
+ *
+ * A browser only learns "something changed" from realtime; if it was disconnected
+ * it hears nothing at all. On reconnect it asks for events after the highest
+ * `seq` it has seen, so a dropped connection costs it nothing. Ascending order
+ * matters: the client applies them in the order they occurred and keeps the last
+ * `seq` as its new cursor.
+ *
+ * `seq` is a monotonic bigserial, so this is a keyset read — it stays correct and
+ * fast however far behind the client is, unlike an offset.
+ */
+export async function listWorkspaceActivitySince(
+	workspaceId: string,
+	cursor: number,
+	limit = 100,
+): Promise<ActivityRow[]> {
+	return db
+		.select()
+		.from(workspaceActivity)
+		.where(
+			and(
+				eq(workspaceActivity.workspaceId, workspaceId),
+				gt(workspaceActivity.seq, cursor),
+			),
+		)
+		.orderBy(asc(workspaceActivity.seq))
+		.limit(Math.min(Math.max(limit, 1), 500));
+}
+
+/** The newest sequence number in a workspace, or 0 when nothing has happened. */
+export async function latestActivitySeq(workspaceId: string): Promise<number> {
+	const [row] = await db
+		.select({ seq: workspaceActivity.seq })
+		.from(workspaceActivity)
+		.where(eq(workspaceActivity.workspaceId, workspaceId))
+		.orderBy(desc(workspaceActivity.seq))
+		.limit(1);
+	return row?.seq ?? 0;
 }

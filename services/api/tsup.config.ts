@@ -2,6 +2,8 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
 	clean: true,
+	// The Vercel entry (`api/index.ts`) imports this artifact, so it needs types.
+	dts: { entry: "src/index.ts" },
 	entry: ["src/index.ts", "src/server.ts"],
 	format: ["esm"],
 	platform: "node",

@@ -69,6 +69,21 @@ deploy. At minimum this service needs what `packages/env/src/server.ts` marks re
 refuse to boot, so preview deployments cannot reach the production database. Point preview
 `DATABASE_URL` at a preview branch.
 
+### Why `api/index.ts` imports `dist`, not `src`
+
+Vercel **transpiles** the function entry but does not bundle what it imports. An
+`import app from "../src/index"` therefore survives into the deployment as a runtime ESM
+specifier pointing at TypeScript that was never compiled, and every invocation fails with
+`ERR_MODULE_NOT_FOUND`. `tsup` inlines every workspace package into `dist`, which is the
+only form the function can load — and `vercel.json` pins `includeFiles: "dist/**"` so the
+artifact is definitely shipped rather than relying on file tracing.
+
+The trade-off is that typechecking the entry needs `dist/index.d.ts`, so
+`services/api/turbo.json` makes this package's `typecheck` depend on its own `build`
+(turbo's root config only depends on `^build`, i.e. upstream packages). Deleting `dist`
+and running `pnpm turbo typecheck --filter=@quickengine/api` is the way to verify that
+still holds.
+
 ### Runtime notes
 
 - **Node runtime, not edge.** Postgres, the Redis TCP fallback, and `node:crypto` in the

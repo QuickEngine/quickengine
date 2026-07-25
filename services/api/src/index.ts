@@ -9,6 +9,7 @@ import { defaultPlatformDependencies } from "./default-dependencies";
 import { createDefaultReadinessChecks } from "./default-readiness";
 import { registerFilesRoutes } from "./files-routes";
 import { registerFulfillmentRoutes } from "./fulfillment-routes";
+import { registerInngestRoutes } from "./inngest-routes";
 import { registerInventoryRoutes } from "./inventory-routes";
 import { registerInvoicesRoutes } from "./invoices-routes";
 import { createJsonLogger } from "./logger";
@@ -56,6 +57,7 @@ const app = createApp(config, {
 		registerReportingRoutes(app, dependencies);
 		registerWebhookRoutes(app, dependencies);
 		registerRealtimeRoutes(app, dependencies);
+		registerInngestRoutes(app);
 		registerStripeWebhookRoutes(app, { logger });
 	},
 	telemetry: initializeTelemetry(config),

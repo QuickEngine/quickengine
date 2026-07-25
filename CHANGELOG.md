@@ -15,6 +15,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Background work now runs on the QuickEngine API.** Scheduled delivery of events and webhooks
+  used to be handled by the dashboard; it now runs on the API service alongside everything else it
+  serves.
+
+### Changed
+
 - **Live updates now authorize against the QuickEngine API.** Realtime subscriptions used to be
   approved by the dashboard itself; that check now lives in the API alongside every other permission
   decision, so there is one place that decides who may listen to a workspace's events instead of two

@@ -1,0 +1,8 @@
+Deliberately empty.
+
+Vercel serves static files before applying rewrites. With no output directory it
+falls back to the project root — which here is the service's own source tree — so
+`/package.json`, `/tsconfig.json` and friends would be publicly readable.
+
+Pointing `outputDirectory` at this empty folder means nothing matches statically and
+every request falls through to the Hono function in `api/index.ts`.

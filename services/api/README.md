@@ -41,10 +41,18 @@ Vercel dashboard settings that are **not** expressible in `vercel.json`:
 | Root Directory | `services/api` | The project is one workspace package. |
 | Include source files outside Root Directory | **on** | The function imports `@quickengine/*` workspace packages. Without this the build cannot see them. |
 | Framework Preset | Other | This is not a Next app. |
+| Build / Install Command | leave overrides **off** | `vercel.json` sets them. |
+| Output Directory | `public` | See below — not cosmetic. |
 | Node.js Version | 24.x | Match the other four projects. |
 
 `vercel.json` rewrites every path to the single function, so Hono does all routing —
 including `/health`, `/ready`, `/version`, and `/openapi.json`, which are not under `/v1`.
+
+**`outputDirectory` must stay pointed at the empty `public/` folder.** Vercel matches static
+files before rewrites, and with no output directory it falls back to serving the project root —
+which here is this service's own source tree, making `/package.json` and `/tsconfig.json`
+publicly readable. An empty folder gives it nothing to match, so every request reaches the
+function.
 
 ### Environment variables
 

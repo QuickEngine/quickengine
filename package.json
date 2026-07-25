@@ -18,7 +18,9 @@
 		]
 	},
 	"scripts": {
-		"dev": "turbo dev",
+		"dev": "pnpm docker:up:wait && turbo dev --filter=@quickengine/web --filter=@quickengine/auth-app --filter=@quickengine/account --filter=@quickengine/quickdash --filter=@quickengine/api",
+		"dev:apps": "turbo dev --filter=@quickengine/web --filter=@quickengine/auth-app --filter=@quickengine/account --filter=@quickengine/quickdash --filter=@quickengine/api",
+		"dev:all": "pnpm docker:up:wait && turbo dev",
 		"dev:quickengine": "turbo dev --filter=@quickengine/web --filter=@quickengine/auth-app --filter=@quickengine/account",
 		"dev:quickdash": "turbo dev --filter=@quickengine/quickdash",
 		"dev:app": "turbo dev --filter=@quickengine/auth-app --filter=@quickengine/account --filter=@quickengine/quickdash",
@@ -51,8 +53,14 @@
 		"db:push": "pnpm --filter @quickengine/db db:push",
 		"db:studio": "pnpm --filter @quickengine/db db:studio",
 		"docker:up": "docker compose -f docker/docker-compose.yml up -d",
+		"docker:up:wait": "docker compose -f docker/docker-compose.yml up -d --wait",
 		"docker:down": "docker compose -f docker/docker-compose.yml down",
-		"docker:reset": "docker compose -f docker/docker-compose.yml down -v && docker compose -f docker/docker-compose.yml up -d"
+		"docker:reset": "docker compose -f docker/docker-compose.yml down -v && docker compose -f docker/docker-compose.yml up -d",
+		"dev:web": "pnpm --filter @quickengine/web dev",
+		"dev:auth": "pnpm --filter @quickengine/auth-app dev",
+		"dev:account": "pnpm --filter @quickengine/account dev",
+		"dev:dash": "pnpm --filter @quickengine/quickdash dev",
+		"dev:api": "pnpm --filter @quickengine/api dev"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.11",

@@ -21,6 +21,7 @@
 		"@quickengine/cache": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/event-dispatch": "workspace:*",
+		"@quickengine/jobs": "workspace:*",
 		"@quickengine/mod-bookings": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-contracts-esign": "workspace:*",
@@ -41,6 +42,7 @@
 		"@sentry/node": "^10.65.0",
 		"@upstash/redis": "^1.38.0",
 		"hono": "^4.12.27",
+		"inngest": "^4.13.0",
 		"postgres": "^3.4.9",
 		"redis": "^6.1.0",
 		"zod": "^4.3.6"

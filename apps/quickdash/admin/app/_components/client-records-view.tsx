@@ -364,14 +364,18 @@ export function ClientRecordsView({
 	const [query, setQuery] = useState("");
 
 	// Live updates: when another session changes a client record in this workspace,
-	// the event bus publishes to the workspace channel; refetch authoritative state.
+	// the dispatcher publishes to the workspace channel; refetch authoritative state.
+	// The event carries identity only, so refreshing is the whole handler.
 	const onRealtimeEvent = useCallback(
 		(eventName: string) => {
-			if (eventName.startsWith("client_records.")) router.refresh();
+			if (eventName.startsWith("client.")) router.refresh();
 		},
 		[router],
 	);
-	useWorkspaceRealtime(workspaceId, onRealtimeEvent);
+	// Nothing is delivered while disconnected and nothing is replayed afterwards,
+	// so a reconnect has to assume it missed something and refetch unconditionally.
+	const onReconnect = useCallback(() => router.refresh(), [router]);
+	useWorkspaceRealtime(workspaceId, { onEvent: onRealtimeEvent, onReconnect });
 
 	const visibleRecords = useMemo(() => {
 		const normalized = query.trim().toLowerCase();

@@ -34,6 +34,7 @@ export const API_CAPABILITIES = [
 	"orders:write",
 	"projects:read",
 	"projects:write",
+	"realtime:read",
 	"payments:read",
 	"payments:write",
 	"time:read",

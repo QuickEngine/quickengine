@@ -2017,6 +2017,50 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/realtime/auth": {
+				post: {
+					operationId: "authorizeRealtimeChannel",
+					summary: "Authorize a browser's subscription to a workspace channel",
+					description:
+						"Called by the realtime client, not directly. Accepts `socket_id` and `channel_name` as form fields and returns the provider's own auth payload. A caller may only authorize the channel belonging to its own workspace.",
+					responses: {
+						"200": { description: "The subscription is authorized." },
+						"400": {
+							description: "Missing socket id or unrecognised channel.",
+						},
+						"403": {
+							description: "That channel belongs to another workspace.",
+						},
+						"503": { description: "Realtime is not configured." },
+					},
+				},
+			},
+			"/v1/activity": {
+				get: {
+					operationId: "listActivity",
+					summary: "The workspace activity feed",
+					description:
+						"Without `since`, returns the newest events first — a fresh page load. With `since`, returns everything after that sequence oldest-first, which is how a client recovers events it missed while disconnected. `cursor` in the response is what to pass as the next `since`.",
+					parameters: [
+						{
+							in: "query",
+							name: "since",
+							schema: { type: "integer", minimum: 0 },
+							description:
+								"Return events after this sequence number, oldest first.",
+						},
+						{
+							in: "query",
+							name: "limit",
+							schema: { type: "integer", default: 50, maximum: 500 },
+						},
+					],
+					responses: {
+						"200": { description: "The events and the next cursor." },
+						"400": { description: "`since` was not a non-negative integer." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

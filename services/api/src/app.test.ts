@@ -134,6 +134,8 @@ describe("QuickEngine API foundation", () => {
 			"/v1/webhook-endpoints/{id}",
 			"/v1/webhook-endpoints/{id}/deliveries",
 			"/v1/webhook-deliveries/{id}/replay",
+			"/v1/realtime/auth",
+			"/v1/activity",
 			"/health",
 			"/ready",
 			"/version",

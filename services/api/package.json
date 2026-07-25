@@ -37,6 +37,7 @@
 		"@quickengine/mod-shipping": "workspace:*",
 		"@quickengine/mod-time-tracking": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
+		"@quickengine/realtime": "workspace:*",
 		"@sentry/node": "^10.65.0",
 		"@upstash/redis": "^1.38.0",
 		"hono": "^4.12.27",

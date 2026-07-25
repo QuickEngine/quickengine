@@ -17,16 +17,40 @@ function isInternal(eventName: string): boolean {
 	);
 }
 
-// Subscribe to a workspace's private realtime channel and run `onEvent` (with the
-// domain-event name) whenever one arrives. Subscribing hits `/api/pusher/auth`, which
-// gates access on workspace membership. The callback is held in a ref so re-renders
-// don't tear down and rebuild the subscription.
+export type WorkspaceRealtimeHandlers = {
+	/** A domain event arrived. The name is the canonical `<entity>.<verb>`. */
+	onEvent: (eventName: string) => void;
+	/**
+	 * The connection was re-established after being lost.
+	 *
+	 * **Events that occurred while disconnected were never delivered and never
+	 * will be** — Pusher does not replay them. Use this to read
+	 * `/v1/activity?since=<cursor>` and reconcile, or the UI silently drifts out of
+	 * date until something unrelated happens to trigger a refetch.
+	 */
+	onReconnect?: () => void;
+};
+
+// Subscribe to a workspace's private realtime channel. Subscribing hits the realtime
+// auth endpoint, which gates access on workspace membership — knowing a channel name
+// grants nothing. Handlers are held in a ref so re-renders don't tear down and rebuild
+// the subscription.
+//
+// Realtime is a *hint*, not the transport of record: the payload carries identity
+// only and the client refetches authoritative state. That is precisely what makes
+// `onReconnect` enough to recover — there is no missed payload to reconstruct, only a
+// catch-up read to perform.
 export function useWorkspaceRealtime(
 	workspaceId: string,
-	onEvent: (eventName: string) => void,
+	handlers: WorkspaceRealtimeHandlers | ((eventName: string) => void),
 ): void {
-	const handler = useRef(onEvent);
-	handler.current = onEvent;
+	// A bare callback is still accepted for the common case, so existing call sites
+	// keep working unchanged.
+	const ref = useRef<WorkspaceRealtimeHandlers>(
+		typeof handlers === "function" ? { onEvent: handlers } : handlers,
+	);
+	ref.current =
+		typeof handlers === "function" ? { onEvent: handlers } : handlers;
 
 	useEffect(() => {
 		if (!KEY || !CLUSTER || !workspaceId) return;
@@ -38,10 +62,21 @@ export function useWorkspaceRealtime(
 		const name = workspaceChannel(workspaceId);
 		const channel = pusher.subscribe(name);
 		channel.bind_global((eventName: string) => {
-			if (!isInternal(eventName)) handler.current(eventName);
+			if (!isInternal(eventName)) ref.current.onEvent(eventName);
 		});
 
+		// Fire only on a *re*-connection. The first connect leaves no gap to fill,
+		// and treating it as a reconnect would make every page load refetch twice.
+		let hasConnected = false;
+		const onStateChange = (states: { current: string }) => {
+			if (states.current !== "connected") return;
+			if (hasConnected) ref.current.onReconnect?.();
+			hasConnected = true;
+		};
+		pusher.connection.bind("state_change", onStateChange);
+
 		return () => {
+			pusher.connection.unbind("state_change", onStateChange);
 			pusher.unsubscribe(name);
 			pusher.disconnect();
 		};

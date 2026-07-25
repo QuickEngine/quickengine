@@ -13,7 +13,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   only ever builds its own stylesheets, so this was not reachable in practice, but the pin now
   points at the fixed release.
 
+### Fixed
+
+- **Client records update live again.** Renaming events in the previous release stopped the client
+  list noticing changes made in another tab or by a teammate, so it sat stale until the page was
+  reloaded. It now refreshes as changes happen, and also catches up after a dropped connection.
+
 ### Added
+
+- **Nothing is missed after a dropped connection.** Live updates are a hint to refresh, not the
+  record of what happened, so a browser that was asleep, offline, or mid-deploy used to silently fall
+  behind with no way to notice. The activity feed can now be read from any point onward, and the
+  client is told when its connection came back, so it catches up on exactly what it missed instead of
+  guessing or reloading everything.
 
 - **Outbound webhooks.** A workspace can now register its own URLs and receive its events as they
   happen, filtered to the event types it cares about or subscribed to everything. Each request is

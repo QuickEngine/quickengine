@@ -20,6 +20,7 @@ const config: ApiConfig = {
 	environment: "test",
 	logLevel: "error",
 	port: 3020,
+	callbackTimeoutMs: 50_000,
 	readinessTimeoutMs: 50,
 	requestTimeoutMs: 500,
 	tracesSampleRate: 0,

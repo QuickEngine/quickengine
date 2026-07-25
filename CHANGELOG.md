@@ -13,6 +13,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   only ever builds its own stylesheets, so this was not reachable in practice, but the pin now
   points at the fixed release.
 
+### Changed
+
+- **Live updates now authorize against the QuickEngine API.** Realtime subscriptions used to be
+  approved by the dashboard itself; that check now lives in the API alongside every other permission
+  decision, so there is one place that decides who may listen to a workspace's events instead of two
+  that could drift apart.
+
 ### Fixed
 
 - **Client records update live again.** Renaming events in the previous release stopped the client

@@ -316,4 +316,31 @@ describe("QuickEngine API foundation", () => {
 		expect(response.headers.get("server-timing")).toMatch(/^app;dur=/);
 		expect(lines).toEqual([{ message: "request.completed", route: "/health" }]);
 	});
+
+	it("states the API version on every response", async () => {
+		const app = createApp(config);
+		for (const path of ["/health", "/v1/clients", "/does-not-exist"]) {
+			const res = await app.request(path);
+			// Successes, refusals, and 404s alike — a caller must never have to guess
+			// which version answered.
+			expect(res.headers.get("QuickEngine-Version")).toBe("v1");
+		}
+	});
+
+	it("exposes the version and deprecation headers to browser callers", async () => {
+		const app = createApp(config);
+		const res = await app.request("/v1/clients", {
+			method: "OPTIONS",
+			headers: {
+				Origin: "https://dash.quickengine.xyz",
+				"Access-Control-Request-Method": "GET",
+			},
+		});
+		const exposed = res.headers.get("Access-Control-Expose-Headers") ?? "";
+		// Without these a browser integration can read neither the serving version
+		// nor a sunset warning — the callers least likely to be maintained.
+		expect(exposed).toContain("QuickEngine-Version");
+		expect(exposed).toContain("Deprecation");
+		expect(exposed).toContain("Sunset");
+	});
 });

@@ -12,7 +12,8 @@
 		"./headers": "./src/headers.ts",
 		"./mutations": "./src/mutations.ts",
 		"./openapi": "./src/openapi.ts",
-		"./query": "./src/query.ts"
+		"./query": "./src/query.ts",
+		"./versioning": "./src/versioning.ts"
 	},
 	"scripts": {
 		"lint": "biome lint .",

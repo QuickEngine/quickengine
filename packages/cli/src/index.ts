@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { QuickApiError } from "@quickengine/quick";
 import { Command } from "commander";
+import { registerActivityCommands } from "./commands/activity";
 import { registerBookingCommands } from "./commands/bookings";
 import { registerCatalogCommands } from "./commands/catalog";
 import { registerClientCommands } from "./commands/clients";
@@ -45,6 +46,7 @@ registerBookingCommands(program);
 registerTimeCommands(program);
 registerContractCommands(program);
 registerFileCommands(program);
+registerActivityCommands(program);
 registerReportCommands(program);
 registerWebhookCommands(program);
 registerDoctorCommand(program);

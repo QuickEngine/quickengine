@@ -4,3 +4,4 @@ export * from "./headers";
 export * from "./mutations";
 export * from "./openapi";
 export * from "./query";
+export * from "./versioning";

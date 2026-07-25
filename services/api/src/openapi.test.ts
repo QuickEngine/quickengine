@@ -1,0 +1,153 @@
+import { describe, expect, it } from "vitest";
+import type { ApiConfig } from "./config";
+import { createOpenApiDocument } from "./openapi";
+import { REQUEST_SCHEMAS } from "./openapi-requests";
+
+const config = {
+	baseUrl: "https://api.quickengine.test",
+	bodyLimitBytes: 1024,
+	callbackTimeoutMs: 50_000,
+	corsOrigins: new Set<string>(),
+	environment: "test",
+	logLevel: "error",
+	port: 3020,
+	readinessTimeoutMs: 50,
+	requestTimeoutMs: 1000,
+	tracesSampleRate: 0,
+	version: "0.1.0",
+} as ApiConfig;
+
+const document = createOpenApiDocument(config);
+type Operation = {
+	operationId?: string;
+	requestBody?: unknown;
+	responses?: Record<string, { content?: unknown }>;
+};
+const operations = Object.values(
+	document.paths as Record<string, Record<string, Operation>>,
+).flatMap((item) => Object.values(item));
+
+/**
+ * Mutating operations that legitimately carry no JSON body.
+ *
+ * Every entry is a deliberate statement, not a backlog: a status transition whose
+ * value is in the path, an action with no parameters, or a provider callback with
+ * its own wire format. Anything not listed here and not in `REQUEST_SCHEMAS` is
+ * an undocumented body, which is what the coverage test below catches.
+ */
+const BODYLESS = new Set([
+	"setCatalogItemStatus",
+	"setProductVariantStatus",
+	"sendQuote",
+	"declineQuote",
+	"convertQuote",
+	"setInvoiceStatus",
+	"setPaymentStatus",
+	"setOrderStatus",
+	"ensureOrderFulfillment",
+	"setFulfillmentStatus",
+	"setInventoryItemStatus",
+	"setShipmentStatus",
+	"setProjectStatus",
+	"archiveProject",
+	"restoreProject",
+	"setMilestoneStatus",
+	"setTaskStatus",
+	"setBookingStatus",
+	"stopTimer",
+	"approveTimeEntry",
+	"unapproveTimeEntry",
+	"voidTimeEntry",
+	"restoreVoidedTimeEntry",
+	"invoiceApprovedTimeEntries",
+	"detachTimeEntriesFromDraftInvoice",
+	"sendContract",
+	"expireContract",
+	"voidContract",
+	"reviseContract",
+	"setFileDocumentStatus",
+	"releaseQuarantinedFileVersion",
+	"replayWebhookDelivery",
+	// Form-encoded, and called by the realtime provider rather than by a customer.
+	"authorizeRealtimeChannel",
+]);
+
+describe("OpenAPI document", () => {
+	it("advertises the configured origin, not a build-time default", () => {
+		expect(document.servers).toEqual([{ url: "https://api.quickengine.test" }]);
+	});
+
+	it("derives every request body from the schema the route validates with", () => {
+		for (const operationId of Object.keys(REQUEST_SCHEMAS)) {
+			const operation = operations.find((o) => o.operationId === operationId);
+			expect(
+				operation,
+				`${operationId} is registered but has no path`,
+			).toBeDefined();
+			expect(
+				operation?.requestBody,
+				`${operationId} has no requestBody`,
+			).toBeDefined();
+		}
+	});
+
+	it("registers a component schema for each documented body", () => {
+		const schemas = (
+			document.components as { schemas: Record<string, unknown> }
+		).schemas;
+		for (const operationId of Object.keys(REQUEST_SCHEMAS)) {
+			// Referenced as a component rather than inlined, so a shape shared by
+			// create and update appears once.
+			expect(schemas[`${operationId}Request`]).toBeDefined();
+		}
+	});
+
+	it("leaves no mutating operation with an undocumented body", () => {
+		const undocumented = Object.entries(
+			document.paths as Record<string, Record<string, Operation>>,
+		).flatMap(([path, item]) =>
+			(["post", "put", "patch"] as const)
+				.map((method) => item[method])
+				.filter(
+					(op): op is Operation =>
+						Boolean(op?.operationId) &&
+						!op?.requestBody &&
+						!BODYLESS.has(op?.operationId as string),
+				)
+				.map((op) => `${op.operationId} (${path})`),
+		);
+		// A new mutating route must either register its schema or be declared
+		// bodyless. This is the line that stops the document rotting again.
+		expect(undocumented).toEqual([]);
+	});
+
+	it("returns the platform error envelope for every failure response", () => {
+		const bare = operations.flatMap((op) =>
+			Object.entries(op.responses ?? {})
+				.filter(
+					([status, response]) => /^[45]/.test(status) && !response.content,
+				)
+				.map(([status]) => `${op.operationId}:${status}`),
+		);
+		expect(bare).toEqual([]);
+	});
+
+	it("keeps error schemas as references rather than copies", () => {
+		const createClient = operations.find(
+			(o) => o.operationId === "createClient",
+		);
+		const failure = Object.entries(createClient?.responses ?? {}).find(
+			([status]) => status.startsWith("4"),
+		);
+		expect(failure, "createClient documents no failure response").toBeDefined();
+
+		const content = failure?.[1].content as Record<
+			string,
+			{ schema: { $ref: string } }
+		>;
+		// A $ref, not an inlined copy — one envelope definition, referenced 108 times.
+		expect(content["application/json"].schema.$ref).toBe(
+			"#/components/schemas/ErrorEnvelope",
+		);
+	});
+});

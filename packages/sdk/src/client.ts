@@ -1,4 +1,5 @@
 import { readApiError } from "./error";
+import { ActivityResource } from "./resources/activity";
 import { BookingsResource } from "./resources/bookings";
 import { CatalogResource } from "./resources/catalog";
 import { ClientsResource } from "./resources/clients";
@@ -88,6 +89,7 @@ export class QuickClient {
 	readonly time: TimeResource;
 	readonly contracts: ContractsResource;
 	readonly files: FilesResource;
+	readonly activity: ActivityResource;
 	readonly reports: ReportsResource;
 	readonly webhooks: WebhooksResource;
 	private readonly credential: QuickCredential;
@@ -114,6 +116,7 @@ export class QuickClient {
 		this.time = new TimeResource(this);
 		this.contracts = new ContractsResource(this);
 		this.files = new FilesResource(this);
+		this.activity = new ActivityResource(this);
 		this.reports = new ReportsResource(this);
 		this.webhooks = new WebhooksResource(this);
 	}

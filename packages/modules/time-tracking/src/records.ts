@@ -790,16 +790,6 @@ export async function createManualTimeEntry(
 	);
 }
 
-export async function stopTimeEntryTimer(
-	workspaceId: string,
-	id: string,
-	endedAt: Date,
-) {
-	return db.transaction((tx) =>
-		stopTimeEntryTimerInTx(tx, workspaceId, id, endedAt),
-	);
-}
-
 export async function updateManualTimeEntry(
 	workspaceId: string,
 	id: string,
@@ -807,16 +797,6 @@ export async function updateManualTimeEntry(
 ) {
 	return db.transaction((tx) =>
 		updateManualTimeEntryInTx(tx, workspaceId, id, input),
-	);
-}
-
-export async function updateTimeEntryDetails(
-	workspaceId: string,
-	id: string,
-	input: TimeEntryDetailsInput,
-) {
-	return db.transaction((tx) =>
-		updateTimeEntryDetailsInTx(tx, workspaceId, id, input),
 	);
 }
 

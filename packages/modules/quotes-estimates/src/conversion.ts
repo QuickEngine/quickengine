@@ -1,7 +1,7 @@
 import {
 	and,
 	asc,
-	db,
+	type db,
 	eq,
 	invoiceLineItems,
 	invoices,
@@ -174,16 +174,6 @@ export async function convertQuoteEstimateToInvoiceInTx(
 	}
 }
 
-export async function convertQuoteEstimateToInvoice(
-	workspaceId: string,
-	id: string,
-	options: { numberPrefix?: string; now?: Date } = {},
-) {
-	return db.transaction((tx) =>
-		convertQuoteEstimateToInvoiceInTx(tx, workspaceId, id, options),
-	);
-}
-
 export async function convertQuoteEstimateToOrderInTx(
 	tx: QuoteTransaction,
 	workspaceId: string,
@@ -271,14 +261,4 @@ export async function convertQuoteEstimateToOrderInTx(
 		if (!converted) throw new Error("QUOTE_ESTIMATE_CONCURRENT_UPDATE");
 		return order;
 	}
-}
-
-export async function convertQuoteEstimateToOrder(
-	workspaceId: string,
-	id: string,
-	options: { numberPrefix?: string; now?: Date } = {},
-) {
-	return db.transaction((tx) =>
-		convertQuoteEstimateToOrderInTx(tx, workspaceId, id, options),
-	);
 }

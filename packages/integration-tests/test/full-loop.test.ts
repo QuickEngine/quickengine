@@ -1,12 +1,13 @@
+import type { MutationResult } from "@quickengine/api-contracts";
 import { testDbClient } from "@quickengine/db/testing";
 import { createFulfillment } from "@quickengine/mod-fulfillment";
 import { getInvoice, setInvoiceStatus } from "@quickengine/mod-invoicing";
 import { recordPayment } from "@quickengine/mod-payments";
 import {
-	acceptQuoteEstimate,
-	convertQuoteEstimateToInvoice,
-	createQuoteEstimate,
-	sendQuoteEstimate,
+	acceptQuoteEstimateCommand,
+	convertQuoteEstimateToInvoiceCommand,
+	createQuoteEstimateCommand,
+	sendQuoteEstimateCommand,
 } from "@quickengine/mod-quotes-estimates";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -28,26 +29,59 @@ beforeEach(async () => {
 		insert into client_records (id, workspace_id, name, email, company)
 		values (${clientId}, ${workspaceId}, 'Ada Lovelace', 'ada@example.com', 'Analytical Engines')
 	`;
-	// convertQuoteEstimateToInvoice requires the invoicing module enabled.
+	// Converting to an invoice requires the invoicing module enabled.
 	await sql`
 		insert into workspace_modules (workspace_id, module_id, enabled)
 		values (${workspaceId}, 'invoicing', true)
 	`;
 });
 
+/** Quote writes go through durable commands, which need an execution context. */
+const context = (operation: string, key: string) => ({
+	abortSignal: new AbortController().signal,
+	actor: { id: ownerId, type: "user" as const },
+	deadlineAtMs: Date.now() + 10_000,
+	fingerprint: key,
+	idempotencyKey: key,
+	operation,
+	organizationId: null,
+	requestId: crypto.randomUUID(),
+	source: "api" as const,
+	workspaceId,
+});
+
+/** Unwraps a command outcome, failing loudly rather than returning undefined. */
+function committed<T>(outcome: MutationResult<T>): T {
+	if (outcome.kind !== "success") {
+		throw new Error(`expected a committed mutation, got ${outcome.kind}`);
+	}
+	return outcome.result;
+}
+
+// Both tests build their own quote, so keys must differ or the second replays the first.
+let keySeq = 0;
+const nextKey = (name: string) => `${name}-${++keySeq}`;
+
 async function acceptedQuote() {
-	const quote = await createQuoteEstimate(workspaceId, {
-		clientId,
-		kind: "quote",
-		title: "Website redesign",
-		lines: [{ name: "Implementation", quantity: 2, unitPriceCents: 8_000 }],
-	});
-	await sendQuoteEstimate(workspaceId, quote.id, { today: "2026-07-14" });
-	await acceptQuoteEstimate(
-		workspaceId,
+	const quote = committed(
+		await createQuoteEstimateCommand(
+			context("quotes.create", nextKey("create")),
+			{
+				clientId,
+				kind: "quote",
+				title: "Website redesign",
+				lines: [{ name: "Implementation", quantity: 2, unitPriceCents: 8_000 }],
+			},
+		),
+	) as { id: string };
+	await sendQuoteEstimateCommand(
+		context("quotes.send", nextKey("send")),
+		quote.id,
+	);
+	await acceptQuoteEstimateCommand(
+		context("quotes.accept", nextKey("accept")),
 		quote.id,
 		{ acceptedByName: "Ada Lovelace" },
-		{ today: "2026-07-14" },
 	);
 	return quote;
 }
@@ -56,7 +90,12 @@ describe("Full business loop: quote → invoice → payment → fulfillment", ()
 	it("drives the whole chain and reconciles state at every handoff", async () => {
 		// Accepted quote converts to a draft invoice for the right total.
 		const quote = await acceptedQuote();
-		const invoice = await convertQuoteEstimateToInvoice(workspaceId, quote.id);
+		const invoice = committed(
+			await convertQuoteEstimateToInvoiceCommand(
+				context("quotes.convert.invoice", nextKey("to-invoice")),
+				quote.id,
+			),
+		) as { id: string; number: string };
 		expect(invoice).toMatchObject({
 			status: "draft",
 			totalCents: 16_000,
@@ -115,7 +154,12 @@ describe("Full business loop: quote → invoice → payment → fulfillment", ()
 
 	it("keeps a partially paid invoice unpaid until a top-up settles it", async () => {
 		const quote = await acceptedQuote();
-		const invoice = await convertQuoteEstimateToInvoice(workspaceId, quote.id);
+		const invoice = committed(
+			await convertQuoteEstimateToInvoiceCommand(
+				context("quotes.convert.invoice", nextKey("to-invoice")),
+				quote.id,
+			),
+		) as { id: string; number: string };
 		await setInvoiceStatus(workspaceId, invoice.id, "sent");
 
 		await recordPayment(workspaceId, {

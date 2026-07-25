@@ -847,18 +847,6 @@ export async function enqueueFileDocumentCleanup(
 	});
 }
 
-export async function requestFileDocumentDeletion(
-	workspaceId: string,
-	documentId: string,
-	queue: JobQueue,
-) {
-	const document = await db.transaction((tx) =>
-		requestFileDocumentDeletionInTx(tx, workspaceId, documentId),
-	);
-	await enqueueFileDocumentCleanup(workspaceId, documentId, queue);
-	return document;
-}
-
 export async function purgeDeletingFileDocument(
 	workspaceId: string,
 	documentId: string,

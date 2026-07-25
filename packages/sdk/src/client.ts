@@ -15,6 +15,7 @@ import { QuotesResource } from "./resources/quotes";
 import { ReportsResource } from "./resources/reports";
 import { ShipmentsResource } from "./resources/shipments";
 import { TimeResource } from "./resources/time";
+import { WebhooksResource } from "./resources/webhooks";
 import type {
 	QuickClientOptions,
 	QuickCredential,
@@ -88,6 +89,7 @@ export class QuickClient {
 	readonly contracts: ContractsResource;
 	readonly files: FilesResource;
 	readonly reports: ReportsResource;
+	readonly webhooks: WebhooksResource;
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
@@ -113,6 +115,7 @@ export class QuickClient {
 		this.contracts = new ContractsResource(this);
 		this.files = new FilesResource(this);
 		this.reports = new ReportsResource(this);
+		this.webhooks = new WebhooksResource(this);
 	}
 
 	/**

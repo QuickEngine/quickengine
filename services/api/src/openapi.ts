@@ -1930,6 +1930,93 @@ export function createOpenApiDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/webhook-endpoints": {
+				get: {
+					operationId: "listWebhookEndpoints",
+					summary: "List this workspace's webhook endpoints",
+					description:
+						"Signing secrets are never returned. A secret is shown once, when the endpoint is created.",
+					responses: { "200": { description: "The endpoints." } },
+				},
+				post: {
+					operationId: "createWebhookEndpoint",
+					summary: "Register a webhook endpoint",
+					description:
+						"The response is the only time the signing secret is returned — store it before discarding the response. `eventTypes` may be omitted or empty to receive every event. The URL must use https, except for localhost during development.",
+					responses: {
+						"201": {
+							description: "The endpoint, including its signing secret.",
+						},
+						"400": { description: "Invalid or insecure URL." },
+						"409": {
+							description: "The workspace's endpoint limit is reached.",
+						},
+					},
+				},
+			},
+			"/v1/webhook-endpoints/{id}": {
+				get: {
+					operationId: "getWebhookEndpoint",
+					summary: "Read one webhook endpoint",
+					responses: {
+						"200": { description: "The endpoint." },
+						"404": { description: "Endpoint not found." },
+					},
+				},
+				patch: {
+					operationId: "updateWebhookEndpoint",
+					summary: "Update a webhook endpoint",
+					description:
+						"Re-enabling an endpoint the platform disabled also clears the recorded reason.",
+					responses: {
+						"200": { description: "The updated endpoint." },
+						"404": { description: "Endpoint not found." },
+					},
+				},
+				delete: {
+					operationId: "deleteWebhookEndpoint",
+					summary: "Delete a webhook endpoint",
+					description: "Its delivery history is removed with it.",
+					responses: {
+						"200": { description: "The deleted endpoint id." },
+						"404": { description: "Endpoint not found." },
+					},
+				},
+			},
+			"/v1/webhook-endpoints/{id}/deliveries": {
+				get: {
+					operationId: "listWebhookDeliveries",
+					summary: "Delivery history for an endpoint, newest first",
+					parameters: [
+						{
+							in: "query",
+							name: "limit",
+							schema: { type: "integer", default: 50, maximum: 100 },
+						},
+						{
+							in: "query",
+							name: "cursor",
+							schema: { type: "string", format: "date-time" },
+						},
+					],
+					responses: {
+						"200": { description: "The deliveries." },
+						"404": { description: "Endpoint not found." },
+					},
+				},
+			},
+			"/v1/webhook-deliveries/{id}/replay": {
+				post: {
+					operationId: "replayWebhookDelivery",
+					summary: "Queue a delivery to be attempted again",
+					description:
+						"Resets the delivery's attempt counter and schedules it immediately. Delivery is at-least-once: consumers must dedupe on the event id.",
+					responses: {
+						"202": { description: "The delivery, queued again." },
+						"404": { description: "Delivery not found." },
+					},
+				},
+			},
 			"/health": {
 				get: {
 					operationId: "getHealth",

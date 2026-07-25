@@ -5,6 +5,7 @@ import {
 } from "@quickengine/events";
 import { inngest } from "@quickengine/jobs";
 import { defaultOutboxHandlers } from "./handlers";
+import { deliverPendingWebhooks } from "./webhooks";
 
 /**
  * Drains the outbox until it is empty (or the cycle budget is spent).
@@ -75,5 +76,23 @@ export const outboxDispatch = inngest.createFunction(
 	async () => dispatchPendingEvents(),
 );
 
+/**
+ * The scheduled webhook sender.
+ *
+ * Separate from `outbox-dispatch` on purpose: this one spends its time waiting on
+ * other people's servers, so it must not share a cycle with the handlers that
+ * keep the activity feed and search index current. `concurrency: 2` lets a slow
+ * endpoint overlap with healthy ones without opening the floodgates.
+ */
+export const webhookDelivery = inngest.createFunction(
+	{
+		id: "webhook-delivery",
+		concurrency: 2,
+		retries: 0, // Each delivery carries its own attempt count and backoff.
+		triggers: [{ cron: "* * * * *" }],
+	},
+	async () => deliverPendingWebhooks(),
+);
+
 /** Durable functions this package contributes to the Inngest serve endpoint. */
-export const eventDispatchFunctions = [outboxDispatch];
+export const eventDispatchFunctions = [outboxDispatch, webhookDelivery];

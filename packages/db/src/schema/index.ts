@@ -20,4 +20,5 @@ export * from "./quotes-estimates";
 export * from "./reporting-analytics";
 export * from "./shipments";
 export * from "./time-entries";
+export * from "./webhooks";
 export * from "./workspace-modules";

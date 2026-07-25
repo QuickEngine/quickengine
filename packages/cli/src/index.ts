@@ -18,6 +18,7 @@ import { registerQuoteCommands } from "./commands/quotes";
 import { registerReportCommands } from "./commands/reports";
 import { registerShipmentCommands } from "./commands/shipments";
 import { registerTimeCommands } from "./commands/time";
+import { registerWebhookCommands } from "./commands/webhooks";
 import { errorLine } from "./output";
 
 const program = new Command();
@@ -45,6 +46,7 @@ registerTimeCommands(program);
 registerContractCommands(program);
 registerFileCommands(program);
 registerReportCommands(program);
+registerWebhookCommands(program);
 registerDoctorCommand(program);
 
 async function main(): Promise<void> {

@@ -13,12 +13,14 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/events": "workspace:*",
 		"@quickengine/jobs": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/realtime": "workspace:*",
-		"@quickengine/search": "workspace:*"
+		"@quickengine/search": "workspace:*",
+		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",

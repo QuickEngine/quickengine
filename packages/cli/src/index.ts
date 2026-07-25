@@ -7,9 +7,11 @@ import { registerCatalogCommands } from "./commands/catalog";
 import { registerClientCommands } from "./commands/clients";
 import { registerConfigCommands } from "./commands/config";
 import { registerContractCommands } from "./commands/contracts";
+import { registerCreateCommands } from "./commands/create";
 import { registerDoctorCommand } from "./commands/doctor";
 import { registerFileCommands } from "./commands/files";
 import { registerFulfillmentCommands } from "./commands/fulfillments";
+import { registerInitCommand } from "./commands/init";
 import { registerInventoryCommands } from "./commands/inventory";
 import { registerInvoiceCommands } from "./commands/invoices";
 import { registerOrderCommands } from "./commands/orders";
@@ -20,6 +22,7 @@ import { registerReportCommands } from "./commands/reports";
 import { registerShipmentCommands } from "./commands/shipments";
 import { registerTimeCommands } from "./commands/time";
 import { registerWebhookCommands } from "./commands/webhooks";
+import { runGuided } from "./guided";
 import { errorLine } from "./output";
 
 const program = new Command();
@@ -46,6 +49,8 @@ registerBookingCommands(program);
 registerTimeCommands(program);
 registerContractCommands(program);
 registerFileCommands(program);
+registerInitCommand(program);
+registerCreateCommands(program);
 registerActivityCommands(program);
 registerReportCommands(program);
 registerWebhookCommands(program);
@@ -53,6 +58,18 @@ registerDoctorCommand(program);
 
 async function main(): Promise<void> {
 	try {
+		// Bare `quick` opens the guided runner instead of printing help. Help is
+		// still one flag away, and a menu answers "what can this do?" better than a
+		// wall of 19 command groups. Not in a pipe or CI: a prompt with nowhere to
+		// read from would hang a script forever.
+		if (
+			process.argv.length <= 2 &&
+			process.stdin.isTTY &&
+			process.stdout.isTTY
+		) {
+			await runGuided(program);
+			return;
+		}
 		await program.parseAsync(process.argv);
 	} catch (error) {
 		if (error instanceof QuickApiError) {

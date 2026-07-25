@@ -23,6 +23,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@clack/prompts": "^1.7.0",
 		"@quickengine/quick": "workspace:*",
 		"commander": "^12.1.0"
 	},

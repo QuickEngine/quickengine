@@ -1,7 +1,7 @@
-import { QuickApiError } from "@quickengine/quick";
 import type { Command } from "commander";
-import { buildClient, credentialFromKey, resolveConfig } from "../config";
+import { credentialFromKey, resolveConfig } from "../config";
 import { line } from "../output";
+import { verifyConnection } from "../verify";
 
 function check(label: string, passed: boolean, detail?: string): boolean {
 	line(`${passed ? "✓" : "✗"} ${label}${detail ? ` — ${detail}` : ""}`);
@@ -35,29 +35,11 @@ export function registerDoctorCommand(program: Command): void {
 			}
 
 			if (config.baseUrl && config.workspaceId && config.key) {
-				try {
-					const { client } = buildClient();
-					const { data } = await client.catalog.list();
-					check(
-						`API reachable — read ${data.items.length} catalog item(s)`,
-						true,
-					);
-				} catch (error) {
-					ok = false;
-					if (error instanceof QuickApiError) {
-						check(
-							"API reachable",
-							false,
-							`${error.code} (HTTP ${error.status})`,
-						);
-					} else {
-						check(
-							"API reachable",
-							false,
-							error instanceof Error ? error.message : "unknown error",
-						);
-					}
-				}
+				// Shared with `quick init`, so setup and diagnosis never disagree —
+				// and so a capability refusal reads as "connected" rather than sending
+				// someone to debug their network.
+				const result = await verifyConnection();
+				ok = check("API reachable", result.ok, result.detail) && ok;
 			}
 
 			line("");

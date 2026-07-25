@@ -9,6 +9,7 @@ import type {
 export { QuickClient } from "./client";
 export { QuickApiError } from "./error";
 export type * from "./types";
+export { verifyWebhookSignature } from "./webhook-signature";
 
 export const createQuick = (options: QuickClientOptions<QuickCredential>) =>
 	new QuickClient(options);

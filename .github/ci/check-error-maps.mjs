@@ -14,20 +14,39 @@ import path from "node:path";
 import process from "node:process";
 
 const MODULES_DIR = "packages/modules";
+// Packages outside packages/modules that also own an application layer with a
+// FRIENDLY map + mapper. Platform surfaces get the same guarantee as modules:
+// a business failure must never fall through as a 500.
+const EXTRA_APPLICATION_PACKAGES = ["packages/event-dispatch"];
 
 /** Regex literals used in `.test(...)` calls, however they're written across lines. */
-const mapperRegexes = (body) =>
-	[...body.matchAll(/\/((?:[^/\\\n]|\\.)+)\/\.test/g)].map((m) =>
+const mapperRegexes = (body) => [
+	// Literal regex branches: /FOO|BAR/.test(error.message)
+	...[...body.matchAll(/\/((?:[^/\\\n]|\\.)+)\/\.test/g)].map((m) =>
 		m[1].replace(/[\n\t]/g, ""),
-	);
+	),
+	// Suffix branches: error.message.endsWith("_LIMIT") — equivalent to /_LIMIT$/.
+	// Read them too, or a perfectly correct mapper is reported as a 500 risk.
+	...[...body.matchAll(/\.endsWith\("([A-Z_]+)"\)/g)].map((m) => `${m[1]}$`),
+];
 
 export function auditErrorMaps(root = process.cwd()) {
 	const problems = [];
 	const audited = [];
 	const modulesPath = path.join(root, MODULES_DIR);
 
-	for (const moduleName of readdirSync(modulesPath).sort()) {
-		const src = path.join(modulesPath, moduleName, "src");
+	const candidates = [
+		...readdirSync(modulesPath)
+			.sort()
+			.map((name) => ({ name, src: path.join(modulesPath, name, "src") })),
+		...EXTRA_APPLICATION_PACKAGES.map((dir) => ({
+			name: path.basename(dir),
+			src: path.join(root, dir, "src"),
+		})),
+	];
+
+	for (const { name: moduleName, src } of candidates) {
+		if (!existsSync(src)) continue;
 		const appPath = path.join(src, "application.ts");
 		if (!existsSync(appPath)) continue;
 		const app = readFileSync(appPath, "utf8");

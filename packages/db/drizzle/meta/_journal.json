@@ -288,6 +288,13 @@
 			"when": 1784958776419,
 			"tag": "0040_special_dexter_bennett",
 			"breakpoints": true
+		},
+		{
+			"idx": 41,
+			"version": "7",
+			"when": 1784961614134,
+			"tag": "0041_smiling_raider",
+			"breakpoints": true
 		}
 	]
 }

@@ -15,6 +15,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Outbound webhooks.** A workspace can now register its own URLs and receive its events as they
+  happen, filtered to the event types it cares about or subscribed to everything. Each request is
+  signed so the receiver can prove it came from QuickEngine and was not altered in transit, and the
+  signature expires, so a captured request cannot be replayed later. Failed deliveries retry on their
+  own with widening gaps, an endpoint that stays broken is switched off rather than retried forever,
+  and every attempt is kept with the response so a developer can see exactly what their server
+  returned. Any delivery can be sent again on request. Managed from the API, Quick.js, or the CLI,
+  and the SDK ships the signature verifier so receivers do not have to write their own.
+
+
 - **Reporting and Analytics now has an API, completing the module set.** A cross-module snapshot
   reports clients, invoices, payments, revenue, orders, fulfillment, projects, bookings, contracts,
   inventory, and site traffic for any date range, and every section says whether that module is

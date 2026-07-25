@@ -22,6 +22,7 @@ import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
 import { initializeTelemetry } from "./telemetry";
 import { registerTimeTrackingRoutes } from "./time-tracking-routes";
+import { registerWebhookRoutes } from "./webhook-routes";
 
 const config = loadApiConfig();
 const app = createApp(config, {
@@ -52,6 +53,7 @@ const app = createApp(config, {
 		registerContractsRoutes(app, dependencies);
 		registerFilesRoutes(app, dependencies);
 		registerReportingRoutes(app, dependencies);
+		registerWebhookRoutes(app, dependencies);
 		registerStripeWebhookRoutes(app, { logger });
 	},
 	telemetry: initializeTelemetry(config),

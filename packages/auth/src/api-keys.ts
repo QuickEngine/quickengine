@@ -38,6 +38,8 @@ export const API_CAPABILITIES = [
 	"payments:write",
 	"time:read",
 	"time:write",
+	"webhooks:read",
+	"webhooks:write",
 	"quotes:read",
 	"quotes:write",
 	"shipping:read",

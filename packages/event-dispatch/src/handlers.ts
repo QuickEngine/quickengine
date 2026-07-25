@@ -7,6 +7,7 @@ import {
 	workspaceChannel,
 } from "@quickengine/realtime";
 import { getSearchProvider, type SearchProvider } from "@quickengine/search";
+import { webhookFanoutHandler } from "./webhooks";
 
 /**
  * Outbox handlers — what actually happens when a committed event is delivered.
@@ -108,7 +109,18 @@ export function searchHandler(
 	};
 }
 
-/** Every handler the dispatcher runs, in the order they are applied. */
+/**
+ * Every handler the dispatcher runs, in the order they are applied.
+ *
+ * Webhook fan-out is last and only writes rows — the HTTP calls happen in a
+ * separate worker, so a customer's slow endpoint cannot delay the feed, realtime,
+ * or search for anyone else.
+ */
 export function defaultOutboxHandlers(): OutboxHandler[] {
-	return [activityHandler(), realtimeHandler(), searchHandler()];
+	return [
+		activityHandler(),
+		realtimeHandler(),
+		searchHandler(),
+		webhookFanoutHandler(),
+	];
 }

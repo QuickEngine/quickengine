@@ -1059,3 +1059,63 @@ export type QuickTrafficEventResult = {
 	accepted: boolean;
 	eventId: string;
 };
+
+/**
+ * A registered destination for this workspace's events.
+ *
+ * The signing secret is deliberately absent: it is returned once, by `create`,
+ * and there is no route that reads it back.
+ */
+export type QuickWebhookEndpoint = {
+	id: string;
+	url: string;
+	description: string | null;
+	/** Empty means every event. */
+	eventTypes: string[];
+	enabled: boolean;
+	/** Set when QuickEngine disabled the endpoint after repeated failures. */
+	disabledReason: string | null;
+	createdAt: string;
+	updatedAt: string;
+};
+
+/** The endpoint plus its signing secret — the only time the secret is returned. */
+export type QuickCreatedWebhookEndpoint = QuickWebhookEndpoint & {
+	secret: string;
+};
+
+export type QuickWebhookEndpointInput = {
+	/** Must be https, except localhost while developing. */
+	url: string;
+	description?: string | null;
+	/** Omit or leave empty to receive every event. */
+	eventTypes?: string[];
+};
+
+export type QuickWebhookEndpointPatch = Partial<QuickWebhookEndpointInput> & {
+	enabled?: boolean;
+};
+
+export type QuickWebhookDeliveryStatus =
+	| "pending"
+	| "succeeded"
+	| "failed"
+	| "exhausted";
+
+/** One event's delivery to one endpoint, with its attempt history. */
+export type QuickWebhookDelivery = {
+	id: string;
+	endpointId: string;
+	/** The event id your receiver should dedupe on. */
+	eventId: string;
+	eventName: string;
+	status: QuickWebhookDeliveryStatus;
+	attempts: number;
+	responseStatus: number | null;
+	/** Truncated response body from your endpoint, for debugging. */
+	responseBody: string | null;
+	/** Transport failure (timeout, DNS, TLS) where no HTTP status was received. */
+	error: string | null;
+	deliveredAt: string | null;
+	createdAt: string;
+};

@@ -776,6 +776,9 @@ importers:
 
   packages/event-dispatch:
     dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../api-contracts
       '@quickengine/db':
         specifier: workspace:*
         version: link:../db
@@ -794,6 +797,9 @@ importers:
       '@quickengine/search':
         specifier: workspace:*
         version: link:../search
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
     devDependencies:
       '@quickengine/config':
         specifier: workspace:*
@@ -1632,6 +1638,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@quickengine/event-dispatch':
+        specifier: workspace:*
+        version: link:../../packages/event-dispatch
       '@quickengine/mod-bookings':
         specifier: workspace:*
         version: link:../../packages/modules/bookings

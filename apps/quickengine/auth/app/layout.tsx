@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 	// dilute the marketing site — but they still unfurl nicely when shared.
 	robots: { index: false, follow: false },
 	icons: {
-		icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+		icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
 	},
 	openGraph: {
 		title: OG_TITLE,

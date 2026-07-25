@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 	title: { default: "QuickDash", template: "%s | QuickDash" },
 	description: "Run your business from a configurable QuickDash workspace.",
 	robots: { index: false, follow: false },
-	icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }] },
+	icons: { icon: [{ url: "/logo.svg", type: "image/svg+xml" }] },
 };
 
 export default async function RootLayout({

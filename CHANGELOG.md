@@ -34,6 +34,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The API reference now describes what it sends back.** Every endpoint documents the exact shape of
+  its response, checked against the code so the reference cannot drift from reality, and every
+  endpoint that accepts data carries a worked example that is verified to be something the API would
+  actually accept. Fields the API deliberately withholds — signing secrets among them — cannot appear
+  in the documentation, and that is enforced automatically rather than by review.
+
+### Added
+
 - **Start a project in one command.** `quick create app` generates a working project — the SDK
   installed, credentials in place, and a single file showing a read and an idempotent write, so
   running it twice doesn't create two of anything. It is short enough to read in one sitting and

@@ -236,7 +236,7 @@ importers:
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nuqs:
         specifier: ^2.9.0
-        version: 2.9.1(next@16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+        version: 2.9.1(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@19.2.8)
@@ -324,7 +324,7 @@ importers:
         version: 16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nuqs:
         specifier: ^2.9.0
-        version: 2.9.1(next@16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+        version: 2.9.1(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -409,7 +409,7 @@ importers:
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nuqs:
         specifier: ^2.9.0
-        version: 2.9.1(next@16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+        version: 2.9.1(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -1704,6 +1704,9 @@ importers:
       '@upstash/redis':
         specifier: ^1.38.0
         version: 1.38.0
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(@upstash/redis@1.38.0)(kysely@0.29.2)(postgres@3.4.9)
       hono:
         specifier: ^4.12.27
         version: 4.12.27
@@ -12775,7 +12778,7 @@ snapshots:
       path-key: 4.0.0
       unicorn-magic: 0.3.0
 
-  nuqs@2.9.1(next@16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
+  nuqs@2.9.1(next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
     dependencies:
       '@standard-schema/spec': 1.1.0
       react: 19.2.8

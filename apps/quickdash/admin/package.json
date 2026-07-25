@@ -1,6 +1,7 @@
 {
 	"name": "@quickengine/quickdash",
 	"version": "0.1.0",
+	"license": "UNLICENSED",
 	"private": true,
 	"type": "module",
 	"scripts": {

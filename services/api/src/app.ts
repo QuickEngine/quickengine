@@ -3,6 +3,10 @@ import {
 	API_HEADERS,
 	RATE_LIMIT_HEADERS,
 } from "@quickengine/api-contracts/headers";
+import {
+	CURRENT_API_VERSION,
+	VERSION_HEADERS,
+} from "@quickengine/api-contracts/versioning";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
@@ -36,6 +40,12 @@ export function createApp(
 	const readinessChecks = options.readinessChecks ?? [];
 
 	app.use("*", requestId({ headerName: "X-Request-Id", limitLength: 128 }));
+	// Every response states the version that served it. Cheap, and it turns "which
+	// version was that?" from an archaeology exercise into reading a header.
+	app.use("*", async (c, next) => {
+		await next();
+		c.header(VERSION_HEADERS.version, CURRENT_API_VERSION);
+	});
 	app.use("*", secureHeaders());
 	app.use("*", async (c, next) => {
 		const corsMiddleware = cors({
@@ -59,6 +69,12 @@ export function createApp(
 			],
 			exposeHeaders: [
 				API_HEADERS.requestId,
+				// Browser callers must be able to read which version answered, and any
+				// deprecation notice — otherwise the warning only reaches server-side
+				// integrations and the ones most likely to rot never see it.
+				VERSION_HEADERS.version,
+				VERSION_HEADERS.deprecation,
+				VERSION_HEADERS.sunset,
 				API_HEADERS.idempotencyReplayed,
 				RATE_LIMIT_HEADERS.limit,
 				RATE_LIMIT_HEADERS.remaining,

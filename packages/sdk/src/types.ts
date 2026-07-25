@@ -1119,3 +1119,25 @@ export type QuickWebhookDelivery = {
 	deliveredAt: string | null;
 	createdAt: string;
 };
+
+/** One recorded domain event in a workspace's history. */
+export type QuickActivityEvent = {
+	/** Monotonic stream position — the value to page from. */
+	seq: number;
+	/** Stable event id; the same value a webhook delivery carries. */
+	id: string;
+	workspaceId: string;
+	/** Canonical `<entity>.<verb>`, e.g. `invoice.paid`. */
+	name: string;
+	/** The affected record. Text, because the record may since have been deleted. */
+	recordId: string;
+	/** User or API-key id; null for system-originated events. */
+	actorId: string | null;
+	occurredAt: string;
+};
+
+export type QuickActivityPage = {
+	events: QuickActivityEvent[];
+	/** Pass to `activity.since()` to continue from here. */
+	cursor: number;
+};

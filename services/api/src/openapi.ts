@@ -6,8 +6,9 @@ import {
 } from "@quickengine/api-contracts";
 import { z } from "zod";
 import type { ApiConfig } from "./config";
+import { augmentOpenApiDocument } from "./openapi-augment";
 
-export function createOpenApiDocument(config: ApiConfig) {
+function declaredDocument(config: ApiConfig) {
 	const readinessEnvelope = successEnvelopeSchema(
 		z.object({
 			checks: z.array(
@@ -2087,4 +2088,13 @@ export function createOpenApiDocument(config: ApiConfig) {
 			},
 		},
 	} as const;
+}
+
+/**
+ * The served document: hand-written prose plus derived schemas.
+ *
+ * Split so the mechanical half cannot rot — see `openapi-augment.ts`.
+ */
+export function createOpenApiDocument(config: ApiConfig) {
+	return augmentOpenApiDocument(declaredDocument(config));
 }

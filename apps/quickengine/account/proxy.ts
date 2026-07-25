@@ -13,6 +13,6 @@ export function proxy() {
 }
 
 export const config = {
-	// Everything except Next's static assets and the favicon.
-	matcher: ["/((?!_next/static|_next/image|favicon.svg).*)"],
+	// Everything except Next's static assets and the logo.
+	matcher: ["/((?!_next/static|_next/image|logo.svg).*)"],
 };

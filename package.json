@@ -35,6 +35,7 @@
 		"check": "biome check . && pnpm check:next-boundaries && pnpm check:error-maps",
 		"check:next-boundaries": "node .github/ci/check-next-boundaries.mjs",
 		"check:error-maps": "node .github/ci/check-error-maps.mjs",
+		"brand:sync": "node packages/ui/sync-brand.mjs && biome check --write packages/ui/src/components",
 		"typecheck": "turbo typecheck",
 		"test": "turbo test && pnpm test:boundaries",
 		"test:api": "pnpm --filter @quickengine/api test",

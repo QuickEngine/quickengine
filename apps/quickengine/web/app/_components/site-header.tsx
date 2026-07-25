@@ -1,7 +1,7 @@
 "use client";
 
 import { List, Plus, X } from "@phosphor-icons/react";
-import { Logo } from "@quickengine/ui";
+import { Wordmark } from "@quickengine/ui";
 import { useEffect, useState } from "react";
 
 const AUTH_URL =
@@ -12,7 +12,7 @@ type MenuColumn = { title: string; links: { label: string; href: string }[] };
 // Nav items. Those with `menu` open a mega panel on hover; the rest are plain
 // links (Company = low-traffic hub, Pricing = single high-intent destination).
 const NAV_LINKS: { label: string; href: string; menu?: string }[] = [
-	{ label: "Products", href: "/products", menu: "products" },
+	{ label: "Product", href: "/products", menu: "products" },
 	{ label: "Developers", href: "/developers", menu: "developers" },
 	{ label: "Business", href: "/business", menu: "business" },
 	{ label: "Resources", href: "/resources", menu: "resources" },
@@ -199,32 +199,36 @@ export function SiteHeader() {
 					: "border-transparent"
 			}`}
 		>
-			<div className="page-gutter group flex h-16 items-center justify-between">
-				<div className="flex items-center gap-6">
-					<a
-						href="/"
-						onMouseEnter={() => setActive(null)}
-						className="inline-flex w-fit items-center"
-					>
-						<Logo className="size-6 text-foreground" />
-					</a>
+			{/* Three columns, not flex+justify-between: the 1fr side cells stay equal
+			    however wide the wordmark or the auth buttons get, so the nav sits on
+			    the page's true centre line instead of drifting with them. */}
+			<div className="page-gutter group grid h-16 grid-cols-[1fr_auto_1fr] items-center">
+				<a
+					href="/"
+					onMouseEnter={() => setActive(null)}
+					className="inline-flex w-fit items-center"
+				>
+					<Wordmark className="h-7 w-auto text-foreground" />
+				</a>
 
-					<nav className="-mx-4 hidden items-center lg:flex">
-						{NAV_LINKS.map((link) => (
-							<a
-								key={link.href}
-								href={link.href}
-								onMouseEnter={() => setActive(link.menu ?? null)}
-								onFocus={() => setActive(link.menu ?? null)}
-								className={pageLink}
-							>
-								{link.label}
-							</a>
-						))}
-					</nav>
-				</div>
+				<nav className="-mx-4 hidden items-center lg:flex">
+					{NAV_LINKS.map((link) => (
+						<a
+							key={link.href}
+							href={link.href}
+							onMouseEnter={() => setActive(link.menu ?? null)}
+							onFocus={() => setActive(link.menu ?? null)}
+							className={pageLink}
+						>
+							{link.label}
+						</a>
+					))}
+				</nav>
 
-				<div className="flex items-center gap-5">
+				{/* col-start-3 is required, not decorative: the nav is `hidden lg:flex`,
+				    so on mobile its cell vanishes and auto-placement would pull these
+				    controls into the middle column. */}
+				<div className="col-start-3 flex items-center justify-end gap-5">
 					<a
 						href={`${AUTH_URL}/signin`}
 						onMouseEnter={() => setActive(null)}

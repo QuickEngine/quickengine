@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 	description: SITE_DESCRIPTION,
 	alternates: { canonical: "/" },
 	icons: {
-		icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+		icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
 	},
 	openGraph: {
 		title: HOME_TITLE,

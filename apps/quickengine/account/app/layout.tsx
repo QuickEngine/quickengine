@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 	// shared links unfurl with the brand card.
 	robots: { index: false, follow: false },
 	icons: {
-		icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+		icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
 	},
 	openGraph: {
 		title: OG_TITLE,

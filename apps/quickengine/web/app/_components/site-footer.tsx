@@ -9,7 +9,7 @@ import {
 	faYoutube,
 } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Logo, StatusIndicator } from "@quickengine/ui";
+import { StatusIndicator, Wordmark } from "@quickengine/ui";
 import { LanguageSelector } from "./language-selector";
 import { ThemeSwitch } from "./theme-switch";
 
@@ -132,7 +132,7 @@ export function SiteFooter() {
 			<div className="page-gutter py-16">
 				<div className="flex flex-col gap-12 sm:flex-row sm:items-start sm:justify-between">
 					<a href="/" className="inline-flex w-fit items-center">
-						<Logo className="size-6 text-foreground" />
+						<Wordmark className="h-7 w-auto text-foreground" />
 					</a>
 
 					<div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:w-fit sm:grid-cols-3 sm:gap-x-16 lg:grid-cols-6">

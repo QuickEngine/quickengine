@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **An invoice can no longer be paid more than once for the same money.** When a payment was
+  recorded as pending and later confirmed — the path card payments take once a provider reports
+  success — the amount was never checked against what the invoice still owed. A confirmation that
+  arrived twice could push an invoice past its total and leave it showing more collected than was
+  ever charged. Confirming a payment now applies the same balance check as recording one, and a
+  confirmation against a voided invoice is refused outright.
+
 - **Writing to the API works again.** Every request that sent data to the API — creating a client,
   authorizing a live connection, receiving a payment notification — waited without ever being
   handled and eventually gave up. Reading was unaffected, so the service looked healthy while

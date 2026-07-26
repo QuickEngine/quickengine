@@ -184,6 +184,61 @@ async function reconcileInvoice(
 
 // Records money without metering a business outcome. Offline methods use provider
 // "manual"; provider integrations supply stable external IDs for idempotency.
+/**
+ * Find a payment we have already recorded for the same provider identity.
+ *
+ * Two identifiers can carry it. `external_payment_id` is covered by a unique index
+ * on `(provider, external_payment_id)`, but that column is **nullable and Postgres
+ * does not collide NULLs** — so before migration `0042` a Stripe webhook that
+ * populated only the payment intent had nothing stopping it inserting a duplicate.
+ * `payments_stripe_intent_unique` closes that, and this lookup turns the collision
+ * into a replay instead of an error.
+ */
+async function findPaymentByProviderIdentity(
+	tx: PaymentTransaction,
+	workspaceId: string,
+	values: {
+		provider?: string;
+		externalPaymentId?: string | null;
+		stripePaymentIntentId?: string | null;
+	},
+) {
+	if (values.externalPaymentId) {
+		const [existing] = await tx
+			.select()
+			.from(payments)
+			.where(
+				and(
+					eq(payments.workspaceId, workspaceId),
+					eq(payments.provider, values.provider ?? "stripe"),
+					eq(payments.externalPaymentId, values.externalPaymentId),
+				),
+			)
+			.limit(1);
+		if (existing) return existing;
+	}
+	if (values.stripePaymentIntentId) {
+		const [existing] = await tx
+			.select()
+			.from(payments)
+			.where(
+				and(
+					eq(payments.workspaceId, workspaceId),
+					eq(payments.stripePaymentIntentId, values.stripePaymentIntentId),
+				),
+			)
+			.limit(1);
+		if (existing) return existing;
+	}
+	return undefined;
+}
+
+/** Postgres unique-violation. Two concurrent deliveries can still race the lookup. */
+const isUniqueViolation = (error: unknown): boolean =>
+	typeof error === "object" &&
+	error !== null &&
+	(error as { code?: string }).code === "23505";
+
 export async function recordPaymentInTx(
 	tx: PaymentTransaction,
 	workspaceId: string,
@@ -199,6 +254,20 @@ export async function recordPaymentInTx(
 			.where(eq(quickengineWorkspaces.id, workspaceId))
 			.limit(1);
 		if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
+
+		// A provider that already told us about this payment gets the original answer
+		// back, not a second payment row and not a 500. Stripe retries webhooks
+		// routinely, so "we have seen this one" is a normal case rather than an error.
+		//
+		// Checked before the balance guard deliberately: a replay adds no money, so
+		// re-running the overpayment check against it would reject a duplicate
+		// delivery of a payment that was legitimately accepted the first time.
+		const replayed = await findPaymentByProviderIdentity(
+			tx,
+			workspaceId,
+			values,
+		);
+		if (replayed) return replayed;
 
 		let invoice: typeof invoices.$inferSelect | undefined;
 		if (values.invoiceId) {
@@ -291,7 +360,21 @@ export async function recordPayment(
 	workspaceId: string,
 	input: RecordPaymentInput,
 ) {
-	return db.transaction((tx) => recordPaymentInTx(tx, workspaceId, input));
+	try {
+		return await db.transaction((tx) =>
+			recordPaymentInTx(tx, workspaceId, input),
+		);
+	} catch (error) {
+		if (!isUniqueViolation(error)) throw error;
+		// Two deliveries of the same webhook raced: both passed the replay lookup, and
+		// the index caught the second. A unique violation poisons the whole Postgres
+		// transaction, so it cannot be recovered inside `recordPaymentInTx` — the retry
+		// has to happen out here, where the losing side now finds the row the winner
+		// committed and replays it. Exactly one payment exists either way.
+		return await db.transaction((tx) =>
+			recordPaymentInTx(tx, workspaceId, input),
+		);
+	}
 }
 
 export async function setPaymentStatusInTx(

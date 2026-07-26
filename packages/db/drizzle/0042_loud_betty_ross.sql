@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "payments_stripe_intent_unique" ON "payments" USING btree ("workspace_id","stripe_payment_intent_id") WHERE "payments"."stripe_payment_intent_id" is not null;

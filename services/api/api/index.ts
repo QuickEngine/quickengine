@@ -1,6 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { Readable } from "node:stream";
-import app from "../dist/index.js";
+import app, { readNodeRequestBody } from "../dist/index.js";
 
 /**
  * Vercel entry point for the QuickEngine API.
@@ -53,15 +52,17 @@ export default async function handler(
 	const method = req.method ?? "GET";
 	const hasBody = method !== "GET" && method !== "HEAD";
 
+	// Buffered, not streamed. Handing `Readable.toWeb(req)` to `Request` hung every
+	// write in production until its deadline expired — the stream never signalled
+	// end, so the body-limit middleware waited forever and no route was ever
+	// reached. GET was unaffected only because it skips the body entirely.
+	const body = hasBody ? await readNodeRequestBody(req) : undefined;
+
 	const request = new Request(url, {
 		method,
 		headers: toWebHeaders(req),
-		// Streamed rather than buffered: the body-limit middleware counts bytes as
-		// they arrive, so an oversized upload is rejected without being held first.
-		body: hasBody ? (Readable.toWeb(req) as ReadableStream) : undefined,
-		// Node requires this whenever a streaming body is supplied.
-		...(hasBody ? { duplex: "half" } : {}),
-	} as RequestInit);
+		body,
+	});
 
 	const response = await app.fetch(request);
 

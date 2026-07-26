@@ -4,7 +4,7 @@ import { requestId } from "hono/request-id";
 import { describe, expect, it } from "vitest";
 import { noopLogger } from "./logger";
 import type { PlatformEnv } from "./platform-types";
-import { createRateLimit } from "./rate-limit";
+import { createRateLimit, policyForPlan } from "./rate-limit";
 
 function testApp(options: {
 	cache?: ReturnType<typeof createMemoryCacheProvider>;
@@ -101,5 +101,49 @@ describe("route rate limiting", () => {
 		expect(open.status).toBe(200);
 		expect(closed.status).toBe(503);
 		expect((await closed.json()).error.code).toBe("DEPENDENCY_UNAVAILABLE");
+	});
+});
+
+describe("policyForPlan", () => {
+	const base = {
+		failureMode: "closed",
+		limit: 600,
+		windowSeconds: 60,
+	} as const;
+
+	it("tightens Free and loosens paid tiers", () => {
+		expect(policyForPlan(base, "free").limit).toBe(150);
+		expect(policyForPlan(base, "pro").limit).toBe(1200);
+		expect(policyForPlan(base, "team").limit).toBe(4800);
+	});
+
+	it("leaves the base policy untouched at the reference tier", () => {
+		expect(policyForPlan(base, "starter")).toBe(base);
+	});
+
+	/**
+	 * Outside production, usage enforcement is off and no plan is resolved. The
+	 * base policy has to apply rather than the account being locked out.
+	 */
+	it("falls back to the base policy for an unknown or missing plan", () => {
+		expect(policyForPlan(base, undefined)).toBe(base);
+		expect(policyForPlan(base, "not-a-plan")).toBe(base);
+	});
+
+	// A small multiplier on a small policy must never round down to zero, which
+	// would lock an account out of its own API entirely.
+	it("never produces a limit below one", () => {
+		const tiny = {
+			failureMode: "closed",
+			limit: 2,
+			windowSeconds: 60,
+		} as const;
+		expect(policyForPlan(tiny, "free").limit).toBeGreaterThanOrEqual(1);
+	});
+
+	it("preserves window and failure mode", () => {
+		const scaled = policyForPlan(base, "growth");
+		expect(scaled.windowSeconds).toBe(60);
+		expect(scaled.failureMode).toBe("closed");
 	});
 });

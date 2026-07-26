@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Request limits now scale with your plan.** Every account previously shared the same ceiling
+  on how fast it could call the API, regardless of what it was paying for. Higher plans now get
+  proportionally more headroom, and the free tier is bounded more tightly. This is separate from
+  your monthly allowance: it governs how fast you may go right now, not how much you get in total.
+
+### Changed
+
 - **API usage and AI usage are now counted separately.** They were sharing one allowance, which
   meant AI work quietly consumed the same budget as ordinary requests even though it costs
   dramatically more to provide. Each now has its own allowance on every plan, so what you get is

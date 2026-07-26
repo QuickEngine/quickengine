@@ -107,7 +107,17 @@ export async function checkLimit({
 	return evaluate(key, limit, await readValue(scopeId, key));
 }
 
-export type EnforceResult = LimitCheck & { allowed: boolean };
+export type EnforceResult = LimitCheck & {
+	allowed: boolean;
+	/**
+	 * The plan whose limits were applied.
+	 *
+	 * Returned because it was resolved here anyway. Rate limiting needs the plan
+	 * too, and looking it up a second time on the same request would be a second
+	 * query for an answer already in hand.
+	 */
+	planId: QuickEnginePlanId;
+};
 
 /** Apply the enforcement policy without recording usage. */
 export async function checkAllowance({
@@ -120,7 +130,11 @@ export async function checkAllowance({
 	const used = await readValue(scopeId, key);
 	const allowed = withinGrace(limit, used);
 	const nextUsed = METER_KIND[key] === "gauge" ? amount : used + amount;
-	return { ...evaluate(key, limit, allowed ? nextUsed : used), allowed };
+	return {
+		...evaluate(key, limit, allowed ? nextUsed : used),
+		allowed,
+		planId,
+	};
 }
 
 // The gate a module calls BEFORE starting a unit of work. Soft policy: work is

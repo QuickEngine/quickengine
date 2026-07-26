@@ -6,6 +6,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Changed
+
+- **Pinned the code formatter to an exact version.** It was allowed to update itself
+  automatically, and a newer release would then reject the project's own configuration and stop
+  checks from running until someone edited a file by hand. It now moves only when we choose.
+
 ### Fixed
 
 - **The development and production databases are verifiably in step again.** Their structures

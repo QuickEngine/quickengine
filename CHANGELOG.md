@@ -6,6 +6,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Changed
+
+- **The component scaffolding tool is no longer part of a production install.** A
+  development-only command-line tool was listed among the packages QuickEngine ships, so it was
+  pulled into production builds despite never running there. It is now correctly marked as a
+  development tool, and the two apps that use it are aligned on the same version.
+
 ### Security
 
 - **Updated a pattern-matching library to a patched release.** A dependency used by build tooling

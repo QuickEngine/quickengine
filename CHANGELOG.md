@@ -6,6 +6,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **The development and production databases are verifiably in step again.** Their structures
+  were always identical, but the record of which updates had been applied had fallen out of sync
+  after the update history was rebuilt at some point. Nothing was broken, but the next database
+  update against production would have failed. Reconciled, and there is now a command that
+  proves the two agree rather than assuming it.
+
 ### Changed
 
 - **Request limits now scale with your plan.** Every account previously shared the same ceiling

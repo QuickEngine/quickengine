@@ -52,7 +52,9 @@ const api = async (path, init = {}) => {
 		},
 	});
 	if (!res.ok) {
-		throw new Error(`Neon ${init.method ?? "GET"} ${path} → ${res.status} ${await res.text()}`);
+		throw new Error(
+			`Neon ${init.method ?? "GET"} ${path} → ${res.status} ${await res.text()}`,
+		);
 	}
 	return res.json();
 };
@@ -75,8 +77,11 @@ try {
 
 	const uri =
 		created.connection_uris?.[0]?.connection_uri ??
-		(await api(`/projects/${PROJECT}/connection_uri?branch_id=${branchId}&database_name=neondb&role_name=neondb_owner`))
-			.uri;
+		(
+			await api(
+				`/projects/${PROJECT}/connection_uri?branch_id=${branchId}&database_name=neondb&role_name=neondb_owner`,
+			)
+		).uri;
 
 	// A freshly created endpoint can refuse the first connection while it starts.
 	let sql;
@@ -134,6 +139,8 @@ try {
 	if (branchId) {
 		await api(`/projects/${PROJECT}/branches/${branchId}`, { method: "DELETE" })
 			.then(() => console.log(`\nDeleted ${name}.`))
-			.catch((e) => console.error(`\n⚠️  Could not delete ${name}: ${e.message}`));
+			.catch((e) =>
+				console.error(`\n⚠️  Could not delete ${name}: ${e.message}`),
+			);
 	}
 }

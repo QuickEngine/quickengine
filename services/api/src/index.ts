@@ -46,7 +46,7 @@ const app = createApp(config, {
 					? {
 							enforceUsage: async (input: {
 								scopeId: string;
-								meter: "actions";
+								meter: "apiRequests";
 								amount: number;
 							}) => {
 								const { enforce } = await import("@quickengine/billing");

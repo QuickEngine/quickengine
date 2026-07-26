@@ -33,7 +33,7 @@ export type UsageDecision = {
 
 export type UsageEnforcer = (input: {
 	scopeId: string;
-	meter: "actions";
+	meter: "apiRequests";
 	amount: number;
 }) => Promise<UsageDecision>;
 
@@ -88,7 +88,7 @@ export async function enforceUsage(
 
 	let decision: UsageDecision;
 	try {
-		decision = await enforcer({ scopeId, meter: "actions", amount: 1 });
+		decision = await enforcer({ scopeId, meter: "apiRequests", amount: 1 });
 	} catch (error) {
 		logger?.error("usage.enforcement_failed", {
 			requestId: c.get("requestId"),

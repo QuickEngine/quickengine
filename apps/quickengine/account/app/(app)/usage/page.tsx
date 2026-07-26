@@ -18,14 +18,15 @@ const count = (n: number) => n.toLocaleString();
 
 // Meters shown, in order, with a friendly label + value formatter.
 const METERS: {
-	key: "storageBytes" | "seats" | "workspaces" | "actions";
+	key: "storageBytes" | "seats" | "workspaces" | "apiRequests" | "aiActions";
 	label: string;
 	format: (n: number) => string;
 }[] = [
 	{ key: "storageBytes", label: "Storage", format: formatBytes },
 	{ key: "seats", label: "Seats", format: count },
 	{ key: "workspaces", label: "Workspaces", format: count },
-	{ key: "actions", label: "Actions this period", format: count },
+	{ key: "apiRequests", label: "API requests this period", format: count },
+	{ key: "aiActions", label: "AI actions this period", format: count },
 ];
 
 // Usage is org-scoped: it reads the metering engine against the active org's plan allowances.

@@ -5,10 +5,11 @@ export async function register() {
 		await import("./sentry.server.config");
 
 		// Domain events reach the activity feed, realtime, and the search index via
-		// the outbox dispatcher — a scheduled Inngest function (app/api/inngest),
-		// not in-process subscribers. An event committed alongside its write
-		// survives a restart; a subscriber registered here would not, and would
-		// only ever see events raised by this one process.
+		// the outbox dispatcher — a scheduled Inngest function now served by the API
+		// service at `api.quickengine.xyz/api/inngest`, not by this app and not by
+		// in-process subscribers. An event committed alongside its write survives a
+		// restart; a subscriber registered here would not, and would only ever see
+		// events raised by this one process.
 		//
 		// All that remains at startup is declaring the search index's filter
 		// attributes. Idempotent, and a no-op when search isn't configured.

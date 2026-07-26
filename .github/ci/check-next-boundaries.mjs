@@ -50,7 +50,6 @@ export const SERVER_ACTION_BASELINE = new Map([
 export const NEXT_ROUTE_BASELINE = new Map([
 	["apps/quickdash/admin/app/agents.txt/route.ts", ["GET"]],
 	["apps/quickdash/admin/app/api/health/route.ts", ["GET"]],
-	["apps/quickdash/admin/app/api/inngest/route.ts", ["GET", "POST", "PUT"]],
 	["apps/quickdash/admin/app/api/v1/catalog/[id]/route.ts", ["GET"]],
 	["apps/quickdash/admin/app/api/v1/catalog/route.ts", ["GET"]],
 	["apps/quickengine/account/app/api/health/route.ts", ["GET"]],

@@ -6,6 +6,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Changed
+
+- **API usage and AI usage are now counted separately.** They were sharing one allowance, which
+  meant AI work quietly consumed the same budget as ordinary requests even though it costs
+  dramatically more to provide. Each now has its own allowance on every plan, so what you get is
+  clearer and neither one eats the other. Plan pages show both.
+
 ### Added
 
 - **Plans now have working usage limits.** An account approaching its included usage sees that on

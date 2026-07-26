@@ -11,7 +11,7 @@ import {
 // start. Leads with the edges (zero limit, exactly-at-limit, past grace, null).
 describe("evaluate — usage vs limit", () => {
 	it("is ok well under the limit", () => {
-		expect(evaluate("actions", 1000, 100)).toMatchObject({
+		expect(evaluate("apiRequests", 1000, 100)).toMatchObject({
 			used: 100,
 			limit: 1000,
 			remaining: 900,
@@ -21,17 +21,17 @@ describe("evaluate — usage vs limit", () => {
 	});
 
 	it("warns exactly at the 80% threshold, not a tick before", () => {
-		expect(evaluate("actions", 1000, 799).state).toBe("ok");
-		expect(evaluate("actions", 1000, 800).state).toBe("warn");
+		expect(evaluate("apiRequests", 1000, 799).state).toBe("ok");
+		expect(evaluate("apiRequests", 1000, 800).state).toBe("warn");
 	});
 
 	it("is over at 100% and beyond, with exceeded + zero remaining", () => {
-		expect(evaluate("actions", 1000, 1000)).toMatchObject({
+		expect(evaluate("apiRequests", 1000, 1000)).toMatchObject({
 			state: "over",
 			exceeded: true,
 			remaining: 0,
 		});
-		expect(evaluate("actions", 1000, 5000)).toMatchObject({
+		expect(evaluate("apiRequests", 1000, 5000)).toMatchObject({
 			state: "over",
 			exceeded: true,
 			remaining: 0,
@@ -88,7 +88,7 @@ describe("period windows", () => {
 
 	it("counters use the monthly window, gauges the all-time sentinel", () => {
 		expect(
-			periodFor("actions", new Date("2026-03-15Z")).start.toISOString(),
+			periodFor("apiRequests", new Date("2026-03-15Z")).start.toISOString(),
 		).toBe("2026-03-01T00:00:00.000Z");
 		expect(periodFor("storageBytes").start).toEqual(SENTINEL_PERIOD.start);
 		expect(periodFor("workspaces").start).toEqual(SENTINEL_PERIOD.start);

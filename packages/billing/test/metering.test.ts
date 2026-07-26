@@ -16,11 +16,11 @@ import { insertOrg } from "./helpers";
 describe("metering engine", () => {
 	it("increments the actions counter and accumulates", async () => {
 		const scope = "acc-actions";
-		await meter({ scopeId: scope, meter: "actions", amount: 3 });
-		await meter({ scopeId: scope, meter: "actions" }); // default +1
-		expect((await checkLimit({ scopeId: scope, meter: "actions" })).used).toBe(
-			4,
-		);
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 3 });
+		await meter({ scopeId: scope, meter: "apiRequests" }); // default +1
+		expect(
+			(await checkLimit({ scopeId: scope, meter: "apiRequests" })).used,
+		).toBe(4);
 	});
 
 	it("SETS a gauge instead of accumulating", async () => {
@@ -33,42 +33,42 @@ describe("metering engine", () => {
 		).toBe(200);
 	});
 
-	it("reports ok → warn → over against the Free plan (1000 actions)", async () => {
+	it("reports ok → warn → over against the Free plan (10k API requests)", async () => {
 		const scope = "acc-states";
-		await meter({ scopeId: scope, meter: "actions", amount: 799 });
-		expect((await checkLimit({ scopeId: scope, meter: "actions" })).state).toBe(
-			"ok",
-		);
-		await meter({ scopeId: scope, meter: "actions", amount: 1 }); // 800
-		expect((await checkLimit({ scopeId: scope, meter: "actions" })).state).toBe(
-			"warn",
-		);
-		await meter({ scopeId: scope, meter: "actions", amount: 200 }); // 1000
-		const over = await checkLimit({ scopeId: scope, meter: "actions" });
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 7_999 });
+		expect(
+			(await checkLimit({ scopeId: scope, meter: "apiRequests" })).state,
+		).toBe("ok");
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 1 }); // 8000 → 80%
+		expect(
+			(await checkLimit({ scopeId: scope, meter: "apiRequests" })).state,
+		).toBe("warn");
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 2_000 }); // 10000 → at the limit
+		const over = await checkLimit({ scopeId: scope, meter: "apiRequests" });
 		expect(over.state).toBe("over");
 		expect(over.exceeded).toBe(true);
 		expect(over.remaining).toBe(0);
 	});
 
 	it("enforce allows + records within grace, blocks + doesn't record past the ceiling", async () => {
-		const scope = "acc-enforce"; // Free actions = 1000, grace ceiling = 1100
-		await meter({ scopeId: scope, meter: "actions", amount: 1050 });
+		const scope = "acc-enforce"; // Free apiRequests = 10_000, grace ceiling = 11_000
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 10_500 });
 		const graceHit = await enforce({
 			scopeId: scope,
-			meter: "actions",
+			meter: "apiRequests",
 			amount: 1,
 		});
 		expect(graceHit.allowed).toBe(true);
-		expect(graceHit.used).toBe(1051);
+		expect(graceHit.used).toBe(10_501);
 
-		await meter({ scopeId: scope, meter: "actions", amount: 60 }); // 1111, past ceiling
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 600 }); // 11_101, past ceiling
 		const blocked = await enforce({
 			scopeId: scope,
-			meter: "actions",
+			meter: "apiRequests",
 			amount: 1,
 		});
 		expect(blocked.allowed).toBe(false);
-		expect(blocked.used).toBe(1111); // unchanged — a blocked action isn't counted
+		expect(blocked.used).toBe(11_101); // unchanged — a blocked request isn't counted
 	});
 
 	it("enforce treats a gauge amount as the proposed absolute total", async () => {
@@ -104,12 +104,12 @@ describe("metering engine", () => {
 		const scope = "acc-concurrent";
 		await Promise.all(
 			Array.from({ length: 50 }, () =>
-				meter({ scopeId: scope, meter: "actions", amount: 1 }),
+				meter({ scopeId: scope, meter: "apiRequests", amount: 1 }),
 			),
 		);
-		expect((await checkLimit({ scopeId: scope, meter: "actions" })).used).toBe(
-			50,
-		);
+		expect(
+			(await checkLimit({ scopeId: scope, meter: "apiRequests" })).used,
+		).toBe(50);
 	});
 
 	it("resolves the plan from an active subscription, else Free", async () => {
@@ -130,22 +130,23 @@ describe("metering engine", () => {
 		expect(await getAccountPlanId(scope)).toBe("free");
 	});
 
-	it("a higher plan raises the limit (Pro actions = 100k)", async () => {
+	it("a higher plan raises the limit (Pro API requests = 1M)", async () => {
 		const scope = "00000000-0000-4000-8000-0000000ccf02";
 		await insertOrg(scope);
 		await db
 			.insert(quickengineSubscriptions)
 			.values({ organizationId: scope, planId: "pro", status: "active" });
-		await meter({ scopeId: scope, meter: "actions", amount: 5000 });
-		const check = await checkLimit({ scopeId: scope, meter: "actions" });
-		expect(check.limit).toBe(100_000);
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 5000 });
+		const check = await checkLimit({ scopeId: scope, meter: "apiRequests" });
+		expect(check.limit).toBe(1_000_000);
 		expect(check.state).toBe("ok");
 	});
 
 	it("getUsage returns every meter", async () => {
 		const usage = await getUsage({ scopeId: "acc-usage" });
 		expect(Object.keys(usage).sort()).toEqual([
-			"actions",
+			"aiActions",
+			"apiRequests",
 			"seats",
 			"storageBytes",
 			"workspaces",

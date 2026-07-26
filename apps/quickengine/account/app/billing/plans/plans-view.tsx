@@ -115,7 +115,11 @@ export function PlansView({
 							<ul className="mt-4 flex-1 space-y-1.5 text-muted-foreground text-sm">
 								<li className="flex items-center gap-2">
 									<Check className="size-3.5 shrink-0 text-foreground" />
-									{count(plan.limits.actions)} actions / period
+									{count(plan.limits.apiRequests)} API requests / period
+								</li>
+								<li className="flex items-center gap-2">
+									<Check className="size-3.5 shrink-0 text-foreground" />
+									{count(plan.limits.aiActions)} AI actions / period
 								</li>
 								<li className="flex items-center gap-2">
 									<Check className="size-3.5 shrink-0 text-foreground" />

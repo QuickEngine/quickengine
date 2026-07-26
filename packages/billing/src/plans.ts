@@ -18,8 +18,25 @@ import type {
 // billing period); the rest are GAUGES (a current-total cap that never resets).
 // `null` = unlimited. ⚠️ These numbers are PLACEHOLDERS, like prices — tune here.
 export type PlanLimits = {
-	/** Counter: included actions per billing period. */
-	actions: number | null;
+	/**
+	 * Counter: included API requests per billing period.
+	 *
+	 * Separate from `aiActions` because they are different costs to us. A request
+	 * consumes our own infrastructure — a function invocation, database compute, a
+	 * connection — at roughly $0.0001. An AI action buys tokens from Anthropic at
+	 * roughly $0.003, some thirty times more. One shared allowance could be spent
+	 * either way, so the same number on a pricing page would mean wildly different
+	 * cost to us and could not be priced honestly.
+	 */
+	apiRequests: number | null;
+	/**
+	 * Counter: included AI operations per billing period.
+	 *
+	 * An AI-triggered request increments **both** meters, and that is correct
+	 * rather than double-billing: it genuinely consumes our infrastructure *and*
+	 * a third party's, the same way a file upload consumes a request and storage.
+	 */
+	aiActions: number | null;
 	/** Gauge: total bytes stored across the account. */
 	storageBytes: number | null;
 	/** Gauge: team members. */
@@ -66,28 +83,38 @@ export const PLANS: readonly PlanDefinition[] = [
 		displayName: "Free",
 		free: true,
 		priceEnv: {},
-		limits: { actions: 1_000, storageBytes: 1 * GB, seats: 1, workspaces: 1 },
+		limits: {
+			apiRequests: 10_000,
+			aiActions: 25,
+			storageBytes: 1 * GB,
+			seats: 1,
+			workspaces: 1,
+		},
 	},
 	paidPlan("starter", "Starter", {
-		actions: 10_000,
-		storageBytes: 10 * GB,
+		apiRequests: 250_000,
+		aiActions: 500,
+		storageBytes: 25 * GB,
 		seats: 3,
 		workspaces: 3,
 	}),
 	paidPlan("pro", "Pro", {
-		actions: 100_000,
+		apiRequests: 1_000_000,
+		aiActions: 2_500,
 		storageBytes: 100 * GB,
 		seats: 10,
 		workspaces: 10,
 	}),
 	paidPlan("growth", "Growth", {
-		actions: 1_000_000,
+		apiRequests: 5_000_000,
+		aiActions: 10_000,
 		storageBytes: 500 * GB,
 		seats: 25,
 		workspaces: 25,
 	}),
 	paidPlan("team", "Team", {
-		actions: 5_000_000,
+		apiRequests: 20_000_000,
+		aiActions: 40_000,
 		storageBytes: 2048 * GB,
 		seats: 100,
 		workspaces: null,
@@ -95,12 +122,13 @@ export const PLANS: readonly PlanDefinition[] = [
 	// Enterprise is a custom conversation, not self-serve checkout.
 ] as const;
 
-/** The four meters the engine tracks. */
+/** The meters the engine tracks. */
 export type MeterKey = keyof PlanLimits;
 
 /** Which meters refill each period (counters) vs. are a current total (gauges). */
 export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
-	actions: "counter",
+	apiRequests: "counter",
+	aiActions: "counter",
 	storageBytes: "gauge",
 	seats: "gauge",
 	workspaces: "gauge",

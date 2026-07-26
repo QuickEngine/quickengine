@@ -1,3 +1,4 @@
+import { reportProviderSelection } from "@quickengine/provider-health";
 import { createNoopRealtimeProvider, type RealtimeProvider } from "./index";
 import { createPusherRealtimeProvider, getPusherServer } from "./pusher";
 
@@ -9,9 +10,24 @@ let provider: RealtimeProvider | undefined;
 export function getRealtimeProvider(): RealtimeProvider {
 	if (!provider) {
 		const server = getPusherServer();
-		provider = server
-			? createPusherRealtimeProvider(server)
-			: createNoopRealtimeProvider();
+		if (server) {
+			provider = createPusherRealtimeProvider(server);
+			reportProviderSelection({ provider: "realtime", degraded: false });
+		} else {
+			provider = createNoopRealtimeProvider();
+			// Nothing is lost — the database remains authoritative and clients refetch
+			// on reconnect. What goes is live updating, so the UI silently stops
+			// moving until someone reloads.
+			reportProviderSelection({
+				degraded: true,
+				provider: "realtime",
+				implementation: "no-op provider",
+				consequence:
+					"published events go nowhere, so live updates never reach any client",
+				missing: ["PUSHER_APP_ID", "PUSHER_KEY", "PUSHER_SECRET"],
+				severity: "feature-loss",
+			});
+		}
 	}
 	return provider;
 }

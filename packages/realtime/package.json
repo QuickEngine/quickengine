@@ -17,6 +17,7 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@quickengine/provider-health": "workspace:*",
 		"pusher": "^5.3.4",
 		"pusher-js": "^8.5.0",
 		"zod": "^4.3.6"

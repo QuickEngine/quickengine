@@ -6,6 +6,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **A misconfigured background service can no longer fail quietly.** Realtime, background jobs, and
+  search each fall back to an offline stand-in when their credentials are absent, which is what lets
+  the whole product run on a laptop with no network. In a live deployment that same fallback used to
+  be invisible: work could be accepted and then discarded with nothing reported anywhere. A live
+  deployment now says so plainly in its logs, naming what stopped working and why, and reports itself
+  as not ready to serve traffic whenever the failure is one that loses work rather than one that
+  merely disables a feature.
+
 ### Security
 
 - **Updated the CSS build tool to a patched release.** A pinned version of PostCSS could be made to

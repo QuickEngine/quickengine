@@ -16,6 +16,7 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@quickengine/provider-health": "workspace:*",
 		"algoliasearch": "^5.56.0",
 		"zod": "^4.3.6"
 	},

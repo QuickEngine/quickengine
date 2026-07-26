@@ -51,7 +51,6 @@
 		"ci:local:secrets": "act push --workflows .github/workflows/secrets-scan.yml",
 		"db:generate": "pnpm --filter @quickengine/db db:generate",
 		"db:migrate": "pnpm --filter @quickengine/db db:migrate",
-		"db:parity": "pnpm --filter @quickengine/db db:parity",
 		"db:push": "pnpm --filter @quickengine/db db:push",
 		"db:studio": "pnpm --filter @quickengine/db db:studio",
 		"docker:up": "docker compose -f docker/docker-compose.yml up -d",

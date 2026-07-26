@@ -8,6 +8,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Groundwork for custom roles.** Organizations will be able to define their own roles with any
+  name and whatever combination of permissions they choose, rather than being limited to owner,
+  administrator and member. The built-in three remain and cannot be removed, so no organization
+  can accidentally lock itself out of its own billing, and nobody can create a role granting more
+  than they hold themselves.
+
+### Added
+
 - **An automated check that database backups can actually be restored.** It recreates the
   database as it was at a chosen moment, confirms the structure and records came back, reports
   the result, and cleans up after itself. Being able to demonstrate recovery on demand matters

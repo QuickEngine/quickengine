@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
 	bigint,
 	boolean,
@@ -246,6 +247,50 @@ export const quickengineOrganizations = pgTable("quickengine_organizations", {
 
 // Who belongs to an org + their role. Owner is a member row too (role "owner").
 // This is what "seats" counts. Unique per (org, user).
+/**
+ * Custom roles an organization defines for itself.
+ *
+ * The built-in `owner`/`admin`/`member` stay in code and are never rows here — they
+ * must exist for every org, cannot be renamed, and `owner` must never be editable
+ * or an org could lock itself out of its own billing.
+ *
+ * `quickengine_organization_members.role` holds either a built-in name or a custom
+ * one from this table, which is why that column is `text` rather than an enum.
+ * Resolution checks built-ins first, so a custom role can never shadow one.
+ *
+ * Capabilities are stored as a plain string array validated against
+ * `WORKSPACE_CAPABILITIES` on write. Storing names rather than a bitmask keeps rows
+ * readable in the database and means adding a capability never rewrites existing
+ * rows.
+ */
+export const quickengineOrganizationRoles = pgTable(
+	"quickengine_organization_roles",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		organizationId: uuid("organization_id")
+			.notNull()
+			.references(() => quickengineOrganizations.id, { onDelete: "cascade" }),
+		name: text("name").notNull(),
+		description: text("description"),
+		capabilities: jsonb("capabilities").$type<string[]>().notNull().default([]),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("organization_roles_org_idx").on(table.organizationId),
+		// Case-insensitive, so "Bookkeeper" and "bookkeeper" cannot both exist and
+		// leave members pointing at an ambiguous name.
+		uniqueIndex("organization_roles_name_unique").on(
+			table.organizationId,
+			sql`lower(${table.name})`,
+		),
+	],
+);
+
 export const quickengineOrganizationMembers = pgTable(
 	"quickengine_organization_members",
 	{

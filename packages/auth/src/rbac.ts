@@ -42,11 +42,57 @@ const ROLE_CAPABILITIES: Record<WorkspaceRole, readonly WorkspaceCapability[]> =
 		member: ["workspace.view", "records.write"],
 	};
 
-/** The capabilities a role holds. Later this can be backed by DB rows for custom roles. */
+/** The three roles every organization has. Present from day one, never deletable. */
+export const BUILT_IN_ROLES = ["owner", "admin", "member"] as const;
+
+export const isBuiltInRole = (name: string): name is WorkspaceRole =>
+	(BUILT_IN_ROLES as readonly string[]).includes(name);
+
+/** The capabilities a built-in role holds. */
 export function capabilitiesFor(
 	role: WorkspaceRole,
 ): readonly WorkspaceCapability[] {
 	return ROLE_CAPABILITIES[role];
+}
+
+/**
+ * Resolve any role name — built-in or custom — to its capabilities.
+ *
+ * **Built-ins are checked first and can never be shadowed.** A custom role called
+ * "owner" must not be able to redefine what owner means, or an organization could
+ * quietly strip its own billing access and lock itself out.
+ *
+ * A name that matches nothing resolves to **no capabilities**, not to a default.
+ * A deleted role must fail closed: inheriting `member` would silently keep granting
+ * access after an administrator removed the role precisely to revoke it.
+ */
+export function resolveCapabilities(
+	roleName: string,
+	customRoles: ReadonlyMap<string, readonly string[]>,
+): readonly WorkspaceCapability[] {
+	if (isBuiltInRole(roleName)) return ROLE_CAPABILITIES[roleName];
+	const custom = customRoles.get(roleName.toLowerCase()) ?? [];
+	// Filter rather than trust: a capability removed from the product must stop
+	// granting anything, even while stale rows still name it.
+	return custom.filter((c): c is WorkspaceCapability =>
+		(WORKSPACE_CAPABILITIES as readonly string[]).includes(c),
+	);
+}
+
+/**
+ * Whether `granter` may create or edit a role holding `capabilities`.
+ *
+ * **Nobody may grant what they do not hold.** Without this an admin could mint a
+ * role carrying `billing.manage`, assign it to themselves, and escalate — the
+ * classic custom-roles privilege escalation, and the reason this check exists at
+ * the domain layer rather than only in a form.
+ */
+export function canGrantCapabilities(
+	granter: WorkspaceRole,
+	capabilities: readonly string[],
+): boolean {
+	const held = new Set(ROLE_CAPABILITIES[granter]);
+	return capabilities.every((c) => held.has(c as WorkspaceCapability));
 }
 
 /** The single authorization predicate. Check capabilities, never role names. */

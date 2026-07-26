@@ -30,6 +30,7 @@ export function createApp(
 	options: {
 		logger?: ApiLogger;
 		readinessChecks?: readonly ReadinessCheck[];
+		meterUsage?: import("hono").MiddlewareHandler<PlatformEnv>;
 		registerRoutes?: (app: Hono<PlatformEnv>, logger: ApiLogger) => void;
 		telemetry?: ApiTelemetry;
 	} = {},
@@ -108,6 +109,9 @@ export function createApp(
 			status: c.res.status,
 		});
 	});
+	// After the timing middleware so it observes the completed request, and before
+	// the routes so `authorized` is populated by the time it reads it.
+	if (options.meterUsage) app.use("*", options.meterUsage);
 	app.use(
 		"*",
 		createRequestDeadline(config.requestTimeoutMs, logger, {

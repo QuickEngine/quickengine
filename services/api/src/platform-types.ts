@@ -25,6 +25,12 @@ export type WorkspaceIdentity = {
 export type WorkspaceResolution = {
 	enabledModuleIds: readonly string[];
 	organizationId: string | null;
+	/**
+	 * The account usage is metered against. Metering is per-account, not per
+	 * workspace — one budget shared across everything an account owns — so the
+	 * owner is the scope. Becomes the organization id if an account layer lands.
+	 */
+	ownerId: string;
 	role?: WorkspaceRole;
 	workspace: WorkspaceIdentity;
 };

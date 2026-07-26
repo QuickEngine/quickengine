@@ -12,6 +12,7 @@ const authorized: AuthorizedApiContext = {
 	workspace: {
 		enabledModuleIds: ["client-records"],
 		organizationId: "org_1",
+		ownerId: "user_owner",
 		role: "owner",
 		workspace: {
 			businessType: "agency",

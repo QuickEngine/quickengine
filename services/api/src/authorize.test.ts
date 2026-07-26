@@ -13,6 +13,7 @@ import type {
 const workspace: WorkspaceResolution = {
 	enabledModuleIds: ["client-records"],
 	organizationId: "org_1",
+	ownerId: "user_owner",
 	role: "owner",
 	workspace: {
 		businessType: "agency",

@@ -22,6 +22,7 @@ function testApp(options: {
 			workspace: {
 				enabledModuleIds: [],
 				organizationId: "org_1",
+				ownerId: "user_owner",
 				role: "owner",
 				workspace: {
 					businessType: "other",

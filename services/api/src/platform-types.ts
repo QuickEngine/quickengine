@@ -52,6 +52,8 @@ export type AuthorizedApiContext = {
 
 export type PlatformVariables = {
 	authorized: AuthorizedApiContext;
+	/** The plan whose limits applied, set during usage enforcement. */
+	planId?: string;
 	abortSignal: AbortSignal;
 	deadlineAtMs: number;
 };

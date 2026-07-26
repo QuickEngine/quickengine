@@ -29,6 +29,8 @@ export type UsageDecision = {
 	used: number;
 	limit: number | null;
 	remaining: number | null;
+	/** Which plan's limits applied. Rate limiting reads this rather than looking it up again. */
+	planId?: string;
 };
 
 export type UsageEnforcer = (input: {
@@ -98,6 +100,10 @@ export async function enforceUsage(
 		return undefined;
 	}
 
+	// Published for the rate limiter, which scales its policy by plan. Resolved
+	// here already, so looking it up again would be a second query for an answer
+	// we are holding.
+	if (decision.planId) c.set("planId", decision.planId);
 	applyHeaders(c, decision);
 	if (decision.allowed) return undefined;
 

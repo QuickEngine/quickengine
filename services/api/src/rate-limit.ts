@@ -20,6 +20,45 @@ export const RATE_LIMIT_POLICIES = {
 	write: { failureMode: "closed", limit: 120, windowSeconds: 60 },
 } as const satisfies Record<string, RateLimitPolicy>;
 
+/**
+ * How much of the base policy each plan gets.
+ *
+ * **A multiplier rather than a policy per plan.** Three scopes across five plans
+ * would be fifteen hand-maintained numbers that drift apart the moment one is
+ * tuned; this keeps the *shape* of each policy in one place and scales it.
+ *
+ * **Rate limits are not usage limits.** This bounds how fast an account may go
+ * right now — a burst, a runaway loop, a scraper — and retrying shortly works.
+ * Spending a monthly allowance is a different thing entirely, answers 402, and
+ * retrying never helps. Conflating them sends people to add backoff for a problem
+ * only an upgrade fixes.
+ *
+ * Free is deliberately tight because that is where abuse lands, and paid tiers are
+ * loose enough that a real storefront never notices.
+ */
+export const PLAN_RATE_MULTIPLIER: Record<string, number> = {
+	free: 0.25,
+	starter: 1,
+	pro: 2,
+	growth: 4,
+	team: 8,
+};
+
+/** Falls back to the base policy when the plan is unknown or unresolved. */
+export function policyForPlan(
+	policy: RateLimitPolicy,
+	planId: string | undefined,
+): RateLimitPolicy {
+	const multiplier = planId ? PLAN_RATE_MULTIPLIER[planId] : undefined;
+	if (multiplier === undefined || multiplier === 1) return policy;
+	// At least 1, so a small multiplier can never round a tier down to zero and
+	// lock an account out of its own API.
+	return {
+		...policy,
+		limit: Math.max(1, Math.round(policy.limit * multiplier)),
+	};
+}
+
 function principalSubject(context: AuthorizedApiContext): string {
 	return context.principal.kind === "key"
 		? `key:${context.principal.keyId}`
@@ -51,8 +90,11 @@ export function createRateLimit(options: {
 	const now = options.now ?? Date.now;
 	return createMiddleware<PlatformEnv>(async (c, next) => {
 		const authorized = c.get("authorized");
+		// Set during usage enforcement, which resolves the plan anyway. Absent
+		// outside production, where enforcement is off — the base policy applies.
+		const policy = policyForPlan(options.policy, c.get("planId"));
 		const epochSeconds = Math.floor(now() / 1000);
-		const window = Math.floor(epochSeconds / options.policy.windowSeconds);
+		const window = Math.floor(epochSeconds / policy.windowSeconds);
 		const key = [
 			"ratelimit",
 			authorized.workspaceId,
@@ -63,15 +105,15 @@ export function createRateLimit(options: {
 
 		let count: number;
 		try {
-			count = await options.cache.increment(key, options.policy.windowSeconds);
+			count = await options.cache.increment(key, policy.windowSeconds);
 		} catch (error) {
 			options.logger.warn("rate_limit.unavailable", {
 				error,
-				failureMode: options.policy.failureMode,
+				failureMode: policy.failureMode,
 				scope: options.scope,
 				workspaceId: authorized.workspaceId,
 			});
-			if (options.policy.failureMode === "open") return next();
+			if (policy.failureMode === "open") return next();
 			return respondError(
 				c,
 				"DEPENDENCY_UNAVAILABLE",
@@ -82,9 +124,9 @@ export function createRateLimit(options: {
 
 		const resetSeconds = Math.max(
 			1,
-			(window + 1) * options.policy.windowSeconds - epochSeconds,
+			(window + 1) * policy.windowSeconds - epochSeconds,
 		);
-		if (count > options.policy.limit) {
+		if (count > policy.limit) {
 			const response = respondError(
 				c,
 				"RATE_LIMITED" satisfies ApiErrorCode,

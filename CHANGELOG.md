@@ -6,6 +6,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **QuickEngine now measures how much of the API each account uses.** This is measurement only —
+  nothing is limited, nothing is charged, and nothing changes for anyone using the product. It
+  exists so that usage allowances can eventually be set from real numbers rather than guesswork.
+  Requests that are rejected, and checks used only to confirm the service is running, are never
+  counted.
+
 ### Fixed
 
 - **A payment confirmation that arrives twice no longer creates two payments.** Payment providers

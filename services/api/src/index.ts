@@ -24,6 +24,7 @@ import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
 import { initializeTelemetry } from "./telemetry";
 import { registerTimeTrackingRoutes } from "./time-tracking-routes";
+import { createUsageMetering } from "./usage-metering";
 import { registerWebhookRoutes } from "./webhook-routes";
 
 const config = loadApiConfig();
@@ -31,6 +32,21 @@ const app = createApp(config, {
 	logger: createJsonLogger({
 		level: config.logLevel,
 		service: "quickengine-api",
+	}),
+	meterUsage: createUsageMetering({
+		// Only real deployments accumulate usage; local development and tests do not.
+		enabled: config.environment === "production",
+		logger: createJsonLogger({
+			level: config.logLevel,
+			service: "quickengine-api",
+		}),
+		// Imported lazily: pulling the billing package into this module's type graph
+		// conflicts with the Node globals `config.ts` relies on. Same reason
+		// `default-readiness.ts` defers `@quickengine/db/health`.
+		record: async (input) => {
+			const { meter } = await import("@quickengine/billing");
+			await meter(input);
+		},
 	}),
 	readinessChecks: createDefaultReadinessChecks(config),
 	registerRoutes(app, logger) {

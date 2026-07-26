@@ -52,6 +52,7 @@ export const defaultPlatformDependencies: PlatformDependencies = {
 		return {
 			enabledModuleIds: loaded.enabledModuleIds,
 			organizationId: loaded.workspace.organizationId,
+			ownerId: loaded.workspace.ownerId,
 			workspace: {
 				businessType: loaded.workspace.businessType,
 				id: loaded.workspace.id,
@@ -71,6 +72,7 @@ export const defaultPlatformDependencies: PlatformDependencies = {
 		return {
 			enabledModuleIds: loaded.enabledModuleIds,
 			organizationId: loaded.workspace.organizationId,
+			ownerId: loaded.workspace.ownerId,
 			role,
 			workspace: {
 				businessType: loaded.workspace.businessType,

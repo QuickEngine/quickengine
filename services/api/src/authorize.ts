@@ -123,7 +123,7 @@ export function authorizeWorkspace(
 			const overKey = await enforceUsage(
 				c,
 				dependencies.enforceUsage,
-				c.get("authorized").workspace.ownerId,
+				c.get("authorized").workspace.organizationId,
 			);
 			if (overKey) return overKey;
 			return next();
@@ -184,7 +184,7 @@ export function authorizeWorkspace(
 		const over = await enforceUsage(
 			c,
 			dependencies.enforceUsage,
-			workspace.ownerId,
+			workspace.organizationId,
 		);
 		if (over) return over;
 		return next();

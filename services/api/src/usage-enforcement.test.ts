@@ -83,6 +83,33 @@ describe("enforceUsage", () => {
 		expect(response.status).toBe(200);
 	});
 
+	/**
+	 * A workspace with no organization has no coherent billing scope. Metering it
+	 * against something else would write usage under a key the dashboard never
+	 * reads — showing zero forever while the counter accumulated elsewhere.
+	 */
+	it("is a no-op when the workspace has no organization", async () => {
+		let called = false;
+		const app = new Hono<PlatformEnv>();
+		app.use("*", requestId());
+		app.get("/thing", async (c) => {
+			const rejection = await enforceUsage(
+				c,
+				async () => {
+					called = true;
+					return over;
+				},
+				null,
+			);
+			if (rejection) return rejection;
+			return c.json({ ok: true });
+		});
+
+		const response = await app.request("/thing");
+		expect(response.status).toBe(200);
+		expect(called).toBe(false);
+	});
+
 	it("is a no-op when no enforcer is configured", async () => {
 		const response = await harness(undefined).request("/thing");
 		expect(response.status).toBe(200);

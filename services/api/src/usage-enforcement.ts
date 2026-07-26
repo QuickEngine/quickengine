@@ -68,10 +68,23 @@ function applyHeaders(c: Context<PlatformEnv>, decision: UsageDecision): void {
 export async function enforceUsage(
 	c: Context<PlatformEnv>,
 	enforcer: UsageEnforcer | undefined,
-	scopeId: string,
+	/**
+	 * The **organization** id, not the owning user's.
+	 *
+	 * Every other part of the billing layer is org-scoped — `getUsage` and
+	 * `getAccountPlanId` are both called with an org id by the account app's usage
+	 * page. Metering against the owner instead would write usage under a key
+	 * nothing reads: the dashboard would show zero forever while the counter
+	 * quietly accumulated somewhere else, and no limit would ever trigger.
+	 *
+	 * `undefined` when a workspace has no organization. Such a workspace cannot be
+	 * metered coherently, so it is left ungated rather than billed to a scope no
+	 * one can see.
+	 */
+	scopeId: string | null | undefined,
 	logger?: { error(message: string, context?: Record<string, unknown>): void },
 ): Promise<Response | undefined> {
-	if (!enforcer) return undefined;
+	if (!enforcer || !scopeId) return undefined;
 
 	let decision: UsageDecision;
 	try {

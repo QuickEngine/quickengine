@@ -8,6 +8,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Plans now have working usage limits.** An account approaching its included usage sees that on
+  every response before it becomes a problem, and work already underway is never interrupted.
+  Going slightly over is allowed rather than cut off mid-task. Only once well past the limit are
+  new requests declined, with a clear reason rather than a generic error. If our own usage
+  tracking is unavailable, requests are allowed through — a billing problem should never become
+  an outage.
+
+### Added
+
 - **QuickEngine now measures how much of the API each account uses.** This is measurement only —
   nothing is limited, nothing is charged, and nothing changes for anyone using the product. It
   exists so that usage allowances can eventually be set from real numbers rather than guesswork.

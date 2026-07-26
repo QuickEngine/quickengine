@@ -6,6 +6,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **An automated check that database backups can actually be restored.** It recreates the
+  database as it was at a chosen moment, confirms the structure and records came back, reports
+  the result, and cleans up after itself. Being able to demonstrate recovery on demand matters
+  more than assuming it works.
+
 ### Changed
 
 - **Pinned the code formatter to an exact version.** It was allowed to update itself

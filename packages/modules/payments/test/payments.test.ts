@@ -5,7 +5,13 @@ import {
 	setInvoiceStatus,
 } from "@quickengine/mod-invoicing";
 import { beforeEach, describe, expect, it } from "vitest";
-import { getPayment, listPayments, recordPayment, refundPayment } from "../src";
+import {
+	getPayment,
+	listPayments,
+	recordPayment,
+	refundPayment,
+	setPaymentStatus,
+} from "../src";
 
 const ownerId = "payments-owner";
 const workspaceId = "00000000-0000-4000-8000-000000000801";
@@ -116,5 +122,123 @@ describe("Payments persistence", () => {
 		await expect(
 			refundPayment(otherWorkspaceId, payment.id, { amountCents: 50 }),
 		).rejects.toThrow("PAYMENT_NOT_FOUND");
+	});
+});
+
+/**
+ * The path a provider webhook drives. Stripe reports `payment_intent.succeeded` and
+ * a pending payment becomes succeeded — which previously ran no balance check at
+ * all, so a retried or duplicated webhook could take an invoice past its total.
+ */
+describe("Settling a pending payment", () => {
+	it("rejects money that would take the invoice past its total", async () => {
+		const invoice = await issuedInvoice();
+		await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 10_000,
+			provider: "manual",
+			status: "succeeded",
+		});
+		// A second payment, still pending, so nothing is over-collected yet.
+		const pending = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 10_000,
+			provider: "stripe",
+			status: "pending",
+		});
+
+		await expect(
+			setPaymentStatus(workspaceId, pending.id, "succeeded"),
+		).rejects.toThrow("PAYMENT_EXCEEDS_INVOICE_BALANCE");
+
+		// The invoice must be untouched: still paid by the first payment only.
+		expect((await getInvoice(workspaceId, invoice.id))?.status).toBe("paid");
+		expect((await getPayment(workspaceId, pending.id))?.status).toBe("pending");
+	});
+
+	it("allows settlement that stays within the balance and settles the invoice", async () => {
+		const invoice = await issuedInvoice();
+		const pending = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 10_000,
+			provider: "stripe",
+			status: "pending",
+		});
+		expect((await getInvoice(workspaceId, invoice.id))?.status).toBe("sent");
+
+		await setPaymentStatus(workspaceId, pending.id, "succeeded");
+
+		expect((await getPayment(workspaceId, pending.id))?.status).toBe(
+			"succeeded",
+		);
+		expect((await getInvoice(workspaceId, invoice.id))?.status).toBe("paid");
+	});
+
+	it("settles exactly to the total without tripping the guard", async () => {
+		const invoice = await issuedInvoice();
+		await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 6_000,
+			provider: "manual",
+			status: "succeeded",
+		});
+		const pending = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 4_000,
+			provider: "stripe",
+			status: "pending",
+		});
+
+		await setPaymentStatus(workspaceId, pending.id, "succeeded");
+		expect((await getInvoice(workspaceId, invoice.id))?.status).toBe("paid");
+	});
+
+	/**
+	 * Reconciliation declines to settle a void invoice, so letting money land against
+	 * one would strand a succeeded payment the invoice never accounts for.
+	 */
+	it("refuses to settle against a void invoice", async () => {
+		const invoice = await issuedInvoice();
+		const pending = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 5_000,
+			provider: "stripe",
+			status: "pending",
+		});
+		await setInvoiceStatus(workspaceId, invoice.id, "void");
+
+		await expect(
+			setPaymentStatus(workspaceId, pending.id, "succeeded"),
+		).rejects.toThrow("INVOICE_NOT_PAYABLE");
+	});
+
+	it("does not settle a payment belonging to another workspace", async () => {
+		const invoice = await issuedInvoice();
+		const pending = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 5_000,
+			provider: "stripe",
+			status: "pending",
+		});
+
+		await expect(
+			setPaymentStatus(otherWorkspaceId, pending.id, "succeeded"),
+		).rejects.toThrow("PAYMENT_NOT_FOUND");
+	});
+
+	// A payment with no invoice has no balance to exceed; the guard must not
+	// invent one and block standalone money.
+	it("settles a payment that is not attached to an invoice", async () => {
+		const pending = await recordPayment(workspaceId, {
+			clientId,
+			amountCents: 2_500,
+			provider: "stripe",
+			status: "pending",
+		});
+
+		await setPaymentStatus(workspaceId, pending.id, "succeeded");
+		expect((await getPayment(workspaceId, pending.id))?.status).toBe(
+			"succeeded",
+		);
 	});
 });

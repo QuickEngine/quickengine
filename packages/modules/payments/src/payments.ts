@@ -89,6 +89,68 @@ export async function upsertPaymentAccount(
 	return created;
 }
 
+/**
+ * How much an invoice has actually collected, net of refunds.
+ *
+ * **This is the single definition of "paid so far", and it must stay single.** Three
+ * decisions depend on it and they have to agree: whether a new payment would
+ * overpay, whether transitioning a pending payment to succeeded would overpay, and
+ * whether the invoice is now settled. This formula previously existed twice,
+ * character-for-character, in the overpayment guard and in reconciliation — so a
+ * change to how a status counts (treating `disputed` differently, say) applied to
+ * one copy would silently let money through one check that the other then refused
+ * to honour.
+ *
+ * `succeeded` and `refunded` both count as collected, because a refunded payment
+ * *was* received; the refund is subtracted separately from `payment_refunds`. That
+ * keeps partial refunds correct instead of discarding the whole payment. `pending`,
+ * `processing`, `failed`, and disputed money are deliberately excluded — funds that
+ * have not settled must never reduce the balance a customer still owes.
+ *
+ * Callers are expected to hold a row lock on the invoice, which every one of them
+ * does, so two concurrent provider webhooks serialize rather than both reading a
+ * stale balance and both passing the guard.
+ */
+async function invoiceNetCollected(
+	tx: PaymentTransaction,
+	workspaceId: string,
+	invoiceId: string,
+): Promise<number> {
+	const [totals] = await tx
+		.select({
+			collected: sql<number>`coalesce(sum(case when ${payments.status} in ('succeeded', 'refunded') then ${payments.amountCents} else 0 end), 0)::int`,
+			refunded: sql<number>`coalesce((select sum(${paymentRefunds.amountCents}) from ${paymentRefunds} where ${paymentRefunds.workspaceId} = ${workspaceId} and ${paymentRefunds.paymentId} in (select ${payments.id} from ${payments} where ${payments.workspaceId} = ${workspaceId} and ${payments.invoiceId} = ${invoiceId})), 0)::int`,
+		})
+		.from(payments)
+		.where(
+			and(
+				eq(payments.workspaceId, workspaceId),
+				eq(payments.invoiceId, invoiceId),
+			),
+		);
+	return Number(totals?.collected ?? 0) - Number(totals?.refunded ?? 0);
+}
+
+/**
+ * Reject money that would take an invoice past its total.
+ *
+ * `amountCents` is the amount about to *become* collected — a new succeeded
+ * payment, or a pending one being transitioned. Either way it is not yet counted in
+ * the net, so the arithmetic is the same for both callers.
+ */
+async function assertWithinInvoiceBalance(
+	tx: PaymentTransaction,
+	workspaceId: string,
+	invoiceId: string,
+	invoiceTotalCents: number,
+	amountCents: number,
+): Promise<void> {
+	const net = await invoiceNetCollected(tx, workspaceId, invoiceId);
+	if (amountCents > invoiceTotalCents - net) {
+		throw new Error("PAYMENT_EXCEEDS_INVOICE_BALANCE");
+	}
+}
+
 async function reconcileInvoice(
 	tx: PaymentTransaction,
 	workspaceId: string,
@@ -106,20 +168,7 @@ async function reconcileInvoice(
 	if (!invoice || invoice.status === "draft" || invoice.status === "void")
 		return;
 
-	const [totals] = await tx
-		.select({
-			collected: sql<number>`coalesce(sum(case when ${payments.status} in ('succeeded', 'refunded') then ${payments.amountCents} else 0 end), 0)::int`,
-			refunded: sql<number>`coalesce((select sum(${paymentRefunds.amountCents}) from ${paymentRefunds} where ${paymentRefunds.workspaceId} = ${workspaceId} and ${paymentRefunds.paymentId} in (select ${payments.id} from ${payments} where ${payments.workspaceId} = ${workspaceId} and ${payments.invoiceId} = ${invoiceId})), 0)::int`,
-		})
-		.from(payments)
-		.where(
-			and(
-				eq(payments.workspaceId, workspaceId),
-				eq(payments.invoiceId, invoiceId),
-			),
-		);
-	const netCollected =
-		Number(totals?.collected ?? 0) - Number(totals?.refunded ?? 0);
+	const netCollected = await invoiceNetCollected(tx, workspaceId, invoiceId);
 	const paid = netCollected >= invoice.totalCents;
 	await tx
 		.update(invoices)
@@ -172,24 +221,13 @@ export async function recordPaymentInTx(
 				throw new Error("PAYMENT_CURRENCY_MISMATCH");
 			}
 			if (initialStatus === "succeeded") {
-				const [totals] = await tx
-					.select({
-						collected: sql<number>`coalesce(sum(case when ${payments.status} in ('succeeded', 'refunded') then ${payments.amountCents} else 0 end), 0)::int`,
-						refunded: sql<number>`coalesce((select sum(${paymentRefunds.amountCents}) from ${paymentRefunds} where ${paymentRefunds.workspaceId} = ${workspaceId} and ${paymentRefunds.paymentId} in (select ${payments.id} from ${payments} where ${payments.workspaceId} = ${workspaceId} and ${payments.invoiceId} = ${values.invoiceId})), 0)::int`,
-					})
-					.from(payments)
-					.where(
-						and(
-							eq(payments.workspaceId, workspaceId),
-							eq(payments.invoiceId, values.invoiceId),
-						),
-					);
-				const remaining =
-					invoice.totalCents -
-					(Number(totals?.collected ?? 0) - Number(totals?.refunded ?? 0));
-				if (values.amountCents > remaining) {
-					throw new Error("PAYMENT_EXCEEDS_INVOICE_BALANCE");
-				}
+				await assertWithinInvoiceBalance(
+					tx,
+					workspaceId,
+					values.invoiceId,
+					invoice.totalCents,
+					values.amountCents,
+				);
 			}
 		}
 
@@ -275,6 +313,41 @@ export async function setPaymentStatusInTx(
 		if (current.status === status) throw new Error("PAYMENT_STATUS_UNCHANGED");
 		if (!canTransition(current.status as PaymentStatus, status)) {
 			throw new Error("PAYMENT_ILLEGAL_TRANSITION");
+		}
+		// Money settling here must clear the same bar as money recorded as settled in
+		// the first place. This is the path a provider webhook drives — Stripe reports
+		// `payment_intent.succeeded` and a pending payment becomes succeeded — and it
+		// previously performed no balance check at all, so a retried or duplicated
+		// webhook could take an invoice past its total and leave it over-collected.
+		if (status === "succeeded" && current.invoiceId) {
+			const [invoice] = await tx
+				.select({
+					status: invoices.status,
+					totalCents: invoices.totalCents,
+				})
+				.from(invoices)
+				.where(
+					and(
+						eq(invoices.workspaceId, workspaceId),
+						eq(invoices.id, current.invoiceId),
+					),
+				)
+				.limit(1)
+				.for("update");
+			// A void or draft invoice cannot collect. Reconciliation already declines
+			// to settle one, so allowing money to land against it would strand a
+			// succeeded payment the invoice never accounts for.
+			if (!invoice) throw new Error("INVOICE_NOT_FOUND");
+			if (invoice.status === "draft" || invoice.status === "void") {
+				throw new Error("INVOICE_NOT_PAYABLE");
+			}
+			await assertWithinInvoiceBalance(
+				tx,
+				workspaceId,
+				current.invoiceId,
+				invoice.totalCents,
+				current.amountCents,
+			);
 		}
 		if (status === "refunded") {
 			const [sum] = await tx

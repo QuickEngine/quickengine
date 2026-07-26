@@ -1,7 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import type { QuickEngineOrgRole } from "./schema/quickengine";
-import { quickengineOrganizationMembers } from "./schema/quickengine";
+import {
+	quickengineOrganizationMembers,
+	quickengineOrganizationRoles,
+} from "./schema/quickengine";
 
 /**
  * Resolve a user's role on a workspace from org membership — the single membership resolver
@@ -51,4 +54,30 @@ export async function resolveOrgRole(
 		)
 		.limit(1);
 	return member?.role ?? null;
+}
+
+/**
+ * Every custom role an organization has defined, keyed by lowercased name.
+ *
+ * Shaped for `resolveCapabilities` in `@quickengine/auth/rbac`, which takes exactly
+ * this map. Built-in roles are deliberately absent: they live in code, are checked
+ * first, and must never be shadowed by a row.
+ *
+ * **Additive on its own** — nothing calls this yet. Wiring it into
+ * `resolveWorkspaceRole` is the next slice, and until then every existing role
+ * behaves exactly as before.
+ */
+export async function loadOrgRoleCapabilities(
+	organizationId: string,
+): Promise<Map<string, readonly string[]>> {
+	const rows = await db
+		.select({
+			name: quickengineOrganizationRoles.name,
+			capabilities: quickengineOrganizationRoles.capabilities,
+		})
+		.from(quickengineOrganizationRoles)
+		.where(eq(quickengineOrganizationRoles.organizationId, organizationId));
+	return new Map(
+		rows.map((row) => [row.name.toLowerCase(), row.capabilities ?? []]),
+	);
 }

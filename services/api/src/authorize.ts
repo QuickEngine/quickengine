@@ -9,6 +9,7 @@ import type {
 	WorkspaceResolution,
 } from "./platform-types";
 import { respondError } from "./respond";
+import { enforceUsage } from "./usage-enforcement";
 
 function readBearer(headers: Headers): string | null {
 	const authorization = headers.get(API_HEADERS.apiKey);
@@ -116,6 +117,15 @@ export function authorizeWorkspace(
 				bearer ? "bearer" : "publishable",
 			);
 			if (rejection) return rejection;
+			// Usage is charged to the account, so it can only be checked once the
+			// credential has resolved one. Both auth paths gate here, before the
+			// handler runs — counting afterwards could measure but never prevent.
+			const overKey = await enforceUsage(
+				c,
+				dependencies.enforceUsage,
+				c.get("authorized").workspace.ownerId,
+			);
+			if (overKey) return overKey;
 			return next();
 		}
 
@@ -171,6 +181,12 @@ export function authorizeWorkspace(
 			workspace,
 			workspaceId,
 		});
+		const over = await enforceUsage(
+			c,
+			dependencies.enforceUsage,
+			workspace.ownerId,
+		);
+		if (over) return over;
 		return next();
 	});
 }

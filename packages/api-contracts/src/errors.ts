@@ -14,6 +14,7 @@ export const API_ERROR_CODES = [
 	"PAYLOAD_TOO_LARGE",
 	"REQUEST_TIMEOUT",
 	"RATE_LIMITED",
+	"USAGE_LIMIT_EXCEEDED",
 	"IDEMPOTENCY_REQUIRED",
 	"IDEMPOTENCY_CONFLICT",
 	"IDEMPOTENCY_IN_PROGRESS",
@@ -40,6 +41,10 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
 	PAYLOAD_TOO_LARGE: 413,
 	REQUEST_TIMEOUT: 504,
 	RATE_LIMITED: 429,
+	// 402, not 429. Rate limiting says "slow down"; this says "your plan's included
+	// usage is spent." Retrying does not help, and conflating the two sends people
+	// to add backoff for a problem only an upgrade or a top-up resolves.
+	USAGE_LIMIT_EXCEEDED: 402,
 	IDEMPOTENCY_REQUIRED: 400,
 	IDEMPOTENCY_CONFLICT: 409,
 	IDEMPOTENCY_IN_PROGRESS: 409,

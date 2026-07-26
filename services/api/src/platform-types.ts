@@ -68,6 +68,11 @@ export type PlatformDependencies = {
 		workspaceId: string,
 	): Promise<WorkspaceResolution | null>;
 	verifyApiKey(rawKey: string): Promise<ApiKeyIdentity | null>;
+	/**
+	 * Optional. Absent in tests and local development, so neither accumulates usage
+	 * nor gates on it. Production supplies `enforce` from `@quickengine/billing`.
+	 */
+	enforceUsage?: import("./usage-enforcement").UsageEnforcer;
 };
 
 export type RouteAccessRequirement = {

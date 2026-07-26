@@ -6,6 +6,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Security
+
+- **Updated a pattern-matching library to a patched release.** A dependency used by build tooling
+  could be made to exhaust memory and crash the process when given a specially crafted pattern.
+  QuickEngine only ever supplies its own patterns, so this was not reachable in practice, but the
+  affected copy now points at the fixed release.
+
 ### Fixed
 
 - **An invoice can no longer be paid more than once for the same money.** When a payment was

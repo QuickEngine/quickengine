@@ -6,6 +6,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **Writing to the API works again.** Every request that sent data to the API — creating a client,
+  authorizing a live connection, receiving a payment notification — waited without ever being
+  handled and eventually gave up. Reading was unaffected, so the service looked healthy while
+  nothing could be saved through it. Requests carrying data are now read correctly and answered
+  straight away.
+
 ### Added
 
 - **A misconfigured background service can no longer fail quietly.** Realtime, background jobs, and

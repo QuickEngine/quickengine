@@ -18,6 +18,11 @@ import {
 	createFulfillment,
 	setFulfillmentStatus,
 } from "@quickengine/mod-fulfillment";
+import {
+	consumeOrderStockInTx,
+	releaseOrderStockInTx,
+	reserveOrderStockInTx,
+} from "./inventory-bridge";
 import { type OrderInput, orderInputSchema } from "./order";
 import { canTransitionOrder, type OrderStatus } from "./status";
 import {
@@ -342,6 +347,20 @@ export async function setOrderStatusInTx(
 				"cancelled",
 				tx,
 			);
+		}
+
+		// Stock moves with the order, inside this same transaction and behind the row
+		// lock taken above — so two orders racing for the last unit serialize here
+		// rather than both succeeding. Each is a no-op when the workspace does not
+		// track inventory. See `inventory-bridge.ts`.
+		if (status === "placed") {
+			await reserveOrderStockInTx(tx, workspaceId, id);
+		} else if (status === "cancelled") {
+			await releaseOrderStockInTx(tx, workspaceId, id);
+		} else if (status === "fulfilled") {
+			// Anything already consumed when its shipment went out is skipped, so an
+			// order shipped in parts does not consume the same units twice.
+			await consumeOrderStockInTx(tx, workspaceId, id);
 		}
 
 		const now = new Date();

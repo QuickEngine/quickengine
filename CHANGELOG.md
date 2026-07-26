@@ -6,6 +6,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Orders now hold stock, so the same item cannot be sold twice.** Placing an order reserves what
+  it needs, cancelling gives it back, and fulfilling it takes the goods off the shelf. Until now
+  nothing connected the two, so two customers buying the last item both succeeded. Stock is held
+  from the moment a customer commits rather than when an order is later confirmed, because that gap
+  is where overselling happens. Businesses that deliberately sell beyond available stock, such as
+  those taking backorders, can allow it in their inventory settings; by default it is refused.
+  Workspaces that do not track inventory, and products that are not tracked, are unaffected.
+
 ### Changed
 
 - **The component scaffolding tool is no longer part of a production install.** A

@@ -1143,6 +1143,9 @@ importers:
       '@quickengine/mod-fulfillment':
         specifier: workspace:*
         version: link:../fulfillment
+      '@quickengine/mod-inventory':
+        specifier: workspace:*
+        version: link:../inventory
       '@quickengine/mod-products-services':
         specifier: workspace:*
         version: link:../products-services

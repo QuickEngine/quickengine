@@ -29,6 +29,36 @@ describe("sign-in", () => {
 		expect(cookie).toBe("");
 	});
 
+	/**
+	 * The actual enumeration test, and the one the two above cannot make.
+	 *
+	 * Each of them proves its case is *rejected*. Neither proves the two are
+	 * rejected **the same way** — and that difference is the entire leak. If a
+	 * wrong password answers "incorrect password" while an unknown address answers
+	 * "no such user", both tests still pass while the endpoint cheerfully confirms
+	 * which email addresses have accounts. That is how attackers build target lists
+	 * before they try a single credential.
+	 */
+	it("answers a wrong password and an unknown email identically", async () => {
+		await apiSignUp("known@example.com", "password123");
+		await markEmailVerified("known@example.com");
+
+		const wrongPassword = await apiSignIn("known@example.com", "wrongpassword");
+		const unknownEmail = await apiSignIn("nobody@example.com", "wrongpassword");
+
+		expect(wrongPassword.res.status).toBe(unknownEmail.res.status);
+
+		const [a, b] = await Promise.all([
+			wrongPassword.res.clone().text(),
+			unknownEmail.res.clone().text(),
+		]);
+		// Compared as raw bodies: a differing error code or message is exactly the
+		// signal being guarded against, even when the status matches.
+		expect(a).toBe(b);
+		expect(wrongPassword.cookie).toBe("");
+		expect(unknownEmail.cookie).toBe("");
+	});
+
 	it("issues a session for correct credentials once verified", async () => {
 		const cookie = await createVerifiedUser("ok@example.com", "password123");
 		expect(cookie).not.toBe("");

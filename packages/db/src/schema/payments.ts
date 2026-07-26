@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
 	boolean,
 	index,
@@ -107,6 +108,15 @@ export const payments = pgTable(
 			table.provider,
 			table.externalPaymentId,
 		),
+		// Stripe retries webhooks, and a retry that populated only the payment intent
+		// had nothing stopping it creating a second payment row: the index above
+		// covers `external_payment_id`, which is nullable, and Postgres does not
+		// collide NULLs — so any number of rows with a null external id were allowed.
+		// Partial, because the column is null for every non-Stripe payment and those
+		// must not collide with each other.
+		uniqueIndex("payments_stripe_intent_unique")
+			.on(table.workspaceId, table.stripePaymentIntentId)
+			.where(sql`${table.stripePaymentIntentId} is not null`),
 	],
 );
 

@@ -6,6 +6,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **A payment confirmation that arrives twice no longer creates two payments.** Payment providers
+  routinely deliver the same notification more than once. Where a repeat could previously produce a
+  duplicate record, or fail outright, QuickEngine now recognises it and returns the original
+  payment unchanged. The database enforces this as well, so a duplicate cannot be recorded even if
+  two notifications arrive at the same instant.
+
 ### Added
 
 - **Orders now hold stock, so the same item cannot be sold twice.** Placing an order reserves what

@@ -242,3 +242,111 @@ describe("Settling a pending payment", () => {
 		);
 	});
 });
+
+/**
+ * Stripe retries webhooks. A retry must not create a second payment, and must not
+ * error — "we have seen this one" is a normal case, not a failure.
+ */
+describe("Duplicate provider deliveries", () => {
+	it("replays the original payment for a repeated payment intent", async () => {
+		const invoice = await issuedInvoice();
+		const first = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 4_000,
+			provider: "stripe",
+			stripePaymentIntentId: "pi_repeat_1",
+			status: "succeeded",
+		});
+
+		const second = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 4_000,
+			provider: "stripe",
+			stripePaymentIntentId: "pi_repeat_1",
+			status: "succeeded",
+		});
+
+		expect(second.id).toBe(first.id);
+		expect(await listPayments(workspaceId)).toHaveLength(1);
+		// The invoice must reflect one payment, not two.
+		expect((await getInvoice(workspaceId, invoice.id))?.status).toBe("sent");
+	});
+
+	it("replays for a repeated external payment id", async () => {
+		const first = await recordPayment(workspaceId, {
+			clientId,
+			amountCents: 2_000,
+			provider: "stripe",
+			externalPaymentId: "ch_repeat_1",
+			status: "succeeded",
+		});
+		const second = await recordPayment(workspaceId, {
+			clientId,
+			amountCents: 2_000,
+			provider: "stripe",
+			externalPaymentId: "ch_repeat_1",
+			status: "succeeded",
+		});
+
+		expect(second.id).toBe(first.id);
+		expect(await listPayments(workspaceId)).toHaveLength(1);
+	});
+
+	/**
+	 * A replay adds no money, so it must not be re-checked against the balance. A
+	 * fully-paid invoice receiving a duplicate delivery of the payment that settled
+	 * it would otherwise be rejected for overpaying itself.
+	 */
+	it("replays even once the invoice is fully paid", async () => {
+		const invoice = await issuedInvoice();
+		const first = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 10_000,
+			provider: "stripe",
+			stripePaymentIntentId: "pi_full_1",
+			status: "succeeded",
+		});
+		expect((await getInvoice(workspaceId, invoice.id))?.status).toBe("paid");
+
+		const replay = await recordPayment(workspaceId, {
+			invoiceId: invoice.id,
+			amountCents: 10_000,
+			provider: "stripe",
+			stripePaymentIntentId: "pi_full_1",
+			status: "succeeded",
+		});
+		expect(replay.id).toBe(first.id);
+	});
+
+	// The same intent id in a different workspace is a different payment.
+	it("scopes the replay to the workspace", async () => {
+		const a = await recordPayment(workspaceId, {
+			clientId,
+			amountCents: 1_000,
+			provider: "stripe",
+			stripePaymentIntentId: "pi_shared",
+			status: "succeeded",
+		});
+		const b = await recordPayment(otherWorkspaceId, {
+			amountCents: 1_000,
+			provider: "stripe",
+			stripePaymentIntentId: "pi_shared",
+			status: "succeeded",
+		});
+		expect(b.id).not.toBe(a.id);
+	});
+
+	it("still creates separate payments for distinct intent ids", async () => {
+		const invoice = await issuedInvoice();
+		for (const id of ["pi_a", "pi_b"]) {
+			await recordPayment(workspaceId, {
+				invoiceId: invoice.id,
+				amountCents: 3_000,
+				provider: "stripe",
+				stripePaymentIntentId: id,
+				status: "succeeded",
+			});
+		}
+		expect(await listPayments(workspaceId)).toHaveLength(2);
+	});
+});

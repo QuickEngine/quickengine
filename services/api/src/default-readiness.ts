@@ -31,5 +31,40 @@ export function createDefaultReadinessChecks(
 				signal.throwIfAborted();
 			},
 		},
+		{
+			critical: config.environment === "production",
+			name: "providers",
+			/**
+			 * Catch a provider that silently fell back to its offline stand-in.
+			 *
+			 * This **forces selection** rather than reading whatever has happened to
+			 * be initialised. Provider selection is lazy, so a check that only read
+			 * the registry would pass on a freshly booted instance — reporting ready
+			 * right up until the first job quietly evaporated.
+			 *
+			 * Only data-loss degradation fails readiness. A missing search index is a
+			 * bad day; a job queue that accepts work and forgets it is a customer
+			 * whose webhook never arrived, and that instance should leave rotation.
+			 */
+			async run(signal) {
+				signal.throwIfAborted();
+				const [
+					{ getJobQueue },
+					{ hasDataLossDegradation, getDegradedProviders },
+				] = await Promise.all([
+					import("@quickengine/jobs"),
+					import("@quickengine/provider-health"),
+				]);
+				getJobQueue();
+				signal.throwIfAborted();
+				if (hasDataLossDegradation()) {
+					const names = getDegradedProviders()
+						.filter((entry) => entry.severity === "data-loss")
+						.map((entry) => entry.provider)
+						.join(", ");
+					throw new Error(`provider degraded with data loss: ${names}`);
+				}
+			},
+		},
 	];
 }

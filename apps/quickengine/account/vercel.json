@@ -1,0 +1,9 @@
+{
+	"rewrites": [
+		{
+			"source": "/v1/:path*",
+			"destination": "https://api.quickengine.xyz/v1/:path*"
+		},
+		{ "source": "/(.*)", "destination": "/index.html" }
+	]
+}

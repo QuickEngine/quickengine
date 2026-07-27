@@ -1,10 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client";
-import type {
-	QuickEngineInvitationStatus,
-	QuickEngineOrgRole,
-} from "./schema/quickengine";
+import type { QuickEngineInvitationStatus } from "./schema/quickengine";
 import {
 	quickengineOrganizationInvitations,
 	quickengineOrganizationMembers,

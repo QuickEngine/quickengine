@@ -1,8 +1,5 @@
 import type { ApiCapability } from "@quickengine/auth/api-keys";
-import type {
-	WorkspaceCapability,
-	WorkspaceRole,
-} from "@quickengine/auth/rbac";
+import type { WorkspaceCapability } from "@quickengine/auth/rbac";
 import type { QuickEngineApiKeyType } from "@quickengine/db/schema/quickengine";
 import type { RequestIdVariables } from "hono/request-id";
 

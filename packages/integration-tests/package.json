@@ -11,6 +11,7 @@
 	"dependencies": {
 		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/auth": "workspace:*",
+		"@quickengine/billing": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/event-dispatch": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",

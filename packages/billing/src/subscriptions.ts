@@ -188,3 +188,18 @@ export const setStatusForCustomer = async (
 /** Read an organization's current subscription (for UI / entitlement checks). */
 export const getSubscriptionForOrg = async (organizationId: string) =>
 	firstRowForOrg(organizationId);
+
+/**
+ * The Stripe customer already on file for an organization, or null.
+ *
+ * Distinct from `findOrCreateStripeCustomer` because auto-recharge runs with **no
+ * user present** — there is no email to create a customer with, and inventing one
+ * would attach a charge to an account nobody can reconcile. If there is no
+ * customer, there was never a saved card, so there is nothing to charge.
+ */
+export const findStripeCustomerForOrg = async (
+	organizationId: string,
+): Promise<string | null> => {
+	const existing = await firstRowForOrg(organizationId);
+	return existing?.stripeCustomerId ?? null;
+};

@@ -8,6 +8,22 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Prepaid AI credits.** Buy credit up front and draw it down as you use AI features. Your
+  balance is the sum of every movement on your statement, so any number you are shown can be
+  explained line by line rather than simply asserted. Top-ups, refunds and expiries all appear
+  as their own entries, and nothing is ever removed.
+- **Your plan's included AI comes first.** Credits are only ever spent once the AI actions
+  included in your subscription are used up, so you are never charged for something you have
+  already paid for.
+- **A daily AI limit per workspace.** One workspace cannot burn through the whole account, and
+  reaching the limit in one workspace never stops the others working.
+- **Optional auto top-up.** Off unless you turn it on. If a payment fails it switches itself off
+  and tells you why, rather than retrying a card that is not going to work.
+- **Work already running always finishes.** Reaching a limit stops the next request, never the
+  one in progress, so a request never dies halfway through.
+
+### Added
+
 - **Organizations can create and manage their own roles.** Name a role anything you like and
   choose exactly which permissions it carries; the name is yours to pick and only the
   permissions decide what someone can do. Owner, administrator and member remain built in and

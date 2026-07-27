@@ -839,6 +839,9 @@ importers:
       '@quickengine/auth':
         specifier: workspace:*
         version: link:../auth
+      '@quickengine/billing':
+        specifier: workspace:*
+        version: link:../billing
       '@quickengine/db':
         specifier: workspace:*
         version: link:../db

@@ -498,3 +498,128 @@ export const quickdashFirstActionStates = pgTable(
 		),
 	],
 );
+
+/**
+ * Prepaid AI credit movements — **append-only, one row per movement.**
+ *
+ * **The balance is derived by summing this table, never stored.** A mutable
+ * balance column is a number that can drift with no way to tell when or why, and
+ * this is the number a customer will eventually dispute. Summing rows means the
+ * balance can always be *explained* rather than merely read: every top-up,
+ * draw-down, refund, correction and expiry is a row that says who did what, when,
+ * and against which run.
+ *
+ * **Micros, not cents.** One AI action costs roughly $0.003 — three tenths of a
+ * cent — so integer cents cannot represent a single unit of the thing being sold.
+ * Micros (1,000,000 = $1) match `costMicros` in `@quickengine/agent-core`, which is
+ * already how AI spend is measured, so no conversion sits between the meter and
+ * the ledger where a rounding error could hide.
+ *
+ * **Signed.** Credits are positive, spend is negative. A refund is a positive row
+ * rather than the deletion of a negative one, because the history of what happened
+ * is the asset here — nothing is ever rewritten or removed.
+ */
+/**
+ * Auto-recharge settings, one row per organization.
+ *
+ * Its own table rather than columns on the organization: this is a **standing
+ * authorisation to take money**, and keeping it separate means it can be revoked,
+ * audited and reasoned about on its own terms rather than buried among unrelated
+ * fields. Opt-in only, and absent by default — no row means off.
+ */
+export const quickengineCreditAutoRecharge = pgTable(
+	"quickengine_credit_auto_recharge",
+	{
+		organizationId: uuid("organization_id")
+			.primaryKey()
+			.references(() => quickengineOrganizations.id, { onDelete: "cascade" }),
+		enabled: boolean("enabled").notNull().default(false),
+		/** Recharge when the balance falls below this. */
+		thresholdMicros: bigint("threshold_micros", { mode: "number" })
+			.notNull()
+			.default(0),
+		/** How much to buy each time, in cents, to match Stripe. */
+		amountCents: integer("amount_cents").notNull().default(0),
+		/** The saved card to charge off-session. */
+		stripePaymentMethodId: text("stripe_payment_method_id"),
+		/**
+		 * When the last attempt failed, and why.
+		 *
+		 * A failed off-session charge disables auto-recharge rather than retrying:
+		 * expired cards and challenges that need the customer present do not fix
+		 * themselves, and retrying a declining card is how an account collects forty
+		 * declines and a fraud flag.
+		 */
+		lastFailureAt: timestamp("last_failure_at", { withTimezone: true }),
+		lastFailureReason: text("last_failure_reason"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+);
+
+export const quickengineCreditEntries = pgTable(
+	"quickengine_credit_entries",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		organizationId: uuid("organization_id")
+			.notNull()
+			.references(() => quickengineOrganizations.id, { onDelete: "cascade" }),
+		/**
+		 * Which workspace spent it, when a workspace did. Null for account-level
+		 * movements like a top-up, which belong to the organization rather than to
+		 * any one of its workspaces. This is what the per-workspace spend cap counts.
+		 */
+		workspaceId: uuid("workspace_id").references(
+			() => quickengineWorkspaces.id,
+			{ onDelete: "set null" },
+		),
+		/** `topup` · `spend` · `refund` · `adjustment` · `expiry` */
+		kind: text("kind").notNull(),
+		/** Signed. Positive adds balance, negative consumes it. */
+		amountMicros: bigint("amount_micros", { mode: "number" }).notNull(),
+		/** Human-readable reason, shown to the customer on their statement. */
+		description: text("description"),
+		/**
+		 * The agent run this paid for, when it paid for one. Lets a disputed charge
+		 * be traced back to the exact run rather than argued about in the abstract.
+		 */
+		agentRunId: text("agent_run_id"),
+		/** Stripe payment intent for a top-up. */
+		stripePaymentIntentId: text("stripe_payment_intent_id"),
+		/**
+		 * The entry this one cancels. Set on `expiry` and `refund` rows so a negative
+		 * movement can always be reconciled against what it reversed, and so expiry
+		 * can tell which credits it has already cancelled.
+		 */
+		sourceEntryId: uuid("source_entry_id"),
+		/**
+		 * When this credit stops counting toward the balance. Null means it never
+		 * expires. Nullable so either expiry policy works without a migration —
+		 * whether credits expire is a pricing decision, not a schema one.
+		 */
+		expiresAt: timestamp("expires_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		// The balance query: every entry for an organization.
+		index("credit_entries_org_idx").on(table.organizationId, table.createdAt),
+		// The per-workspace spend cap query.
+		index("credit_entries_workspace_idx").on(
+			table.workspaceId,
+			table.createdAt,
+		),
+		index("credit_entries_source_idx").on(table.sourceEntryId),
+		// A top-up must never be applied twice. Stripe retries webhooks, so without
+		// this a network hiccup on their side becomes free credit on ours. Partial,
+		// because only top-ups carry a payment intent.
+		uniqueIndex("credit_entries_payment_intent_unique")
+			.on(table.stripePaymentIntentId)
+			.where(sql`${table.stripePaymentIntentId} is not null`),
+	],
+);

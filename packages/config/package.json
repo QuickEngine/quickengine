@@ -6,6 +6,7 @@
 	"type": "module",
 	"exports": {
 		"./tsconfig/base": "./tsconfig/base.json",
-		"./tsconfig/next": "./tsconfig/next.json"
+		"./tsconfig/next": "./tsconfig/next.json",
+		"./tsconfig/vite": "./tsconfig/vite.json"
 	}
 }

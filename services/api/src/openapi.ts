@@ -2018,6 +2018,66 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/account/invitations": {
+				get: {
+					operationId: "listInvitations",
+					summary: "Invitations for this organization",
+					responses: {
+						"200": { description: "The organization's invitations." },
+						"403": { description: "You cannot manage members." },
+					},
+				},
+				post: {
+					operationId: "inviteMember",
+					summary: "Invite someone to the organization",
+					description:
+						"The role may be any the organization has defined, not only the built-in three. You cannot invite someone to a role carrying more permissions than you hold yourself. The returned token is shown once, to be emailed; it is stored hashed and can never be read back.",
+					responses: {
+						"201": { description: "The invitation was created." },
+						"400": { description: "Unknown role or invalid email." },
+						"403": {
+							description: "That role carries more permissions than your own.",
+						},
+					},
+				},
+			},
+			"/v1/account/invitations/{token}/accept": {
+				post: {
+					operationId: "acceptInvitation",
+					summary: "Accept an invitation",
+					description:
+						"Requires only a signed-in session: the invitee has no role in the organization yet, so the token is the authorization. Single-use and expiring. Every failure returns the same message, because distinguishing expired from already-used from never-existed would let someone probe for valid tokens.",
+					responses: {
+						"200": { description: "You joined the organization." },
+						"401": { description: "Sign in to accept an invitation." },
+						"404": { description: "That invitation is no longer valid." },
+					},
+				},
+			},
+			"/v1/account/invitations/{id}": {
+				delete: {
+					operationId: "revokeInvitation",
+					summary: "Revoke a pending invitation",
+					responses: {
+						"200": { description: "The invitation was revoked." },
+						"403": { description: "You cannot manage members." },
+						"404": { description: "No such invitation." },
+					},
+				},
+			},
+			"/v1/account/members/{userId}": {
+				delete: {
+					operationId: "removeMember",
+					summary: "Remove a member",
+					description:
+						"The organization owner cannot be removed. An organization with no owner has nobody able to manage billing or appoint a replacement, and there is no way back from it.",
+					responses: {
+						"200": { description: "The member was removed." },
+						"403": { description: "You cannot manage members." },
+						"409": { description: "The owner must be replaced first." },
+					},
+				},
+			},
 			"/v1/account/workspaces": {
 				post: {
 					operationId: "createWorkspace",

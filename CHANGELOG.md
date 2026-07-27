@@ -6,6 +6,18 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Workspaces can now be managed through the API.** Create, rename, archive, delete and switch
+  modules on and off without opening the dashboard, so you can build your own onboarding or
+  provision workspaces from your own systems. Turning on a module still brings along anything it
+  depends on, so a workspace can never end up half-configured.
+
+### Changed
+
+- **The marketing site, the sign-in app and identity now run on a faster stack.** Pages load
+  quicker and nothing about how you sign in has changed.
+
 ### Changed
 
 - **The plans are now Free, Launch, Grow, Scale and Custom.** Named after where your business is

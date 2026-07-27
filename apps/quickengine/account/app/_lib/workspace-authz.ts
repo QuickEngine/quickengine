@@ -4,7 +4,6 @@ import {
 	type WorkspaceCapability,
 } from "@quickengine/auth/rbac";
 import { and, db, eq } from "@quickengine/db";
-import type { QuickEngineOrgRole } from "@quickengine/db/schema/quickengine";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 
 export type AuthorizedWorkspace = {

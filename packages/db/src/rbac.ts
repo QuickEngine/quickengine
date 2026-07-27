@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./client";
 import type { QuickEngineOrgRole } from "./schema/quickengine";
 import {
@@ -80,4 +80,98 @@ export async function loadOrgRoleCapabilities(
 	return new Map(
 		rows.map((row) => [row.name.toLowerCase(), row.capabilities ?? []]),
 	);
+}
+
+/** Every custom role an organization has defined, for management surfaces. */
+export async function listOrgRoles(organizationId: string) {
+	return db
+		.select()
+		.from(quickengineOrganizationRoles)
+		.where(eq(quickengineOrganizationRoles.organizationId, organizationId))
+		.orderBy(asc(quickengineOrganizationRoles.name));
+}
+
+/**
+ * How many members currently hold a role.
+ *
+ * Deleting a role somebody holds would leave them resolving to no capabilities —
+ * silently losing access with nothing explaining why. Callers check this first and
+ * refuse rather than orphan a member.
+ */
+export async function countMembersWithRole(
+	organizationId: string,
+	roleName: string,
+): Promise<number> {
+	const [row] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(quickengineOrganizationMembers)
+		.where(
+			and(
+				eq(quickengineOrganizationMembers.organizationId, organizationId),
+				sql`lower(${quickengineOrganizationMembers.role}) = lower(${roleName})`,
+			),
+		);
+	return Number(row?.count ?? 0);
+}
+
+export async function createOrgRole(input: {
+	organizationId: string;
+	name: string;
+	description?: string | null;
+	capabilities: readonly string[];
+}) {
+	const [role] = await db
+		.insert(quickengineOrganizationRoles)
+		.values({
+			organizationId: input.organizationId,
+			name: input.name.trim(),
+			description: input.description ?? null,
+			capabilities: [...input.capabilities],
+		})
+		.returning();
+	return role;
+}
+
+export async function updateOrgRole(
+	organizationId: string,
+	id: string,
+	patch: {
+		name?: string;
+		description?: string | null;
+		capabilities?: readonly string[];
+	},
+) {
+	const [role] = await db
+		.update(quickengineOrganizationRoles)
+		.set({
+			...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+			...(patch.description !== undefined
+				? { description: patch.description }
+				: {}),
+			...(patch.capabilities !== undefined
+				? { capabilities: [...patch.capabilities] }
+				: {}),
+			updatedAt: new Date(),
+		})
+		.where(
+			and(
+				eq(quickengineOrganizationRoles.organizationId, organizationId),
+				eq(quickengineOrganizationRoles.id, id),
+			),
+		)
+		.returning();
+	return role;
+}
+
+export async function deleteOrgRole(organizationId: string, id: string) {
+	const [role] = await db
+		.delete(quickengineOrganizationRoles)
+		.where(
+			and(
+				eq(quickengineOrganizationRoles.organizationId, organizationId),
+				eq(quickengineOrganizationRoles.id, id),
+			),
+		)
+		.returning();
+	return role;
 }

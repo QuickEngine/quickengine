@@ -1,5 +1,4 @@
 import { API_HEADERS } from "@quickengine/api-contracts/headers";
-import { can } from "@quickengine/auth/rbac";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type {

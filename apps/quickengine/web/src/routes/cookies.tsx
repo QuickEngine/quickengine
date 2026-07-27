@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalPage, legalTable } from "@/components/legal";
-import { buildMetadata } from "@/lib/seo";
 
 function CookiesPage() {
 	return (

@@ -1,7 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { buildMetadata } from "@/lib/seo";
 
 // PLACEHOLDER — light doc pages. Real docs content replaces the blocks later.
 const SECTIONS = {

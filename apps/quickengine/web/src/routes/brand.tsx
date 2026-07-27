@@ -2,7 +2,6 @@ import { Logo } from "@quickengine/ui";
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { buildMetadata } from "@/lib/seo";
 
 // PLACEHOLDER — brand assets + basic guidelines. Download links are stubs.
 const COLORS = [

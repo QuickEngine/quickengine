@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalPage } from "@/components/legal";
-import { buildMetadata } from "@/lib/seo";
 
 // NOTE: unlike Terms / Privacy / Cookies, there is no source draft for this in
 // docs/. This is a placeholder authored to match the Terms (Stripe billing,

@@ -1,7 +1,37 @@
 /// <reference path="./env.d.ts" />
 
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { z } from "zod";
 import { clientEnvSchema } from "./client";
+
+/**
+ * Load `.env.local` before the schema parses, in **this** module rather than in
+ * each consumer.
+ *
+ * The schema runs at import time, and ES module imports are hoisted — so any
+ * consumer that loaded the file itself was only correct while it happened to be
+ * evaluated first. Adding one import elsewhere could silently reorder that and
+ * the process would die on a missing `DATABASE_URL` that was in the file all
+ * along. Doing it here means the values are present no matter who imports what,
+ * in what order.
+ *
+ * Skipped on Vercel and in production, where the platform supplies the values.
+ */
+function loadLocalEnvironment() {
+	if (process.env.NODE_ENV === "production" || process.env.VERCEL) return;
+	for (const candidate of [
+		resolve(process.cwd(), ".env.local"),
+		resolve(process.cwd(), "../../.env.local"),
+		resolve(process.cwd(), "../../../.env.local"),
+	]) {
+		if (!existsSync(candidate)) continue;
+		process.loadEnvFile(candidate);
+		return;
+	}
+}
+
+loadLocalEnvironment();
 
 // Treats an empty string (a set-but-blank env var, e.g. `AUTH_COOKIE_DOMAIN=`)
 // the same as an unset one. The inner schema is made optional so the resulting

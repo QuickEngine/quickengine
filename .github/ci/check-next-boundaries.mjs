@@ -53,12 +53,6 @@ export const NEXT_ROUTE_BASELINE = new Map([
 	["apps/quickdash/admin/app/api/v1/catalog/[id]/route.ts", ["GET"]],
 	["apps/quickdash/admin/app/api/v1/catalog/route.ts", ["GET"]],
 	["apps/quickengine/account/app/api/health/route.ts", ["GET"]],
-	[
-		"apps/quickengine/auth/app/api/auth/[...all]/route.ts",
-		["GET", "OPTIONS", "POST"],
-	],
-	["apps/quickengine/auth/app/api/health/route.ts", ["GET"]],
-	["apps/quickengine/auth/app/signout/route.ts", ["GET"]],
 ]);
 
 async function walk(directory) {

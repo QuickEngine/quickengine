@@ -1,6 +1,7 @@
 import { getCacheProvider } from "@quickengine/cache";
 import { mutationUnitOfWork } from "@quickengine/db";
 import { createApp } from "./app";
+import { registerAuthRoutes } from "./auth-routes";
 import { registerBillingInfoRoutes } from "./billing-info-routes";
 import { registerBookingsRoutes } from "./bookings-routes";
 import { registerClientRecordRoutes } from "./client-records-routes";
@@ -80,6 +81,7 @@ const app = createApp(config, {
 		registerRolesRoutes(app, dependencies);
 		registerResendWebhookRoutes(app, { logger });
 		registerBillingInfoRoutes(app);
+		registerAuthRoutes(app);
 		registerInngestRoutes(app);
 		registerStripeWebhookRoutes(app, { logger });
 	},

@@ -86,12 +86,19 @@ export function resolveCapabilities(
  * role carrying `billing.manage`, assign it to themselves, and escalate — the
  * classic custom-roles privilege escalation, and the reason this check exists at
  * the domain layer rather than only in a form.
+ *
+ * `granter` is either a built-in role name or an already-resolved capability list.
+ * The list form is what callers holding a **custom** role must pass: a role name
+ * that is not one of the built-in three has no entry in `ROLE_CAPABILITIES`, and
+ * resolving it to nothing would deny a user who legitimately holds the permission.
  */
 export function canGrantCapabilities(
-	granter: WorkspaceRole,
+	granter: WorkspaceRole | readonly string[],
 	capabilities: readonly string[],
 ): boolean {
-	const held = new Set(ROLE_CAPABILITIES[granter]);
+	const held = new Set(
+		typeof granter === "string" ? ROLE_CAPABILITIES[granter] : granter,
+	);
 	return capabilities.every((c) => held.has(c as WorkspaceCapability));
 }
 
@@ -145,5 +152,34 @@ export async function resolveWorkspaceAccess(
 	const custom = isBuiltInRole(role)
 		? new Map<string, readonly string[]>()
 		: await loadOrgRoleCapabilities(workspace.organizationId ?? "");
+	return { role, capabilities: resolveCapabilities(role, custom) };
+}
+
+/**
+ * A user's role on an **organization** and the capabilities it grants.
+ *
+ * The org-level twin of `resolveWorkspaceAccess`, for surfaces that authorize
+ * against the organization itself rather than one of its workspaces — team
+ * management, billing, and workspace creation.
+ *
+ * Callers must pair this with `holds`, never with `can`: `can` only knows the
+ * three built-in roles, so a member holding a custom role would be denied a
+ * permission they genuinely have.
+ */
+export async function resolveOrgAccess(
+	userId: string,
+	organizationId: string,
+): Promise<{
+	role: string;
+	capabilities: readonly WorkspaceCapability[];
+} | null> {
+	const { loadOrgRoleCapabilities, resolveOrgRole } = await import(
+		"@quickengine/db"
+	);
+	const role = await resolveOrgRole(userId, organizationId);
+	if (!role) return null;
+	const custom = isBuiltInRole(role)
+		? new Map<string, readonly string[]>()
+		: await loadOrgRoleCapabilities(organizationId);
 	return { role, capabilities: resolveCapabilities(role, custom) };
 }

@@ -6,6 +6,25 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Organizations can create and manage their own roles.** Name a role anything you like and
+  choose exactly which permissions it carries; the name is yours to pick and only the
+  permissions decide what someone can do. Owner, administrator and member remain built in and
+  cannot be renamed, redefined or deleted, so an organization can never lock itself out of its
+  own billing. Nobody can create a role granting more than they hold themselves, and a role
+  cannot be deleted while people still hold it, which would otherwise strip their access with
+  nothing to explain why.
+
+### Fixed
+
+- **Renaming a role no longer removes access for the people who hold it.** Members are carried
+  across to the new name as part of the same change, so a rename cannot leave anyone stranded
+  without permissions.
+- **Team, billing and workspace creation now recognise custom roles.** These screens previously
+  understood only the three built-in roles, so somebody holding a custom role with the right
+  permission could still be told they did not have it.
+
 ### Fixed
 
 - **Events are delivered in the order they happened.** Under load they could be handed to

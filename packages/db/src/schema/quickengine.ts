@@ -301,7 +301,11 @@ export const quickengineOrganizationMembers = pgTable(
 		userId: text("user_id")
 			.notNull()
 			.references(() => quickengineUsers.id, { onDelete: "cascade" }),
-		role: text("role").$type<QuickEngineOrgRole>().notNull().default("member"),
+		// Widened past the built-in three once organizations could define their own
+		// roles. The column was always plain text with no database constraint; the
+		// narrow type was a claim the data never enforced, and a member holding a
+		// custom role is now legitimate. Authorization reads capabilities, never this.
+		role: text("role").notNull().default("member"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
@@ -434,7 +438,11 @@ export const quickengineOrganizationInvitations = pgTable(
 			.notNull()
 			.references(() => quickengineOrganizations.id, { onDelete: "cascade" }),
 		email: text("email").notNull(),
-		role: text("role").$type<QuickEngineOrgRole>().notNull().default("member"),
+		// Widened past the built-in three once organizations could define their own
+		// roles. The column was always plain text with no database constraint; the
+		// narrow type was a claim the data never enforced, and a member holding a
+		// custom role is now legitimate. Authorization reads capabilities, never this.
+		role: text("role").notNull().default("member"),
 		invitedByUserId: text("invited_by_user_id")
 			.notNull()
 			.references(() => quickengineUsers.id),

@@ -1,12 +1,11 @@
 "use server";
 
-import { can } from "@quickengine/auth/rbac";
+import { holds, resolveOrgAccess } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
 import {
 	acceptOrganizationInvitation,
 	createOrganizationInvitation,
 	removeOrganizationMember,
-	resolveOrgRole,
 	revokeOrganizationInvitation,
 } from "@quickengine/db";
 import { notify, sendNotificationEmail } from "@quickengine/notifications";
@@ -43,8 +42,8 @@ async function requireMemberManager(): Promise<
 	if (!session) return { error: "Your session expired. Please sign in again." };
 	const org = await resolveActiveOrg(session.user.id);
 	if (!org) return { error: "No organization was found for your account." };
-	const role = await resolveOrgRole(session.user.id, org.id);
-	if (!role || !can(role, "members.manage")) {
+	const access = await resolveOrgAccess(session.user.id, org.id);
+	if (!holds(access, "members.manage")) {
 		return { error: "You do not have permission to manage members." };
 	}
 	return {

@@ -22,6 +22,7 @@ import { registerProjectsRoutes } from "./projects-routes";
 import { registerQuotesRoutes } from "./quotes-routes";
 import { registerRealtimeRoutes } from "./realtime-routes";
 import { registerReportingRoutes } from "./reporting-routes";
+import { registerRolesRoutes } from "./roles-routes";
 import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
 import { initializeTelemetry } from "./telemetry";
@@ -60,6 +61,7 @@ const app = createApp(config, {
 		registerReportingRoutes(app, dependencies);
 		registerWebhookRoutes(app, dependencies);
 		registerRealtimeRoutes(app, dependencies);
+		registerRolesRoutes(app, dependencies);
 		registerInngestRoutes(app);
 		registerStripeWebhookRoutes(app, { logger: routeLogger });
 	},

@@ -42,7 +42,7 @@ export async function resolveWorkspaceRole(
 export async function resolveOrgRole(
 	userId: string,
 	organizationId: string,
-): Promise<QuickEngineOrgRole | null> {
+): Promise<string | null> {
 	const [member] = await db
 		.select({ role: quickengineOrganizationMembers.role })
 		.from(quickengineOrganizationMembers)
@@ -132,6 +132,18 @@ export async function createOrgRole(input: {
 	return role;
 }
 
+/**
+ * Update a role, **carrying its members with it on a rename.**
+ *
+ * Membership stores the role's *name*, and capabilities resolve by lowercased name.
+ * So renaming the row alone would leave every holder pointing at a name that no
+ * longer exists — they would resolve to no capabilities and lose access silently,
+ * which is precisely the failure `countMembersWithRole` guards against on delete.
+ *
+ * Renaming is allowed rather than refused because the name is decoration: nothing
+ * branches on it. Both writes therefore happen in one transaction, so a rename can
+ * never half-apply and strand members between the old name and the new one.
+ */
 export async function updateOrgRole(
 	organizationId: string,
 	id: string,
@@ -141,25 +153,52 @@ export async function updateOrgRole(
 		capabilities?: readonly string[];
 	},
 ) {
-	const [role] = await db
-		.update(quickengineOrganizationRoles)
-		.set({
-			...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
-			...(patch.description !== undefined
-				? { description: patch.description }
-				: {}),
-			...(patch.capabilities !== undefined
-				? { capabilities: [...patch.capabilities] }
-				: {}),
-			updatedAt: new Date(),
-		})
-		.where(
-			and(
-				eq(quickengineOrganizationRoles.organizationId, organizationId),
-				eq(quickengineOrganizationRoles.id, id),
-			),
-		)
-		.returning();
+	const role = await db.transaction(async (tx) => {
+		const [existing] = await tx
+			.select({ name: quickengineOrganizationRoles.name })
+			.from(quickengineOrganizationRoles)
+			.where(
+				and(
+					eq(quickengineOrganizationRoles.organizationId, organizationId),
+					eq(quickengineOrganizationRoles.id, id),
+				),
+			);
+		if (!existing) return undefined;
+
+		const [updated] = await tx
+			.update(quickengineOrganizationRoles)
+			.set({
+				...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+				...(patch.description !== undefined
+					? { description: patch.description }
+					: {}),
+				...(patch.capabilities !== undefined
+					? { capabilities: [...patch.capabilities] }
+					: {}),
+				updatedAt: new Date(),
+			})
+			.where(
+				and(
+					eq(quickengineOrganizationRoles.organizationId, organizationId),
+					eq(quickengineOrganizationRoles.id, id),
+				),
+			)
+			.returning();
+
+		const renamed = patch.name?.trim();
+		if (renamed && renamed.toLowerCase() !== existing.name.toLowerCase()) {
+			await tx
+				.update(quickengineOrganizationMembers)
+				.set({ role: renamed })
+				.where(
+					and(
+						eq(quickengineOrganizationMembers.organizationId, organizationId),
+						sql`lower(${quickengineOrganizationMembers.role}) = lower(${existing.name})`,
+					),
+				);
+		}
+		return updated;
+	});
 	return role;
 }
 

@@ -23,7 +23,8 @@ export type UserOrganization = {
 	name: string;
 	slug: string;
 	isPersonal: boolean;
-	role: QuickEngineOrgRole;
+	/** A role name, which may be one the organization defined for itself. */
+	role: string;
 };
 
 /** Every org the user is a member of, personal first (it is created earliest at signup). */
@@ -127,7 +128,8 @@ export type OrganizationMember = {
 	userId: string;
 	name: string;
 	email: string;
-	role: QuickEngineOrgRole;
+	/** A role name, which may be one the organization defined for itself. */
+	role: string;
 	joinedAt: Date;
 };
 

@@ -51,6 +51,7 @@ import {
 	timerStartInputSchema,
 } from "@quickengine/mod-time-tracking";
 import type { z } from "zod";
+import { roleInputSchema, rolePatchSchema } from "./roles-routes";
 
 /**
  * Request bodies, keyed by `operationId`.
@@ -126,4 +127,6 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	recordTrafficEvent: trafficEventInputSchema,
 	createWebhookEndpoint: webhookEndpointInputSchema,
 	updateWebhookEndpoint: webhookEndpointPatchSchema,
+	createRole: roleInputSchema,
+	updateRole: rolePatchSchema,
 };

@@ -2018,6 +2018,113 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/account/organizations": {
+				get: {
+					operationId: "listOrganizations",
+					summary: "Organizations you belong to",
+					responses: {
+						"200": { description: "Your organizations." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+				post: {
+					operationId: "createOrganization",
+					summary: "Create an organization",
+					description:
+						"Needs only a signed-in session \u2014 there is no organization to be a member of yet.",
+					responses: {
+						"201": { description: "The organization was created." },
+						"400": { description: "A name is required." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account/api-keys": {
+				post: {
+					operationId: "createApiKey",
+					summary: "Issue an API key",
+					description:
+						"The plaintext key is returned **exactly once** and can never be retrieved again \u2014 only a hash and a short recognisable prefix are stored. Lose it and you issue a new one. A key that can be read back out of the database is a key that leaks with the database.",
+					responses: {
+						"201": { description: "The key was issued. Store it now." },
+						"403": { description: "You cannot manage API keys." },
+					},
+				},
+			},
+			"/v1/account/api-keys/{id}": {
+				delete: {
+					operationId: "revokeApiKey",
+					summary: "Revoke an API key",
+					description:
+						"Takes effect immediately. Anything using the key stops working.",
+					responses: {
+						"200": { description: "The key was revoked." },
+						"400": { description: "workspaceId is required." },
+						"403": { description: "You cannot manage API keys." },
+						"404": { description: "No such key." },
+					},
+				},
+			},
+			"/v1/account/plan": {
+				get: {
+					operationId: "getAccountPlan",
+					summary: "The plan in force, and current usage",
+					responses: {
+						"200": { description: "The plan, subscription and usage." },
+						"403": { description: "You cannot view this organization." },
+					},
+				},
+			},
+			"/v1/account/subscription": {
+				post: {
+					operationId: "startSubscription",
+					summary: "Begin a subscription",
+					description:
+						"Returns a client secret for Stripe Elements. **No plan change is applied here** \u2014 it lands when Stripe confirms payment, so an abandoned checkout can never leave an account on a plan nobody paid for.",
+					responses: {
+						"201": { description: "Checkout started." },
+						"403": { description: "You cannot manage billing." },
+						"503": {
+							description: "That plan is not available for checkout yet.",
+						},
+					},
+				},
+			},
+			"/v1/account/notifications/{id}/read": {
+				post: {
+					operationId: "markNotificationRead",
+					summary: "Mark a notification read",
+					description:
+						"Scoped to you \u2014 one person can never mark another's as read.",
+					responses: {
+						"200": { description: "Marked as read." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account/notifications/read-all": {
+				post: {
+					operationId: "markAllNotificationsRead",
+					summary: "Mark every notification read",
+					responses: {
+						"200": { description: "All marked as read." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account": {
+				delete: {
+					operationId: "deleteAccount",
+					summary: "Permanently delete your account",
+					description:
+						"Irreversible, and always your own account \u2014 the user is taken from your session and never from a parameter. Refused while any workspace you own still holds files, because deleting the records would leave the stored bytes orphaned.",
+					responses: {
+						"200": { description: "The account was deleted." },
+						"401": { description: "Sign in to continue." },
+						"409": { description: "Delete your files first." },
+					},
+				},
+			},
 			"/v1/account/invitations": {
 				get: {
 					operationId: "listInvitations",

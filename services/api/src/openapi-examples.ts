@@ -229,6 +229,19 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	updateWebhookEndpoint: { enabled: false },
 	// A deliberately odd name, because the name is decoration: authorization reads
 	// the permission list and never the label.
+	createOrganization: { name: "Northwind Holdings" },
+	createApiKey: {
+		workspaceId: "3f1c9b52-8d64-4a1e-9f77-2c5e0d6b8a41",
+		name: "Production server",
+		type: "secret",
+		capabilities: ["clients:read", "invoicing:write"],
+	},
+	startSubscription: {
+		planId: "grow",
+		cycle: "annual",
+		billingEmail: "billing@northwind.example",
+		seats: 5,
+	},
 	inviteMember: {
 		email: "sam@northwind.example",
 		role: "Bookkeeper",

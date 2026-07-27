@@ -1,9 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "./client";
+import { fileDocuments } from "./schema/files";
 import {
 	quickengineOrganizationMembers,
 	quickengineOrganizations,
+	quickengineSubscriptions,
 	quickengineUsers,
+	quickengineWorkspaces,
 } from "./schema/quickengine";
 
 // URL-safe org slug from a name + a short random suffix. Org slugs are globally
@@ -179,4 +182,39 @@ export async function removeOrganizationMember(
 		)
 		.returning({ userId: quickengineOrganizationMembers.userId });
 	return Boolean(removed);
+}
+
+/**
+ * Permanently delete a user and everything they own.
+ *
+ * **Refuses while any owned workspace still holds stored files.** Deleting the
+ * rows would orphan the bytes in blob storage — billed forever, attached to
+ * nobody, and unreachable for a later erasure request. Throws
+ * `ACCOUNT_HAS_STORED_FILES` so the caller can tell the user what to clear first.
+ *
+ * One transaction: a half-deleted account is worse than either outcome.
+ */
+export async function deleteUserAccount(userId: string): Promise<void> {
+	const [storedFile] = await db
+		.select({ id: fileDocuments.id })
+		.from(fileDocuments)
+		.innerJoin(
+			quickengineWorkspaces,
+			and(
+				eq(quickengineWorkspaces.id, fileDocuments.workspaceId),
+				eq(quickengineWorkspaces.ownerId, userId),
+			),
+		)
+		.limit(1);
+	if (storedFile) throw new Error("ACCOUNT_HAS_STORED_FILES");
+
+	await db.transaction(async (tx) => {
+		await tx
+			.delete(quickengineSubscriptions)
+			.where(eq(quickengineSubscriptions.userId, userId));
+		await tx
+			.delete(quickengineOrganizations)
+			.where(eq(quickengineOrganizations.ownerId, userId));
+		await tx.delete(quickengineUsers).where(eq(quickengineUsers.id, userId));
+	});
 }

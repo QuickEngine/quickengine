@@ -41,6 +41,9 @@ const BODYLESS = new Set([
 	// The token is the whole request — it is in the path, and a body would only
 	// give a caller somewhere to put a second, conflicting one.
 	"acceptInvitation",
+	// Nothing to send: which notification is in the path, and who is the session.
+	"markNotificationRead",
+	"markAllNotificationsRead",
 	"setCatalogItemStatus",
 	"setProductVariantStatus",
 	"sendQuote",

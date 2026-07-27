@@ -31,12 +31,19 @@ export type WorkspaceResolution = {
 	 * owner is the scope. Becomes the organization id if an account layer lands.
 	 */
 	ownerId: string;
-	role?: WorkspaceRole;
+	/**
+	 * The role's **name**, which may be one an organization defined for itself and
+	 * is therefore not constrained to the built-in three. Present for display and
+	 * audit; **never branch on it** — check `capabilities` instead.
+	 */
+	role?: string;
+	/** What the role actually grants. The only thing authorization should read. */
+	capabilities?: readonly string[];
 	workspace: WorkspaceIdentity;
 };
 
 export type ApiPrincipal =
-	| { kind: "session"; role: WorkspaceRole; userId: string }
+	| { kind: "session"; role: string; userId: string }
 	| { keyId: string; kind: "key"; type: QuickEngineApiKeyType };
 
 export type AuditActor =

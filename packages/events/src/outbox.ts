@@ -137,6 +137,16 @@ export async function drainOutbox(
 			.returning();
 	});
 
+	// `UPDATE ... RETURNING` gives **no ordering guarantee**, so the `ORDER BY` on the
+	// selection above is lost the moment the rows are claimed. Sorting here restores
+	// occurrence order before handlers ever see them.
+	//
+	// This is not cosmetic: consumers reasonably assume `client.created` arrives
+	// before `client.updated`. Delivering them reversed corrupts any consumer that
+	// folds events into state — and it surfaced as a test failing about one run in
+	// three rather than as anything obvious.
+	claimed.sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
+
 	const result: DrainOutboxResult = {
 		claimed: claimed.length,
 		published: 0,

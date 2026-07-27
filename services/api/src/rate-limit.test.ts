@@ -23,6 +23,16 @@ function testApp(options: {
 				enabledModuleIds: [],
 				organizationId: "org_1",
 				ownerId: "user_owner",
+				capabilities: [
+					"workspace.view",
+					"workspace.manage",
+					"workspace.delete",
+					"modules.manage",
+					"members.manage",
+					"apikeys.manage",
+					"billing.manage",
+					"records.write",
+				],
 				role: "owner",
 				workspace: {
 					businessType: "other",

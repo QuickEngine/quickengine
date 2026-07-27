@@ -1,17 +1,40 @@
 import { authClient } from "@quickengine/auth/client";
 import {
 	LoadingScreen,
-	StatusScreen,
 	primaryButton,
+	StatusScreen,
 	textLink,
 } from "@quickengine/ui";
-import type { QueryClient } from "@tanstack/react-query";
 import {
-	Outlet,
+	Sidebar,
+	SidebarInset,
+	SidebarProvider,
+} from "@quickengine/ui/components/ui/sidebar";
+import {
+	type QueryClient,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
+import {
 	createRootRouteWithContext,
+	Outlet,
 	redirect,
+	useRouterState,
 } from "@tanstack/react-router";
+import type { CSSProperties } from "react";
+import { Breadcrumbs } from "../components/breadcrumbs";
+import { DashboardNav } from "../components/nav";
+import { NotificationBell } from "../components/notification-bell";
+import { ProfileMenu } from "../components/profile-menu";
+import { SearchBar } from "../components/search-bar";
+import { TeamSwitcher } from "../components/team-switcher";
 import { ThemeProvider } from "../components/theme-provider";
+import { UpgradeButton } from "../components/upgrade-button";
+import {
+	accountQueries,
+	activeOrganization,
+	useActiveOrganization,
+} from "../lib/account-api";
 import { clientEnv } from "../lib/env";
 
 /**
@@ -28,33 +51,103 @@ import { clientEnv } from "../lib/env";
  * at all: **error, timeout and absent all take the same path — out.** Anything
  * else flashes private data to someone whose identity we could not confirm.
  */
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-	beforeLoad: async ({ location }) => {
-		let signedIn = false;
-		try {
-			const { data } = await authClient.getSession();
-			signedIn = Boolean(data?.session);
-		} catch {
-			// Fall through to the redirect. An unverifiable session is not a session.
-			signedIn = false;
-		}
-		if (!signedIn) {
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
+	{
+		beforeLoad: async ({ location }) => {
+			try {
+				const { data } = await authClient.getSession();
+				if (data?.session && data.user) return { user: data.user };
+			} catch {
+				// Fall through to the redirect. An unverifiable session is not a session.
+			}
 			const target = new URL("/signin", clientEnv.AUTH_URL);
-			target.searchParams.set("redirect", window.location.origin + location.href);
+			target.searchParams.set(
+				"redirect",
+				window.location.origin + location.href,
+			);
 			throw redirect({ href: target.toString() });
-		}
+		},
+		component: RootLayout,
+		errorComponent: ErrorScreen,
+		notFoundComponent: NotFoundScreen,
+		pendingComponent: LoadingScreen,
 	},
-	component: RootLayout,
-	errorComponent: ErrorScreen,
-	notFoundComponent: NotFoundScreen,
-	pendingComponent: LoadingScreen,
-});
+);
 
 function RootLayout() {
 	return (
 		<ThemeProvider>
-			<Outlet />
+			<AccountShell />
 		</ThemeProvider>
+	);
+}
+
+function AccountShell() {
+	const queryClient = useQueryClient();
+	const pathname = useRouterState({
+		select: (state) => state.location.pathname,
+	});
+	const { user } = Route.useRouteContext();
+	const { organizations, active } = useActiveOrganization();
+	const notifications = useQuery(accountQueries.notifications());
+	const plan = useQuery(accountQueries.plan(active?.id ?? ""));
+
+	if (organizations.isPending || notifications.isPending)
+		return <LoadingScreen />;
+	if (organizations.isError || notifications.isError) {
+		throw organizations.error ?? notifications.error;
+	}
+
+	const outsideConsole =
+		pathname === "/onboarding" ||
+		pathname.startsWith("/join/") ||
+		pathname.startsWith("/billing");
+	if (outsideConsole) return <Outlet />;
+
+	const selectOrganization = (organizationId: string) => {
+		activeOrganization.write(organizationId);
+		queryClient.setQueryData(["account", "activeOrganization"], organizationId);
+	};
+	const inbox = notifications.data.items.map((item) => ({
+		...item,
+		unread: item.readAt === null,
+	}));
+
+	return (
+		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
+			<header className="fixed inset-x-0 top-0 z-30 flex h-(--header-height) items-center border-sidebar-border border-b bg-background">
+				<div className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4">
+					<TeamSwitcher
+						orgs={organizations.data.items}
+						activeOrgId={active?.id ?? ""}
+						tier={plan.data?.planId ?? "Free"}
+						onSelect={selectOrganization}
+					/>
+				</div>
+				<div className="flex flex-1 items-center justify-between px-4">
+					<Breadcrumbs />
+					<div className="flex items-center gap-3">
+						<SearchBar />
+						<UpgradeButton />
+						<NotificationBell
+							items={inbox}
+							unread={notifications.data.unread}
+						/>
+						<ProfileMenu
+							seed={user.id}
+							name={user.name ?? ""}
+							email={user.email}
+						/>
+					</div>
+				</div>
+			</header>
+			<Sidebar>
+				<DashboardNav />
+			</Sidebar>
+			<SidebarInset className="pt-(--header-height)">
+				<Outlet />
+			</SidebarInset>
+		</SidebarProvider>
 	);
 }
 

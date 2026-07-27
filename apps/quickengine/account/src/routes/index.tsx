@@ -1,60 +1,68 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { getSession } from "@quickengine/auth/server";
-import { and, db, desc, eq, isNull, or } from "@quickengine/db";
-import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
-import { headers } from "next/headers";
-import { resolveActiveOrg } from "@/lib/active-org";
-import { WorkspacesToolbar } from "./workspaces-toolbar";
+import { Button } from "@quickengine/ui/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { accountQueries, useActiveOrganization } from "../lib/account-api";
 
+function WorkspacesPage() {
+	const { active } = useActiveOrganization();
+	const workspaces = useQuery(accountQueries.workspaces(active?.id ?? ""));
 
-// Workspaces is the account home — the first thing you land on, scoped to the active
-// organization. The cross-workspace Overview lives at /overview.
-async function Page() {
-	const session = await getSession(await headers());
-	if (!session) {
-		return null; // The parent account layout owns the unauthenticated redirect.
-	}
-
-	const active = await resolveActiveOrg(session.user.id);
 	if (!active) {
-		return <WorkspacesToolbar workspaces={[]} />;
+		return (
+			<main className="p-6">
+				<p className="text-muted-foreground">No organization was found.</p>
+			</main>
+		);
 	}
+	if (workspaces.isPending) {
+		return (
+			<main className="p-6 text-muted-foreground">Loading workspaces…</main>
+		);
+	}
+	if (workspaces.isError) throw workspaces.error;
 
-	// Workspaces in the active org. On the personal org, also include any legacy workspaces the
-	// user owns that predate the organizationId column (null org) so nothing disappears.
-	const scope = active.isPersonal
-		? or(
-				eq(quickengineWorkspaces.organizationId, active.id),
-				and(
-					eq(quickengineWorkspaces.ownerId, session.user.id),
-					isNull(quickengineWorkspaces.organizationId),
-				),
-			)
-		: eq(quickengineWorkspaces.organizationId, active.id);
-
-	const rows = await db
-		.select({
-			id: quickengineWorkspaces.id,
-			name: quickengineWorkspaces.name,
-			slug: quickengineWorkspaces.slug,
-			businessType: quickengineWorkspaces.businessType,
-			modules: quickengineWorkspaces.modules,
-			archivedAt: quickengineWorkspaces.archivedAt,
-			createdAt: quickengineWorkspaces.createdAt,
-		})
-		.from(quickengineWorkspaces)
-		.where(scope)
-		.orderBy(desc(quickengineWorkspaces.createdAt));
-
-	const workspaces = rows.map((workspace) => ({
-		...workspace,
-		archivedAt: workspace.archivedAt?.toISOString() ?? null,
-		createdAt: workspace.createdAt.toISOString(),
-	}));
-
-	return <WorkspacesToolbar workspaces={workspaces} />;
+	return (
+		<main className="space-y-6 p-6">
+			<div className="flex items-center justify-between">
+				<div>
+					<h1 className="font-semibold text-2xl">Workspaces</h1>
+					<p className="mt-1 text-muted-foreground text-sm">
+						Business backends belonging to {active.name}.
+					</p>
+				</div>
+				<Button asChild>
+					<Link to="/workspaces/new">New workspace</Link>
+				</Button>
+			</div>
+			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+				{workspaces.data.items.map((workspace) => (
+					<Link
+						key={workspace.id}
+						to="/workspaces/$slug"
+						params={{ slug: workspace.slug ?? workspace.id }}
+						className="rounded-xl border border-foreground/10 p-5 transition-colors hover:bg-foreground/[0.03]"
+					>
+						<div className="flex items-center justify-between gap-3">
+							<h2 className="font-medium">{workspace.name}</h2>
+							{workspace.archivedAt && (
+								<span className="text-muted-foreground text-xs">Archived</span>
+							)}
+						</div>
+						<p className="mt-2 text-muted-foreground text-sm">
+							{workspace.businessType}
+						</p>
+					</Link>
+				))}
+				{workspaces.data.items.length === 0 && (
+					<p className="col-span-full rounded-xl border border-dashed p-10 text-center text-muted-foreground">
+						This organization has no workspaces yet.
+					</p>
+				)}
+			</div>
+		</main>
+	);
 }
 
 export const Route = createFileRoute("/")({
-	component: Page,
+	component: WorkspacesPage,
 });

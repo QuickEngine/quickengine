@@ -1,79 +1,114 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { getSession } from "@quickengine/auth/server";
-import { getPlan, getPlanPricing } from "@quickengine/billing";
-import type {
-	QuickEngineBillingCycle,
-	QuickEnginePlanId,
-} from "@quickengine/db/schema/quickengine";
-import { headers } from "next/headers";
-import { Link } from "@tanstack/react-router";
-import { notFound } from "@tanstack/react-router";
-import { resolveActiveOrg } from "@/lib/active-org";
+import { Button } from "@quickengine/ui/components/ui/button";
+import {
+	Elements,
+	PaymentElement,
+	useElements,
+	useStripe,
+} from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import { useMutation } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { type FormEvent, useState } from "react";
+import { z } from "zod";
+import { useActiveOrganization } from "../../lib/account-api";
+import { api } from "../../lib/api";
 
+const searchSchema = z.object({
+	plan: z.enum(["launch", "grow", "scale"]).catch("launch"),
+	cycle: z.enum(["monthly", "annual"]).catch("monthly"),
+});
+const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
-function money(amount: number, currency: string): string {
-	return new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency: currency.toUpperCase(),
-		minimumFractionDigits: 0,
-	}).format(amount / 100);
+function CheckoutPage() {
+	const { plan, cycle } = Route.useSearch();
+	const { user } = Route.useRouteContext();
+	const { active } = useActiveOrganization();
+	const [checkoutState, setCheckoutState] = useState<{
+		clientSecret: string;
+		subscriptionId: string;
+	} | null>(null);
+	const checkout = useMutation({
+		mutationFn: () =>
+			api.request<{ clientSecret: string; subscriptionId: string }>(
+				`/account/subscription?organizationId=${active?.id}`,
+				{
+					method: "POST",
+					body: { planId: plan, cycle, billingEmail: user.email },
+				},
+			),
+		onSuccess: ({ data }) => setCheckoutState(data),
+	});
+	return (
+		<main className="mx-auto max-w-xl space-y-6 p-6">
+			<div>
+				<h1 className="font-semibold text-2xl">Checkout</h1>
+				<p className="mt-1 text-muted-foreground">
+					{plan} · {cycle} · {active?.name}
+				</p>
+			</div>
+			{!stripePromise ? (
+				<p className="text-muted-foreground text-sm">
+					Payments aren't configured in this environment.
+				</p>
+			) : checkoutState ? (
+				<Elements
+					stripe={stripePromise}
+					options={{
+						clientSecret: checkoutState.clientSecret,
+						appearance: { theme: "night" },
+					}}
+				>
+					<PayForm subscriptionId={checkoutState.subscriptionId} />
+				</Elements>
+			) : (
+				<Button onClick={() => checkout.mutate()} disabled={checkout.isPending}>
+					{checkout.isPending ? "Starting checkout…" : "Continue to payment"}
+				</Button>
+			)}
+			{checkout.isError && (
+				<p className="text-destructive text-sm">{checkout.error.message}</p>
+			)}
+			<Link to="/billing/plans" className="block text-sm underline">
+				Back to plans
+			</Link>
+		</main>
+	);
 }
 
-// Dedicated checkout page — our own layout with Stripe's Payment Element (card fields only)
-// inside. Plan + cycle come from the plans page as query params.
-async function Page({
-	searchParams,
-}: {
-	searchParams: Promise<{ plan?: string; cycle?: string }>;
-}) {
-	const session = await getSession(await headers());
-	if (!session) return null;
-	const org = await resolveActiveOrg(session.user.id);
-	if (!org) return null;
-
-	const { plan, cycle } = await searchParams;
-	const planDef = plan ? getPlan(plan as QuickEnginePlanId) : undefined;
-	if (!planDef || planDef.free) notFound();
-
-	const billingCycle: QuickEngineBillingCycle =
-		cycle === "annual" ? "annual" : "monthly";
-
-	const pricing = await getPlanPricing();
-	const planPricing = pricing.find((p) => p.planId === planDef.id);
-	const price =
-		billingCycle === "annual" ? planPricing?.annual : planPricing?.monthly;
-
-	const { CheckoutForm } = await import("./checkout-form");
-
+function PayForm({ subscriptionId }: { subscriptionId: string }) {
+	const stripe = useStripe();
+	const elements = useElements();
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const submit = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!stripe || !elements) return;
+		setSubmitting(true);
+		setError(null);
+		const result = await stripe.confirmPayment({
+			elements,
+			confirmParams: {
+				return_url: `${window.location.origin}/billing/success?subscription_id=${encodeURIComponent(subscriptionId)}`,
+			},
+		});
+		if (result.error) {
+			setError(result.error.message ?? "Payment failed. Please try again.");
+			setSubmitting(false);
+		}
+	};
 	return (
-		<div className="mx-auto max-w-lg">
-			<Link
-				to="/billing/plans"
-				className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-			>
-				← Back to plans
-			</Link>
-
-			<h1 className="mt-3 font-semibold text-2xl text-foreground">
-				Upgrade to {planDef.displayName}
-			</h1>
-			<p className="mt-1 text-muted-foreground text-sm">
-				{price ? `${money(price.amount, price.currency)} ` : ""}
-				billed {billingCycle === "annual" ? "yearly" : "monthly"} to{" "}
-				<span className="text-foreground">{org.name}</span>.
-			</p>
-
-			<div className="mt-6 rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] p-5">
-				<CheckoutForm planId={planDef.id} cycle={billingCycle} />
-			</div>
-
-			<p className="mt-4 text-center text-[11px] text-muted-foreground">
-				🔒 Payments secured by Stripe
-			</p>
-		</div>
+		<form onSubmit={submit} className="space-y-5">
+			<PaymentElement />
+			{error && <p className="text-destructive text-sm">{error}</p>}
+			<Button className="w-full" disabled={!stripe || submitting}>
+				{submitting ? "Processing…" : "Pay and subscribe"}
+			</Button>
+		</form>
 	);
 }
 
 export const Route = createFileRoute("/billing/checkout")({
-	component: Page,
+	validateSearch: searchSchema,
+	component: CheckoutPage,
 });

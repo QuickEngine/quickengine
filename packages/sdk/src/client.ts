@@ -22,6 +22,7 @@ import type {
 	QuickCredential,
 	QuickRequestOptions,
 	QuickResponse,
+	QuickSessionCredential,
 } from "./types";
 
 const cleanSegment = (value: string, label: string) => {
@@ -70,7 +71,7 @@ const credentialHeaders = (credential: QuickCredential): HeadersInit => {
 
 export class QuickClient {
 	readonly baseUrl: string;
-	readonly workspaceId: string;
+	readonly workspaceId: string | null;
 	readonly apiVersion: string;
 	/** Published catalog for the scoped workspace. */
 	readonly catalog: CatalogResource;
@@ -95,9 +96,18 @@ export class QuickClient {
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
-	constructor(options: QuickClientOptions) {
+	constructor(
+		options:
+			| QuickClientOptions<QuickCredential>
+			| QuickClientOptions<QuickSessionCredential>,
+	) {
 		this.baseUrl = cleanBaseUrl(options.baseUrl);
-		this.workspaceId = cleanSegment(options.workspaceId, "workspaceId");
+		this.workspaceId = options.workspaceId
+			? cleanSegment(options.workspaceId, "workspaceId")
+			: null;
+		if (!this.workspaceId && options.credential.type !== "session") {
+			throw new TypeError("workspaceId is required");
+		}
 		this.apiVersion = cleanSegment(options.apiVersion ?? "v1", "apiVersion");
 		this.credential = options.credential;
 		this.fetcher = options.fetcher ?? fetch;
@@ -137,7 +147,9 @@ export class QuickClient {
 		} = options;
 		const headers = new Headers(requestInit.headers);
 		headers.set("Accept", "application/json");
-		headers.set("QuickEngine-Workspace", this.workspaceId);
+		if (this.workspaceId) {
+			headers.set("QuickEngine-Workspace", this.workspaceId);
+		}
 
 		for (const [name, value] of new Headers(
 			credentialHeaders(this.credential),

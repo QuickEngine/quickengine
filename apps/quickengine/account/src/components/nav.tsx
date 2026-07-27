@@ -1,5 +1,3 @@
-"use client";
-
 import {
 	ChartLine,
 	CurrencyDollar,
@@ -19,7 +17,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@quickengine/ui/components/ui/sidebar";
-import { usePathname } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { SettingsDialog } from "./settings-dialog";
 
 // Subtle container on hover so buttons read as clickable; a stronger neutral gray
@@ -54,10 +52,10 @@ function NavList({ items, pathname }: { items: NavItem[]; pathname: string }) {
 						isActive={isActive(pathname, href)}
 						className={navButton}
 					>
-						<a href={href}>
+						<Link to={href}>
 							<IconComponent />
 							<span>{label}</span>
-						</a>
+						</Link>
 					</SidebarMenuButton>
 				</SidebarMenuItem>
 			))}
@@ -68,7 +66,9 @@ function NavList({ items, pathname }: { items: NavItem[]; pathname: string }) {
 // Account-console sidebar nav: control-center items up top, a single Settings
 // button (opening the settings dialog) pinned to the bottom.
 export function DashboardNav() {
-	const pathname = usePathname();
+	const pathname = useRouterState({
+		select: (state) => state.location.pathname,
+	});
 
 	return (
 		<>

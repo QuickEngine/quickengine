@@ -1,75 +1,26 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
-import { getSession } from "@quickengine/auth/server";
-import {
-	getAccountPlanId,
-	getPlan,
-	getStripe,
-	upsertSubscriptionFromStripe,
-} from "@quickengine/billing";
-import { headers } from "next/headers";
-import { Link } from "@tanstack/react-router";
-import { resolveActiveOrg } from "@/lib/active-org";
+import { Button } from "@quickengine/ui/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
+import { accountQueries, useActiveOrganization } from "../../lib/account-api";
 
-
-// Payment Element returns here after confirmPayment. We retrieve the subscription and record
-// it directly (idempotent — same upsert the webhook runs), so the new plan is live at once in
-// local dev without the Stripe CLI. In production the webhook is the source of truth.
-async function Page({
-	searchParams,
-}: {
-	searchParams: Promise<{ subscription_id?: string }>;
-}) {
-	const session = await getSession(await headers());
-	if (!session) return null;
-	const org = await resolveActiveOrg(session.user.id);
-	if (!org) return null;
-
-	const { subscription_id } = await searchParams;
-	let confirmed = false;
-
-	if (subscription_id) {
-		try {
-			const sub = await getStripe().subscriptions.retrieve(subscription_id);
-			await upsertSubscriptionFromStripe(sub);
-			confirmed = true;
-		} catch {
-			// Fall through — the webhook will reconcile; we just can't confirm instantly.
-		}
-	}
-
-	const planId = await getAccountPlanId(org.id);
-	const planName = getPlan(planId)?.displayName ?? "your new plan";
-
+function SuccessPage() {
+	const { active } = useActiveOrganization();
+	const plan = useQuery(accountQueries.plan(active?.id ?? ""));
 	return (
-		<div className="mx-auto max-w-md py-16 text-center">
-			<CheckCircle className="mx-auto size-12 text-emerald-400" weight="fill" />
-			<h1 className="mt-4 font-semibold text-2xl text-foreground">
-				You're on {planName}
-			</h1>
-			<p className="mt-2 text-muted-foreground text-sm">
-				{confirmed
-					? `Thanks — ${org.name} is now on the ${planName} plan.`
-					: "Your payment went through. Your plan will update in a moment if it hasn't already."}
+		<main className="mx-auto max-w-xl space-y-5 p-6 text-center">
+			<h1 className="font-semibold text-3xl">Payment received</h1>
+			<p className="text-muted-foreground">
+				Your current plan is {plan.data?.planId ?? "being confirmed"}.
 			</p>
-			<div className="mt-8 flex justify-center gap-3">
-				<Link
-					to="/"
-					className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90"
-				>
-					Back to dashboard
-				</Link>
-				<Link
-					to="/billing/plans"
-					className="rounded-lg border border-foreground/15 px-4 py-2 font-medium text-foreground text-sm transition-colors hover:bg-foreground/5"
-				>
-					View plans
-				</Link>
-			</div>
-		</div>
+			<Button asChild>
+				<Link to="/">Return to workspaces</Link>
+			</Button>
+		</main>
 	);
 }
 
 export const Route = createFileRoute("/billing/success")({
-	component: Page,
+	validateSearch: z.object({ subscription_id: z.string().optional() }),
+	component: SuccessPage,
 });

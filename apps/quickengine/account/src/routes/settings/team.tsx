@@ -1,8 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 function Page() {
-	return null;
+	return <Navigate to="/team" replace />;
 }
 
 export const Route = createFileRoute("/settings/team")({

@@ -1,14 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Panel, PanelLabel } from "@/components/surface";
-
+import { clientEnv } from "@/lib/env";
 
 // The one QuickEngine product that's live today. Others in the ecosystem are
 // named honestly as planned, not dressed up as available.
-const QUICKDASH_URL =
-	process.env.NEXT_PUBLIC_QUICKDASH_ADMIN_URL ??
-	(process.env.NODE_ENV === "production"
-		? "https://dash.quickengine.xyz"
-		: "http://localhost:3011");
+const QUICKDASH_URL = clientEnv.DASH_URL;
 
 type Product = {
 	name: string;

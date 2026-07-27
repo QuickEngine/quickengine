@@ -1,5 +1,3 @@
-"use client";
-
 import { CaretRight } from "@phosphor-icons/react";
 import {
 	Breadcrumb,
@@ -9,8 +7,7 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 } from "@quickengine/ui/components/ui/breadcrumb";
-import { Link } from "@tanstack/react-router";
-import { usePathname } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Fragment } from "react";
 
 // Human labels for path segments; anything unmapped falls back to title case.
@@ -50,7 +47,9 @@ function labelFor(segment: string): string {
 // Location crumbs for the header, derived from the current path. Mirrors the
 // sidebar's labels so the two never disagree about what a route is called.
 export function Breadcrumbs() {
-	const pathname = usePathname();
+	const pathname = useRouterState({
+		select: (state) => state.location.pathname,
+	});
 	const segments = pathname.split("/").filter(Boolean);
 
 	// Console root mirrors the sidebar's first item.

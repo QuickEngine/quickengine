@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Panel, PanelLabel } from "@/components/surface";
 
-
 const events = [
 	{ text: "Workspace created", when: "just now" },
 	{ text: "Signed in from a new device", when: "2h ago" },

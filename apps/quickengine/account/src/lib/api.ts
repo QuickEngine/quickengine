@@ -1,4 +1,4 @@
-import { createQuickBrowser } from "@quickengine/quick";
+import { createQuickBrowser } from "@quickengine/quick/browser";
 import { QueryClient } from "@tanstack/react-query";
 
 /**
@@ -12,7 +12,10 @@ import { QueryClient } from "@tanstack/react-query";
  * Vite dev server proxies it locally, so cookies are sent without any CORS
  * negotiation and no base URL has to be configured per environment.
  */
-export const api = createQuickBrowser({ baseUrl: "" });
+export const api = createQuickBrowser({
+	baseUrl: window.location.origin,
+	credential: { type: "session" },
+});
 
 export const queryClient = new QueryClient({
 	defaultOptions: {

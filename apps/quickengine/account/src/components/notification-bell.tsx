@@ -1,5 +1,3 @@
-"use client";
-
 import { Bell } from "@phosphor-icons/react";
 import {
 	Popover,
@@ -7,12 +5,10 @@ import {
 	PopoverTrigger,
 } from "@quickengine/ui/components/ui/popover";
 import { ScrollArea } from "@quickengine/ui/components/ui/scroll-area";
-import { useRouter } from "@tanstack/react-router";
-import { useState, useTransition } from "react";
-import {
-	markAllNotificationsReadAction,
-	markNotificationReadAction,
-} from "../_lib/notification-actions";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { api } from "../lib/api";
 
 export type InboxItem = {
 	id: string;
@@ -48,24 +44,35 @@ export function NotificationBell({
 	items: InboxItem[];
 	unread: number;
 }) {
-	const router = useRouter();
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [open, setOpen] = useState(false);
-	const [pending, startTransition] = useTransition();
+	const markRead = useMutation({
+		mutationFn: (id: string) =>
+			api.request(`/account/notifications/${id}/read`, { method: "POST" }),
+		onSuccess: () =>
+			queryClient.invalidateQueries({
+				queryKey: ["account", "notifications"],
+			}),
+	});
+	const markAllRead = useMutation({
+		mutationFn: () =>
+			api.request("/account/notifications/read-all", { method: "POST" }),
+		onSuccess: () =>
+			queryClient.invalidateQueries({
+				queryKey: ["account", "notifications"],
+			}),
+	});
+	const pending = markRead.isPending || markAllRead.isPending;
 
 	function markAll() {
-		startTransition(async () => {
-			await markAllNotificationsReadAction();
-			router.refresh();
-		});
+		markAllRead.mutate();
 	}
 
-	function openItem(item: InboxItem) {
-		startTransition(async () => {
-			if (item.unread) await markNotificationReadAction(item.id);
-			setOpen(false);
-			if (item.href) router.push(item.href);
-			else router.refresh();
-		});
+	async function openItem(item: InboxItem) {
+		if (item.unread) await markRead.mutateAsync(item.id);
+		setOpen(false);
+		if (item.href) await navigate({ to: item.href });
 	}
 
 	return (

@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Panel, PanelLabel, StatCard } from "@/components/surface";
 
-
 const stats = [
 	{
 		label: "Orders",

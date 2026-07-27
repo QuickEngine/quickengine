@@ -1,132 +1,148 @@
+import { Button } from "@quickengine/ui/components/ui/button";
+import { Input } from "@quickengine/ui/components/ui/input";
+import { Label } from "@quickengine/ui/components/ui/label";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { holds, resolveOrgAccess } from "@quickengine/auth/rbac";
-import { getSession } from "@quickengine/auth/server";
-import {
-	listOrganizationInvitations,
-	listOrganizationMembers,
-} from "@quickengine/db";
-import { headers } from "next/headers";
-import { Panel, PanelLabel, StatCard } from "@/components/surface";
-import { resolveActiveOrg } from "@/lib/active-org";
-import { InviteForm } from "./invite-form";
-import { RemoveMemberButton } from "./remove-member-button";
-import { RevokeInviteButton } from "./revoke-invite-button";
+import { type FormEvent, useState } from "react";
+import { accountQueries, useActiveOrganization } from "../lib/account-api";
+import { api } from "../lib/api";
 
+function TeamPage() {
+	const queryClient = useQueryClient();
+	const { active } = useActiveOrganization();
+	const organizationId = active?.id ?? "";
+	const members = useQuery(accountQueries.members(organizationId));
+	const invitations = useQuery(accountQueries.invitations(organizationId));
+	const [error, setError] = useState<string | null>(null);
+	const invalidate = () =>
+		Promise.all([
+			queryClient.invalidateQueries({
+				queryKey: ["account", organizationId, "members"],
+			}),
+			queryClient.invalidateQueries({
+				queryKey: ["account", organizationId, "invitations"],
+			}),
+		]);
+	const invite = useMutation({
+		mutationFn: (input: { email: string; role: string }) =>
+			api.request(`/account/invitations?organizationId=${organizationId}`, {
+				method: "POST",
+				body: input,
+			}),
+		onSuccess: invalidate,
+		onError: (cause) =>
+			setError(cause instanceof Error ? cause.message : "Invite failed."),
+	});
+	const removeMember = useMutation({
+		mutationFn: (userId: string) =>
+			api.request(
+				`/account/members/${userId}?organizationId=${organizationId}`,
+				{ method: "DELETE" },
+			),
+		onSuccess: invalidate,
+		onError: (cause) =>
+			setError(cause instanceof Error ? cause.message : "Removal failed."),
+	});
+	const revokeInvitation = useMutation({
+		mutationFn: (id: string) =>
+			api.request(
+				`/account/invitations/${id}?organizationId=${organizationId}`,
+				{ method: "DELETE" },
+			),
+		onSuccess: invalidate,
+		onError: (cause) =>
+			setError(cause instanceof Error ? cause.message : "Revoke failed."),
+	});
 
-const ROLE_LABEL: Record<string, string> = {
-	owner: "Owner",
-	admin: "Admin",
-	member: "Member",
-};
+	if (members.isPending || invitations.isPending) {
+		return <main className="p-6">Loading team…</main>;
+	}
+	if (members.isError || invitations.isError) {
+		throw members.error ?? invitations.error;
+	}
 
-function formatDate(value: Date): string {
-	return new Intl.DateTimeFormat("en", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	}).format(value);
-}
-
-async function Page() {
-	const session = await getSession(await headers());
-	if (!session) return null;
-	const org = await resolveActiveOrg(session.user.id);
-	if (!org) return null;
-
-	const [members, invitations, access] = await Promise.all([
-		listOrganizationMembers(org.id),
-		listOrganizationInvitations(org.id),
-		resolveOrgAccess(session.user.id, org.id),
-	]);
-	const canManage = holds(access, "members.manage");
-	const pending = invitations.filter((invite) => invite.status === "pending");
+	const submit = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		setError(null);
+		const data = new FormData(event.currentTarget);
+		invite.mutate({
+			email: String(data.get("email") ?? ""),
+			role: String(data.get("role") ?? "member"),
+		});
+	};
 
 	return (
-		<div className="space-y-4 p-6">
-			<section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-				<StatCard
-					label="Members"
-					value={String(members.length)}
-					hint="in this account"
-				/>
-				<StatCard
-					label="Pending invites"
-					value={String(pending.length)}
-					hint="awaiting acceptance"
-				/>
-				<StatCard
-					label="Your role"
-					value={ROLE_LABEL[access?.role ?? ""] ?? access?.role ?? "—"}
-					hint="on this account"
-				/>
-			</section>
-
-			<Panel>
-				<PanelLabel>Members</PanelLabel>
-				<div className="mt-3 divide-y divide-foreground/[0.06]">
-					{members.map((member) => (
-						<div
-							key={member.userId}
-							className="flex items-center justify-between py-3 text-sm"
+		<main className="space-y-8 p-6">
+			<div>
+				<h1 className="font-semibold text-2xl">Team</h1>
+				<p className="mt-1 text-muted-foreground text-sm">
+					People with access to {active?.name}.
+				</p>
+			</div>
+			<form
+				onSubmit={submit}
+				className="grid gap-3 rounded-xl border border-foreground/10 p-5 md:grid-cols-[1fr_12rem_auto]"
+			>
+				<div className="space-y-2">
+					<Label htmlFor="invite-email">Email</Label>
+					<Input id="invite-email" name="email" type="email" required />
+				</div>
+				<div className="space-y-2">
+					<Label htmlFor="invite-role">Role</Label>
+					<Input id="invite-role" name="role" defaultValue="member" required />
+				</div>
+				<Button className="self-end" disabled={invite.isPending}>
+					Send invitation
+				</Button>
+			</form>
+			<section className="space-y-3">
+				<h2 className="font-medium">Members</h2>
+				{members.data.items.map((member) => (
+					<div
+						key={member.userId}
+						className="flex items-center justify-between rounded-lg border border-foreground/10 p-4"
+					>
+						<div>
+							<p>{member.name || member.email}</p>
+							<p className="text-muted-foreground text-sm">
+								{member.email} · {member.role}
+							</p>
+						</div>
+						<Button
+							variant="outline"
+							onClick={() => removeMember.mutate(member.userId)}
 						>
-							<div>
-								<span className="text-foreground">{member.name}</span>
-								<span className="ml-2 text-muted-foreground text-xs">
-									{member.email}
-								</span>
-							</div>
-							<div className="flex items-center gap-3">
-								<span className="text-muted-foreground">
-									{ROLE_LABEL[member.role] ?? member.role}
-								</span>
-								{canManage && member.role !== "owner" && (
-									<RemoveMemberButton userId={member.userId} />
-								)}
-							</div>
+							Remove
+						</Button>
+					</div>
+				))}
+			</section>
+			{invitations.data.items.length > 0 && (
+				<section className="space-y-3">
+					<h2 className="font-medium">Invitations</h2>
+					{invitations.data.items.map((invitation) => (
+						<div
+							key={invitation.id}
+							className="flex items-center justify-between rounded-lg border border-foreground/10 p-4"
+						>
+							<p>
+								{invitation.email} · {invitation.role} · {invitation.status}
+							</p>
+							<Button
+								variant="outline"
+								onClick={() => revokeInvitation.mutate(invitation.id)}
+							>
+								Revoke
+							</Button>
 						</div>
 					))}
-				</div>
-			</Panel>
-
-			{canManage && (
-				<Panel>
-					<PanelLabel>Invite a member</PanelLabel>
-					<div className="mt-3">
-						<InviteForm />
-					</div>
-				</Panel>
+				</section>
 			)}
-
-			<Panel>
-				<PanelLabel>Pending invites</PanelLabel>
-				{pending.length === 0 ? (
-					<p className="mt-3 text-muted-foreground text-sm">
-						No pending invitations.
-					</p>
-				) : (
-					<div className="mt-3 divide-y divide-foreground/[0.06]">
-						{pending.map((invite) => (
-							<div
-								key={invite.id}
-								className="flex items-center justify-between gap-4 py-3 text-sm"
-							>
-								<div>
-									<span className="text-foreground">{invite.email}</span>
-									<span className="ml-2 text-muted-foreground text-xs">
-										{ROLE_LABEL[invite.role] ?? invite.role} · expires{" "}
-										{formatDate(invite.expiresAt)}
-									</span>
-								</div>
-								{canManage && <RevokeInviteButton invitationId={invite.id} />}
-							</div>
-						))}
-					</div>
-				)}
-			</Panel>
-		</div>
+			{error && <p className="text-destructive text-sm">{error}</p>}
+		</main>
 	);
 }
 
 export const Route = createFileRoute("/team")({
-	component: Page,
+	component: TeamPage,
 });

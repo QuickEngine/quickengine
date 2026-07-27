@@ -1,5 +1,3 @@
-"use client";
-
 import {
 	ChartBar,
 	Check,
@@ -33,6 +31,7 @@ import {
 } from "@quickengine/ui/components/ui/sidebar";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { clientEnv } from "../lib/env";
 import { ActiveSessions } from "./active-sessions";
 import { BillingSettings } from "./billing-settings";
 import { ProfileSettings } from "./profile-settings";
@@ -63,8 +62,7 @@ const sections: Section[] = [
 const LANGUAGES = ["English", "Tagalog"];
 
 // The public status + support pages live on the web app.
-const WEB_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_WEB_URL ?? "https://quickengine.xyz";
+const WEB_URL = clientEnv.WEB_URL;
 
 // Settings, as a dialog with its own sidebar (the sidebar-13 pattern): categories
 // on the left, the selected category's content on the right.

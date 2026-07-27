@@ -1,15 +1,53 @@
-"use client";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useState,
+} from "react";
 
-import { ThemeProvider as NextThemesProvider } from "next-themes";
-import type { ReactNode } from "react";
+export type Theme = "light" | "dark" | "system";
 
-// Theme context for the dashboard: light / dark / system, persisted, with the
-// class toggled on <html>. Defaults to dark (the app is dark-first) and follows
-// the OS when set to system. .light overrides live in brand.css.
+const STORAGE_KEY = "quickengine-theme";
+const ThemeContext = createContext<{
+	theme: Theme;
+	setTheme: (theme: Theme) => void;
+}>({ theme: "dark", setTheme: () => {} });
+
+const systemPrefersDark = () =>
+	window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+const applyTheme = (theme: Theme) => {
+	const dark = theme === "dark" || (theme === "system" && systemPrefersDark());
+	document.documentElement.classList.toggle("dark", dark);
+	document.documentElement.classList.toggle("light", !dark);
+};
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
+	const [theme, setThemeState] = useState<Theme>(
+		() => (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "dark",
+	);
+
+	useEffect(() => {
+		applyTheme(theme);
+		if (theme !== "system") return;
+		const media = window.matchMedia("(prefers-color-scheme: dark)");
+		const onChange = () => applyTheme("system");
+		media.addEventListener("change", onChange);
+		return () => media.removeEventListener("change", onChange);
+	}, [theme]);
+
+	const setTheme = useCallback((next: Theme) => {
+		localStorage.setItem(STORAGE_KEY, next);
+		setThemeState(next);
+	}, []);
+
 	return (
-		<NextThemesProvider attribute="class" defaultTheme="dark" enableSystem>
+		<ThemeContext.Provider value={{ theme, setTheme }}>
 			{children}
-		</NextThemesProvider>
+		</ThemeContext.Provider>
 	);
 }
+
+export const useTheme = () => useContext(ThemeContext);

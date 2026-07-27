@@ -2,31 +2,20 @@ import { QuickClient } from "./client";
 import type {
 	QuickBrowserCredential,
 	QuickClientOptions,
-	QuickCredential,
 	QuickPublishableCredential,
-	QuickServerCredential,
 	QuickSessionCredential,
 } from "./types";
 
 export { QuickClient } from "./client";
 export { QuickApiError } from "./error";
 export type * from "./types";
-export { verifyWebhookSignature } from "./webhook-signature";
 
-export function createQuick(
-	options: QuickClientOptions<QuickSessionCredential>,
-): QuickClient;
-export function createQuick(
-	options: QuickClientOptions<QuickCredential>,
-): QuickClient;
-export function createQuick(
-	options:
-		| QuickClientOptions<QuickCredential>
-		| QuickClientOptions<QuickSessionCredential>,
-) {
-	return new QuickClient(options);
-}
-
+/**
+ * Browser-safe Quick.js entry.
+ *
+ * Kept separate from the package root because webhook signature verification
+ * uses Node's `crypto` module and must never be pulled into a Vite bundle.
+ */
 export function createQuickBrowser(
 	options: QuickClientOptions<QuickSessionCredential>,
 ): QuickClient;
@@ -43,7 +32,3 @@ export function createQuickBrowser(
 ) {
 	return new QuickClient(options);
 }
-
-export const createQuickServer = (
-	options: QuickClientOptions<QuickServerCredential>,
-) => new QuickClient(options);

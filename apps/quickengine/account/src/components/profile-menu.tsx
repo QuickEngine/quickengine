@@ -1,5 +1,3 @@
-"use client";
-
 import { GeneratedAvatar } from "@quickengine/ui";
 import { Avatar } from "@quickengine/ui/components/ui/avatar";
 import {
@@ -9,14 +7,11 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@quickengine/ui/components/ui/dropdown-menu";
-
-const AUTH_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
-const WEB_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_WEB_URL ?? "http://localhost:3000";
+import { Link } from "@tanstack/react-router";
+import { clientEnv } from "../lib/env";
 
 // Sign-out routes through the auth IdP (same-origin there — no cross-origin call).
-const SIGN_OUT_HREF = `${AUTH_URL}/signout?redirect=${encodeURIComponent(WEB_URL)}`;
+const SIGN_OUT_HREF = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(clientEnv.WEB_URL)}`;
 
 // Clickable profile avatar with an account dropdown.
 export function ProfileMenu({
@@ -44,7 +39,7 @@ export function ProfileMenu({
 			<DropdownMenuContent align="end" sideOffset={14} className="w-[15.75rem]">
 				{/* Header: avatar + name + email, links to the profile. */}
 				<DropdownMenuItem asChild className="h-auto gap-2.5 py-2">
-					<a href="/settings/profile">
+					<Link to="/settings/profile">
 						<Avatar className="size-8 shrink-0">
 							<GeneratedAvatar seed={seed} className="size-full" />
 						</Avatar>
@@ -58,11 +53,11 @@ export function ProfileMenu({
 								</span>
 							) : null}
 						</span>
-					</a>
+					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem asChild>
-					<a href="/settings/profile">Account settings</a>
+					<Link to="/settings/profile">Account settings</Link>
 				</DropdownMenuItem>
 				<DropdownMenuItem asChild>
 					<a href={SIGN_OUT_HREF}>Sign out</a>

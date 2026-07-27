@@ -1,83 +1,52 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { getSession } from "@quickengine/auth/server";
-import { db, eq, getInvitationByToken } from "@quickengine/db";
-import { quickengineOrganizations } from "@quickengine/db/schema/quickengine";
 import { Button } from "@quickengine/ui/components/ui/button";
-import { headers } from "next/headers";
-import type { ReactNode } from "react";
-import { AcceptForm } from "./accept-form";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { api } from "../../lib/api";
 
-
-const ROLE_LABEL: Record<string, string> = {
-	owner: "Owner",
-	admin: "Admin",
-	member: "Member",
-};
-
-function Shell({ children }: { children: ReactNode }) {
+function JoinPage() {
+	const { token } = Route.useParams();
+	const navigate = useNavigate();
+	const invitation = useQuery({
+		queryKey: ["account", "invitation", token],
+		queryFn: async () =>
+			(
+				await api.request<{
+					email: string;
+					role: string;
+					organizationName?: string;
+				}>(`/account/invitations/${token}`)
+			).data,
+	});
+	const accept = useMutation({
+		mutationFn: () =>
+			api.request(`/account/invitations/${token}/accept`, { method: "POST" }),
+		onSuccess: () => navigate({ to: "/" }),
+	});
+	if (invitation.isPending)
+		return <main className="p-6">Loading invitation…</main>;
+	if (invitation.isError) {
+		return (
+			<main className="mx-auto max-w-lg p-6 text-center">
+				This invitation is no longer valid.
+			</main>
+		);
+	}
 	return (
-		<main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center p-6">
-			<div className="rounded-2xl border border-foreground/[0.08] p-8">
-				{children}
-			</div>
+		<main className="mx-auto max-w-lg space-y-5 p-6 text-center">
+			<h1 className="font-semibold text-2xl">Join organization</h1>
+			<p className="text-muted-foreground">
+				You were invited as {invitation.data.role}.
+			</p>
+			<Button onClick={() => accept.mutate()} disabled={accept.isPending}>
+				{accept.isPending ? "Joining…" : "Accept invitation"}
+			</Button>
+			{accept.isError && (
+				<p className="text-destructive text-sm">{accept.error.message}</p>
+			)}
 		</main>
 	);
 }
 
-async function Page({
-	params,
-}: {
-	params: Promise<{ token: string }>;
-}) {
-	const { token } = await params;
-	const invitation = await getInvitationByToken(token);
-
-	if (!invitation) {
-		return (
-			<Shell>
-				<h1 className="font-semibold text-xl">Invitation unavailable</h1>
-				<p className="mt-2 text-muted-foreground text-sm">
-					This invitation link is invalid, has expired, or has already been
-					used.
-				</p>
-			</Shell>
-		);
-	}
-
-	const [org] = await db
-		.select({ name: quickengineOrganizations.name })
-		.from(quickengineOrganizations)
-		.where(eq(quickengineOrganizations.id, invitation.organizationId))
-		.limit(1);
-	const session = await getSession(await headers());
-	const orgName = org?.name ?? "an organization";
-
-	return (
-		<Shell>
-			<h1 className="font-semibold text-xl">Join {orgName}</h1>
-			<p className="mt-2 text-muted-foreground text-sm">
-				You've been invited to join {orgName} as{" "}
-				<strong>{ROLE_LABEL[invitation.role] ?? invitation.role}</strong>.
-			</p>
-			{session ? (
-				<div className="mt-6">
-					<AcceptForm token={token} />
-				</div>
-			) : (
-				<div className="mt-6 space-y-3">
-					<p className="text-sm">
-						Sign in to your QuickEngine account to accept, then reopen this
-						link.
-					</p>
-					<Button asChild variant="outline">
-						<a href="/">Go to sign in</a>
-					</Button>
-				</div>
-			)}
-		</Shell>
-	);
-}
-
 export const Route = createFileRoute("/join/$token")({
-	component: Page,
+	component: JoinPage,
 });

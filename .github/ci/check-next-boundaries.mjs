@@ -36,14 +36,6 @@ export const SERVER_ACTION_BASELINE = new Map([
 	["apps/quickdash/admin/app/_lib/shipping-actions.ts", 4],
 	["apps/quickdash/admin/app/_lib/time-actions.ts", 3],
 	["apps/quickdash/admin/app/sign/[token]/sign-actions.ts", 2],
-	["apps/quickengine/account/app/_lib/account-actions.ts", 2],
-	["apps/quickengine/account/app/_lib/api-key-actions.ts", 2],
-	["apps/quickengine/account/app/_lib/billing-actions.ts", 2],
-	["apps/quickengine/account/app/_lib/notification-actions.ts", 2],
-	["apps/quickengine/account/app/_lib/org-actions.ts", 2],
-	["apps/quickengine/account/app/_lib/team-actions.ts", 4],
-	["apps/quickengine/account/app/_lib/workspace-actions.ts", 5],
-	["apps/quickengine/account/app/onboarding/actions.ts", 2],
 ]);
 
 /** Legitimate provider/deployment adapters plus temporary routes assigned to later slices. */
@@ -52,7 +44,6 @@ export const NEXT_ROUTE_BASELINE = new Map([
 	["apps/quickdash/admin/app/api/health/route.ts", ["GET"]],
 	["apps/quickdash/admin/app/api/v1/catalog/[id]/route.ts", ["GET"]],
 	["apps/quickdash/admin/app/api/v1/catalog/route.ts", ["GET"]],
-	["apps/quickengine/account/app/api/health/route.ts", ["GET"]],
 ]);
 
 async function walk(directory) {

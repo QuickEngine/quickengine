@@ -1,5 +1,3 @@
-"use client";
-
 import { authClient, useSession } from "@quickengine/auth/client";
 import { useCallback, useEffect, useState } from "react";
 

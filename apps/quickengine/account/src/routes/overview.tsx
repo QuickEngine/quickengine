@@ -1,138 +1,59 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { getSession } from "@quickengine/auth/server";
-import {
-	and,
-	db,
-	desc,
-	eq,
-	isNull,
-	listOrganizationInvitations,
-	listOrganizationMembers,
-	or,
-} from "@quickengine/db";
-import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
-import { headers } from "next/headers";
-import { Link } from "@tanstack/react-router";
-import { Panel, PanelLabel, StatCard } from "@/components/surface";
-import { resolveActiveOrg } from "@/lib/active-org";
-import { getBusinessType } from "@/lib/workspace-catalog";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { accountQueries, useActiveOrganization } from "../lib/account-api";
 
-
-// The cross-workspace umbrella for the active organization (read-only). Aggregates are the
-// honest, cheap ones — structure and configuration across the org's workspaces. Money/usage
-// roll-ups and an activity feed wire in with the billing, usage, and audit-log slices.
-async function Page() {
-	const session = await getSession(await headers());
-	if (!session) return null;
-	const active = await resolveActiveOrg(session.user.id);
-	if (!active) return null;
-
-	const scope = active.isPersonal
-		? or(
-				eq(quickengineWorkspaces.organizationId, active.id),
-				and(
-					eq(quickengineWorkspaces.ownerId, session.user.id),
-					isNull(quickengineWorkspaces.organizationId),
-				),
-			)
-		: eq(quickengineWorkspaces.organizationId, active.id);
-
-	const [workspaces, members, invitations] = await Promise.all([
-		db
-			.select({
-				id: quickengineWorkspaces.id,
-				name: quickengineWorkspaces.name,
-				slug: quickengineWorkspaces.slug,
-				businessType: quickengineWorkspaces.businessType,
-				modules: quickengineWorkspaces.modules,
-				archivedAt: quickengineWorkspaces.archivedAt,
-			})
-			.from(quickengineWorkspaces)
-			.where(scope)
-			.orderBy(desc(quickengineWorkspaces.createdAt)),
-		listOrganizationMembers(active.id),
-		listOrganizationInvitations(active.id),
-	]);
-
-	const activeWorkspaces = workspaces.filter(
+function OverviewPage() {
+	const { active } = useActiveOrganization();
+	const workspaces = useQuery(accountQueries.workspaces(active?.id ?? ""));
+	const members = useQuery(accountQueries.members(active?.id ?? ""));
+	if (workspaces.isPending || members.isPending) {
+		return <main className="p-6">Loading overview…</main>;
+	}
+	if (workspaces.isError || members.isError) {
+		throw workspaces.error ?? members.error;
+	}
+	const activeWorkspaces = workspaces.data.items.filter(
 		(workspace) => !workspace.archivedAt,
 	);
-	const modulesEnabled = activeWorkspaces.reduce(
-		(sum, workspace) => sum + workspace.modules.length,
-		0,
-	);
-	const pending = invitations.filter(
-		(invite) => invite.status === "pending",
-	).length;
-
 	return (
-		<div className="space-y-4 p-6">
-			<section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<StatCard
-					label="Active workspaces"
-					value={String(activeWorkspaces.length)}
-					hint={
-						workspaces.length > activeWorkspaces.length
-							? `${workspaces.length} total incl. archived`
-							: "in this organization"
-					}
+		<main className="space-y-6 p-6">
+			<div>
+				<h1 className="font-semibold text-2xl">Overview</h1>
+				<p className="mt-1 text-muted-foreground text-sm">{active?.name}</p>
+			</div>
+			<div className="grid gap-4 md:grid-cols-3">
+				<Metric label="Active workspaces" value={activeWorkspaces.length} />
+				<Metric label="Team members" value={members.data.items.length} />
+				<Metric
+					label="Archived workspaces"
+					value={workspaces.data.items.length - activeWorkspaces.length}
 				/>
-				<StatCard
-					label="Members"
-					value={String(members.length)}
-					hint="in this organization"
-				/>
-				<StatCard
-					label="Pending invites"
-					value={String(pending)}
-					hint="awaiting acceptance"
-				/>
-				<StatCard
-					label="Modules enabled"
-					value={String(modulesEnabled)}
-					hint={`across ${activeWorkspaces.length} workspace${
-						activeWorkspaces.length === 1 ? "" : "s"
-					}`}
-				/>
-			</section>
+			</div>
+			<div className="grid gap-3 md:grid-cols-2">
+				{activeWorkspaces.map((workspace) => (
+					<Link
+						key={workspace.id}
+						to="/workspaces/$slug"
+						params={{ slug: workspace.slug ?? workspace.id }}
+						className="rounded-xl border border-foreground/10 p-5 hover:bg-foreground/[0.03]"
+					>
+						{workspace.name}
+					</Link>
+				))}
+			</div>
+		</main>
+	);
+}
 
-			<Panel>
-				<PanelLabel>Workspaces</PanelLabel>
-				{workspaces.length === 0 ? (
-					<p className="mt-3 text-muted-foreground text-sm">
-						No workspaces in this organization yet.
-					</p>
-				) : (
-					<div className="mt-3 divide-y divide-foreground/[0.06]">
-						{workspaces.map((workspace) => {
-							const type = getBusinessType(workspace.businessType);
-							const moduleCount = workspace.modules.length;
-							return (
-								<Link
-									key={workspace.id}
-									to={`/workspaces/${workspace.slug}`}
-									className="flex items-center justify-between py-3 text-sm transition-opacity hover:opacity-70"
-								>
-									<div>
-										<span className="text-foreground">{workspace.name}</span>
-										<span className="ml-2 text-muted-foreground text-xs">
-											{type?.name ?? workspace.businessType}
-											{workspace.archivedAt ? " · archived" : ""}
-										</span>
-									</div>
-									<span className="text-muted-foreground text-xs">
-										{moduleCount} module{moduleCount === 1 ? "" : "s"}
-									</span>
-								</Link>
-							);
-						})}
-					</div>
-				)}
-			</Panel>
+function Metric({ label, value }: { label: string; value: number }) {
+	return (
+		<div className="rounded-xl border border-foreground/10 p-5">
+			<p className="text-muted-foreground text-sm">{label}</p>
+			<p className="mt-2 font-semibold text-3xl">{value}</p>
 		</div>
 	);
 }
 
 export const Route = createFileRoute("/overview")({
-	component: Page,
+	component: OverviewPage,
 });

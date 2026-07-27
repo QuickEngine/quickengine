@@ -1,36 +1,55 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { getSession } from "@quickengine/auth/server";
-import { headers } from "next/headers";
-import { redirect } from "@tanstack/react-router";
-import { buildOnboardingCatalog } from "@/lib/module-catalog";
-import { getAccountState } from "@/lib/onboarding";
-import { OnboardingFlow } from "./flow";
+import { Button } from "@quickengine/ui/components/ui/button";
+import { Input } from "@quickengine/ui/components/ui/input";
+import { Label } from "@quickengine/ui/components/ui/label";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { type FormEvent, useState } from "react";
+import { z } from "zod";
+import { api } from "../lib/api";
 
-
-// Shell-free first-run onboarding (lives outside the (app) group, so no sidebar
-// or header). Auth is enforced by the root layout; here we bounce users who have
-// already finished onboarding back into the app so they can't re-run it.
-async function Page({
-	searchParams,
-}: {
-	searchParams: Promise<{ prompt?: string }>;
-}) {
-	const params = await searchParams;
-	const session = await getSession(await headers());
-	const state = session ? await getAccountState(session.user.id) : null;
-	if (state?.onboardingCompletedAt) {
-		redirect("/");
-	}
-	// Resolved here, on the server: the module registry imports every module package and
-	// their Drizzle schemas, none of which belongs in the browser bundle.
+function OnboardingPage() {
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	const [error, setError] = useState<string | null>(null);
+	const create = useMutation({
+		mutationFn: (name: string) =>
+			api.request("/account/workspaces", {
+				method: "POST",
+				body: { name, businessType: "other" },
+			}),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: ["account"] });
+			await navigate({ to: "/" });
+		},
+		onError: (cause) =>
+			setError(cause instanceof Error ? cause.message : "Setup failed."),
+	});
+	const submit = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		create.mutate(String(new FormData(event.currentTarget).get("name") ?? ""));
+	};
 	return (
-		<OnboardingFlow
-			catalog={buildOnboardingCatalog()}
-			initialDescription={params.prompt?.slice(0, 500) ?? ""}
-		/>
+		<form onSubmit={submit} className="mx-auto max-w-xl space-y-6 p-6">
+			<div>
+				<h1 className="font-semibold text-3xl">Create your first workspace</h1>
+				<p className="mt-2 text-muted-foreground">
+					Start with the foundation modules. You can configure everything else
+					afterward.
+				</p>
+			</div>
+			<div className="space-y-2">
+				<Label htmlFor="first-workspace">Workspace name</Label>
+				<Input id="first-workspace" name="name" required autoFocus />
+			</div>
+			{error && <p className="text-destructive text-sm">{error}</p>}
+			<Button disabled={create.isPending}>
+				{create.isPending ? "Creating…" : "Create workspace"}
+			</Button>
+		</form>
 	);
 }
 
 export const Route = createFileRoute("/onboarding")({
-	component: Page,
+	validateSearch: z.object({ prompt: z.string().optional() }),
+	component: OnboardingPage,
 });

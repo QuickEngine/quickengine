@@ -5,7 +5,7 @@
 export const ANNUAL_DISCOUNT = 0.15;
 
 export type Plan = {
-	id: string;
+	id: "free" | "launch" | "grow" | "scale";
 	name: string;
 	monthly: number; // placeholder USD / month
 	highlight?: boolean;
@@ -21,36 +21,36 @@ export const PLANS: Plan[] = [
 	},
 	{
 		id: "launch",
-		name: "Starter",
+		name: "Launch",
 		monthly: 9,
 		features: [
 			"3 workspaces",
 			"Scheduling + inventory",
 			"10 GB storage",
-			"3 seats",
+			"2 seats",
 		],
 	},
 	{
 		id: "grow",
-		name: "Pro",
+		name: "Grow",
 		monthly: 19,
 		highlight: true,
 		features: [
 			"10 workspaces",
 			"Reporting + automation",
 			"100 GB storage",
-			"10 seats",
+			"5 seats",
 		],
 	},
 	{
 		id: "scale",
-		name: "Growth",
+		name: "Scale",
 		monthly: 39,
 		features: [
 			"Unlimited workspaces",
-			"Everything in Pro",
+			"Everything in Grow",
 			"1 TB storage",
-			"25 seats",
+			"15 seats",
 		],
 	},
 ];

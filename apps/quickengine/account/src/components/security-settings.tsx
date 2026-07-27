@@ -1,5 +1,3 @@
-"use client";
-
 import { passkey, twoFactor, useSession } from "@quickengine/auth/client";
 import { QRCodeSVG } from "qrcode.react";
 import { type FormEvent, useState } from "react";

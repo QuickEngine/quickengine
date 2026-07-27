@@ -1,5 +1,3 @@
-"use client";
-
 import { CaretUpDown, Check, Plus } from "@phosphor-icons/react";
 import { GeneratedAvatar } from "@quickengine/ui";
 import { Avatar } from "@quickengine/ui/components/ui/avatar";
@@ -18,9 +16,8 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@quickengine/ui/components/ui/popover";
-import { useRouter } from "@tanstack/react-router";
-import { useState, useTransition } from "react";
-import { setActiveOrgAction } from "../_lib/org-actions";
+import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 
 export type SwitcherOrg = { id: string; name: string; isPersonal: boolean };
 
@@ -31,14 +28,15 @@ export function TeamSwitcher({
 	orgs,
 	activeOrgId,
 	tier = "Free",
+	onSelect,
 }: {
 	orgs: SwitcherOrg[];
 	activeOrgId: string;
 	tier?: string;
+	onSelect: (organizationId: string) => void;
 }) {
 	const [open, setOpen] = useState(false);
-	const [pending, startTransition] = useTransition();
-	const router = useRouter();
+	const navigate = useNavigate();
 
 	const active = orgs.find((org) => org.id === activeOrgId) ?? orgs[0];
 	if (!active) return null;
@@ -48,11 +46,8 @@ export function TeamSwitcher({
 			setOpen(false);
 			return;
 		}
-		startTransition(async () => {
-			await setActiveOrgAction(orgId);
-			router.refresh();
-			setOpen(false);
-		});
+		onSelect(orgId);
+		setOpen(false);
 	}
 
 	return (
@@ -88,7 +83,6 @@ export function TeamSwitcher({
 									<CommandItem
 										key={org.id}
 										value={org.name}
-										disabled={pending}
 										onSelect={() => switchTo(org.id)}
 										className="gap-2"
 									>
@@ -111,7 +105,7 @@ export function TeamSwitcher({
 									className="gap-2"
 									onSelect={() => {
 										setOpen(false);
-										router.push("/organizations/new");
+										void navigate({ to: "/organizations/new" });
 									}}
 								>
 									<Plus className="size-4" />

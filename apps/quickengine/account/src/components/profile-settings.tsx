@@ -1,5 +1,3 @@
-"use client";
-
 import { authClient, useSession } from "@quickengine/auth/client";
 import { GeneratedAvatar } from "@quickengine/ui";
 import {
@@ -15,7 +13,8 @@ import {
 } from "@quickengine/ui/components/ui/alert-dialog";
 import { Avatar } from "@quickengine/ui/components/ui/avatar";
 import { type FormEvent, type MouseEvent, useEffect, useState } from "react";
-import { deleteAccount } from "../_lib/account-actions";
+import { api } from "../lib/api";
+import { clientEnv } from "../lib/env";
 
 const primaryBtn =
 	"rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50";
@@ -24,9 +23,7 @@ const inputCls =
 
 // After deletion the DB session is gone; route through sign-out to clear the
 // stale cookie (and its short-lived cache), landing on sign-up to start over.
-const AUTH_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
-const AFTER_DELETE_HREF = `${AUTH_URL}/signout?redirect=${encodeURIComponent(`${AUTH_URL}/signup`)}`;
+const AFTER_DELETE_HREF = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(`${clientEnv.AUTH_URL}/signup`)}`;
 
 export function ProfileSettings() {
 	const { data: session } = useSession();
@@ -66,7 +63,7 @@ export function ProfileSettings() {
 		setDeleting(true);
 		setDeleteError("");
 		try {
-			await deleteAccount();
+			await api.request("/account", { method: "DELETE" });
 			window.location.href = AFTER_DELETE_HREF;
 		} catch {
 			setDeleting(false);

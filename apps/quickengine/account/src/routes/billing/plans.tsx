@@ -1,50 +1,56 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { getSession } from "@quickengine/auth/server";
-import { getAccountPlanId, getPlanPricing } from "@quickengine/billing";
-import { headers } from "next/headers";
-import { resolveActiveOrg } from "@/lib/active-org";
+import { Button } from "@quickengine/ui/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
+import { accountQueries, useActiveOrganization } from "../../lib/account-api";
+import { PLANS } from "../../lib/plans";
 
+const searchSchema = z.object({ checkout: z.string().optional() });
 
-// Dedicated plans page: every tier with its live Stripe price, the active org's current plan
-// highlighted, a checkout button per tier. Org-scoped — the active org is billed.
-async function Page({
-	searchParams,
-}: {
-	searchParams: Promise<{ checkout?: string }>;
-}) {
-	const session = await getSession(await headers());
-	if (!session) return null;
-	const org = await resolveActiveOrg(session.user.id);
-	if (!org) return null;
-
-	const { checkout } = await searchParams;
-	const [pricing, currentPlanId] = await Promise.all([
-		getPlanPricing(),
-		getAccountPlanId(org.id),
-	]);
-
-	const { PlansView } = await import("./plans-view");
-
+function PlansPage() {
+	const { active } = useActiveOrganization();
+	const current = useQuery(accountQueries.plan(active?.id ?? ""));
 	return (
-		<div className="space-y-6">
-			<div>
-				<h1 className="font-semibold text-2xl text-foreground">
-					Choose your plan
-				</h1>
-				<p className="mt-1 text-muted-foreground text-sm">
-					Billing for <span className="text-foreground">{org.name}</span>.
-					Prices are live from Stripe.
+		<main className="mx-auto max-w-6xl space-y-8 p-6">
+			<div className="text-center">
+				<h1 className="font-semibold text-3xl">Plans</h1>
+				<p className="mt-2 text-muted-foreground">
+					Choose the infrastructure allowance that fits your organization.
 				</p>
 			</div>
-			<PlansView
-				pricing={pricing}
-				currentPlanId={currentPlanId}
-				canceled={checkout === "canceled"}
-			/>
-		</div>
+			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+				{PLANS.map((plan) => (
+					<section
+						key={plan.id}
+						className="flex flex-col rounded-xl border border-foreground/10 p-5"
+					>
+						<h2 className="font-semibold text-xl">{plan.name}</h2>
+						<p className="mt-2 text-3xl">${plan.monthly}</p>
+						<ul className="my-5 flex-1 space-y-2 text-muted-foreground text-sm">
+							{plan.features.map((feature) => (
+								<li key={feature}>{feature}</li>
+							))}
+						</ul>
+						{plan.id === current.data?.planId ? (
+							<Button disabled>Current plan</Button>
+						) : plan.id === "free" ? null : (
+							<Button asChild>
+								<Link
+									to="/billing/checkout"
+									search={{ plan: plan.id, cycle: "monthly" }}
+								>
+									Choose {plan.name}
+								</Link>
+							</Button>
+						)}
+					</section>
+				))}
+			</div>
+		</main>
 	);
 }
 
 export const Route = createFileRoute("/billing/plans")({
-	component: Page,
+	validateSearch: searchSchema,
+	component: PlansPage,
 });

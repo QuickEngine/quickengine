@@ -229,3 +229,21 @@ export async function listWorkspacesForOrganization(organizationId: string) {
 		.where(eq(quickengineWorkspaces.organizationId, organizationId))
 		.orderBy(desc(quickengineWorkspaces.createdAt));
 }
+
+/** Proves a workspace belongs to an organization before an account-level write. */
+export async function workspaceBelongsToOrganization(
+	workspaceId: string,
+	organizationId: string,
+) {
+	const [workspace] = await db
+		.select({ id: quickengineWorkspaces.id })
+		.from(quickengineWorkspaces)
+		.where(
+			and(
+				eq(quickengineWorkspaces.id, workspaceId),
+				eq(quickengineWorkspaces.organizationId, organizationId),
+			),
+		)
+		.limit(1);
+	return Boolean(workspace);
+}

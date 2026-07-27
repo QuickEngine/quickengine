@@ -229,6 +229,14 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	updateWebhookEndpoint: { enabled: false },
 	// A deliberately odd name, because the name is decoration: authorization reads
 	// the permission list and never the label.
+	createWorkspace: {
+		name: "Northwind Trading",
+		businessType: "ecommerce",
+		moduleIds: ["client-records", "invoicing"],
+	},
+	renameWorkspace: { name: "Northwind Trading Co." },
+	setWorkspaceArchived: { archived: true },
+	setWorkspaceModuleEnabled: { enabled: true },
 	createRole: {
 		name: "Bookkeeper",
 		description: "Keeps the books, cannot change the team",

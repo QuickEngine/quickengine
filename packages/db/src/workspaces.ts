@@ -1,7 +1,11 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "./client";
 import { ensurePersonalOrg } from "./orgs";
-import { quickengineUsers, quickengineWorkspaces } from "./schema/quickengine";
+import {
+	quickengineOrganizationMembers,
+	quickengineUsers,
+	quickengineWorkspaces,
+} from "./schema/quickengine";
 import { workspaceModules } from "./schema/workspace-modules";
 import { nextAvailableSlug, slugify } from "./slug";
 import {
@@ -228,6 +232,44 @@ export async function listWorkspacesForOrganization(organizationId: string) {
 		.from(quickengineWorkspaces)
 		.where(eq(quickengineWorkspaces.organizationId, organizationId))
 		.orderBy(desc(quickengineWorkspaces.createdAt));
+}
+
+/**
+ * Every active workspace a user may open in QuickDash, across all organizations.
+ *
+ * This is a product-shell read, not an account-management read: owners and
+ * organization members see the same switcher regardless of which organization
+ * happens to be selected in the Account app.
+ */
+export async function listAccessibleWorkspaces(userId: string) {
+	return db
+		.select({
+			id: quickengineWorkspaces.id,
+			name: quickengineWorkspaces.name,
+			slug: quickengineWorkspaces.slug,
+			businessType: quickengineWorkspaces.businessType,
+		})
+		.from(quickengineWorkspaces)
+		.leftJoin(
+			quickengineOrganizationMembers,
+			and(
+				eq(
+					quickengineOrganizationMembers.organizationId,
+					quickengineWorkspaces.organizationId,
+				),
+				eq(quickengineOrganizationMembers.userId, userId),
+			),
+		)
+		.where(
+			and(
+				isNull(quickengineWorkspaces.archivedAt),
+				or(
+					eq(quickengineWorkspaces.ownerId, userId),
+					isNotNull(quickengineOrganizationMembers.userId),
+				),
+			),
+		)
+		.orderBy(asc(quickengineWorkspaces.createdAt));
 }
 
 /** Proves a workspace belongs to an organization before an account-level write. */

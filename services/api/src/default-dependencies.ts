@@ -1,6 +1,7 @@
 import { verifyApiKey } from "@quickengine/auth/api-keys";
+import { resolveWorkspaceAccess } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
-import { and, db, eq, isNull, resolveWorkspaceRole } from "@quickengine/db";
+import { and, db, eq, isNull } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import { getWorkspaceModules } from "@quickengine/module-registry";
 import type {
@@ -64,16 +65,17 @@ export const defaultPlatformDependencies: PlatformDependencies = {
 	async getWorkspaceForUser(userId, workspaceId) {
 		const loaded = await loadWorkspace(workspaceId);
 		if (!loaded) return null;
-		const role = await resolveWorkspaceRole(userId, {
+		const access = await resolveWorkspaceAccess(userId, {
 			organizationId: loaded.workspace.organizationId,
 			ownerId: loaded.workspace.ownerId,
 		});
-		if (!role) return null;
+		if (!access) return null;
 		return {
+			capabilities: access.capabilities,
 			enabledModuleIds: loaded.enabledModuleIds,
 			organizationId: loaded.workspace.organizationId,
 			ownerId: loaded.workspace.ownerId,
-			role,
+			role: access.role,
 			workspace: {
 				businessType: loaded.workspace.businessType,
 				id: loaded.workspace.id,

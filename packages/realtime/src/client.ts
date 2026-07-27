@@ -3,16 +3,18 @@
 import PusherClient from "pusher-js";
 import type { ChannelAuthorizationHandler } from "pusher-js/types/src/core/auth/options";
 import { useEffect, useRef } from "react";
-import { workspaceChannel } from "./index";
+import { workspaceChannel } from "./channels";
 
 // Public Pusher config is inlined at build time by Next. Absent in local dev (and any
 // environment without the keys), in which case the hook is a no-op.
-const KEY = process.env.NEXT_PUBLIC_PUSHER_KEY;
-const CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+const clientEnv = (
+	import.meta as ImportMeta & { env: Record<string, string | undefined> }
+).env;
+const KEY = clientEnv.VITE_PUSHER_KEY;
+const CLUSTER = clientEnv.VITE_PUSHER_CLUSTER;
 // The API is its own deployment, so authorizing a subscription is a cross-origin
 // call rather than a route inside this app.
-const API_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_API_URL ?? "http://localhost:3020";
+const API_URL = clientEnv.VITE_API_URL ?? window.location.origin;
 
 /**
  * Authorize a subscription against the QuickEngine API.

@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **QuickDash now runs on Vite, TanStack Router and TanStack Query.** Every operational
+  module, workspace search, activity, onboarding, file transfer and public contract signing
+  now uses the QuickEngine API without a Next.js server.
+- **QuickDash file transfer and signing are available through the API.** Authenticated
+  workspace members can upload and download documents, while contract recipients can review,
+  sign or decline through their secure link.
 - **The account console now runs on Vite, TanStack Router and TanStack Query.** Workspace,
   organization, team, invitation, notification, API-key and billing screens now use the same
   public API and Quick.js client available to customers, with authenticated routes refusing to

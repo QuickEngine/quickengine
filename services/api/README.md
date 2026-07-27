@@ -122,20 +122,11 @@ curl https://api.quickengine.xyz/version
 
 `/ready` is the meaningful one: it probes the database and the request-control store.
 
-### After the API is live
+### QuickDash consumers
 
-Three things move off Next, in this order:
-
-1. **Inngest** — repoint the Inngest app at `https://api.quickengine.xyz/api/inngest`, then
-   delete `apps/quickdash/admin/app/api/inngest/route.ts`. ⚠️ Between the old endpoint going
-   away and the new one being registered, outbox dispatch and webhook delivery pause.
-   Nothing is lost — that is what the outbox is for — but events queue until it resumes.
-2. **Realtime auth** — point `authEndpoint` in `packages/realtime/src/client.ts` at
-   `/v1/realtime/auth` on this origin, then delete
-   `apps/quickdash/admin/app/api/pusher/auth/route.ts`, removing the duplicated tenant gate
-   (TECH_DEBT 10).
-3. **Activity feed** — QuickDash reads `listWorkspaceActivity` directly server-side; move it
-   to `GET /v1/activity` so the cursor recovery path has a real consumer (TECH_DEBT 11).
+Inngest, realtime authorization, activity recovery, workspace search, onboarding state,
+file transfer and public contract signing now run through this service. QuickDash is a static
+Vite application and owns no server routes.
 
 The write-reliability baseline caps ordinary request bodies at 1 MiB, supplies cooperative
 10-second deadlines, defines principal/workspace-scoped Redis rate budgets, and standardizes

@@ -26,6 +26,7 @@ import {
 	type CreateQuoteEstimateInput,
 	createQuoteEstimateInTx,
 	deleteDraftQuoteEstimateInTx,
+	reviseQuoteEstimateInTx,
 	sendQuoteEstimateInTx,
 	setSimpleQuoteStatusInTx,
 	updateDraftQuoteEstimateInTx,
@@ -365,6 +366,84 @@ export function deleteQuoteEstimateCommand(
 				version: 1,
 			});
 			return { result: { id: row.id }, status: 200 };
+		})
+		.catch(mapQuoteError);
+}
+
+function quoteStatusCommand(
+	context: MutationExecutionContext,
+	id: string,
+	status: "expired" | "voided",
+	uow: QuoteMutationUnitOfWork,
+): Promise<MutationResult<QuoteEstimateDto>> {
+	return uow
+		.execute(context, async (transaction) => {
+			const row = await setSimpleQuoteStatusInTx(
+				transaction.db,
+				context.workspaceId,
+				id,
+				status,
+			);
+			const verb = status === "expired" ? "expired" : "voided";
+			await transaction.audit({
+				action: `quote.${verb}`,
+				resourceId: row.id,
+				resourceType: "quote_estimate",
+			});
+			await transaction.outbox({
+				aggregateId: row.id,
+				aggregateType: "quote_estimate",
+				eventName: `quote.${verb}`,
+				payload: { quoteEstimateId: row.id },
+				version: 1,
+			});
+			return { result: serializeQuote(row), status: 200 };
+		})
+		.catch(mapQuoteError);
+}
+
+export function expireQuoteEstimateCommand(
+	context: MutationExecutionContext,
+	id: string,
+	uow: QuoteMutationUnitOfWork = mutationUnitOfWork,
+) {
+	return quoteStatusCommand(context, id, "expired", uow);
+}
+
+export function voidQuoteEstimateCommand(
+	context: MutationExecutionContext,
+	id: string,
+	uow: QuoteMutationUnitOfWork = mutationUnitOfWork,
+) {
+	return quoteStatusCommand(context, id, "voided", uow);
+}
+
+export function reviseQuoteEstimateCommand(
+	context: MutationExecutionContext,
+	id: string,
+	uow: QuoteMutationUnitOfWork = mutationUnitOfWork,
+): Promise<MutationResult<QuoteEstimateDto>> {
+	return uow
+		.execute(context, async (transaction) => {
+			const row = await reviseQuoteEstimateInTx(
+				transaction.db,
+				context.workspaceId,
+				id,
+			);
+			await transaction.audit({
+				action: "quote.revised",
+				metadata: { supersedesId: id },
+				resourceId: row.id,
+				resourceType: "quote_estimate",
+			});
+			await transaction.outbox({
+				aggregateId: row.id,
+				aggregateType: "quote_estimate",
+				eventName: "quote.revised",
+				payload: { quoteEstimateId: row.id, supersedesId: id },
+				version: 1,
+			});
+			return { result: serializeQuote(row), status: 201 };
 		})
 		.catch(mapQuoteError);
 }

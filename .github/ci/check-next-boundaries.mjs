@@ -17,34 +17,10 @@ const HTTP_METHODS = new Set([
 ]);
 
 /** Existing compatibility adapters. Counts may decrease; they must never increase. */
-export const SERVER_ACTION_BASELINE = new Map([
-	["apps/quickdash/admin/app/_lib/booking-actions.ts", 3],
-	["apps/quickdash/admin/app/_lib/catalog-actions.ts", 6],
-	["apps/quickdash/admin/app/_lib/client-record-actions.ts", 3],
-	["apps/quickdash/admin/app/_lib/contract-actions.ts", 4],
-	["apps/quickdash/admin/app/_lib/file-actions.ts", 4],
-	["apps/quickdash/admin/app/_lib/first-action-checklist-actions.ts", 1],
-	["apps/quickdash/admin/app/_lib/fulfillment-actions.ts", 3],
-	["apps/quickdash/admin/app/_lib/inventory-actions.ts", 5],
-	["apps/quickdash/admin/app/_lib/invoice-actions.ts", 4],
-	["apps/quickdash/admin/app/_lib/order-actions.ts", 3],
-	["apps/quickdash/admin/app/_lib/payment-actions.ts", 2],
-	["apps/quickdash/admin/app/_lib/project-actions.ts", 4],
-	["apps/quickdash/admin/app/_lib/quickdash-orientation-actions.ts", 2],
-	["apps/quickdash/admin/app/_lib/quote-actions.ts", 4],
-	["apps/quickdash/admin/app/_lib/search-actions.ts", 1],
-	["apps/quickdash/admin/app/_lib/shipping-actions.ts", 4],
-	["apps/quickdash/admin/app/_lib/time-actions.ts", 3],
-	["apps/quickdash/admin/app/sign/[token]/sign-actions.ts", 2],
-]);
+export const SERVER_ACTION_BASELINE = new Map();
 
 /** Legitimate provider/deployment adapters plus temporary routes assigned to later slices. */
-export const NEXT_ROUTE_BASELINE = new Map([
-	["apps/quickdash/admin/app/agents.txt/route.ts", ["GET"]],
-	["apps/quickdash/admin/app/api/health/route.ts", ["GET"]],
-	["apps/quickdash/admin/app/api/v1/catalog/[id]/route.ts", ["GET"]],
-	["apps/quickdash/admin/app/api/v1/catalog/route.ts", ["GET"]],
-]);
+export const NEXT_ROUTE_BASELINE = new Map();
 
 async function walk(directory) {
 	const files = [];

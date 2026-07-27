@@ -1,0 +1,17 @@
+{
+	"rewrites": [
+		{
+			"source": "/api/auth/:path*",
+			"destination": "https://api.quickengine.xyz/api/auth/:path*"
+		},
+		{
+			"source": "/v1/:path*",
+			"destination": "https://api.quickengine.xyz/v1/:path*"
+		},
+		{
+			"source": "/signout",
+			"destination": "https://api.quickengine.xyz/api/auth-signout"
+		},
+		{ "source": "/(.*)", "destination": "/index.html" }
+	]
+}

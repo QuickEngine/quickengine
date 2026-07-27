@@ -553,86 +553,92 @@ export function voidQuoteEstimate(workspaceId: string, id: string) {
 	return setSimpleQuoteStatus(workspaceId, id, "voided");
 }
 
-export async function reviseQuoteEstimate(workspaceId: string, id: string) {
-	return db.transaction(async (tx) => {
-		const [current] = await tx
-			.select()
-			.from(quoteEstimates)
-			.where(
-				and(
-					eq(quoteEstimates.workspaceId, workspaceId),
-					eq(quoteEstimates.id, id),
-				),
-			)
-			.limit(1)
-			.for("update");
-		if (!current) throw new Error("QUOTE_ESTIMATE_NOT_FOUND");
-		if (!canReviseQuoteEstimate(current.status)) {
-			throw new Error("QUOTE_ESTIMATE_NOT_REVISABLE");
-		}
-		const [existing] = await tx
-			.select()
-			.from(quoteEstimates)
-			.where(eq(quoteEstimates.supersedesId, current.id))
-			.limit(1);
-		if (existing) return existing;
-		const lines = await tx
-			.select()
-			.from(quoteEstimateLineItems)
-			.where(eq(quoteEstimateLineItems.quoteEstimateId, current.id))
-			.orderBy(asc(quoteEstimateLineItems.position));
-		const revision = current.revision + 1;
-		const [created] = await tx
-			.insert(quoteEstimates)
-			.values({
-				workspaceId,
-				seriesId: current.seriesId,
-				supersedesId: current.id,
-				clientId: current.clientId,
-				clientName: current.clientName,
-				clientEmail: current.clientEmail,
-				clientCompany: current.clientCompany,
-				kind: current.kind,
-				title: current.title,
-				numberPrefix: current.numberPrefix,
-				sequence: current.sequence,
+export async function reviseQuoteEstimateInTx(
+	tx: QuoteTransaction,
+	workspaceId: string,
+	id: string,
+) {
+	const [current] = await tx
+		.select()
+		.from(quoteEstimates)
+		.where(
+			and(
+				eq(quoteEstimates.workspaceId, workspaceId),
+				eq(quoteEstimates.id, id),
+			),
+		)
+		.limit(1)
+		.for("update");
+	if (!current) throw new Error("QUOTE_ESTIMATE_NOT_FOUND");
+	if (!canReviseQuoteEstimate(current.status)) {
+		throw new Error("QUOTE_ESTIMATE_NOT_REVISABLE");
+	}
+	const [existing] = await tx
+		.select()
+		.from(quoteEstimates)
+		.where(eq(quoteEstimates.supersedesId, current.id))
+		.limit(1);
+	if (existing) return existing;
+	const lines = await tx
+		.select()
+		.from(quoteEstimateLineItems)
+		.where(eq(quoteEstimateLineItems.quoteEstimateId, current.id))
+		.orderBy(asc(quoteEstimateLineItems.position));
+	const revision = current.revision + 1;
+	const [created] = await tx
+		.insert(quoteEstimates)
+		.values({
+			workspaceId,
+			seriesId: current.seriesId,
+			supersedesId: current.id,
+			clientId: current.clientId,
+			clientName: current.clientName,
+			clientEmail: current.clientEmail,
+			clientCompany: current.clientCompany,
+			kind: current.kind,
+			title: current.title,
+			numberPrefix: current.numberPrefix,
+			sequence: current.sequence,
+			revision,
+			number: formatQuoteNumber(
+				current.numberPrefix,
+				current.sequence,
 				revision,
-				number: formatQuoteNumber(
-					current.numberPrefix,
-					current.sequence,
-					revision,
-				),
-				status: "draft",
-				currency: current.currency,
-				subtotalCents: current.subtotalCents,
-				taxCents: current.taxCents,
-				totalCents: current.totalCents,
-				validUntil: current.validUntil,
-				notes: current.notes,
-				terms: current.terms,
-				metadata: current.metadata,
-			})
-			.returning();
-		await tx.insert(quoteEstimateLineItems).values(
-			lines.map((line) => ({
-				quoteEstimateId: created.id,
-				catalogItemId: line.catalogItemId,
-				catalogItemVariantId: line.catalogItemVariantId,
-				variantOptions: line.variantOptions,
-				name: line.name,
-				description: line.description,
-				itemType: line.itemType,
-				sku: line.sku,
-				quantity: line.quantity,
-				unitLabel: line.unitLabel,
-				unitPriceCents: line.unitPriceCents,
-				lineTotalCents: line.lineTotalCents,
-				position: line.position,
-				metadata: line.metadata,
-			})),
-		);
-		return created;
-	});
+			),
+			status: "draft",
+			currency: current.currency,
+			subtotalCents: current.subtotalCents,
+			taxCents: current.taxCents,
+			totalCents: current.totalCents,
+			validUntil: current.validUntil,
+			notes: current.notes,
+			terms: current.terms,
+			metadata: current.metadata,
+		})
+		.returning();
+	await tx.insert(quoteEstimateLineItems).values(
+		lines.map((line) => ({
+			quoteEstimateId: created.id,
+			catalogItemId: line.catalogItemId,
+			catalogItemVariantId: line.catalogItemVariantId,
+			variantOptions: line.variantOptions,
+			name: line.name,
+			description: line.description,
+			itemType: line.itemType,
+			sku: line.sku,
+			quantity: line.quantity,
+			unitLabel: line.unitLabel,
+			unitPriceCents: line.unitPriceCents,
+			lineTotalCents: line.lineTotalCents,
+			position: line.position,
+			metadata: line.metadata,
+		})),
+	);
+	return created;
+}
+
+export function reviseQuoteEstimate(workspaceId: string, id: string) {
+	return db.transaction((tx) => reviseQuoteEstimateInTx(tx, workspaceId, id));
 }
 
 export async function deleteDraftQuoteEstimateInTx(

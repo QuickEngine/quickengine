@@ -73,7 +73,7 @@ pnpm + Turborepo · Vercel
 
 ```txt
 apps/quickengine/{web,auth,account}   the frontends
-apps/quickdash/admin
+apps/quickdash/web
 services/api                          the canonical Hono boundary
 packages/
   modules/          15 isolated business capabilities

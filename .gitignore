@@ -62,4 +62,4 @@ yarn-error.log*
 .DS_Store
 *.pem
 *.tsbuildinfo
-
+routeTree.gen.ts

@@ -31,15 +31,25 @@ export type QuickBrowserCredential =
 	| QuickPublishableCredential
 	| QuickSessionCredential;
 
-export type QuickClientOptions<
-	TCredential extends QuickCredential = QuickCredential,
-> = {
+type QuickClientBaseOptions = {
 	baseUrl: string;
-	workspaceId: string;
-	credential: TCredential;
 	fetcher?: typeof fetch;
 	apiVersion?: string;
 };
+
+export type QuickClientOptions<
+	TCredential extends QuickCredential = QuickCredential,
+> = QuickClientBaseOptions &
+	([TCredential] extends [QuickSessionCredential]
+		? {
+				credential: TCredential;
+				/** Optional for session-scoped account endpoints. */
+				workspaceId?: string;
+			}
+		: {
+				credential: TCredential;
+				workspaceId: string;
+			});
 
 export type QuickRequestOptions = Omit<RequestInit, "body" | "method"> & {
 	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

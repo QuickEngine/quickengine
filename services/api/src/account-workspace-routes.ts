@@ -4,6 +4,7 @@ import {
 	renameWorkspace,
 	setWorkspaceArchived,
 	setWorkspaceModuleEnabled,
+	workspaceBelongsToOrganization,
 } from "@quickengine/db";
 import {
 	getModule,
@@ -78,6 +79,8 @@ export function registerAccountWorkspaceRoutes(
 	const modules = authorizeAccount(options.platform, {
 		capability: "modules.manage",
 	});
+	const ownsTarget = async (workspaceId: string, organizationId: string) =>
+		workspaceBelongsToOrganization(workspaceId, organizationId);
 
 	/**
 	 * Create a workspace.
@@ -133,6 +136,11 @@ export function registerAccountWorkspaceRoutes(
 	);
 
 	app.patch("/v1/account/workspaces/:id", manage, async (c) => {
+		if (
+			!(await ownsTarget(c.req.param("id"), c.get("account").organizationId))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
 		const input = renameWorkspaceSchema.parse(await c.req.json());
 		try {
 			const workspace = await renameWorkspace(c.req.param("id"), input.name);
@@ -148,6 +156,11 @@ export function registerAccountWorkspaceRoutes(
 	});
 
 	app.post("/v1/account/workspaces/:id/archive", manage, async (c) => {
+		if (
+			!(await ownsTarget(c.req.param("id"), c.get("account").organizationId))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
 		const input = archiveWorkspaceSchema.parse(await c.req.json());
 		const workspace = await setWorkspaceArchived(
 			c.req.param("id"),
@@ -167,6 +180,11 @@ export function registerAccountWorkspaceRoutes(
 	 * for every reversible case.
 	 */
 	app.delete("/v1/account/workspaces/:id", remove, async (c) => {
+		if (
+			!(await ownsTarget(c.req.param("id"), c.get("account").organizationId))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
 		const workspace = await deleteWorkspace(c.req.param("id"));
 		if (!workspace) {
 			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
@@ -178,6 +196,11 @@ export function registerAccountWorkspaceRoutes(
 		"/v1/account/workspaces/:id/modules/:moduleId",
 		modules,
 		async (c) => {
+			if (
+				!(await ownsTarget(c.req.param("id"), c.get("account").organizationId))
+			) {
+				return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+			}
 			const input = workspaceModuleSchema.parse(await c.req.json());
 			const moduleId = c.req.param("moduleId");
 			if (!getModule(moduleId)) {

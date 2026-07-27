@@ -2040,6 +2040,16 @@ function declaredDocument(config: ApiConfig) {
 				},
 			},
 			"/v1/account/api-keys": {
+				get: {
+					operationId: "listApiKeys",
+					summary: "List API key metadata",
+					description:
+						"Returns non-secret metadata only. Plaintext keys are available exactly once, when created.",
+					responses: {
+						"200": { description: "The workspace's API keys." },
+						"404": { description: "Workspace not found." },
+					},
+				},
 				post: {
 					operationId: "createApiKey",
 					summary: "Issue an API key",
@@ -2098,6 +2108,16 @@ function declaredDocument(config: ApiConfig) {
 						"Scoped to you \u2014 one person can never mark another's as read.",
 					responses: {
 						"200": { description: "Marked as read." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account/notifications": {
+				get: {
+					operationId: "listNotifications",
+					summary: "List your notifications",
+					responses: {
+						"200": { description: "Notifications and unread count." },
 						"401": { description: "Sign in to continue." },
 					},
 				},
@@ -2162,6 +2182,16 @@ function declaredDocument(config: ApiConfig) {
 				},
 			},
 			"/v1/account/invitations/{id}": {
+				get: {
+					operationId: "getInvitation",
+					summary: "Preview an invitation",
+					description:
+						"The token is the authorization. Invalid, expired and used invitations are indistinguishable.",
+					responses: {
+						"200": { description: "Invitation details." },
+						"404": { description: "That invitation is no longer valid." },
+					},
+				},
 				delete: {
 					operationId: "revokeInvitation",
 					summary: "Revoke a pending invitation",
@@ -2185,7 +2215,25 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/account/members": {
+				get: {
+					operationId: "listAccountMembers",
+					summary: "List organization members",
+					responses: {
+						"200": { description: "The organization's members." },
+						"403": { description: "You cannot view this organization." },
+					},
+				},
+			},
 			"/v1/account/workspaces": {
+				get: {
+					operationId: "listAccountWorkspaces",
+					summary: "List workspaces in an organization",
+					responses: {
+						"200": { description: "Active and archived workspaces." },
+						"403": { description: "You cannot view these workspaces." },
+					},
+				},
 				post: {
 					operationId: "createWorkspace",
 					summary: "Create a workspace",

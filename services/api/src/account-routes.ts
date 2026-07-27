@@ -1,4 +1,8 @@
-import { issueApiKey, revokeApiKey } from "@quickengine/auth/api-keys";
+import {
+	issueApiKey,
+	listApiKeys,
+	revokeApiKey,
+} from "@quickengine/auth/api-keys";
 import {
 	createSubscriptionForPaymentElement,
 	getAccountPlanId,
@@ -11,6 +15,7 @@ import {
 	listOrganizationsForUser,
 	markAllNotificationsRead,
 	markNotificationRead,
+	workspaceBelongsToOrganization,
 } from "@quickengine/db";
 import type { Hono } from "hono";
 import { z } from "zod";
@@ -93,6 +98,14 @@ export function registerAccountRoutes(
 	 */
 	app.post("/v1/account/api-keys", keys, async (c) => {
 		const input = createApiKeySchema.parse(await c.req.json());
+		if (
+			!(await workspaceBelongsToOrganization(
+				input.workspaceId,
+				c.get("account").organizationId,
+			))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
 		const issued = await issueApiKey({
 			workspaceId: input.workspaceId,
 			createdByUserId: c.get("account").userId,
@@ -114,9 +127,38 @@ export function registerAccountRoutes(
 				400,
 			);
 		}
+		if (
+			!(await workspaceBelongsToOrganization(
+				workspaceId,
+				c.get("account").organizationId,
+			))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
 		const revoked = await revokeApiKey(workspaceId, c.req.param("id"));
 		if (!revoked) return respondError(c, "NOT_FOUND", "Key not found.", 404);
 		return respond(c, { revoked: true });
+	});
+
+	app.get("/v1/account/api-keys", keys, async (c) => {
+		const workspaceId = c.req.query("workspaceId");
+		if (!workspaceId) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"workspaceId is required.",
+				400,
+			);
+		}
+		if (
+			!(await workspaceBelongsToOrganization(
+				workspaceId,
+				c.get("account").organizationId,
+			))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		return respond(c, { items: await listApiKeys(workspaceId) });
 	});
 
 	// ---- Billing ------------------------------------------------------------

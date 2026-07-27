@@ -8,6 +8,22 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The account console now runs on Vite, TanStack Router and TanStack Query.** Workspace,
+  organization, team, invitation, notification, API-key and billing screens now use the same
+  public API and Quick.js client available to customers, with authenticated routes refusing to
+  render unless the session can be verified.
+- **Quick.js now has a browser-safe entry point.** Browser apps can use session authentication
+  without inventing a workspace header, while server-only webhook cryptography stays out of
+  client bundles.
+
+### Fixed
+
+- **Account management now verifies the target workspace belongs to the authorized
+  organization.** Workspace changes and API-key operations can no longer be aimed at a
+  workspace in another organization by substituting its identifier.
+
+### Added
+
 - **Workspaces can now be managed through the API.** Create, rename, archive, delete and switch
   modules on and off without opening the dashboard, so you can build your own onboarding or
   provision workspaces from your own systems. Turning on a module still brings along anything it

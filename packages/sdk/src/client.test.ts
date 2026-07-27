@@ -62,14 +62,15 @@ describe("Quick.js client", () => {
 			.mockResolvedValue(new Response(JSON.stringify({ ok: true })));
 		const quick = createQuickBrowser({
 			baseUrl: "http://localhost:3011",
-			workspaceId: "workspace_123",
 			credential: { type: "session" },
 			fetcher,
 		});
 
-		await quick.request("/workspace");
+		await quick.request("/account/organizations");
 
 		expect(fetcher.mock.calls[0]?.[1]?.credentials).toBe("include");
+		const headers = new Headers(fetcher.mock.calls[0]?.[1]?.headers);
+		expect(headers.get("QuickEngine-Workspace")).toBeNull();
 	});
 
 	it("returns structured API failures with request correlation", async () => {

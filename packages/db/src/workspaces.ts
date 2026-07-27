@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import { ensurePersonalOrg } from "./orgs";
 import { quickengineUsers, quickengineWorkspaces } from "./schema/quickengine";
@@ -206,4 +206,44 @@ export async function setWorkspaceModuleEnabled(input: {
 			.values({ workspaceId: input.workspaceId, moduleId })
 			.onConflictDoNothing();
 	}
+}
+
+/**
+ * Every workspace in an organization, newest first.
+ *
+ * Archived ones are included with their `archivedAt` set, so a caller can show
+ * them greyed rather than having them silently vanish — the account console
+ * needs to offer restore, which is impossible if the list hides them.
+ */
+export async function listWorkspacesForOrganization(organizationId: string) {
+	return db
+		.select({
+			id: quickengineWorkspaces.id,
+			name: quickengineWorkspaces.name,
+			slug: quickengineWorkspaces.slug,
+			businessType: quickengineWorkspaces.businessType,
+			archivedAt: quickengineWorkspaces.archivedAt,
+			createdAt: quickengineWorkspaces.createdAt,
+		})
+		.from(quickengineWorkspaces)
+		.where(eq(quickengineWorkspaces.organizationId, organizationId))
+		.orderBy(desc(quickengineWorkspaces.createdAt));
+}
+
+/** Proves a workspace belongs to an organization before an account-level write. */
+export async function workspaceBelongsToOrganization(
+	workspaceId: string,
+	organizationId: string,
+) {
+	const [workspace] = await db
+		.select({ id: quickengineWorkspaces.id })
+		.from(quickengineWorkspaces)
+		.where(
+			and(
+				eq(quickengineWorkspaces.id, workspaceId),
+				eq(quickengineWorkspaces.organizationId, organizationId),
+			),
+		)
+		.limit(1);
+	return Boolean(workspace);
 }

@@ -2018,6 +2018,71 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/account/workspaces": {
+				post: {
+					operationId: "createWorkspace",
+					summary: "Create a workspace",
+					description:
+						"Enabling a module that builds on another brings its prerequisites with it, so a workspace can never be left in a configuration that cannot work. Omitting `moduleIds` enables the foundation set.",
+					responses: {
+						"201": { description: "The workspace was created." },
+						"400": { description: "Invalid name, business type or module." },
+						"401": { description: "Sign in to continue." },
+						"409": {
+							description: "This account already has its first workspace.",
+						},
+					},
+				},
+			},
+			"/v1/account/workspaces/{id}": {
+				patch: {
+					operationId: "renameWorkspace",
+					summary: "Rename a workspace",
+					responses: {
+						"200": { description: "The workspace was renamed." },
+						"400": { description: "The name is empty or too long." },
+						"403": { description: "You cannot manage this workspace." },
+						"404": { description: "No such workspace." },
+					},
+				},
+				delete: {
+					operationId: "deleteWorkspace",
+					summary: "Permanently delete a workspace",
+					description:
+						"Destroys every record the workspace holds and cannot be undone. Archiving covers every reversible case, which is why this needs a separate, stronger permission.",
+					responses: {
+						"200": { description: "The workspace was deleted." },
+						"403": { description: "Only an owner may delete a workspace." },
+						"404": { description: "No such workspace." },
+					},
+				},
+			},
+			"/v1/account/workspaces/{id}/archive": {
+				post: {
+					operationId: "setWorkspaceArchived",
+					summary: "Archive or restore a workspace",
+					description:
+						"Reversible, and keeps every record — it only takes the workspace out of the active list.",
+					responses: {
+						"200": { description: "The workspace was archived or restored." },
+						"403": { description: "You cannot manage this workspace." },
+						"404": { description: "No such workspace." },
+					},
+				},
+			},
+			"/v1/account/workspaces/{id}/modules/{moduleId}": {
+				put: {
+					operationId: "setWorkspaceModuleEnabled",
+					summary: "Enable or disable a module",
+					description:
+						"Enabling resolves dependencies, so a module that composes on another brings its prerequisite along. Enabling something already enabled is a no-op rather than an error.",
+					responses: {
+						"200": { description: "The module was enabled or disabled." },
+						"400": { description: "That module does not exist." },
+						"403": { description: "You cannot manage modules." },
+					},
+				},
+			},
 			"/v1/roles": {
 				get: {
 					operationId: "listRoles",

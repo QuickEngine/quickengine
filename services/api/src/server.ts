@@ -2,6 +2,7 @@ import process from "node:process";
 import { serve } from "@hono/node-server";
 import { getCacheProvider } from "@quickengine/cache";
 import { mutationUnitOfWork } from "@quickengine/db";
+import { registerAccountWorkspaceRoutes } from "./account-workspace-routes";
 import { createApp } from "./app";
 import { registerAuthRoutes } from "./auth-routes";
 import { registerBillingInfoRoutes } from "./billing-info-routes";
@@ -68,6 +69,7 @@ const app = createApp(config, {
 		registerResendWebhookRoutes(app, { logger });
 		registerBillingInfoRoutes(app);
 		registerAuthRoutes(app);
+		registerAccountWorkspaceRoutes(app, { platform: dependencies.platform });
 		registerInngestRoutes(app);
 		registerStripeWebhookRoutes(app, { logger: routeLogger });
 	},

@@ -51,6 +51,7 @@ import {
 	timerStartInputSchema,
 } from "@quickengine/mod-time-tracking";
 import type { z } from "zod";
+import { inviteMemberSchema } from "./account-team-routes";
 import {
 	archiveWorkspaceSchema,
 	createWorkspaceSchema,
@@ -133,6 +134,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	recordTrafficEvent: trafficEventInputSchema,
 	createWebhookEndpoint: webhookEndpointInputSchema,
 	updateWebhookEndpoint: webhookEndpointPatchSchema,
+	inviteMember: inviteMemberSchema,
 	createWorkspace: createWorkspaceSchema,
 	renameWorkspace: renameWorkspaceSchema,
 	setWorkspaceArchived: archiveWorkspaceSchema,

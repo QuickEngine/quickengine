@@ -229,6 +229,10 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	updateWebhookEndpoint: { enabled: false },
 	// A deliberately odd name, because the name is decoration: authorization reads
 	// the permission list and never the label.
+	inviteMember: {
+		email: "sam@northwind.example",
+		role: "Bookkeeper",
+	},
 	createWorkspace: {
 		name: "Northwind Trading",
 		businessType: "ecommerce",

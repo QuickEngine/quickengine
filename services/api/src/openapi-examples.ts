@@ -227,4 +227,12 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		eventTypes: ["invoice.paid", "quote.accepted"],
 	},
 	updateWebhookEndpoint: { enabled: false },
+	// A deliberately odd name, because the name is decoration: authorization reads
+	// the permission list and never the label.
+	createRole: {
+		name: "Bookkeeper",
+		description: "Keeps the books, cannot change the team",
+		capabilities: ["workspace.view", "records.write"],
+	},
+	updateRole: { capabilities: ["workspace.view"] },
 };

@@ -1,9 +1,8 @@
-import { can } from "@quickengine/auth/rbac";
+import { holds, resolveOrgAccess } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
 import {
 	listOrganizationInvitations,
 	listOrganizationMembers,
-	resolveOrgRole,
 } from "@quickengine/db";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -35,12 +34,12 @@ export default async function Page() {
 	const org = await resolveActiveOrg(session.user.id);
 	if (!org) return null;
 
-	const [members, invitations, role] = await Promise.all([
+	const [members, invitations, access] = await Promise.all([
 		listOrganizationMembers(org.id),
 		listOrganizationInvitations(org.id),
-		resolveOrgRole(session.user.id, org.id),
+		resolveOrgAccess(session.user.id, org.id),
 	]);
-	const canManage = role ? can(role, "members.manage") : false;
+	const canManage = holds(access, "members.manage");
 	const pending = invitations.filter((invite) => invite.status === "pending");
 
 	return (
@@ -58,7 +57,7 @@ export default async function Page() {
 				/>
 				<StatCard
 					label="Your role"
-					value={ROLE_LABEL[role ?? ""] ?? "—"}
+					value={ROLE_LABEL[access?.role ?? ""] ?? access?.role ?? "—"}
 					hint="on this account"
 				/>
 			</section>

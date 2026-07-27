@@ -31,7 +31,8 @@ export type CreatedInvitation = {
 export async function createOrganizationInvitation(input: {
 	organizationId: string;
 	email: string;
-	role: QuickEngineOrgRole;
+	/** A role name, which may be one the organization defined for itself. */
+	role: string;
 	invitedByUserId: string;
 	expiresInDays?: number;
 }): Promise<CreatedInvitation> {
@@ -55,7 +56,8 @@ export type PendingInvitation = {
 	id: string;
 	organizationId: string;
 	email: string;
-	role: QuickEngineOrgRole;
+	/** A role name, which may be one the organization defined for itself. */
+	role: string;
 	expiresAt: Date;
 };
 
@@ -93,7 +95,8 @@ export async function getInvitationByToken(
 
 export type AcceptedInvitation = {
 	organizationId: string;
-	role: QuickEngineOrgRole;
+	/** A role name, which may be one the organization defined for itself. */
+	role: string;
 	// Who sent the invite — so the caller can notify them that it was accepted.
 	invitedByUserId: string;
 };
@@ -167,7 +170,8 @@ export async function acceptOrganizationInvitation(
 export type InvitationSummary = {
 	id: string;
 	email: string;
-	role: QuickEngineOrgRole;
+	/** A role name, which may be one the organization defined for itself. */
+	role: string;
 	status: QuickEngineInvitationStatus;
 	expiresAt: Date;
 	createdAt: Date;

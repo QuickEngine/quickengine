@@ -1,13 +1,13 @@
 "use server";
 
-import { can } from "@quickengine/auth/rbac";
+import { holds, resolveOrgAccess } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
 import {
 	createSubscriptionForPaymentElement,
 	getAccountPlanId,
 	getPlan,
 } from "@quickengine/billing";
-import { listOrganizationMembers, resolveOrgRole } from "@quickengine/db";
+import { listOrganizationMembers } from "@quickengine/db";
 import type {
 	QuickEngineBillingCycle,
 	QuickEnginePlanId,
@@ -29,8 +29,8 @@ export async function startSubscriptionAction(
 	const org = await resolveActiveOrg(session.user.id);
 	if (!org) return { error: "No organization was found for your account." };
 
-	const role = await resolveOrgRole(session.user.id, org.id);
-	if (!role || !can(role, "billing.manage")) {
+	const access = await resolveOrgAccess(session.user.id, org.id);
+	if (!holds(access, "billing.manage")) {
 		return { error: "You don't have permission to manage this org's billing." };
 	}
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { can } from "@quickengine/auth/rbac";
+import { holds, resolveOrgAccess } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
 import { db, eq, fileDocuments } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
@@ -49,7 +49,8 @@ export async function createWorkspaceAction(
 	if (!activeOrg) {
 		return { error: "No active organization was found." };
 	}
-	if (!can(activeOrg.role, "workspace.manage")) {
+	const access = await resolveOrgAccess(session.user.id, activeOrg.id);
+	if (!holds(access, "workspace.manage")) {
 		return {
 			error:
 				"You do not have permission to create a workspace in this organization.",

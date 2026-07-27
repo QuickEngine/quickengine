@@ -2018,6 +2018,64 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/roles": {
+				get: {
+					operationId: "listRoles",
+					summary: "Roles this organization has defined for itself",
+					description:
+						"Custom roles only. The built-in `owner`, `admin`, and `member` roles live in code rather than in data, so they are always available and are never returned here.",
+					responses: {
+						"200": { description: "The organization's custom roles." },
+						"403": { description: "The caller cannot manage members." },
+					},
+				},
+				post: {
+					operationId: "createRole",
+					summary: "Define a custom role",
+					description:
+						"A role is a name plus a list of permissions, and only the list carries meaning \u2014 nothing in the product branches on the name. Two rules are enforced here rather than in a form: a caller may not grant a permission it does not itself hold, and a custom role may not take the name of a built-in one.",
+					responses: {
+						"201": { description: "The role was created." },
+						"400": { description: "Invalid name or unknown permission." },
+						"403": {
+							description:
+								"The caller cannot manage members, or tried to grant a permission it does not hold.",
+						},
+						"409": {
+							description:
+								"That name is already taken, or is the name of a built-in role.",
+						},
+					},
+				},
+			},
+			"/v1/roles/{id}": {
+				patch: {
+					operationId: "updateRole",
+					summary: "Rename a role or change what it grants",
+					description:
+						"Members holding the role pick up the change on their next request; no reassignment is needed, because authorization reads the permission list rather than the name.",
+					responses: {
+						"200": { description: "The role was updated." },
+						"403": {
+							description:
+								"Cannot grant a permission the caller does not hold.",
+						},
+						"404": { description: "No such role in this organization." },
+						"409": { description: "That name belongs to a built-in role." },
+					},
+				},
+				delete: {
+					operationId: "deleteRole",
+					summary: "Delete a custom role",
+					description:
+						"Refused while any member still holds the role. Deleting it would leave them with no permissions at all, losing access silently and with nothing to explain why \u2014 so move them to another role first.",
+					responses: {
+						"200": { description: "The role was deleted." },
+						"404": { description: "No such role in this organization." },
+						"409": { description: "Members still hold this role." },
+					},
+				},
+			},
 			"/v1/realtime/auth": {
 				post: {
 					operationId: "authorizeRealtimeChannel",

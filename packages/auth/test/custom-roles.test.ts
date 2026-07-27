@@ -135,4 +135,24 @@ describe("role management invariants", () => {
 			]),
 		).toBe(true);
 	});
+
+	it("holds a custom role to the permissions it was actually given", () => {
+		// The escalation that matters once roles are user-defined. A custom role with
+		// members.manage may create roles, but only ever weaker ones than itself —
+		// otherwise "can manage members" quietly becomes "can become an owner".
+		const bookkeeper = ["workspace.view", "members.manage", "records.write"];
+
+		expect(canGrantCapabilities(bookkeeper, ["workspace.view"])).toBe(true);
+		expect(canGrantCapabilities(bookkeeper, ["billing.manage"])).toBe(false);
+		expect(canGrantCapabilities(bookkeeper, ["workspace.delete"])).toBe(false);
+		// Delegating its own permissions wholesale is allowed; exceeding them is not.
+		expect(canGrantCapabilities(bookkeeper, bookkeeper)).toBe(true);
+	});
+
+	it("grants nothing when the caller holds nothing", () => {
+		// A role resolving to an empty list must fail closed rather than fall through
+		// to a default, which is the shape most privilege bugs take.
+		expect(canGrantCapabilities([], ["workspace.view"])).toBe(false);
+		expect(canGrantCapabilities([], [])).toBe(true);
+	});
 });

@@ -123,12 +123,12 @@ describe("policyForPlan", () => {
 
 	it("tightens Free and loosens paid tiers", () => {
 		expect(policyForPlan(base, "free").limit).toBe(150);
-		expect(policyForPlan(base, "pro").limit).toBe(1200);
-		expect(policyForPlan(base, "team").limit).toBe(4800);
+		expect(policyForPlan(base, "grow").limit).toBe(1200);
+		expect(policyForPlan(base, "scale").limit).toBe(2400);
 	});
 
 	it("leaves the base policy untouched at the reference tier", () => {
-		expect(policyForPlan(base, "starter")).toBe(base);
+		expect(policyForPlan(base, "launch")).toBe(base);
 	});
 
 	/**
@@ -152,7 +152,7 @@ describe("policyForPlan", () => {
 	});
 
 	it("preserves window and failure mode", () => {
-		const scaled = policyForPlan(base, "growth");
+		const scaled = policyForPlan(base, "scale");
 		expect(scaled.windowSeconds).toBe(60);
 		expect(scaled.failureMode).toBe("closed");
 	});

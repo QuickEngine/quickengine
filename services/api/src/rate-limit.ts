@@ -38,10 +38,9 @@ export const RATE_LIMIT_POLICIES = {
  */
 export const PLAN_RATE_MULTIPLIER: Record<string, number> = {
 	free: 0.25,
-	starter: 1,
-	pro: 2,
-	growth: 4,
-	team: 8,
+	launch: 1,
+	grow: 2,
+	scale: 4,
 };
 
 /** Falls back to the base policy when the plan is unknown or unresolved. */

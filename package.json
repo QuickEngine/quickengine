@@ -28,7 +28,6 @@
 		"dev:app": "turbo dev --filter=@quickengine/auth-app --filter=@quickengine/account --filter=@quickengine/quickdash",
 		"web": "pnpm --filter @quickengine/web dev",
 		"dash": "pnpm --filter @quickengine/quickdash dev",
-		"user": "pnpm --filter @quickengine/account dev",
 		"account": "pnpm --filter @quickengine/account dev",
 		"auth": "pnpm --filter @quickengine/auth-app dev",
 		"api": "pnpm --filter @quickengine/api dev",

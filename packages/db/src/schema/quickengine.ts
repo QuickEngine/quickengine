@@ -20,10 +20,9 @@ export type QuickEngineAppId = "quickengine" | "quickdash";
 // The self-serve tier ladder, plus Enterprise as a custom conversation.
 export type QuickEnginePlanId =
 	| "free"
-	| "starter"
-	| "pro"
-	| "growth"
-	| "team"
+	| "launch"
+	| "grow"
+	| "scale"
 	| "enterprise";
 
 export type QuickEngineBillingCycle = "monthly" | "annual";

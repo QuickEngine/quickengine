@@ -119,8 +119,8 @@ describe("metering engine", () => {
 
 		await db
 			.insert(quickengineSubscriptions)
-			.values({ organizationId: scope, planId: "pro", status: "active" });
-		expect(await getAccountPlanId(scope)).toBe("pro");
+			.values({ organizationId: scope, planId: "grow", status: "active" });
+		expect(await getAccountPlanId(scope)).toBe("grow");
 
 		// A canceled subscription falls back to Free.
 		await db
@@ -130,12 +130,12 @@ describe("metering engine", () => {
 		expect(await getAccountPlanId(scope)).toBe("free");
 	});
 
-	it("a higher plan raises the limit (Pro API requests = 1M)", async () => {
+	it("a higher plan raises the limit (Grow API requests = 1M)", async () => {
 		const scope = "00000000-0000-4000-8000-0000000ccf02";
 		await insertOrg(scope);
 		await db
 			.insert(quickengineSubscriptions)
-			.values({ organizationId: scope, planId: "pro", status: "active" });
+			.values({ organizationId: scope, planId: "grow", status: "active" });
 		await meter({ scopeId: scope, meter: "apiRequests", amount: 5000 });
 		const check = await checkLimit({ scopeId: scope, meter: "apiRequests" });
 		expect(check.limit).toBe(1_000_000);

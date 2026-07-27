@@ -9,16 +9,16 @@ describe("plan config", () => {
 	});
 
 	it("resolves a configured price ID from env", () => {
-		// STRIPE_PRICE_PRO_MONTHLY is set in vitest.config.
-		expect(getStripePriceId("pro", "monthly")).toBe("price_test_pro_monthly");
+		// STRIPE_PRICE_GROW_MONTHLY is set in vitest.config.
+		expect(getStripePriceId("grow", "monthly")).toBe("price_test_grow_monthly");
 	});
 
 	it("returns undefined for an unset price", () => {
-		expect(getStripePriceId("growth", "annual")).toBeUndefined();
+		expect(getStripePriceId("scale", "annual")).toBeUndefined();
 	});
 
 	it("reverse-maps a known price ID to its plan", () => {
-		expect(planIdForPriceId("price_test_pro_monthly")).toBe("pro");
+		expect(planIdForPriceId("price_test_grow_monthly")).toBe("grow");
 	});
 
 	it("returns undefined for an unknown price ID", () => {

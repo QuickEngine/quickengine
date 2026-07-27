@@ -9,10 +9,13 @@ import {
 	createQuoteEstimateCommand,
 	declineQuoteEstimateCommand,
 	deleteQuoteEstimateCommand,
+	expireQuoteEstimateCommand,
 	getQuoteEstimateDto,
 	listQuoteEstimatesPage,
+	reviseQuoteEstimateCommand,
 	sendQuoteEstimateCommand,
 	updateDraftQuoteEstimateCommand,
+	voidQuoteEstimateCommand,
 } from "@quickengine/mod-quotes-estimates";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
@@ -133,6 +136,30 @@ export function registerQuotesRoutes(
 		return respondMutation(
 			c,
 			await declineQuoteEstimateCommand(context, id, options.uow),
+		);
+	});
+	app.post("/v1/quotes/:id/expire", writeAccess, writeLimit, async (c) => {
+		const id = uuid.parse(c.req.param("id"));
+		const context = await mutationContext(c, "quotes.expire", { id });
+		return respondMutation(
+			c,
+			await expireQuoteEstimateCommand(context, id, options.uow),
+		);
+	});
+	app.post("/v1/quotes/:id/void", writeAccess, writeLimit, async (c) => {
+		const id = uuid.parse(c.req.param("id"));
+		const context = await mutationContext(c, "quotes.void", { id });
+		return respondMutation(
+			c,
+			await voidQuoteEstimateCommand(context, id, options.uow),
+		);
+	});
+	app.post("/v1/quotes/:id/revise", writeAccess, writeLimit, async (c) => {
+		const id = uuid.parse(c.req.param("id"));
+		const context = await mutationContext(c, "quotes.revise", { id });
+		return respondMutation(
+			c,
+			await reviseQuoteEstimateCommand(context, id, options.uow),
 		);
 	});
 	app.post("/v1/quotes/:id/convert", writeAccess, writeLimit, async (c) => {

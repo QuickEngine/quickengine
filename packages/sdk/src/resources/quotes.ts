@@ -63,6 +63,24 @@ export class QuotesResource {
 			{ method: "POST", idempotencyKey },
 		);
 	}
+	expire(id: string, idempotencyKey: string) {
+		return this.client.request<QuickQuote>(
+			`/quotes/${encodeURIComponent(id)}/expire`,
+			{ method: "POST", idempotencyKey },
+		);
+	}
+	void(id: string, idempotencyKey: string) {
+		return this.client.request<QuickQuote>(
+			`/quotes/${encodeURIComponent(id)}/void`,
+			{ method: "POST", idempotencyKey },
+		);
+	}
+	revise(id: string, idempotencyKey: string) {
+		return this.client.request<QuickQuote>(
+			`/quotes/${encodeURIComponent(id)}/revise`,
+			{ method: "POST", idempotencyKey },
+		);
+	}
 	/** Convert an accepted quote into an invoice or order. Returns the created record. */
 	convert(id: string, target: "invoice" | "order", idempotencyKey: string) {
 		return this.client.request<{ id: string; [field: string]: unknown }>(

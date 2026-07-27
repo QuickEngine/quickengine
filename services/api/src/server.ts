@@ -25,6 +25,7 @@ import { registerOrdersRoutes } from "./orders-routes";
 import { registerPaymentsRoutes } from "./payments-routes";
 import { registerProductsServicesRoutes } from "./products-services-routes";
 import { registerProjectsRoutes } from "./projects-routes";
+import { registerQuickDashRoutes } from "./quickdash-routes";
 import { registerQuotesRoutes } from "./quotes-routes";
 import { registerRealtimeRoutes } from "./realtime-routes";
 import { registerReportingRoutes } from "./reporting-routes";
@@ -76,6 +77,7 @@ const app = createApp(config, {
 		registerAccountTeamRoutes(app, { platform: dependencies.platform });
 		registerAccountRoutes(app, { platform: dependencies.platform });
 		registerAccountReadRoutes(app, { platform: dependencies.platform });
+		registerQuickDashRoutes(app, { platform: dependencies.platform });
 		registerInngestRoutes(app);
 		registerStripeWebhookRoutes(app, { logger: routeLogger });
 	},

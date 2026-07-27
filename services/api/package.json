@@ -41,6 +41,8 @@
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/provider-health": "workspace:*",
 		"@quickengine/realtime": "workspace:*",
+		"@quickengine/search": "workspace:*",
+		"@quickengine/storage": "workspace:*",
 		"@sentry/node": "^10.65.0",
 		"@upstash/redis": "^1.38.0",
 		"drizzle-orm": "^0.45.1",

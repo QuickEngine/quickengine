@@ -41,12 +41,12 @@
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
 		"@tailwindcss/postcss": "^4.3.2",
-		"@types/node": "^22.15.3",
+		"@types/node": "^26.1.1",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
-		"shadcn": "^3.8.4",
+		"shadcn": "^4.15.0",
 		"tailwindcss": "^4",
-		"typescript": "^5",
-		"vitest": "^3.2.6"
+		"typescript": "^7",
+		"vitest": "^4.1.10"
 	}
 }

@@ -22,7 +22,10 @@ export function useBillingCycle(): [Cycle, (next: Cycle) => void] {
 	return [
 		cycle,
 		(next: Cycle) => {
-			navigate({ to: ".", search: (prev) => ({ ...prev, billing: next }) });
+			navigate({
+				to: ".",
+				search: (prev: Record<string, unknown>) => ({ ...prev, billing: next }),
+			});
 		},
 	];
 }

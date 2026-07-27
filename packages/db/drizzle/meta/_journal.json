@@ -309,6 +309,20 @@
 			"when": 1785104733392,
 			"tag": "0043_happy_hercules",
 			"breakpoints": true
+		},
+		{
+			"idx": 44,
+			"version": "7",
+			"when": 1785121284159,
+			"tag": "0044_real_moonstone",
+			"breakpoints": true
+		},
+		{
+			"idx": 45,
+			"version": "7",
+			"when": 1785125302278,
+			"tag": "0045_magical_cannonball",
+			"breakpoints": true
 		}
 	]
 }

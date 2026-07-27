@@ -23,8 +23,6 @@ import {
 	quoteEstimates,
 	shipments,
 	timeEntries,
-	webhookDeliveries,
-	webhookEndpoints,
 	workspaceActivity,
 } from "@quickengine/db";
 import type {
@@ -79,13 +77,13 @@ const clientAddress = tableResponse(clientAddresses);
 const catalogItem = tableResponse(catalogItems);
 const productVariant = tableResponse(catalogItemVariants);
 const quote = tableResponse(quoteEstimates);
-const quoteLine = tableResponse(quoteEstimateLineItems);
+const _quoteLine = tableResponse(quoteEstimateLineItems);
 const invoice = tableResponse(invoices);
-const invoiceLine = tableResponse(invoiceLineItems);
+const _invoiceLine = tableResponse(invoiceLineItems);
 const payment = tableResponse(payments);
 const paymentRefund = tableResponse(paymentRefunds);
 const order = tableResponse(orders);
-const orderLine = tableResponse(orderLineItems);
+const _orderLine = tableResponse(orderLineItems);
 const fulfillment = tableResponse(fulfillments);
 const inventoryItem = tableResponse(inventoryItems);
 const inventoryAdjustment = tableResponse(inventoryAdjustments);

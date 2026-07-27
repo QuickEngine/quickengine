@@ -1,6 +1,5 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./client";
-import type { QuickEngineOrgRole } from "./schema/quickengine";
 import {
 	quickengineOrganizationMembers,
 	quickengineOrganizationRoles,

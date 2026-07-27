@@ -1,5 +1,7 @@
+import { recordTopUp } from "@quickengine/db";
 import { serverEnv } from "@quickengine/env/server";
 import type Stripe from "stripe";
+import { centsToMicros } from "./credit-topup";
 import { getStripe } from "./stripe";
 import {
 	markSubscriptionCanceled,
@@ -52,6 +54,30 @@ export const handleStripeEvent = async (event: Stripe.Event): Promise<void> => {
 		case "invoice.paid": {
 			const id = customerId((event.data.object as Stripe.Invoice).customer);
 			if (id) await setStatusForCustomer(id, "active");
+			break;
+		}
+		case "payment_intent.succeeded": {
+			// Credit only lands here. A payment intent can be created and abandoned,
+			// so this is the first moment the money is actually real.
+			const intent = event.data.object as Stripe.PaymentIntent;
+			if (intent.metadata?.purpose !== "credit_topup") break;
+			const organizationId = intent.metadata?.organizationId;
+			if (!organizationId) {
+				// Nothing sensible to do: we cannot guess whose balance this is, and
+				// guessing would credit the wrong account. Loud, because it means a
+				// payment was taken that nobody received.
+				throw new Error(
+					`Credit top-up ${intent.id} has no organizationId in metadata.`,
+				);
+			}
+			await recordTopUp({
+				organizationId,
+				// Stripe works in cents, the ledger in micros. One conversion, in one
+				// place, so a rounding error has nowhere to hide.
+				amountMicros: centsToMicros(intent.amount_received ?? intent.amount),
+				stripePaymentIntentId: intent.id,
+				description: "Credit top-up",
+			});
 			break;
 		}
 		case "invoice.payment_failed": {

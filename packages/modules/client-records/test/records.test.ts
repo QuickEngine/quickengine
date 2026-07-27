@@ -3,13 +3,10 @@ import { testDbClient } from "@quickengine/db/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	createClientCommand,
-	createClientRecord,
 	deleteClientCommand,
-	deleteClientRecord,
 	getClientRecord,
 	listClientRecords,
 	updateClientCommand,
-	updateClientRecord,
 } from "../src";
 
 const mutationContext = (key: string, fingerprint = "same") => ({

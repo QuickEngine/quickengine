@@ -101,3 +101,38 @@ describe("holds", () => {
 		expect(holds(undefined, "workspace.view")).toBe(false);
 	});
 });
+
+/**
+ * The invariants `role-actions.ts` enforces, asserted against the predicates it
+ * relies on. The action layer is a thin wrapper over these — testing the rules
+ * here means a rewrite of the surface cannot quietly drop them.
+ */
+describe("role management invariants", () => {
+	it("refuses built-in names for a custom role", () => {
+		for (const name of ["owner", "Owner", "ADMIN", "member"]) {
+			expect(isBuiltInRole(name.toLowerCase())).toBe(true);
+		}
+		expect(isBuiltInRole("bookkeeper")).toBe(false);
+	});
+
+	it("stops an admin minting a role more powerful than themselves", () => {
+		// The full set includes workspace.delete and billing.manage, both owner-only.
+		expect(
+			canGrantCapabilities("admin", [
+				"workspace.view",
+				"workspace.manage",
+				"workspace.delete",
+			]),
+		).toBe(false);
+	});
+
+	it("lets an owner grant anything", () => {
+		expect(
+			canGrantCapabilities("owner", [
+				"billing.manage",
+				"workspace.delete",
+				"members.manage",
+			]),
+		).toBe(true);
+	});
+});

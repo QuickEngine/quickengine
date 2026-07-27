@@ -102,3 +102,48 @@ export function can(
 ): boolean {
 	return ROLE_CAPABILITIES[role].includes(capability);
 }
+
+/**
+ * The capability check for a resolved access record.
+ *
+ * Prefer this over `can()` anywhere a custom role can appear. `can()` only knows
+ * the three built-ins, so a custom role passed to it resolves to nothing — which
+ * fails closed, but silently denies a user who legitimately has the permission.
+ */
+export function holds(
+	access: { capabilities: readonly WorkspaceCapability[] } | null | undefined,
+	capability: WorkspaceCapability,
+): boolean {
+	return access?.capabilities.includes(capability) ?? false;
+}
+
+/**
+ * A user's role on a workspace **and the capabilities it actually grants.**
+ *
+ * The name alone stopped being sufficient once organizations could define their own
+ * roles: `"Bookkeeper"` means nothing without that org's definition of it. Callers
+ * check capabilities and never names, so a role can be renamed, redefined, or
+ * invented without touching a single authorization site.
+ *
+ * Lives here rather than in `@quickengine/db` because resolution needs both the
+ * membership row and the capability rules, and db must not depend on auth.
+ */
+export async function resolveWorkspaceAccess(
+	userId: string,
+	workspace: { ownerId: string; organizationId: string | null },
+): Promise<{
+	role: string;
+	capabilities: readonly WorkspaceCapability[];
+} | null> {
+	const { loadOrgRoleCapabilities, resolveWorkspaceRole } = await import(
+		"@quickengine/db"
+	);
+	const role = await resolveWorkspaceRole(userId, workspace);
+	if (!role) return null;
+	// Built-ins resolve from code, so the common path costs no extra query — and a
+	// custom role can never shadow `owner` and strip an org of its own billing.
+	const custom = isBuiltInRole(role)
+		? new Map<string, readonly string[]>()
+		: await loadOrgRoleCapabilities(workspace.organizationId ?? "");
+	return { role, capabilities: resolveCapabilities(role, custom) };
+}

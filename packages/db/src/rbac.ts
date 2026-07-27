@@ -15,7 +15,7 @@ import {
 export async function resolveWorkspaceRole(
 	userId: string,
 	workspace: { ownerId: string; organizationId: string | null },
-): Promise<QuickEngineOrgRole | null> {
+): Promise<string | null> {
 	if (workspace.ownerId === userId) {
 		return "owner";
 	}

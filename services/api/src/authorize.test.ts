@@ -15,6 +15,18 @@ const workspace: WorkspaceResolution = {
 	organizationId: "org_1",
 	ownerId: "user_owner",
 	role: "owner",
+	// An owner holds everything, matching the built-in role in code. Authorization
+	// reads this list and never the name, so a custom role fixture works identically.
+	capabilities: [
+		"workspace.view",
+		"workspace.manage",
+		"workspace.delete",
+		"modules.manage",
+		"members.manage",
+		"apikeys.manage",
+		"billing.manage",
+		"records.write",
+	],
 	workspace: {
 		businessType: "agency",
 		id: "11111111-1111-4111-8111-111111111111",
@@ -131,7 +143,14 @@ describe("authorizeWorkspace", () => {
 	});
 
 	it("enforces session capabilities and enabled modules", async () => {
-		const memberWorkspace = { ...workspace, role: "member" as const };
+		// Capabilities are what authorization reads, so a member fixture must carry
+		// member's list — spreading owner's while relabelling the name would assert
+		// nothing.
+		const memberWorkspace = {
+			...workspace,
+			role: "member" as const,
+			capabilities: ["workspace.view", "records.write"],
+		};
 		const capabilityDenied = await testApp(
 			dependencies({ getWorkspaceForUser: async () => memberWorkspace }),
 			{ sessionCapability: "billing.manage" },

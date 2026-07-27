@@ -6,6 +6,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **Events are delivered in the order they happened.** Under load they could be handed to
+  subscribers out of sequence, so an update could arrive before the creation it referred to.
+  Anything reacting to those events could end up with a wrong picture of what happened.
+
+### Added
+
+- **Custom roles now resolve to real permissions.** A role an organization defines for itself
+  can be checked wherever access is decided, rather than only the three built-in roles being
+  understood. Built-in roles still take precedence and cannot be redefined, so no organization
+  can lock itself out of its own account.
+
 ### Added
 
 - **Groundwork for custom roles.** Organizations will be able to define their own roles with any

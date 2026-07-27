@@ -160,7 +160,9 @@ export function authorizeWorkspace(
 				404,
 			);
 		}
-		if (!can(workspace.role, requirement.sessionCapability)) {
+		if (
+			!(workspace.capabilities ?? []).includes(requirement.sessionCapability)
+		) {
 			return respondError(
 				c,
 				"CAPABILITY_DENIED",

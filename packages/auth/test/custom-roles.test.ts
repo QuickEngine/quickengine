@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	canGrantCapabilities,
+	holds,
 	isBuiltInRole,
 	resolveCapabilities,
 } from "../src/rbac";
@@ -79,5 +80,24 @@ describe("privilege escalation guard", () => {
 
 	it("lets a member grant nothing beyond their own", () => {
 		expect(canGrantCapabilities("member", ["members.manage"])).toBe(false);
+	});
+});
+
+describe("holds", () => {
+	it("grants when the capability is present", () => {
+		expect(
+			holds(
+				{ capabilities: ["records.write", "workspace.view"] },
+				"records.write",
+			),
+		).toBe(true);
+	});
+
+	it("denies when it is absent, and for no access at all", () => {
+		expect(holds({ capabilities: ["workspace.view"] }, "billing.manage")).toBe(
+			false,
+		);
+		expect(holds(null, "workspace.view")).toBe(false);
+		expect(holds(undefined, "workspace.view")).toBe(false);
 	});
 });

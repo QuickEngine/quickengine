@@ -1,5 +1,9 @@
-import { can, type WorkspaceCapability } from "@quickengine/auth/rbac";
-import { and, db, eq, resolveWorkspaceRole } from "@quickengine/db";
+import {
+	holds,
+	resolveWorkspaceAccess,
+	type WorkspaceCapability,
+} from "@quickengine/auth/rbac";
+import { and, db, eq } from "@quickengine/db";
 import type { QuickEngineOrgRole } from "@quickengine/db/schema/quickengine";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 
@@ -8,7 +12,7 @@ export type AuthorizedWorkspace = {
 	slug: string | null;
 	name: string;
 	archivedAt: Date | null;
-	role: QuickEngineOrgRole;
+	role: string;
 };
 
 export type WorkspaceAuthzResult =
@@ -48,14 +52,16 @@ export async function authorizeWorkspace(
 		return { ok: false, message: "Workspace not found." };
 	}
 
-	const role = await resolveWorkspaceRole(userId, {
+	// Resolves capabilities rather than a role name, so a role the organization
+	// defined for itself is honoured here exactly like a built-in one.
+	const access = await resolveWorkspaceAccess(userId, {
 		ownerId: workspace.ownerId,
 		organizationId: workspace.organizationId,
 	});
-	if (!role) {
+	if (!access) {
 		return { ok: false, message: "Workspace not found." };
 	}
-	if (!can(role, capability)) {
+	if (!holds(access, capability)) {
 		return { ok: false, message: "You do not have permission to do that." };
 	}
 
@@ -66,7 +72,7 @@ export async function authorizeWorkspace(
 			slug: workspace.slug,
 			name: workspace.name,
 			archivedAt: workspace.archivedAt,
-			role,
+			role: access.role,
 		},
 	};
 }

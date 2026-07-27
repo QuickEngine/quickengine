@@ -1,0 +1,31 @@
+/**
+ * Self-hosted brand faces, framework-free.
+ *
+ * Replaces `fonts.ts`, which used `next/font/local` and therefore only worked
+ * inside Next. Plain `@font-face` works in every app — Vite, Next, or a native
+ * shell — and the CSS variables below are the same ones `brand.css` already
+ * references, so nothing downstream changes.
+ *
+ * `font-display: swap` keeps text visible while the face loads rather than
+ * blanking it, which matters most on the marketing pages.
+ */
+@font-face {
+	font-family: "General Sans";
+	src: url("./fonts/GeneralSans-Variable.woff2") format("woff2-variations");
+	font-weight: 200 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Clash Grotesk";
+	src: url("./fonts/ClashGrotesk-Variable.woff2") format("woff2-variations");
+	font-weight: 200 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+:root {
+	--font-general: "General Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-clash: "Clash Grotesk", var(--font-general);
+}

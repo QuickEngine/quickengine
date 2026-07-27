@@ -1,0 +1,21 @@
+@import "@quickengine/ui/fonts.css";
+@import "@quickengine/ui/globals.css";
+@import "@quickengine/ui/brand.css";
+
+/* Tailwind v4 must scan the shared UI package so its component + brand classes
+   are generated. */
+@source "../../../../packages/ui/src";
+
+/* Locked-in page gutter — the single source of truth for horizontal margins.
+   Every page section uses `.page-gutter` so we don't refight this per component.
+   Web-only (marketing layout). Mobile stays at 1.5rem so content isn't cramped.
+   Desktop was 4rem, matching the header height (h-16) for symmetrical framing;
+   widened to 9.5rem on request. Provisional — revisit in the design pass. */
+.page-gutter {
+	padding-inline: 1.5rem;
+}
+@media (min-width: 640px) {
+	.page-gutter {
+		padding-inline: 9.5rem;
+	}
+}

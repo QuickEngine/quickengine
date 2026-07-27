@@ -13,7 +13,8 @@
 		"./fonts": "./src/fonts.ts",
 		"./globals.css": "./src/globals.css",
 		"./hooks/*": "./src/hooks/*.ts",
-		"./lib/*": "./src/lib/*.ts"
+		"./lib/*": "./src/lib/*.ts",
+		"./fonts.css": "./src/fonts.css"
 	},
 	"scripts": {
 		"lint": "biome lint .",

@@ -3,7 +3,6 @@ import { PricingHero } from "@/components/pricing-hero";
 import { PricingTiers } from "@/components/pricing-tiers";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { buildMetadata } from "@/lib/seo";
 
 function PricingPage() {
 	return (

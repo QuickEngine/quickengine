@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { buildMetadata } from "@/lib/seo";
 
 // PLACEHOLDER — a static status board. A real one would read live health checks.
 const SYSTEMS = [

@@ -8,850 +8,850 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as AboutRouteImport } from "./routes/about";
-import { Route as BlogRouteImport } from "./routes/blog";
-import { Route as BrandRouteImport } from "./routes/brand";
-import { Route as BusinessRouteImport } from "./routes/business";
-import { Route as BusinessTypeRouteImport } from "./routes/business/$type";
-import { Route as CareersRouteImport } from "./routes/careers";
-import { Route as CaseStudiesRouteImport } from "./routes/case-studies";
-import { Route as ChangelogRouteImport } from "./routes/changelog";
-import { Route as CheckoutCancelRouteImport } from "./routes/checkout/cancel";
-import { Route as CheckoutSuccessRouteImport } from "./routes/checkout/success";
-import { Route as CommunityRouteImport } from "./routes/community";
-import { Route as CompanyRouteImport } from "./routes/company";
-import { Route as ContactRouteImport } from "./routes/contact";
-import { Route as CookiesRouteImport } from "./routes/cookies";
-import { Route as CustomersRouteImport } from "./routes/customers";
-import { Route as DevelopersRouteImport } from "./routes/developers";
-import { Route as DocsRouteImport } from "./routes/docs";
-import { Route as DocsSectionRouteImport } from "./routes/docs/$section";
-import { Route as EventsRouteImport } from "./routes/events";
-import { Route as GuidesRouteImport } from "./routes/guides";
-import { Route as IndexRouteImport } from "./routes/index";
-import { Route as PartnersRouteImport } from "./routes/partners";
-import { Route as PricingRouteImport } from "./routes/pricing";
-import { Route as PrivacyRouteImport } from "./routes/privacy";
-import { Route as ProductsRouteImport } from "./routes/products";
-import { Route as ProductsMarketplaceRouteImport } from "./routes/products/marketplace";
-import { Route as ProductsModulesRouteImport } from "./routes/products/modules";
-import { Route as ProductsModulesModuleRouteImport } from "./routes/products/modules/$module";
-import { Route as ProductsWorkspacesRouteImport } from "./routes/products/workspaces";
-import { Route as RefundRouteImport } from "./routes/refund";
-import { Route as ResourcesRouteImport } from "./routes/resources";
-import { Route as StartupProgramRouteImport } from "./routes/startup-program";
-import { Route as StatusRouteImport } from "./routes/status";
-import { Route as SupportRouteImport } from "./routes/support";
-import { Route as TermsRouteImport } from "./routes/terms";
-import { Route as TutorialsRouteImport } from "./routes/tutorials";
-import { Route as WebinarsRouteImport } from "./routes/webinars";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as BlogRouteImport } from './routes/blog'
+import { Route as BrandRouteImport } from './routes/brand'
+import { Route as BusinessRouteImport } from './routes/business'
+import { Route as CareersRouteImport } from './routes/careers'
+import { Route as CaseStudiesRouteImport } from './routes/case-studies'
+import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as CommunityRouteImport } from './routes/community'
+import { Route as CompanyRouteImport } from './routes/company'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as DevelopersRouteImport } from './routes/developers'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as EventsRouteImport } from './routes/events'
+import { Route as GuidesRouteImport } from './routes/guides'
+import { Route as PartnersRouteImport } from './routes/partners'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as RefundRouteImport } from './routes/refund'
+import { Route as ResourcesRouteImport } from './routes/resources'
+import { Route as StartupProgramRouteImport } from './routes/startup-program'
+import { Route as StatusRouteImport } from './routes/status'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as TutorialsRouteImport } from './routes/tutorials'
+import { Route as WebinarsRouteImport } from './routes/webinars'
+import { Route as BusinessTypeRouteImport } from './routes/business/$type'
+import { Route as CheckoutCancelRouteImport } from './routes/checkout/cancel'
+import { Route as CheckoutSuccessRouteImport } from './routes/checkout/success'
+import { Route as DocsSectionRouteImport } from './routes/docs/$section'
+import { Route as ProductsMarketplaceRouteImport } from './routes/products/marketplace'
+import { Route as ProductsModulesRouteImport } from './routes/products/modules'
+import { Route as ProductsWorkspacesRouteImport } from './routes/products/workspaces'
+import { Route as ProductsModulesModuleRouteImport } from './routes/products/modules/$module'
 
 const IndexRoute = IndexRouteImport.update({
-	id: "/",
-	path: "/",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
-	id: "/about",
-	path: "/about",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogRoute = BlogRouteImport.update({
-	id: "/blog",
-	path: "/blog",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrandRoute = BrandRouteImport.update({
-	id: "/brand",
-	path: "/brand",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/brand',
+  path: '/brand',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BusinessRoute = BusinessRouteImport.update({
-	id: "/business",
-	path: "/business",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/business',
+  path: '/business',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CareersRoute = CareersRouteImport.update({
-	id: "/careers",
-	path: "/careers",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/careers',
+  path: '/careers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CaseStudiesRoute = CaseStudiesRouteImport.update({
-	id: "/case-studies",
-	path: "/case-studies",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/case-studies',
+  path: '/case-studies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChangelogRoute = ChangelogRouteImport.update({
-	id: "/changelog",
-	path: "/changelog",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/changelog',
+  path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CommunityRoute = CommunityRouteImport.update({
-	id: "/community",
-	path: "/community",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompanyRoute = CompanyRouteImport.update({
-	id: "/company",
-	path: "/company",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/company',
+  path: '/company',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
-	id: "/contact",
-	path: "/contact",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CookiesRoute = CookiesRouteImport.update({
-	id: "/cookies",
-	path: "/cookies",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CustomersRoute = CustomersRouteImport.update({
-	id: "/customers",
-	path: "/customers",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevelopersRoute = DevelopersRouteImport.update({
-	id: "/developers",
-	path: "/developers",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/developers',
+  path: '/developers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsRoute = DocsRouteImport.update({
-	id: "/docs",
-	path: "/docs",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsRoute = EventsRouteImport.update({
-	id: "/events",
-	path: "/events",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GuidesRoute = GuidesRouteImport.update({
-	id: "/guides",
-	path: "/guides",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/guides',
+  path: '/guides',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PartnersRoute = PartnersRouteImport.update({
-	id: "/partners",
-	path: "/partners",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/partners',
+  path: '/partners',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PricingRoute = PricingRouteImport.update({
-	id: "/pricing",
-	path: "/pricing",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
-	id: "/privacy",
-	path: "/privacy",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsRoute = ProductsRouteImport.update({
-	id: "/products",
-	path: "/products",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RefundRoute = RefundRouteImport.update({
-	id: "/refund",
-	path: "/refund",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/refund',
+  path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResourcesRoute = ResourcesRouteImport.update({
-	id: "/resources",
-	path: "/resources",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StartupProgramRoute = StartupProgramRouteImport.update({
-	id: "/startup-program",
-	path: "/startup-program",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/startup-program',
+  path: '/startup-program',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatusRoute = StatusRouteImport.update({
-	id: "/status",
-	path: "/status",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupportRoute = SupportRouteImport.update({
-	id: "/support",
-	path: "/support",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
-	id: "/terms",
-	path: "/terms",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TutorialsRoute = TutorialsRouteImport.update({
-	id: "/tutorials",
-	path: "/tutorials",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/tutorials',
+  path: '/tutorials',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WebinarsRoute = WebinarsRouteImport.update({
-	id: "/webinars",
-	path: "/webinars",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/webinars',
+  path: '/webinars',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BusinessTypeRoute = BusinessTypeRouteImport.update({
-	id: "/$type",
-	path: "/$type",
-	getParentRoute: () => BusinessRoute,
-} as any);
+  id: '/$type',
+  path: '/$type',
+  getParentRoute: () => BusinessRoute,
+} as any)
 const CheckoutCancelRoute = CheckoutCancelRouteImport.update({
-	id: "/checkout/cancel",
-	path: "/checkout/cancel",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/checkout/cancel',
+  path: '/checkout/cancel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
-	id: "/checkout/success",
-	path: "/checkout/success",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/checkout/success',
+  path: '/checkout/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsSectionRoute = DocsSectionRouteImport.update({
-	id: "/$section",
-	path: "/$section",
-	getParentRoute: () => DocsRoute,
-} as any);
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => DocsRoute,
+} as any)
 const ProductsMarketplaceRoute = ProductsMarketplaceRouteImport.update({
-	id: "/marketplace",
-	path: "/marketplace",
-	getParentRoute: () => ProductsRoute,
-} as any);
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => ProductsRoute,
+} as any)
 const ProductsModulesRoute = ProductsModulesRouteImport.update({
-	id: "/modules",
-	path: "/modules",
-	getParentRoute: () => ProductsRoute,
-} as any);
+  id: '/modules',
+  path: '/modules',
+  getParentRoute: () => ProductsRoute,
+} as any)
 const ProductsWorkspacesRoute = ProductsWorkspacesRouteImport.update({
-	id: "/workspaces",
-	path: "/workspaces",
-	getParentRoute: () => ProductsRoute,
-} as any);
+  id: '/workspaces',
+  path: '/workspaces',
+  getParentRoute: () => ProductsRoute,
+} as any)
 const ProductsModulesModuleRoute = ProductsModulesModuleRouteImport.update({
-	id: "/$module",
-	path: "/$module",
-	getParentRoute: () => ProductsModulesRoute,
-} as any);
+  id: '/$module',
+  path: '/$module',
+  getParentRoute: () => ProductsModulesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-	"/": typeof IndexRoute;
-	"/about": typeof AboutRoute;
-	"/blog": typeof BlogRoute;
-	"/brand": typeof BrandRoute;
-	"/business": typeof BusinessRouteWithChildren;
-	"/careers": typeof CareersRoute;
-	"/case-studies": typeof CaseStudiesRoute;
-	"/changelog": typeof ChangelogRoute;
-	"/community": typeof CommunityRoute;
-	"/company": typeof CompanyRoute;
-	"/contact": typeof ContactRoute;
-	"/cookies": typeof CookiesRoute;
-	"/customers": typeof CustomersRoute;
-	"/developers": typeof DevelopersRoute;
-	"/docs": typeof DocsRouteWithChildren;
-	"/events": typeof EventsRoute;
-	"/guides": typeof GuidesRoute;
-	"/partners": typeof PartnersRoute;
-	"/pricing": typeof PricingRoute;
-	"/privacy": typeof PrivacyRoute;
-	"/products": typeof ProductsRouteWithChildren;
-	"/refund": typeof RefundRoute;
-	"/resources": typeof ResourcesRoute;
-	"/startup-program": typeof StartupProgramRoute;
-	"/status": typeof StatusRoute;
-	"/support": typeof SupportRoute;
-	"/terms": typeof TermsRoute;
-	"/tutorials": typeof TutorialsRoute;
-	"/webinars": typeof WebinarsRoute;
-	"/business/$type": typeof BusinessTypeRoute;
-	"/checkout/cancel": typeof CheckoutCancelRoute;
-	"/checkout/success": typeof CheckoutSuccessRoute;
-	"/docs/$section": typeof DocsSectionRoute;
-	"/products/marketplace": typeof ProductsMarketplaceRoute;
-	"/products/modules": typeof ProductsModulesRouteWithChildren;
-	"/products/workspaces": typeof ProductsWorkspacesRoute;
-	"/products/modules/$module": typeof ProductsModulesModuleRoute;
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/blog': typeof BlogRoute
+  '/brand': typeof BrandRoute
+  '/business': typeof BusinessRouteWithChildren
+  '/careers': typeof CareersRoute
+  '/case-studies': typeof CaseStudiesRoute
+  '/changelog': typeof ChangelogRoute
+  '/community': typeof CommunityRoute
+  '/company': typeof CompanyRoute
+  '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
+  '/customers': typeof CustomersRoute
+  '/developers': typeof DevelopersRoute
+  '/docs': typeof DocsRouteWithChildren
+  '/events': typeof EventsRoute
+  '/guides': typeof GuidesRoute
+  '/partners': typeof PartnersRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/products': typeof ProductsRouteWithChildren
+  '/refund': typeof RefundRoute
+  '/resources': typeof ResourcesRoute
+  '/startup-program': typeof StartupProgramRoute
+  '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
+  '/tutorials': typeof TutorialsRoute
+  '/webinars': typeof WebinarsRoute
+  '/business/$type': typeof BusinessTypeRoute
+  '/checkout/cancel': typeof CheckoutCancelRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
+  '/docs/$section': typeof DocsSectionRoute
+  '/products/marketplace': typeof ProductsMarketplaceRoute
+  '/products/modules': typeof ProductsModulesRouteWithChildren
+  '/products/workspaces': typeof ProductsWorkspacesRoute
+  '/products/modules/$module': typeof ProductsModulesModuleRoute
 }
 export interface FileRoutesByTo {
-	"/": typeof IndexRoute;
-	"/about": typeof AboutRoute;
-	"/blog": typeof BlogRoute;
-	"/brand": typeof BrandRoute;
-	"/business": typeof BusinessRouteWithChildren;
-	"/careers": typeof CareersRoute;
-	"/case-studies": typeof CaseStudiesRoute;
-	"/changelog": typeof ChangelogRoute;
-	"/community": typeof CommunityRoute;
-	"/company": typeof CompanyRoute;
-	"/contact": typeof ContactRoute;
-	"/cookies": typeof CookiesRoute;
-	"/customers": typeof CustomersRoute;
-	"/developers": typeof DevelopersRoute;
-	"/docs": typeof DocsRouteWithChildren;
-	"/events": typeof EventsRoute;
-	"/guides": typeof GuidesRoute;
-	"/partners": typeof PartnersRoute;
-	"/pricing": typeof PricingRoute;
-	"/privacy": typeof PrivacyRoute;
-	"/products": typeof ProductsRouteWithChildren;
-	"/refund": typeof RefundRoute;
-	"/resources": typeof ResourcesRoute;
-	"/startup-program": typeof StartupProgramRoute;
-	"/status": typeof StatusRoute;
-	"/support": typeof SupportRoute;
-	"/terms": typeof TermsRoute;
-	"/tutorials": typeof TutorialsRoute;
-	"/webinars": typeof WebinarsRoute;
-	"/business/$type": typeof BusinessTypeRoute;
-	"/checkout/cancel": typeof CheckoutCancelRoute;
-	"/checkout/success": typeof CheckoutSuccessRoute;
-	"/docs/$section": typeof DocsSectionRoute;
-	"/products/marketplace": typeof ProductsMarketplaceRoute;
-	"/products/modules": typeof ProductsModulesRouteWithChildren;
-	"/products/workspaces": typeof ProductsWorkspacesRoute;
-	"/products/modules/$module": typeof ProductsModulesModuleRoute;
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/blog': typeof BlogRoute
+  '/brand': typeof BrandRoute
+  '/business': typeof BusinessRouteWithChildren
+  '/careers': typeof CareersRoute
+  '/case-studies': typeof CaseStudiesRoute
+  '/changelog': typeof ChangelogRoute
+  '/community': typeof CommunityRoute
+  '/company': typeof CompanyRoute
+  '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
+  '/customers': typeof CustomersRoute
+  '/developers': typeof DevelopersRoute
+  '/docs': typeof DocsRouteWithChildren
+  '/events': typeof EventsRoute
+  '/guides': typeof GuidesRoute
+  '/partners': typeof PartnersRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/products': typeof ProductsRouteWithChildren
+  '/refund': typeof RefundRoute
+  '/resources': typeof ResourcesRoute
+  '/startup-program': typeof StartupProgramRoute
+  '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
+  '/tutorials': typeof TutorialsRoute
+  '/webinars': typeof WebinarsRoute
+  '/business/$type': typeof BusinessTypeRoute
+  '/checkout/cancel': typeof CheckoutCancelRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
+  '/docs/$section': typeof DocsSectionRoute
+  '/products/marketplace': typeof ProductsMarketplaceRoute
+  '/products/modules': typeof ProductsModulesRouteWithChildren
+  '/products/workspaces': typeof ProductsWorkspacesRoute
+  '/products/modules/$module': typeof ProductsModulesModuleRoute
 }
 export interface FileRoutesById {
-	__root__: typeof rootRouteImport;
-	"/": typeof IndexRoute;
-	"/about": typeof AboutRoute;
-	"/blog": typeof BlogRoute;
-	"/brand": typeof BrandRoute;
-	"/business": typeof BusinessRouteWithChildren;
-	"/careers": typeof CareersRoute;
-	"/case-studies": typeof CaseStudiesRoute;
-	"/changelog": typeof ChangelogRoute;
-	"/community": typeof CommunityRoute;
-	"/company": typeof CompanyRoute;
-	"/contact": typeof ContactRoute;
-	"/cookies": typeof CookiesRoute;
-	"/customers": typeof CustomersRoute;
-	"/developers": typeof DevelopersRoute;
-	"/docs": typeof DocsRouteWithChildren;
-	"/events": typeof EventsRoute;
-	"/guides": typeof GuidesRoute;
-	"/partners": typeof PartnersRoute;
-	"/pricing": typeof PricingRoute;
-	"/privacy": typeof PrivacyRoute;
-	"/products": typeof ProductsRouteWithChildren;
-	"/refund": typeof RefundRoute;
-	"/resources": typeof ResourcesRoute;
-	"/startup-program": typeof StartupProgramRoute;
-	"/status": typeof StatusRoute;
-	"/support": typeof SupportRoute;
-	"/terms": typeof TermsRoute;
-	"/tutorials": typeof TutorialsRoute;
-	"/webinars": typeof WebinarsRoute;
-	"/business/$type": typeof BusinessTypeRoute;
-	"/checkout/cancel": typeof CheckoutCancelRoute;
-	"/checkout/success": typeof CheckoutSuccessRoute;
-	"/docs/$section": typeof DocsSectionRoute;
-	"/products/marketplace": typeof ProductsMarketplaceRoute;
-	"/products/modules": typeof ProductsModulesRouteWithChildren;
-	"/products/workspaces": typeof ProductsWorkspacesRoute;
-	"/products/modules/$module": typeof ProductsModulesModuleRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/blog': typeof BlogRoute
+  '/brand': typeof BrandRoute
+  '/business': typeof BusinessRouteWithChildren
+  '/careers': typeof CareersRoute
+  '/case-studies': typeof CaseStudiesRoute
+  '/changelog': typeof ChangelogRoute
+  '/community': typeof CommunityRoute
+  '/company': typeof CompanyRoute
+  '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
+  '/customers': typeof CustomersRoute
+  '/developers': typeof DevelopersRoute
+  '/docs': typeof DocsRouteWithChildren
+  '/events': typeof EventsRoute
+  '/guides': typeof GuidesRoute
+  '/partners': typeof PartnersRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/products': typeof ProductsRouteWithChildren
+  '/refund': typeof RefundRoute
+  '/resources': typeof ResourcesRoute
+  '/startup-program': typeof StartupProgramRoute
+  '/status': typeof StatusRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
+  '/tutorials': typeof TutorialsRoute
+  '/webinars': typeof WebinarsRoute
+  '/business/$type': typeof BusinessTypeRoute
+  '/checkout/cancel': typeof CheckoutCancelRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
+  '/docs/$section': typeof DocsSectionRoute
+  '/products/marketplace': typeof ProductsMarketplaceRoute
+  '/products/modules': typeof ProductsModulesRouteWithChildren
+  '/products/workspaces': typeof ProductsWorkspacesRoute
+  '/products/modules/$module': typeof ProductsModulesModuleRoute
 }
 export interface FileRouteTypes {
-	fileRoutesByFullPath: FileRoutesByFullPath;
-	fullPaths:
-		| "/"
-		| "/about"
-		| "/blog"
-		| "/brand"
-		| "/business"
-		| "/careers"
-		| "/case-studies"
-		| "/changelog"
-		| "/community"
-		| "/company"
-		| "/contact"
-		| "/cookies"
-		| "/customers"
-		| "/developers"
-		| "/docs"
-		| "/events"
-		| "/guides"
-		| "/partners"
-		| "/pricing"
-		| "/privacy"
-		| "/products"
-		| "/refund"
-		| "/resources"
-		| "/startup-program"
-		| "/status"
-		| "/support"
-		| "/terms"
-		| "/tutorials"
-		| "/webinars"
-		| "/business/$type"
-		| "/checkout/cancel"
-		| "/checkout/success"
-		| "/docs/$section"
-		| "/products/marketplace"
-		| "/products/modules"
-		| "/products/workspaces"
-		| "/products/modules/$module";
-	fileRoutesByTo: FileRoutesByTo;
-	to:
-		| "/"
-		| "/about"
-		| "/blog"
-		| "/brand"
-		| "/business"
-		| "/careers"
-		| "/case-studies"
-		| "/changelog"
-		| "/community"
-		| "/company"
-		| "/contact"
-		| "/cookies"
-		| "/customers"
-		| "/developers"
-		| "/docs"
-		| "/events"
-		| "/guides"
-		| "/partners"
-		| "/pricing"
-		| "/privacy"
-		| "/products"
-		| "/refund"
-		| "/resources"
-		| "/startup-program"
-		| "/status"
-		| "/support"
-		| "/terms"
-		| "/tutorials"
-		| "/webinars"
-		| "/business/$type"
-		| "/checkout/cancel"
-		| "/checkout/success"
-		| "/docs/$section"
-		| "/products/marketplace"
-		| "/products/modules"
-		| "/products/workspaces"
-		| "/products/modules/$module";
-	id:
-		| "__root__"
-		| "/"
-		| "/about"
-		| "/blog"
-		| "/brand"
-		| "/business"
-		| "/careers"
-		| "/case-studies"
-		| "/changelog"
-		| "/community"
-		| "/company"
-		| "/contact"
-		| "/cookies"
-		| "/customers"
-		| "/developers"
-		| "/docs"
-		| "/events"
-		| "/guides"
-		| "/partners"
-		| "/pricing"
-		| "/privacy"
-		| "/products"
-		| "/refund"
-		| "/resources"
-		| "/startup-program"
-		| "/status"
-		| "/support"
-		| "/terms"
-		| "/tutorials"
-		| "/webinars"
-		| "/business/$type"
-		| "/checkout/cancel"
-		| "/checkout/success"
-		| "/docs/$section"
-		| "/products/marketplace"
-		| "/products/modules"
-		| "/products/workspaces"
-		| "/products/modules/$module";
-	fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/blog'
+    | '/brand'
+    | '/business'
+    | '/careers'
+    | '/case-studies'
+    | '/changelog'
+    | '/community'
+    | '/company'
+    | '/contact'
+    | '/cookies'
+    | '/customers'
+    | '/developers'
+    | '/docs'
+    | '/events'
+    | '/guides'
+    | '/partners'
+    | '/pricing'
+    | '/privacy'
+    | '/products'
+    | '/refund'
+    | '/resources'
+    | '/startup-program'
+    | '/status'
+    | '/support'
+    | '/terms'
+    | '/tutorials'
+    | '/webinars'
+    | '/business/$type'
+    | '/checkout/cancel'
+    | '/checkout/success'
+    | '/docs/$section'
+    | '/products/marketplace'
+    | '/products/modules'
+    | '/products/workspaces'
+    | '/products/modules/$module'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/about'
+    | '/blog'
+    | '/brand'
+    | '/business'
+    | '/careers'
+    | '/case-studies'
+    | '/changelog'
+    | '/community'
+    | '/company'
+    | '/contact'
+    | '/cookies'
+    | '/customers'
+    | '/developers'
+    | '/docs'
+    | '/events'
+    | '/guides'
+    | '/partners'
+    | '/pricing'
+    | '/privacy'
+    | '/products'
+    | '/refund'
+    | '/resources'
+    | '/startup-program'
+    | '/status'
+    | '/support'
+    | '/terms'
+    | '/tutorials'
+    | '/webinars'
+    | '/business/$type'
+    | '/checkout/cancel'
+    | '/checkout/success'
+    | '/docs/$section'
+    | '/products/marketplace'
+    | '/products/modules'
+    | '/products/workspaces'
+    | '/products/modules/$module'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/blog'
+    | '/brand'
+    | '/business'
+    | '/careers'
+    | '/case-studies'
+    | '/changelog'
+    | '/community'
+    | '/company'
+    | '/contact'
+    | '/cookies'
+    | '/customers'
+    | '/developers'
+    | '/docs'
+    | '/events'
+    | '/guides'
+    | '/partners'
+    | '/pricing'
+    | '/privacy'
+    | '/products'
+    | '/refund'
+    | '/resources'
+    | '/startup-program'
+    | '/status'
+    | '/support'
+    | '/terms'
+    | '/tutorials'
+    | '/webinars'
+    | '/business/$type'
+    | '/checkout/cancel'
+    | '/checkout/success'
+    | '/docs/$section'
+    | '/products/marketplace'
+    | '/products/modules'
+    | '/products/workspaces'
+    | '/products/modules/$module'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-	IndexRoute: typeof IndexRoute;
-	AboutRoute: typeof AboutRoute;
-	BlogRoute: typeof BlogRoute;
-	BrandRoute: typeof BrandRoute;
-	BusinessRoute: typeof BusinessRouteWithChildren;
-	CareersRoute: typeof CareersRoute;
-	CaseStudiesRoute: typeof CaseStudiesRoute;
-	ChangelogRoute: typeof ChangelogRoute;
-	CommunityRoute: typeof CommunityRoute;
-	CompanyRoute: typeof CompanyRoute;
-	ContactRoute: typeof ContactRoute;
-	CookiesRoute: typeof CookiesRoute;
-	CustomersRoute: typeof CustomersRoute;
-	DevelopersRoute: typeof DevelopersRoute;
-	DocsRoute: typeof DocsRouteWithChildren;
-	EventsRoute: typeof EventsRoute;
-	GuidesRoute: typeof GuidesRoute;
-	PartnersRoute: typeof PartnersRoute;
-	PricingRoute: typeof PricingRoute;
-	PrivacyRoute: typeof PrivacyRoute;
-	ProductsRoute: typeof ProductsRouteWithChildren;
-	RefundRoute: typeof RefundRoute;
-	ResourcesRoute: typeof ResourcesRoute;
-	StartupProgramRoute: typeof StartupProgramRoute;
-	StatusRoute: typeof StatusRoute;
-	SupportRoute: typeof SupportRoute;
-	TermsRoute: typeof TermsRoute;
-	TutorialsRoute: typeof TutorialsRoute;
-	WebinarsRoute: typeof WebinarsRoute;
-	CheckoutCancelRoute: typeof CheckoutCancelRoute;
-	CheckoutSuccessRoute: typeof CheckoutSuccessRoute;
+  IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  BlogRoute: typeof BlogRoute
+  BrandRoute: typeof BrandRoute
+  BusinessRoute: typeof BusinessRouteWithChildren
+  CareersRoute: typeof CareersRoute
+  CaseStudiesRoute: typeof CaseStudiesRoute
+  ChangelogRoute: typeof ChangelogRoute
+  CommunityRoute: typeof CommunityRoute
+  CompanyRoute: typeof CompanyRoute
+  ContactRoute: typeof ContactRoute
+  CookiesRoute: typeof CookiesRoute
+  CustomersRoute: typeof CustomersRoute
+  DevelopersRoute: typeof DevelopersRoute
+  DocsRoute: typeof DocsRouteWithChildren
+  EventsRoute: typeof EventsRoute
+  GuidesRoute: typeof GuidesRoute
+  PartnersRoute: typeof PartnersRoute
+  PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
+  ProductsRoute: typeof ProductsRouteWithChildren
+  RefundRoute: typeof RefundRoute
+  ResourcesRoute: typeof ResourcesRoute
+  StartupProgramRoute: typeof StartupProgramRoute
+  StatusRoute: typeof StatusRoute
+  SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
+  TutorialsRoute: typeof TutorialsRoute
+  WebinarsRoute: typeof WebinarsRoute
+  CheckoutCancelRoute: typeof CheckoutCancelRoute
+  CheckoutSuccessRoute: typeof CheckoutSuccessRoute
 }
 
-declare module "@tanstack/react-router" {
-	interface FileRoutesByPath {
-		"/": {
-			id: "/";
-			path: "/";
-			fullPath: "/";
-			preLoaderRoute: typeof IndexRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/about": {
-			id: "/about";
-			path: "/about";
-			fullPath: "/about";
-			preLoaderRoute: typeof AboutRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/blog": {
-			id: "/blog";
-			path: "/blog";
-			fullPath: "/blog";
-			preLoaderRoute: typeof BlogRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/brand": {
-			id: "/brand";
-			path: "/brand";
-			fullPath: "/brand";
-			preLoaderRoute: typeof BrandRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/business": {
-			id: "/business";
-			path: "/business";
-			fullPath: "/business";
-			preLoaderRoute: typeof BusinessRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/careers": {
-			id: "/careers";
-			path: "/careers";
-			fullPath: "/careers";
-			preLoaderRoute: typeof CareersRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/case-studies": {
-			id: "/case-studies";
-			path: "/case-studies";
-			fullPath: "/case-studies";
-			preLoaderRoute: typeof CaseStudiesRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/changelog": {
-			id: "/changelog";
-			path: "/changelog";
-			fullPath: "/changelog";
-			preLoaderRoute: typeof ChangelogRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/community": {
-			id: "/community";
-			path: "/community";
-			fullPath: "/community";
-			preLoaderRoute: typeof CommunityRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/company": {
-			id: "/company";
-			path: "/company";
-			fullPath: "/company";
-			preLoaderRoute: typeof CompanyRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/contact": {
-			id: "/contact";
-			path: "/contact";
-			fullPath: "/contact";
-			preLoaderRoute: typeof ContactRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/cookies": {
-			id: "/cookies";
-			path: "/cookies";
-			fullPath: "/cookies";
-			preLoaderRoute: typeof CookiesRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/customers": {
-			id: "/customers";
-			path: "/customers";
-			fullPath: "/customers";
-			preLoaderRoute: typeof CustomersRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/developers": {
-			id: "/developers";
-			path: "/developers";
-			fullPath: "/developers";
-			preLoaderRoute: typeof DevelopersRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/docs": {
-			id: "/docs";
-			path: "/docs";
-			fullPath: "/docs";
-			preLoaderRoute: typeof DocsRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/events": {
-			id: "/events";
-			path: "/events";
-			fullPath: "/events";
-			preLoaderRoute: typeof EventsRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/guides": {
-			id: "/guides";
-			path: "/guides";
-			fullPath: "/guides";
-			preLoaderRoute: typeof GuidesRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/partners": {
-			id: "/partners";
-			path: "/partners";
-			fullPath: "/partners";
-			preLoaderRoute: typeof PartnersRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/pricing": {
-			id: "/pricing";
-			path: "/pricing";
-			fullPath: "/pricing";
-			preLoaderRoute: typeof PricingRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/privacy": {
-			id: "/privacy";
-			path: "/privacy";
-			fullPath: "/privacy";
-			preLoaderRoute: typeof PrivacyRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/products": {
-			id: "/products";
-			path: "/products";
-			fullPath: "/products";
-			preLoaderRoute: typeof ProductsRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/refund": {
-			id: "/refund";
-			path: "/refund";
-			fullPath: "/refund";
-			preLoaderRoute: typeof RefundRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/resources": {
-			id: "/resources";
-			path: "/resources";
-			fullPath: "/resources";
-			preLoaderRoute: typeof ResourcesRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/startup-program": {
-			id: "/startup-program";
-			path: "/startup-program";
-			fullPath: "/startup-program";
-			preLoaderRoute: typeof StartupProgramRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/status": {
-			id: "/status";
-			path: "/status";
-			fullPath: "/status";
-			preLoaderRoute: typeof StatusRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/support": {
-			id: "/support";
-			path: "/support";
-			fullPath: "/support";
-			preLoaderRoute: typeof SupportRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/terms": {
-			id: "/terms";
-			path: "/terms";
-			fullPath: "/terms";
-			preLoaderRoute: typeof TermsRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/tutorials": {
-			id: "/tutorials";
-			path: "/tutorials";
-			fullPath: "/tutorials";
-			preLoaderRoute: typeof TutorialsRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/webinars": {
-			id: "/webinars";
-			path: "/webinars";
-			fullPath: "/webinars";
-			preLoaderRoute: typeof WebinarsRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/business/$type": {
-			id: "/business/$type";
-			path: "/$type";
-			fullPath: "/business/$type";
-			preLoaderRoute: typeof BusinessTypeRouteImport;
-			parentRoute: typeof BusinessRoute;
-		};
-		"/checkout/cancel": {
-			id: "/checkout/cancel";
-			path: "/checkout/cancel";
-			fullPath: "/checkout/cancel";
-			preLoaderRoute: typeof CheckoutCancelRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/checkout/success": {
-			id: "/checkout/success";
-			path: "/checkout/success";
-			fullPath: "/checkout/success";
-			preLoaderRoute: typeof CheckoutSuccessRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/docs/$section": {
-			id: "/docs/$section";
-			path: "/$section";
-			fullPath: "/docs/$section";
-			preLoaderRoute: typeof DocsSectionRouteImport;
-			parentRoute: typeof DocsRoute;
-		};
-		"/products/marketplace": {
-			id: "/products/marketplace";
-			path: "/marketplace";
-			fullPath: "/products/marketplace";
-			preLoaderRoute: typeof ProductsMarketplaceRouteImport;
-			parentRoute: typeof ProductsRoute;
-		};
-		"/products/modules": {
-			id: "/products/modules";
-			path: "/modules";
-			fullPath: "/products/modules";
-			preLoaderRoute: typeof ProductsModulesRouteImport;
-			parentRoute: typeof ProductsRoute;
-		};
-		"/products/workspaces": {
-			id: "/products/workspaces";
-			path: "/workspaces";
-			fullPath: "/products/workspaces";
-			preLoaderRoute: typeof ProductsWorkspacesRouteImport;
-			parentRoute: typeof ProductsRoute;
-		};
-		"/products/modules/$module": {
-			id: "/products/modules/$module";
-			path: "/$module";
-			fullPath: "/products/modules/$module";
-			preLoaderRoute: typeof ProductsModulesModuleRouteImport;
-			parentRoute: typeof ProductsModulesRoute;
-		};
-	}
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand': {
+      id: '/brand'
+      path: '/brand'
+      fullPath: '/brand'
+      preLoaderRoute: typeof BrandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/business': {
+      id: '/business'
+      path: '/business'
+      fullPath: '/business'
+      preLoaderRoute: typeof BusinessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/careers': {
+      id: '/careers'
+      path: '/careers'
+      fullPath: '/careers'
+      preLoaderRoute: typeof CareersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/case-studies': {
+      id: '/case-studies'
+      path: '/case-studies'
+      fullPath: '/case-studies'
+      preLoaderRoute: typeof CaseStudiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/company': {
+      id: '/company'
+      path: '/company'
+      fullPath: '/company'
+      preLoaderRoute: typeof CompanyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers': {
+      id: '/developers'
+      path: '/developers'
+      fullPath: '/developers'
+      preLoaderRoute: typeof DevelopersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events': {
+      id: '/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guides': {
+      id: '/guides'
+      path: '/guides'
+      fullPath: '/guides'
+      preLoaderRoute: typeof GuidesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/partners': {
+      id: '/partners'
+      path: '/partners'
+      fullPath: '/partners'
+      preLoaderRoute: typeof PartnersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund': {
+      id: '/refund'
+      path: '/refund'
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resources': {
+      id: '/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof ResourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/startup-program': {
+      id: '/startup-program'
+      path: '/startup-program'
+      fullPath: '/startup-program'
+      preLoaderRoute: typeof StartupProgramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tutorials': {
+      id: '/tutorials'
+      path: '/tutorials'
+      fullPath: '/tutorials'
+      preLoaderRoute: typeof TutorialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webinars': {
+      id: '/webinars'
+      path: '/webinars'
+      fullPath: '/webinars'
+      preLoaderRoute: typeof WebinarsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/business/$type': {
+      id: '/business/$type'
+      path: '/$type'
+      fullPath: '/business/$type'
+      preLoaderRoute: typeof BusinessTypeRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/checkout/cancel': {
+      id: '/checkout/cancel'
+      path: '/checkout/cancel'
+      fullPath: '/checkout/cancel'
+      preLoaderRoute: typeof CheckoutCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/success': {
+      id: '/checkout/success'
+      path: '/checkout/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof CheckoutSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/$section': {
+      id: '/docs/$section'
+      path: '/$section'
+      fullPath: '/docs/$section'
+      preLoaderRoute: typeof DocsSectionRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/products/marketplace': {
+      id: '/products/marketplace'
+      path: '/marketplace'
+      fullPath: '/products/marketplace'
+      preLoaderRoute: typeof ProductsMarketplaceRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/products/modules': {
+      id: '/products/modules'
+      path: '/modules'
+      fullPath: '/products/modules'
+      preLoaderRoute: typeof ProductsModulesRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/products/workspaces': {
+      id: '/products/workspaces'
+      path: '/workspaces'
+      fullPath: '/products/workspaces'
+      preLoaderRoute: typeof ProductsWorkspacesRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/products/modules/$module': {
+      id: '/products/modules/$module'
+      path: '/$module'
+      fullPath: '/products/modules/$module'
+      preLoaderRoute: typeof ProductsModulesModuleRouteImport
+      parentRoute: typeof ProductsModulesRoute
+    }
+  }
 }
 
 interface BusinessRouteChildren {
-	BusinessTypeRoute: typeof BusinessTypeRoute;
+  BusinessTypeRoute: typeof BusinessTypeRoute
 }
 
 const BusinessRouteChildren: BusinessRouteChildren = {
-	BusinessTypeRoute: BusinessTypeRoute,
-};
+  BusinessTypeRoute: BusinessTypeRoute,
+}
 
 const BusinessRouteWithChildren = BusinessRoute._addFileChildren(
-	BusinessRouteChildren,
-);
+  BusinessRouteChildren,
+)
 
 interface DocsRouteChildren {
-	DocsSectionRoute: typeof DocsSectionRoute;
+  DocsSectionRoute: typeof DocsSectionRoute
 }
 
 const DocsRouteChildren: DocsRouteChildren = {
-	DocsSectionRoute: DocsSectionRoute,
-};
+  DocsSectionRoute: DocsSectionRoute,
+}
 
-const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren);
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
 
 interface ProductsModulesRouteChildren {
-	ProductsModulesModuleRoute: typeof ProductsModulesModuleRoute;
+  ProductsModulesModuleRoute: typeof ProductsModulesModuleRoute
 }
 
 const ProductsModulesRouteChildren: ProductsModulesRouteChildren = {
-	ProductsModulesModuleRoute: ProductsModulesModuleRoute,
-};
+  ProductsModulesModuleRoute: ProductsModulesModuleRoute,
+}
 
 const ProductsModulesRouteWithChildren = ProductsModulesRoute._addFileChildren(
-	ProductsModulesRouteChildren,
-);
+  ProductsModulesRouteChildren,
+)
 
 interface ProductsRouteChildren {
-	ProductsMarketplaceRoute: typeof ProductsMarketplaceRoute;
-	ProductsModulesRoute: typeof ProductsModulesRouteWithChildren;
-	ProductsWorkspacesRoute: typeof ProductsWorkspacesRoute;
+  ProductsMarketplaceRoute: typeof ProductsMarketplaceRoute
+  ProductsModulesRoute: typeof ProductsModulesRouteWithChildren
+  ProductsWorkspacesRoute: typeof ProductsWorkspacesRoute
 }
 
 const ProductsRouteChildren: ProductsRouteChildren = {
-	ProductsMarketplaceRoute: ProductsMarketplaceRoute,
-	ProductsModulesRoute: ProductsModulesRouteWithChildren,
-	ProductsWorkspacesRoute: ProductsWorkspacesRoute,
-};
+  ProductsMarketplaceRoute: ProductsMarketplaceRoute,
+  ProductsModulesRoute: ProductsModulesRouteWithChildren,
+  ProductsWorkspacesRoute: ProductsWorkspacesRoute,
+}
 
 const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
-	ProductsRouteChildren,
-);
+  ProductsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
-	IndexRoute: IndexRoute,
-	AboutRoute: AboutRoute,
-	BlogRoute: BlogRoute,
-	BrandRoute: BrandRoute,
-	BusinessRoute: BusinessRouteWithChildren,
-	CareersRoute: CareersRoute,
-	CaseStudiesRoute: CaseStudiesRoute,
-	ChangelogRoute: ChangelogRoute,
-	CommunityRoute: CommunityRoute,
-	CompanyRoute: CompanyRoute,
-	ContactRoute: ContactRoute,
-	CookiesRoute: CookiesRoute,
-	CustomersRoute: CustomersRoute,
-	DevelopersRoute: DevelopersRoute,
-	DocsRoute: DocsRouteWithChildren,
-	EventsRoute: EventsRoute,
-	GuidesRoute: GuidesRoute,
-	PartnersRoute: PartnersRoute,
-	PricingRoute: PricingRoute,
-	PrivacyRoute: PrivacyRoute,
-	ProductsRoute: ProductsRouteWithChildren,
-	RefundRoute: RefundRoute,
-	ResourcesRoute: ResourcesRoute,
-	StartupProgramRoute: StartupProgramRoute,
-	StatusRoute: StatusRoute,
-	SupportRoute: SupportRoute,
-	TermsRoute: TermsRoute,
-	TutorialsRoute: TutorialsRoute,
-	WebinarsRoute: WebinarsRoute,
-	CheckoutCancelRoute: CheckoutCancelRoute,
-	CheckoutSuccessRoute: CheckoutSuccessRoute,
-};
+  IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  BlogRoute: BlogRoute,
+  BrandRoute: BrandRoute,
+  BusinessRoute: BusinessRouteWithChildren,
+  CareersRoute: CareersRoute,
+  CaseStudiesRoute: CaseStudiesRoute,
+  ChangelogRoute: ChangelogRoute,
+  CommunityRoute: CommunityRoute,
+  CompanyRoute: CompanyRoute,
+  ContactRoute: ContactRoute,
+  CookiesRoute: CookiesRoute,
+  CustomersRoute: CustomersRoute,
+  DevelopersRoute: DevelopersRoute,
+  DocsRoute: DocsRouteWithChildren,
+  EventsRoute: EventsRoute,
+  GuidesRoute: GuidesRoute,
+  PartnersRoute: PartnersRoute,
+  PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
+  ProductsRoute: ProductsRouteWithChildren,
+  RefundRoute: RefundRoute,
+  ResourcesRoute: ResourcesRoute,
+  StartupProgramRoute: StartupProgramRoute,
+  StatusRoute: StatusRoute,
+  SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
+  TutorialsRoute: TutorialsRoute,
+  WebinarsRoute: WebinarsRoute,
+  CheckoutCancelRoute: CheckoutCancelRoute,
+  CheckoutSuccessRoute: CheckoutSuccessRoute,
+}
 export const routeTree = rootRouteImport
-	._addFileChildren(rootRouteChildren)
-	._addFileTypes<FileRouteTypes>();
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()

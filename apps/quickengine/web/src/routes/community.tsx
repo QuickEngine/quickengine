@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { buildMetadata } from "@/lib/seo";
 
 // PLACEHOLDER — ways to plug into the community. Real links/counts swap in later.
 const CHANNELS = [

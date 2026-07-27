@@ -1,6 +1,0 @@
-@import "@quickengine/ui/globals.css";
-@import "@quickengine/ui/brand.css";
-
-/* Tailwind v4 must scan the shared UI package so its component + brand classes
-   are generated. */
-@source "../../../../packages/ui/src";

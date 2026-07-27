@@ -91,35 +91,29 @@ export const PLANS: readonly PlanDefinition[] = [
 			workspaces: 1,
 		},
 	},
-	paidPlan("starter", "Starter", {
+	paidPlan("launch", "Launch", {
 		apiRequests: 250_000,
 		aiActions: 500,
 		storageBytes: 25 * GB,
-		seats: 3,
+		seats: 2,
 		workspaces: 3,
 	}),
-	paidPlan("pro", "Pro", {
+	paidPlan("grow", "Grow", {
 		apiRequests: 1_000_000,
 		aiActions: 2_500,
 		storageBytes: 100 * GB,
-		seats: 10,
+		seats: 5,
 		workspaces: 10,
 	}),
-	paidPlan("growth", "Growth", {
+	paidPlan("scale", "Scale", {
 		apiRequests: 5_000_000,
 		aiActions: 10_000,
 		storageBytes: 500 * GB,
-		seats: 25,
+		seats: 15,
 		workspaces: 25,
 	}),
-	paidPlan("team", "Team", {
-		apiRequests: 20_000_000,
-		aiActions: 40_000,
-		storageBytes: 2048 * GB,
-		seats: 100,
-		workspaces: null,
-	}),
-	// Enterprise is a custom conversation, not self-serve checkout.
+	// Custom is a conversation, not self-serve checkout. It deliberately has no
+	// entry here: pricing it would mean committing to a margin nobody has modelled.
 ] as const;
 
 /** The meters the engine tracks. */

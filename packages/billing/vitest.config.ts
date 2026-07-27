@@ -19,8 +19,8 @@ process.env.STRIPE_SECRET_KEY =
 	process.env.STRIPE_SECRET_KEY ?? "sk_test_dummy";
 process.env.STRIPE_WEBHOOK_SECRET =
 	process.env.STRIPE_WEBHOOK_SECRET ?? "whsec_test_dummy";
-process.env.STRIPE_PRICE_PRO_MONTHLY =
-	process.env.STRIPE_PRICE_PRO_MONTHLY ?? "price_test_pro_monthly";
+process.env.STRIPE_PRICE_GROW_MONTHLY =
+	process.env.STRIPE_PRICE_GROW_MONTHLY ?? "price_test_grow_monthly";
 
 export default defineConfig({
 	test: {
@@ -38,7 +38,7 @@ export default defineConfig({
 			BETTER_AUTH_SECRET: testAuthSecret,
 			STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
 			STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-			STRIPE_PRICE_PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY,
+			STRIPE_PRICE_GROW_MONTHLY: process.env.STRIPE_PRICE_GROW_MONTHLY,
 		},
 	},
 });

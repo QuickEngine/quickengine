@@ -6,6 +6,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Changed
+
+- **The plans are now Free, Launch, Grow, Scale and Custom.** Named after where your business is
+  going rather than the size of our product. Prices and everything included are unchanged at
+  $0, $30, $90 and $240, with Custom being a conversation rather than a checkout button.
+- **Seat counts corrected** to 2, 5 and 15 on Launch, Grow and Scale, matching the published
+  pricing.
+
+### Removed
+
+- **The Team tier has been withdrawn** from self-serve checkout. Accounts of that size are
+  better served by a conversation than a fixed package.
+
 ### Added
 
 - **Prepaid AI credits.** Buy credit up front and draw it down as you use AI features. Your

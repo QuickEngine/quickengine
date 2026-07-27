@@ -40,14 +40,14 @@ describe("webhook → subscription sync (money path)", () => {
 				fakeSubscription({
 					organizationId: ORG1,
 					customer: "cus_1",
-					priceId: "price_test_pro_monthly",
+					priceId: "price_test_grow_monthly",
 					status: "active",
 				}),
 			),
 		);
 
 		const row = await getSubRow(ORG1);
-		expect(row?.plan_id).toBe("pro");
+		expect(row?.plan_id).toBe("grow");
 		expect(row?.status).toBe("active");
 		expect(row?.stripe_subscription_id).toBe("sub_test_123");
 		expect(row?.billing_cycle).toBe("monthly");

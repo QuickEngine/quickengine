@@ -20,7 +20,7 @@ export const PLANS: Plan[] = [
 		features: ["1 workspace", "Core modules", "1 GB storage", "1 seat"],
 	},
 	{
-		id: "starter",
+		id: "launch",
 		name: "Starter",
 		monthly: 9,
 		features: [
@@ -31,7 +31,7 @@ export const PLANS: Plan[] = [
 		],
 	},
 	{
-		id: "pro",
+		id: "grow",
 		name: "Pro",
 		monthly: 19,
 		highlight: true,
@@ -43,7 +43,7 @@ export const PLANS: Plan[] = [
 		],
 	},
 	{
-		id: "growth",
+		id: "scale",
 		name: "Growth",
 		monthly: 39,
 		features: [

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	Archive,
-	MagnifyingGlass,
-	Package,
-	Plus,
-	Trash,
-} from "@phosphor-icons/react";
+import { Archive, Package, Plus, Trash } from "@phosphor-icons/react";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { Button } from "@quickengine/ui/components/ui/button";
 import {
@@ -38,7 +32,7 @@ import {
 	TableRow,
 } from "@quickengine/ui/components/ui/table";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
 	adjustInventoryAction,
@@ -50,6 +44,12 @@ import {
 } from "../_lib/inventory-actions";
 import Link from "../compat/router-link";
 import { useRouter } from "../compat/router-navigation";
+import {
+	buildResourceListPage,
+	ResourceListPagination,
+	type ResourceListState,
+	ResourceListToolbar,
+} from "./resource-list";
 
 export type InventoryMovementViewModel = {
 	id: string;
@@ -450,25 +450,36 @@ export function InventoryView({
 	items,
 	targets,
 	defaultThreshold,
+	listState,
+	onListStateChange,
 }: {
 	workspaceId: string;
 	items: InventoryItemViewModel[];
 	targets: InventoryTargetChoice[];
 	defaultThreshold: number;
+	listState: ResourceListState;
+	onListStateChange: (patch: Partial<ResourceListState>) => void;
 }) {
-	const [query, setQuery] = useState("");
-	const [status, setStatus] = useState("all");
-	const filtered = useMemo(
-		() =>
-			items.filter(
-				(item) =>
-					(status === "all" || item.status === status) &&
-					[item.label, item.sku].some((value) =>
-						value?.toLowerCase().includes(query.toLowerCase()),
-					),
+	const list = buildResourceListPage({
+		items,
+		state: listState,
+		matches: (item, query) =>
+			[item.label, item.sku].some((value) =>
+				value?.toLowerCase().includes(query),
 			),
-		[items, query, status],
-	);
+		inStatus: (item, status) => item.status === status,
+		compare: (left, right, sort) => {
+			if (sort === "name-asc") return left.label.localeCompare(right.label);
+			if (sort === "available-desc") return right.available - left.available;
+			if (sort === "low-stock")
+				return (
+					left.available -
+					left.lowStockThreshold -
+					(right.available - right.lowStockThreshold)
+				);
+			return 0;
+		},
+	});
 	return (
 		<section className="mt-8 space-y-4">
 			<div className="flex flex-wrap items-end justify-between gap-4">
@@ -518,27 +529,25 @@ export function InventoryView({
 				</Empty>
 			) : (
 				<>
-					<div className="flex gap-3">
-						<div className="relative flex-1">
-							<MagnifyingGlass className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-							<Input
-								className="pl-9"
-								value={query}
-								onChange={(event) => setQuery(event.target.value)}
-								placeholder="Search item, variant, or SKU…"
-							/>
-						</div>
-						<NativeSelect
-							className="w-36"
-							value={status}
-							onChange={(event) => setStatus(event.target.value)}
-						>
-							<option value="all">All statuses</option>
-							<option value="active">Active</option>
-							<option value="archived">Archived</option>
-						</NativeSelect>
-					</div>
-					{filtered.length === 0 ? (
+					<ResourceListToolbar
+						state={listState}
+						onChange={onListStateChange}
+						searchPlaceholder="Search item, variant, or SKU…"
+						statuses={[
+							{ value: "all", label: "All statuses" },
+							{ value: "active", label: "Active" },
+							{ value: "archived", label: "Archived" },
+						]}
+						sorts={[
+							{ value: "default", label: "Default order" },
+							{ value: "low-stock", label: "Lowest stock" },
+							{ value: "available-desc", label: "Highest stock" },
+							{ value: "name-asc", label: "Name A–Z" },
+						]}
+						filteredCount={list.filteredCount}
+						totalCount={list.totalCount}
+					/>
+					{list.filteredCount === 0 ? (
 						<div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground text-sm">
 							No inventory records match those filters.
 						</div>
@@ -556,7 +565,7 @@ export function InventoryView({
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{filtered.map((item) => (
+									{list.items.map((item) => (
 										<TableRow key={item.id}>
 											<TableCell>
 												<div className="font-medium">{item.label}</div>
@@ -598,6 +607,11 @@ export function InventoryView({
 							</Table>
 						</div>
 					)}
+					<ResourceListPagination
+						page={list.page}
+						pageCount={list.pageCount}
+						onPageChange={(page) => onListStateChange({ page })}
+					/>
 				</>
 			)}
 		</section>

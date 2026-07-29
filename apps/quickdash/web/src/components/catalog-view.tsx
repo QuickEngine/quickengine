@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	Archive,
-	MagnifyingGlass,
-	Package,
-	Plus,
-	Trash,
-} from "@phosphor-icons/react";
+import { Archive, Package, Plus, Trash } from "@phosphor-icons/react";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { Button } from "@quickengine/ui/components/ui/button";
 import {
@@ -39,7 +33,7 @@ import {
 } from "@quickengine/ui/components/ui/table";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
 import { formatMoney } from "@quickengine/ui/lib/format";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
 	type CatalogActionState,
@@ -51,6 +45,12 @@ import {
 	saveVariantAction,
 } from "../_lib/catalog-actions";
 import { useRouter } from "../compat/router-navigation";
+import {
+	buildResourceListPage,
+	ResourceListPagination,
+	type ResourceListState,
+	ResourceListToolbar,
+} from "./resource-list";
 
 export type CatalogVariantViewModel = {
 	id: string;
@@ -579,26 +579,33 @@ export function CatalogView({
 	defaultCurrency,
 	productLabel,
 	serviceLabel,
+	listState,
+	onListStateChange,
 }: {
 	workspaceId: string;
 	items: CatalogItemViewModel[];
 	defaultCurrency: string;
 	productLabel: string;
 	serviceLabel: string;
+	listState: ResourceListState;
+	onListStateChange: (patch: Partial<ResourceListState>) => void;
 }) {
-	const [query, setQuery] = useState("");
-	const [status, setStatus] = useState("all");
-	const filtered = useMemo(
-		() =>
-			items.filter(
-				(item) =>
-					(status === "all" || item.status === status) &&
-					[item.name, item.sku, item.description, item.type].some((value) =>
-						value?.toLowerCase().includes(query.toLowerCase()),
-					),
+	const list = buildResourceListPage({
+		items,
+		state: listState,
+		matches: (item, query) =>
+			[item.name, item.sku, item.description, item.type].some((value) =>
+				value?.toLowerCase().includes(query),
 			),
-		[items, query, status],
-	);
+		inStatus: (item, status) => item.status === status,
+		compare: (left, right, sort) => {
+			if (sort === "name-asc") return left.name.localeCompare(right.name);
+			if (sort === "name-desc") return right.name.localeCompare(left.name);
+			if (sort === "price-desc")
+				return (right.priceCents ?? -1) - (left.priceCents ?? -1);
+			return 0;
+		},
+	});
 	return (
 		<section className="mt-8 space-y-4">
 			<div className="flex flex-wrap items-end justify-between gap-4">
@@ -634,28 +641,26 @@ export function CatalogView({
 				</Empty>
 			) : (
 				<>
-					<div className="flex gap-3">
-						<div className="relative flex-1">
-							<MagnifyingGlass className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-							<Input
-								className="pl-9"
-								value={query}
-								onChange={(event) => setQuery(event.target.value)}
-								placeholder="Search name, SKU, type…"
-							/>
-						</div>
-						<NativeSelect
-							className="w-36"
-							value={status}
-							onChange={(event) => setStatus(event.target.value)}
-						>
-							<option value="all">All statuses</option>
-							<option value="draft">Draft</option>
-							<option value="active">Active</option>
-							<option value="archived">Archived</option>
-						</NativeSelect>
-					</div>
-					{filtered.length === 0 ? (
+					<ResourceListToolbar
+						state={listState}
+						onChange={onListStateChange}
+						searchPlaceholder="Search name, SKU, type…"
+						statuses={[
+							{ value: "all", label: "All statuses" },
+							{ value: "draft", label: "Draft" },
+							{ value: "active", label: "Active" },
+							{ value: "archived", label: "Archived" },
+						]}
+						sorts={[
+							{ value: "default", label: "Default order" },
+							{ value: "name-asc", label: "Name A–Z" },
+							{ value: "name-desc", label: "Name Z–A" },
+							{ value: "price-desc", label: "Highest price" },
+						]}
+						filteredCount={list.filteredCount}
+						totalCount={list.totalCount}
+					/>
+					{list.filteredCount === 0 ? (
 						<div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground text-sm">
 							No catalog items match those filters.
 						</div>
@@ -673,7 +678,7 @@ export function CatalogView({
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{filtered.map((item) => (
+									{list.items.map((item) => (
 										<TableRow key={item.id}>
 											<TableCell>
 												<div className="font-medium">{item.name}</div>
@@ -713,6 +718,11 @@ export function CatalogView({
 							</Table>
 						</div>
 					)}
+					<ResourceListPagination
+						page={list.page}
+						pageCount={list.pageCount}
+						onPageChange={(page) => onListStateChange({ page })}
+					/>
 				</>
 			)}
 		</section>

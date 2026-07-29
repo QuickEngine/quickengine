@@ -9,11 +9,13 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./client": "./src/client.ts",
-		"./server": "./src/server.ts"
+		"./server": "./src/server.ts",
+		"./vite": "./src/vite.ts"
 	},
 	"scripts": {
 		"lint": "biome lint .",
 		"format": "biome format . --write",
+		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
@@ -21,6 +23,7 @@
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"typescript": "^5"
+		"typescript": "^5",
+		"vitest": "^3.2.6"
 	}
 }

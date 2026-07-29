@@ -8,6 +8,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Vite deployments now share one validated browser URL contract.** Local development uses
+  the documented application ports, while production configuration must provide complete HTTPS
+  origins and cannot silently point a deployed app back at localhost.
 - **First-run setup now carries customers into their new QuickDash workspace.** New accounts
   name their business, choose and review a starting recipe, create the workspace atomically,
   and land in its orientation and getting-started checklist.

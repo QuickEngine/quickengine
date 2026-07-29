@@ -1,5 +1,6 @@
-const AUTH_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
+import { env } from "@/lib/env";
+
+const AUTH_URL = env.VITE_AUTH_URL;
 
 // Marketing stays marketing. Workspace configuration, including optional AI setup,
 // begins only after authentication inside Account onboarding.

@@ -1,8 +1,8 @@
 import { Check } from "@phosphor-icons/react";
+import { env } from "@/lib/env";
 import { useBillingCycle } from "./pricing-hero";
 
-const AUTH_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
+const AUTH_URL = env.VITE_AUTH_URL;
 
 type Tier = {
 	name: string;

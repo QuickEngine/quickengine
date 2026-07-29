@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createViteClientEnv } from "./vite";
+import {
+	createDevelopmentViteClientEnv,
+	createProductionViteClientEnv,
+} from "./vite";
 
 const productionEnvironment = {
 	VITE_WEB_URL: "https://quickengine.xyz",
@@ -11,7 +14,15 @@ const productionEnvironment = {
 
 describe("Vite client environment", () => {
 	it("uses the documented local origins only in development", () => {
-		expect(createViteClientEnv({}, { mode: "development" })).toMatchObject({
+		expect(
+			createDevelopmentViteClientEnv({
+				VITE_WEB_URL: "http://localhost:3000",
+				VITE_ACCOUNT_URL: "http://localhost:3001",
+				VITE_AUTH_URL: "http://localhost:3002",
+				VITE_DASH_URL: "http://localhost:3011",
+				VITE_API_URL: "http://localhost:3020",
+			}),
+		).toMatchObject({
 			VITE_WEB_URL: "http://localhost:3000",
 			VITE_ACCOUNT_URL: "http://localhost:3001",
 			VITE_AUTH_URL: "http://localhost:3002",
@@ -21,20 +32,15 @@ describe("Vite client environment", () => {
 	});
 
 	it("requires every application origin in production", () => {
-		expect(() =>
-			createViteClientEnv({}, { mode: "production" }),
-		).toThrowError();
+		expect(() => createProductionViteClientEnv({})).toThrowError();
 	});
 
 	it("accepts and normalizes secure production origins", () => {
 		expect(
-			createViteClientEnv(
-				{
-					...productionEnvironment,
-					VITE_AUTH_URL: "https://auth.quickengine.xyz/",
-				},
-				{ mode: "production" },
-			).VITE_AUTH_URL,
+			createProductionViteClientEnv({
+				...productionEnvironment,
+				VITE_AUTH_URL: "https://auth.quickengine.xyz/",
+			}).VITE_AUTH_URL,
 		).toBe("https://auth.quickengine.xyz");
 	});
 
@@ -46,10 +52,10 @@ describe("Vite client environment", () => {
 		["an all-interface address", "VITE_API_URL", "https://0.0.0.0:3020"],
 	])("rejects %s in production", (_label, key, value) => {
 		expect(() =>
-			createViteClientEnv(
-				{ ...productionEnvironment, [key]: value },
-				{ mode: "production" },
-			),
+			createProductionViteClientEnv({
+				...productionEnvironment,
+				[key]: value,
+			}),
 		).toThrowError("Invalid production Vite environment");
 	});
 
@@ -60,23 +66,20 @@ describe("Vite client environment", () => {
 		"https://auth.quickengine.xyz#signin",
 	])("rejects a non-origin URL: %s", (value) => {
 		expect(() =>
-			createViteClientEnv(
-				{ ...productionEnvironment, VITE_AUTH_URL: value },
-				{ mode: "production" },
-			),
+			createProductionViteClientEnv({
+				...productionEnvironment,
+				VITE_AUTH_URL: value,
+			}),
 		).toThrowError();
 	});
 
 	it("turns blank optional integrations into undefined", () => {
 		expect(
-			createViteClientEnv(
-				{
-					...productionEnvironment,
-					VITE_PUSHER_KEY: "",
-					VITE_SENTRY_DSN: "",
-				},
-				{ mode: "production" },
-			),
+			createProductionViteClientEnv({
+				...productionEnvironment,
+				VITE_PUSHER_KEY: "",
+				VITE_SENTRY_DSN: "",
+			}),
 		).toMatchObject({
 			VITE_PUSHER_KEY: undefined,
 			VITE_SENTRY_DSN: undefined,

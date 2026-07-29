@@ -51,7 +51,9 @@ const assets = [
 for (const asset of assets) {
 	const svg = readFileSync(`${source}/${asset.file}`, "utf8");
 	const viewBox = svg.match(/viewBox="([^"]+)"/)?.[1];
-	const paths = [...svg.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
+	const paths = [
+		...svg.matchAll(/<path d="([^"]+)"(?: transform="([^"]+)")?/g),
+	].map((match) => ({ d: match[1], transform: match[2] }));
 	if (!viewBox || paths.length === 0) {
 		throw new Error(`${asset.file}: expected a viewBox and at least one path`);
 	}
@@ -61,7 +63,12 @@ for (const asset of assets) {
 	}
 
 	const header = asset.notes.map((line) => `// ${line}`).join("\n");
-	const body = paths.map((d) => `\t\t\t\t<path d="${d}" />`).join("\n");
+	const body = paths
+		.map(
+			({ d, transform }) =>
+				`\t\t\t\t<path d="${d}"${transform ? ` transform="${transform}"` : ""} />`,
+		)
+		.join("\n");
 	writeFileSync(
 		`${root}/${asset.component}`,
 		`import type { SVGProps } from "react";

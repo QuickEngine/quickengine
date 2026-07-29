@@ -2,6 +2,8 @@
 // until each page is built. Research-backed set: ~5 items, Products + Solutions
 // lead, then Pricing / Resources / Company. Blog, Docs, Support live under
 // Resources; Get Started + Sign in are the two CTAs.
+import { env } from "@/lib/env";
+
 const NAV_LINKS = [
 	{ label: "Products", href: "/products" },
 	{ label: "Pricing", href: "/pricing" },
@@ -23,8 +25,7 @@ const pageLink = `${navLink} px-4 py-2`;
 // Margins from `.page-gutter`.
 export function Navbar() {
 	// Auth lives on the separate auth app — link out to it (marketing hosts no auth).
-	const authUrl =
-		process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
+	const authUrl = env.VITE_AUTH_URL;
 	return (
 		<header className="fixed inset-x-0 top-0 z-50 bg-background/60 backdrop-blur-xl backdrop-saturate-150">
 			<div className="page-gutter group grid h-16 grid-cols-[1fr_auto_1fr] items-center [--control:1.5rem]">

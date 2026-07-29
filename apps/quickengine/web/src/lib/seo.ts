@@ -1,11 +1,11 @@
-import { clientEnv } from "@quickengine/env/client";
+import { env } from "./env";
 
 // Single source of truth for site-wide SEO. The OG image lives in /public and is
 // shared by every page via metadata inheritance — set it once here, never per
 // page, so it can't drift. Per-page files only pass title/description/path.
 
 export const SITE_NAME = "QuickEngine";
-export const SITE_URL = clientEnv.NEXT_PUBLIC_QUICKENGINE_WEB_URL;
+export const SITE_URL = env.VITE_WEB_URL;
 export const SITE_TAGLINE = "Build more. Switch less.";
 export const SITE_DESCRIPTION =
 	"QuickEngine is the headless backend your whole business runs on — one platform, configured per workspace, so you build more and switch less.";

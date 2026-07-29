@@ -8,9 +8,9 @@ import {
 	subtleButton,
 	textLink,
 } from "@/components/auth-ui";
+import { env } from "@/lib/env";
 
-const ACCOUNT_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL ?? "http://localhost:3001";
+const ACCOUNT_URL = env.VITE_ACCOUNT_URL;
 
 function goToDashboard() {
 	window.location.href = ACCOUNT_URL;

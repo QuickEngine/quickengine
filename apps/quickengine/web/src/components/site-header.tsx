@@ -1,9 +1,9 @@
 import { List, Plus, X } from "@phosphor-icons/react";
 import { Wordmark } from "@quickengine/ui";
 import { useEffect, useState } from "react";
+import { env } from "@/lib/env";
 
-const AUTH_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
+const AUTH_URL = env.VITE_AUTH_URL;
 
 type MenuColumn = { title: string; links: { label: string; href: string }[] };
 

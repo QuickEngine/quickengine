@@ -1,10 +1,10 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { env } from "@/lib/env";
 import { getModule, MODULES } from "@/lib/modules";
 
-const AUTH_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
+const AUTH_URL = env.VITE_AUTH_URL;
 
 export function generateStaticParams() {
 	return MODULES.map((module) => ({ module: module.slug }));

@@ -9,16 +9,14 @@ import {
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { z } from "zod";
-import { OnboardingTwoFactorStep } from "../components/onboarding-two-factor-step";
 import { api } from "../lib/api";
 import { clientEnv } from "../lib/env";
 import { FOUNDATION, moduleIcon } from "../lib/modules";
 import { findRecipe, groupRecipes, RECIPES, type Recipe } from "../lib/recipes";
 
 type Step =
-	| "security"
 	| "name"
 	| "setup"
 	| "ai"
@@ -65,17 +63,7 @@ function Canvas({
 
 function OnboardingPage() {
 	const queryClient = useQueryClient();
-	const state = useQuery({
-		queryKey: ["account", "state"],
-		queryFn: async () =>
-			(
-				await api.request<{
-					hasPassword: boolean;
-					twoFactorEnabled: boolean;
-				}>("/account/state")
-			).data,
-	});
-	const [step, setStep] = useState<Step>("security");
+	const [step, setStep] = useState<Step>("name");
 	const [businessName, setBusinessName] = useState("");
 	const [query, setQuery] = useState("");
 	const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -94,16 +82,6 @@ function OnboardingPage() {
 			(await api.request<{ items: CatalogModule[] }>("/account/module-catalog"))
 				.data.items,
 	});
-	useEffect(() => {
-		if (
-			step === "security" &&
-			state.isSuccess &&
-			(!state.data.hasPassword || state.data.twoFactorEnabled)
-		) {
-			setStep("name");
-		}
-	}, [state.data, state.isSuccess, step]);
-
 	const matches = useMemo(() => {
 		const needle = query.trim().toLowerCase();
 		if (!needle) return RECIPES;
@@ -208,19 +186,6 @@ function OnboardingPage() {
 		}
 		setModuleIds([...next]);
 	};
-
-	if (step === "security") {
-		if (state.isPending) return <Canvas>Loading your account…</Canvas>;
-		if (state.isError) throw state.error;
-		if (state.data.hasPassword && !state.data.twoFactorEnabled) {
-			return (
-				<Canvas>
-					<OnboardingTwoFactorStep onDone={() => setStep("name")} />
-				</Canvas>
-			);
-		}
-		return <Canvas>Preparing your workspace…</Canvas>;
-	}
 
 	if (step === "name") {
 		const submit = (event: FormEvent) => {

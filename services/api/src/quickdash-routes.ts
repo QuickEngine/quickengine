@@ -1,5 +1,6 @@
 import {
 	claimIdempotencyKey,
+	completeFirstActionChecklistState,
 	getFirstActionChecklistState,
 	getQuickDashOrientationState,
 	listAccessibleWorkspaces,
@@ -125,25 +126,36 @@ export function registerQuickDashRoutes(
 			preferredActionIds: findRecipe(workspace.workspace.businessType)
 				?.firstActions,
 		});
-		const completions = await resolveDatabaseGuidedStepCompletions(
-			workspaceId,
-			firstActions.flatMap((action) => action.steps.map((step) => step.id)),
-		);
+		const alreadyCompleted = checklist.completedAt !== null;
+		const completions = alreadyCompleted
+			? firstActions.flatMap((action) =>
+					action.steps.map((step) => ({ id: step.id, completed: true })),
+				)
+			: await resolveDatabaseGuidedStepCompletions(
+					workspaceId,
+					firstActions.flatMap((action) => action.steps.map((step) => step.id)),
+				);
 		const guided = resolveGuidedActions(firstActions, completions);
+		const completedNow =
+			!alreadyCompleted && firstActions.length > 0 && guided.nextStep === null;
+		if (completedNow) {
+			await completeFirstActionChecklistState(userId, workspaceId);
+		}
+		const checklistComplete = alreadyCompleted || completedNow;
 		const checklistItems = [
 			...guided.goals.map((goal) => ({
 				id: goal.id,
 				label: goal.label,
 				description: goal.description,
-				completed: goal.completed,
+				completed: checklistComplete || goal.completed,
 				steps: goal.steps.map((step) => ({
 					id: step.id,
 					label: step.label,
 					description: step.description,
 					href: `/${workspaceId}/${goal.moduleId}?intent=${encodeURIComponent(step.intent)}`,
-					completed: step.completed,
+					completed: checklistComplete || step.completed,
 					optional: step.optional ?? false,
-					isNext: step.id === guided.nextStep?.id,
+					isNext: !checklistComplete && step.id === guided.nextStep?.id,
 				})),
 			})),
 			{
@@ -164,8 +176,15 @@ export function registerQuickDashRoutes(
 		];
 		return respond(c, {
 			checklist: {
-				collapsed: checklist.hasStoredState ? checklist.collapsed : true,
-				dismissed: checklist.dismissedAt !== null,
+				collapsed: alreadyCompleted
+					? true
+					: completedNow
+						? false
+						: checklist.hasStoredState
+							? checklist.collapsed
+							: true,
+				dismissed:
+					alreadyCompleted || (!completedNow && checklist.dismissedAt !== null),
 				hasStoredState: checklist.hasStoredState,
 				items: checklistItems,
 			},

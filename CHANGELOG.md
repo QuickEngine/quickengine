@@ -17,6 +17,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **Bookings can now use the service catalog.** Operators may associate an appointment with an
   active service, package or rental, and booking details now expose their real client and
   catalog relationships.
+- **Every workspace now has a developer Connect path.** QuickDash exposes the canonical API
+  origin, workspace identity, safe environment setup, SDK verification example and CLI path;
+  Account creates credentials from purpose-based least-privilege presets instead of selecting
+  every capability by default.
 - **QuickDash now has one operator-first experience contract.** Workspace recipes remain fully
   editable, first-run guidance is tied to real business outcomes instead of fake sample data,
   developers receive a dedicated Connect path, and the redesign now follows a measured,

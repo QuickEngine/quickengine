@@ -19,4 +19,5 @@ export const clientEnv = {
 	WEB_URL: env.VITE_WEB_URL,
 	ACCOUNT_URL: env.VITE_ACCOUNT_URL,
 	AUTH_URL: env.VITE_AUTH_URL,
+	API_URL: env.VITE_API_URL,
 } as const;

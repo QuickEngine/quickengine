@@ -807,6 +807,8 @@ function ModulePage() {
 				payments={
 					payments.data.payments.map((payment) => ({
 						...payment,
+						clientId:
+							typeof payment.clientId === "string" ? payment.clientId : null,
 						invoiceNumber:
 							payments.data.invoices.find(
 								(invoice) => invoice.id === payment.invoiceId,
@@ -970,6 +972,13 @@ function ModulePage() {
 				fulfillments={
 					fulfillments.data.fulfillments.map((item) => ({
 						...item,
+						sourceModule:
+							typeof item.sourceModule === "string" ? item.sourceModule : null,
+						sourceRecordId:
+							typeof item.sourceRecordId === "string"
+								? item.sourceRecordId
+								: null,
+						clientId: typeof item.clientId === "string" ? item.clientId : null,
 						displayStatus:
 							["pending", "in_progress"].includes(item.status) &&
 							item.dueAt &&
@@ -1064,6 +1073,7 @@ function ModulePage() {
 						);
 						return {
 							id: shipment.id,
+							orderId: shipment.orderId,
 							orderNumber: order?.number ?? "Archived order",
 							status: shipment.status,
 							destination: shipment.destination,

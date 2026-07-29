@@ -42,6 +42,7 @@ import {
 	type FulfillmentActionState,
 } from "../_lib/fulfillment-actions";
 import { useRouter } from "../compat/router-navigation";
+import { ConnectedRecords } from "./connected-records";
 
 export type FulfillmentInvoiceOption = {
 	id: string;
@@ -56,6 +57,9 @@ export type FulfillmentClientOption = {
 };
 export type FulfillmentViewModel = {
 	id: string;
+	sourceModule: string | null;
+	sourceRecordId: string | null;
+	clientId: string | null;
 	title: string;
 	kind: "physical" | "digital" | "service" | "pickup" | "other";
 	status: "pending" | "in_progress" | "fulfilled" | "failed" | "cancelled";
@@ -369,6 +373,43 @@ function FulfillmentDetails({
 						</p>
 					</div>
 				) : null}
+				<ConnectedRecords
+					records={[
+						...(fulfillment.sourceRecordId &&
+						fulfillment.sourceModule === "orders"
+							? [
+									{
+										label: "Order",
+										value: "Source order",
+										href: `/${workspaceId}/orders`,
+										action: "Open orders",
+									},
+								]
+							: []),
+						...(fulfillment.sourceRecordId &&
+						fulfillment.sourceModule === "invoicing" &&
+						fulfillment.invoiceNumber
+							? [
+									{
+										label: "Invoice",
+										value: fulfillment.invoiceNumber,
+										href: `/${workspaceId}/invoicing`,
+										action: "Open invoices",
+									},
+								]
+							: []),
+						...(fulfillment.clientId && fulfillment.clientName
+							? [
+									{
+										label: "Client",
+										value: fulfillment.clientName,
+										href: `/${workspaceId}/client-records`,
+										action: "Open clients",
+									},
+								]
+							: []),
+					]}
+				/>
 				{open ? (
 					<div className="flex flex-wrap gap-2 border-t pt-4">
 						{fulfillment.status === "pending" ? (

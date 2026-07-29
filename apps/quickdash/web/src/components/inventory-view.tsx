@@ -44,6 +44,7 @@ import {
 } from "../_lib/inventory-actions";
 import Link from "../compat/router-link";
 import { useRouter } from "../compat/router-navigation";
+import { ConnectedRecords } from "./connected-records";
 import {
 	buildResourceListPage,
 	ResourceListPagination,
@@ -377,6 +378,16 @@ function Details({
 							</>
 						)}
 					</div>
+					<ConnectedRecords
+						records={[
+							{
+								label: "Catalog item",
+								value: item.label,
+								href: `/${workspaceId}/products-services`,
+								action: "Open catalog",
+							},
+						]}
+					/>
 					<form action={thresholdAction} className="flex items-end gap-3">
 						<input type="hidden" name="workspaceId" value={workspaceId} />
 						<input type="hidden" name="inventoryItemId" value={item.id} />

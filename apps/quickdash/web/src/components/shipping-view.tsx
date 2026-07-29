@@ -41,6 +41,7 @@ import {
 	updateShipmentTrackingAction,
 } from "../_lib/shipping-actions";
 import { useRouter } from "../compat/router-navigation";
+import { ConnectedRecords } from "./connected-records";
 
 type Status =
 	| "draft"
@@ -61,6 +62,7 @@ export type ShippableLine = {
 };
 export type ShipmentViewModel = {
 	id: string;
+	orderId: string;
 	orderNumber: string;
 	status: Status;
 	destination: {
@@ -351,6 +353,16 @@ function Details({
 							g total
 						</div>
 					</div>
+					<ConnectedRecords
+						records={[
+							{
+								label: "Order",
+								value: shipment.orderNumber,
+								href: `/${workspaceId}/orders`,
+								action: "Open orders",
+							},
+						]}
+					/>
 					<form action={trackingAction} className="grid gap-3 md:grid-cols-2">
 						<input type="hidden" name="workspaceId" value={workspaceId} />
 						<input type="hidden" name="shipmentId" value={shipment.id} />

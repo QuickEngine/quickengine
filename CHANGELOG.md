@@ -74,6 +74,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Production job registration now targets the stable QuickDash API domain.** Inngest keeps
+  its existing application identity and credentials while future deployments sync through
+  `api.quickdash.xyz`.
+- **Local Vite apps now share one environment file.** Web, Auth, Account and QuickDash read
+  the repository-root `.env.local`, their examples describe the same browser contract, and
+  billing configuration uses the current Launch, Grow and Scale plan names.
 - **Sign-in methods only link with the customer's consent.** A matching email from Google or
   GitHub no longer silently adds that provider to an existing password account; additional
   methods can still be linked deliberately from an authenticated account.

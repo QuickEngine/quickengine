@@ -30,6 +30,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **First-run onboarding stays focused on creating a workspace.** Account setup no longer
+  interrupts password users with passkey or two-factor enrollment, and it does not introduce
+  pricing or checkout before the customer reaches QuickDash.
 - **Vite deployments now build from clean checkouts.** Vercel builds each frontend together
   with its workspace dependencies, so production no longer relies on generated SDK files left
   behind on a developer machine.

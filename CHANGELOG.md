@@ -47,6 +47,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Getting started now stays completed.** QuickDash records the first completed checklist pass
+  per user and workspace, so deleting or changing later business data cannot resurrect
+  onboarding that the operator already finished.
 - **Account no longer presents fabricated business performance.** The hardcoded Revenue and
   Analytics pages, charts and navigation are gone; organization, workspace, member, module,
   usage and billing figures remain because they come from live Account data. Workspace actions

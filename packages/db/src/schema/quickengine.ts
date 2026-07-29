@@ -468,8 +468,8 @@ export const quickengineOrganizationInvitations = pgTable(
 	],
 );
 
-// Per-user presentation state for QuickDash's first-value checklist. Business-action
-// completion is intentionally absent: that truth is derived from workspace module records.
+// Per-user state for QuickDash's first-value checklist. Individual steps are derived from
+// workspace records until the first complete pass; completedAt then makes onboarding one-time.
 export const quickdashFirstActionStates = pgTable(
 	"quickdash_first_action_states",
 	{
@@ -483,6 +483,7 @@ export const quickdashFirstActionStates = pgTable(
 		checklistVersion: integer("checklist_version").notNull(),
 		collapsed: boolean("collapsed").default(false).notNull(),
 		dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

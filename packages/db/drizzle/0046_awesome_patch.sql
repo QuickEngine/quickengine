@@ -1,0 +1,1 @@
+ALTER TABLE "quickdash_first_action_states" ADD COLUMN "completed_at" timestamp with time zone;

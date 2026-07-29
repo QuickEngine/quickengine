@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "./client";
 import {
 	FIRST_ACTION_CHECKLIST_VERSION,
@@ -22,6 +22,7 @@ export async function getFirstActionChecklistState(
 			checklistVersion: quickdashFirstActionStates.checklistVersion,
 			collapsed: quickdashFirstActionStates.collapsed,
 			dismissedAt: quickdashFirstActionStates.dismissedAt,
+			completedAt: quickdashFirstActionStates.completedAt,
 		})
 		.from(quickdashFirstActionStates)
 		.where(
@@ -69,8 +70,46 @@ export async function saveFirstActionChecklistState(
 			checklistVersion: quickdashFirstActionStates.checklistVersion,
 			collapsed: quickdashFirstActionStates.collapsed,
 			dismissedAt: quickdashFirstActionStates.dismissedAt,
+			completedAt: quickdashFirstActionStates.completedAt,
 		});
 
+	return resolveFirstActionChecklistState(saved);
+}
+
+export async function completeFirstActionChecklistState(
+	userId: string,
+	workspaceId: string,
+) {
+	const now = new Date();
+	const [saved] = await db
+		.insert(quickdashFirstActionStates)
+		.values({
+			userId,
+			workspaceId,
+			checklistVersion: FIRST_ACTION_CHECKLIST_VERSION,
+			collapsed: true,
+			dismissedAt: now,
+			completedAt: now,
+			updatedAt: now,
+		})
+		.onConflictDoUpdate({
+			target: [
+				quickdashFirstActionStates.userId,
+				quickdashFirstActionStates.workspaceId,
+			],
+			set: {
+				collapsed: true,
+				dismissedAt: sql`coalesce(${quickdashFirstActionStates.dismissedAt}, ${now})`,
+				completedAt: sql`coalesce(${quickdashFirstActionStates.completedAt}, ${now})`,
+				updatedAt: now,
+			},
+		})
+		.returning({
+			checklistVersion: quickdashFirstActionStates.checklistVersion,
+			collapsed: quickdashFirstActionStates.collapsed,
+			dismissedAt: quickdashFirstActionStates.dismissedAt,
+			completedAt: quickdashFirstActionStates.completedAt,
+		});
 	return resolveFirstActionChecklistState(saved);
 }
 

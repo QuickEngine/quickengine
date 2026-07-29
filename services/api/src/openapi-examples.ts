@@ -242,6 +242,21 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		billingEmail: "billing@northwind.example",
 		seats: 5,
 	},
+	confirmAccountSubscription: {
+		subscriptionId: "sub_1234567890",
+	},
+	recommendAccountOnboarding: {
+		description: "A small agency that manages client projects and invoices",
+		recipes: [
+			{
+				id: "agency",
+				name: "Agency",
+				category: "Professional services",
+				keywords: ["agency", "clients", "projects"],
+				moduleIds: ["client-records", "projects-tasks", "invoicing"],
+			},
+		],
+	},
 	inviteMember: {
 		email: "sam@northwind.example",
 		role: "Bookkeeper",

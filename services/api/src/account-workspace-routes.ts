@@ -35,6 +35,7 @@ export const createWorkspaceSchema = z.object({
 	businessType: z.string().trim().min(1),
 	moduleIds: z.array(z.string()).optional(),
 	organizationId: z.string().uuid().optional(),
+	completeOnboarding: z.boolean().optional(),
 });
 
 export const renameWorkspaceSchema = z.object({
@@ -115,6 +116,7 @@ export function registerAccountWorkspaceRoutes(
 					businessType: input.businessType,
 					modules,
 					organizationId: input.organizationId,
+					completeOnboarding: input.completeOnboarding,
 				});
 				if (!workspace) {
 					// Onboarding already ran. Replaying it would create a duplicate first

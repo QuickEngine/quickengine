@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import { fileDocuments } from "./schema/files";
 import {
+	quickengineAccounts,
 	quickengineOrganizationMembers,
 	quickengineOrganizations,
 	quickengineSubscriptions,
@@ -217,4 +218,28 @@ export async function deleteUserAccount(userId: string): Promise<void> {
 			.where(eq(quickengineOrganizations.ownerId, userId));
 		await tx.delete(quickengineUsers).where(eq(quickengineUsers.id, userId));
 	});
+}
+
+/** Fresh first-run state for authenticated app routing. */
+export async function getUserOnboardingState(userId: string) {
+	const [user] = await db
+		.select({
+			companyName: quickengineUsers.companyName,
+			onboardingCompletedAt: quickengineUsers.onboardingCompletedAt,
+			twoFactorEnabled: quickengineUsers.twoFactorEnabled,
+		})
+		.from(quickengineUsers)
+		.where(eq(quickengineUsers.id, userId))
+		.limit(1);
+	const [credential] = await db
+		.select({ id: quickengineAccounts.id })
+		.from(quickengineAccounts)
+		.where(
+			and(
+				eq(quickengineAccounts.userId, userId),
+				eq(quickengineAccounts.providerId, "credential"),
+			),
+		)
+		.limit(1);
+	return user ? { ...user, hasPassword: Boolean(credential) } : null;
 }

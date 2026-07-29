@@ -1,4 +1,3 @@
-import { Button } from "@quickengine/ui/components/ui/button";
 import {
 	Elements,
 	PaymentElement,
@@ -8,7 +7,7 @@ import {
 import { loadStripe } from "@stripe/stripe-js";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { z } from "zod";
 import { useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
@@ -39,6 +38,9 @@ function CheckoutPage() {
 			),
 		onSuccess: ({ data }) => setCheckoutState(data),
 	});
+	useEffect(() => {
+		if (active?.id && checkout.isIdle) checkout.mutate();
+	}, [active?.id, checkout]);
 	return (
 		<main className="mx-auto max-w-xl space-y-6 p-6">
 			<div>
@@ -62,9 +64,9 @@ function CheckoutPage() {
 					<PayForm subscriptionId={checkoutState.subscriptionId} />
 				</Elements>
 			) : (
-				<Button onClick={() => checkout.mutate()} disabled={checkout.isPending}>
-					{checkout.isPending ? "Starting checkout…" : "Continue to payment"}
-				</Button>
+				<p className="text-muted-foreground text-sm">
+					Loading secure checkout…
+				</p>
 			)}
 			{checkout.isError && (
 				<p className="text-destructive text-sm">{checkout.error.message}</p>
@@ -101,9 +103,13 @@ function PayForm({ subscriptionId }: { subscriptionId: string }) {
 		<form onSubmit={submit} className="space-y-5">
 			<PaymentElement />
 			{error && <p className="text-destructive text-sm">{error}</p>}
-			<Button className="w-full" disabled={!stripe || submitting}>
-				{submitting ? "Processing…" : "Pay and subscribe"}
-			</Button>
+			<button
+				type="submit"
+				disabled={!stripe || submitting}
+				className="w-full rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+			>
+				{submitting ? "Processing…" : "Pay & subscribe"}
+			</button>
 		</form>
 	);
 }

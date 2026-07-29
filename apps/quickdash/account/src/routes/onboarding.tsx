@@ -3,27 +3,20 @@ import {
 	Check,
 	CircleNotch,
 	Lock,
-	MagnifyingGlass,
 	SlidersHorizontal,
 	Sparkle,
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { z } from "zod";
 import { api } from "../lib/api";
 import { clientEnv } from "../lib/env";
 import { FOUNDATION, moduleIcon } from "../lib/modules";
-import { findRecipe, groupRecipes, RECIPES, type Recipe } from "../lib/recipes";
+import { findRecipe, RECIPES, type Recipe } from "../lib/recipes";
 
-type Step =
-	| "name"
-	| "setup"
-	| "ai"
-	| "preset"
-	| "modules"
-	| "review"
-	| "success";
+type Step = "name" | "setup" | "ai" | "modules" | "review" | "success";
+type SetupChoice = "ai" | "manual" | "defaults";
 type CatalogModule = {
 	id: string;
 	name: string;
@@ -65,8 +58,8 @@ function OnboardingPage() {
 	const queryClient = useQueryClient();
 	const [step, setStep] = useState<Step>("name");
 	const [businessName, setBusinessName] = useState("");
-	const [query, setQuery] = useState("");
 	const [recipe, setRecipe] = useState<Recipe | null>(null);
+	const [setupChoice, setSetupChoice] = useState<SetupChoice | null>(null);
 	const [moduleIds, setModuleIds] = useState<readonly string[]>(FOUNDATION);
 	const [error, setError] = useState<string | null>(null);
 	const [description, setDescription] = useState(
@@ -82,17 +75,6 @@ function OnboardingPage() {
 			(await api.request<{ items: CatalogModule[] }>("/account/module-catalog"))
 				.data.items,
 	});
-	const matches = useMemo(() => {
-		const needle = query.trim().toLowerCase();
-		if (!needle) return RECIPES;
-		return RECIPES.filter((candidate) =>
-			[candidate.name, candidate.category, ...candidate.keywords]
-				.join(" ")
-				.toLowerCase()
-				.includes(needle),
-		);
-	}, [query]);
-
 	const create = useMutation({
 		mutationFn: () =>
 			api.request<{ id: string }>("/account/workspaces", {
@@ -122,6 +104,7 @@ function OnboardingPage() {
 				recipeId: string;
 				moduleIds: readonly string[];
 				rationale: string;
+				source: "ai" | "catalog-fallback";
 			}>("/account/onboarding/recommend", {
 				method: "POST",
 				body: {
@@ -138,30 +121,33 @@ function OnboardingPage() {
 		onSuccess: ({ data }) => {
 			setRecipe(findRecipe(data.recipeId) ?? null);
 			setModuleIds(data.moduleIds);
-			setRecommendationReason(data.rationale);
+			setRecommendationReason(
+				data.source === "ai"
+					? data.rationale
+					: `${data.rationale} QuickDash used its built-in business catalog because an AI provider was not available.`,
+			);
+			setSetupChoice("ai");
 			setStep("review");
 		},
 		onError: (cause) =>
 			setError(
 				cause instanceof Error && cause.message.includes("limit")
-					? "You've reached the recommendation limit for now. Choose a preset or continue manually."
-					: "Recommendations are unavailable right now. Choose a preset or continue manually.",
+					? "You've reached the recommendation limit for now. Build it yourself or start with defaults."
+					: "Recommendations are unavailable right now. Build it yourself or start with defaults.",
 			),
 	});
 
-	const chooseRecipe = (selected: Recipe) => {
-		setRecipe(selected);
-		setModuleIds(selected.modules);
-		setStep("review");
-	};
-
 	const useDefaults = () => {
 		setRecipe(null);
+		setRecommendationReason(null);
+		setSetupChoice("defaults");
 		setModuleIds(FOUNDATION);
 		setStep("review");
 	};
 	const startManual = () => {
 		setRecipe(null);
+		setRecommendationReason(null);
+		setSetupChoice("manual");
 		setModuleIds(FOUNDATION);
 		setStep("modules");
 	};
@@ -230,34 +216,22 @@ function OnboardingPage() {
 					Either way you can change every module afterwards.
 				</p>
 				<div className="mt-8 grid gap-4 sm:grid-cols-2">
-					<button
-						type="button"
-						onClick={() => setStep("ai")}
-						className={`${panel} sm:col-span-2`}
-					>
+					<button type="button" onClick={() => setStep("ai")} className={panel}>
 						<Sparkle className="size-6" />
-						<h2 className="mt-4 font-medium">Set it up for me</h2>
-						<p className="mt-1 max-w-md text-muted-foreground text-sm">
-							Describe the business. We'll recommend a starting recipe for you
-							to review.
+						<p className="mt-4 text-[11px] text-muted-foreground uppercase tracking-[0.18em]">
+							Recommended
 						</p>
-					</button>
-					<button
-						type="button"
-						onClick={() => setStep("preset")}
-						className={panel}
-					>
-						<Sparkle className="size-6" />
-						<h2 className="mt-4 font-medium">Use a preset</h2>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Pick the closest fit and review the modules it enables.
+						<h2 className="mt-1 font-medium">Ask AI</h2>
+						<p className="mt-1 max-w-md text-muted-foreground text-sm">
+							Describe what you do in your own words. We’ll recommend modules
+							for you to review.
 						</p>
 					</button>
 					<button type="button" onClick={startManual} className={panel}>
 						<SlidersHorizontal className="size-6" />
-						<h2 className="mt-4 font-medium">Choose modules myself</h2>
+						<h2 className="mt-4 font-medium">Build it myself</h2>
 						<p className="mt-1 text-muted-foreground text-sm">
-							Start with the foundation and tailor every module yourself.
+							Choose the capabilities you need and shape the workspace yourself.
 						</p>
 					</button>
 				</div>
@@ -266,7 +240,7 @@ function OnboardingPage() {
 					onClick={useDefaults}
 					className="mt-6 w-fit text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
 				>
-					Skip — use sensible defaults
+					Start with defaults
 				</button>
 			</Canvas>
 		);
@@ -314,62 +288,18 @@ function OnboardingPage() {
 				<div className="mt-5 flex gap-4 text-sm">
 					<button
 						type="button"
-						onClick={() => setStep("preset")}
-						className="text-muted-foreground hover:text-foreground"
-					>
-						Choose a preset instead
-					</button>
-					<button
-						type="button"
 						onClick={startManual}
 						className="text-muted-foreground hover:text-foreground"
 					>
-						Choose modules myself
+						Build it myself
 					</button>
-				</div>
-			</Canvas>
-		);
-	}
-
-	if (step === "preset") {
-		return (
-			<Canvas onBack={() => setStep("setup")}>
-				<h1 className={heading}>What are you building?</h1>
-				<p className="mt-3 text-muted-foreground">
-					Search for the closest business type. You'll review it before
-					creation.
-				</p>
-				<label className="mt-8 flex max-w-md items-center gap-3 rounded-lg border border-input px-4">
-					<MagnifyingGlass className="size-4 text-muted-foreground" />
-					<input
-						type="search"
-						aria-label="Search business types"
-						value={query}
-						onChange={(event) => setQuery(event.target.value)}
-						placeholder="Plumber, photographer, online store…"
-						className="w-full bg-transparent py-3 outline-none"
-					/>
-				</label>
-				<div className="mt-6 max-h-[52vh] space-y-6 overflow-y-auto">
-					{groupRecipes(matches).map(([category, recipes]) => (
-						<section key={category}>
-							<h2 className="text-[11px] text-muted-foreground uppercase tracking-[0.18em]">
-								{category}
-							</h2>
-							<div className="mt-3 grid gap-2 sm:grid-cols-3">
-								{recipes.map((candidate) => (
-									<button
-										key={candidate.id}
-										type="button"
-										onClick={() => chooseRecipe(candidate)}
-										className={panel}
-									>
-										<p className="font-medium">{candidate.name}</p>
-									</button>
-								))}
-							</div>
-						</section>
-					))}
+					<button
+						type="button"
+						onClick={useDefaults}
+						className="text-muted-foreground hover:text-foreground"
+					>
+						Start with defaults
+					</button>
 				</div>
 			</Canvas>
 		);
@@ -462,7 +392,13 @@ function OnboardingPage() {
 	return (
 		<Canvas
 			onBack={() =>
-				setStep(recommendationReason ? "ai" : recipe ? "preset" : "setup")
+				setStep(
+					setupChoice === "ai"
+						? "ai"
+						: setupChoice === "manual"
+							? "modules"
+							: "setup",
+				)
 			}
 		>
 			<h1 className={heading}>Review your workspace</h1>
@@ -481,7 +417,9 @@ function OnboardingPage() {
 				<div className="flex justify-between border-b py-3 text-sm">
 					<span className="text-muted-foreground">Starting point</span>
 					<span className="font-medium">
-						{recipe?.name ?? "Sensible defaults"}
+						{setupChoice === "manual"
+							? "Built by you"
+							: (recipe?.name ?? "QuickDash defaults")}
 					</span>
 				</div>
 				<div className="pt-3">

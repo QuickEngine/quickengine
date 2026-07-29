@@ -5,5 +5,6 @@ export * from "./first-actions";
 export * from "./guided-actions";
 export * from "./manifest";
 export * from "./policy";
+export * from "./recipes";
 export * from "./resolver";
 export * from "./workspace-registry";

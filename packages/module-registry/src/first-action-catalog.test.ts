@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { listModules } from "./catalog";
 import { resolveFirstActions } from "./first-actions";
+import { RECIPES } from "./recipes";
 import { resolveModules } from "./resolver";
 
 describe("first-action catalog", () => {
@@ -115,5 +116,29 @@ describe("first-action catalog", () => {
 			"orders:create",
 			"inventory:adjust",
 		]);
+	});
+
+	it("keeps every internal recipe's first-value guidance executable", () => {
+		const declaredActions = new Set(
+			listModules().flatMap(
+				(module) => module.firstActions?.map((action) => action.id) ?? [],
+			),
+		);
+
+		for (const recipe of RECIPES) {
+			for (const actionId of recipe.firstActions) {
+				expect(declaredActions.has(actionId), `${recipe.id}: ${actionId}`).toBe(
+					true,
+				);
+			}
+			const resolved = resolveFirstActions({
+				manifests: listModules(),
+				enabledModuleIds: resolveModules(recipe.modules).map(
+					(module) => module.id,
+				),
+				preferredActionIds: recipe.firstActions,
+			}).map((action) => action.id);
+			expect(resolved[0], recipe.id).toBe(recipe.firstActions[0]);
+		}
 	});
 });

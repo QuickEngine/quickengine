@@ -254,6 +254,9 @@ importers:
       '@quickengine/auth':
         specifier: workspace:*
         version: link:../../../packages/auth
+      '@quickengine/env':
+        specifier: workspace:*
+        version: link:../../../packages/env
       '@quickengine/mod-reporting-analytics':
         specifier: workspace:*
         version: link:../../../packages/modules/reporting-analytics

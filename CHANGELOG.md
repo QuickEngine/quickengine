@@ -30,6 +30,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Account and QuickDash never send production users to local development.** Both authenticated
+  apps now validate the complete Vite URL contract during production builds, including workspace,
+  account, sign-out, checkout and monitoring links.
 - **First-run onboarding stays focused on creating a workspace.** Account setup no longer
   interrupts password users with passkey or two-factor enrollment, and it does not introduce
   pricing or checkout before the customer reaches QuickDash.

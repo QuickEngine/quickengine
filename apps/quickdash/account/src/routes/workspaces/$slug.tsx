@@ -5,6 +5,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { accountQueries, useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
+import { clientEnv } from "../../lib/env";
 import { getBusinessType } from "../../lib/workspace-catalog";
 
 const createdDate = (value: string) =>
@@ -189,9 +190,7 @@ function WorkspacePage() {
 				<div className="flex gap-2">
 					{!workspace.archivedAt && (
 						<Button asChild>
-							<a
-								href={`${import.meta.env.VITE_QUICKDASH_URL ?? "http://localhost:3011"}/${workspace.id}`}
-							>
+							<a href={`${clientEnv.DASH_URL}/${workspace.id}`}>
 								Open QuickDash
 							</a>
 						</Button>

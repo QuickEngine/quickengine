@@ -11,12 +11,13 @@ import { type FormEvent, useEffect, useState } from "react";
 import { z } from "zod";
 import { useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
+import { clientEnv } from "../../lib/env";
 
 const searchSchema = z.object({
 	plan: z.enum(["launch", "grow", "scale"]).catch("launch"),
 	cycle: z.enum(["monthly", "annual"]).catch("monthly"),
 });
-const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const publishableKey = clientEnv.STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 function CheckoutPage() {

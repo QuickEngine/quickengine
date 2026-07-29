@@ -22,6 +22,7 @@
 		"@quickengine/quick": "workspace:*",
 		"@quickengine/realtime": "workspace:*",
 		"@quickengine/ui": "workspace:*",
+		"@sentry/react": "^10.67.0",
 		"@tanstack/react-query": "^5.62.0",
 		"@tanstack/react-router": "^1.95.0",
 		"react": "19.2.8",
@@ -29,6 +30,7 @@
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
+		"@sentry/vite-plugin": "^5.4.0",
 		"@tailwindcss/vite": "^4.3.2",
 		"@tanstack/router-plugin": "^1.95.0",
 		"@types/node": "^22.15.3",

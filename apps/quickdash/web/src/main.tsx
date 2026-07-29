@@ -5,7 +5,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { queryClient } from "./lib/api";
 import { routeTree } from "./routeTree.gen";
+import { initSentry } from "./sentry";
 import "./styles.css";
+
+initSentry();
 
 const router = createRouter({
 	routeTree,

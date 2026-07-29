@@ -230,11 +230,16 @@ function ModulePage() {
 		queryKey: ["quickdash", workspace, "bookings"],
 		queryFn: async () => {
 			const api = workspaceApi(workspace);
-			const [page, clients] = await Promise.all([
+			const [page, clients, catalog] = await Promise.all([
 				api.bookings.list({ limit: 100 }),
 				api.clients.list({ limit: 100 }),
+				api.catalog.list({ limit: 100, status: "active" }),
 			]);
-			return { bookings: page.data.items, clients: clients.data.items };
+			return {
+				bookings: page.data.items,
+				clients: clients.data.items,
+				catalog: catalog.data.items,
+			};
 		},
 		enabled: module === "bookings",
 	});
@@ -913,6 +918,15 @@ function ModulePage() {
 				workspaceId={workspace}
 				defaultTimeZone={settings?.defaultTimeZone ?? "UTC"}
 				defaultDuration={settings?.defaultDurationMinutes ?? 60}
+				services={bookings.data.catalog
+					.filter((item) =>
+						["service", "rental", "package"].includes(item.type),
+					)
+					.map((item) => ({
+						id: item.id,
+						name: item.name,
+						type: item.type,
+					}))}
 				clients={bookings.data.clients.map((client) => ({
 					id: client.id,
 					name: client.name,
@@ -920,8 +934,19 @@ function ModulePage() {
 				}))}
 				bookings={bookings.data.bookings.map((booking) => ({
 					...booking,
+					clientId: booking.clientId,
 					clientName: booking.clientName ?? "Client",
 					clientCompany: null,
+					catalogItemId:
+						typeof booking.catalogItemId === "string"
+							? booking.catalogItemId
+							: null,
+					catalogItemName:
+						typeof booking.catalogItemId === "string"
+							? (bookings.data.catalog.find(
+									(item) => item.id === booking.catalogItemId,
+								)?.name ?? null)
+							: null,
 					startsAt: String(booking.startsAt),
 					endsAt: String(booking.endsAt),
 					notes: typeof booking.notes === "string" ? booking.notes : null,

@@ -41,6 +41,11 @@ export function isAllowedOrigin(origin: string | null | undefined): boolean {
 	return matchOrigin(origin, trustedOrigins, serverEnv.AUTH_COOKIE_DOMAIN);
 }
 
+export const accountLinkingPolicy = {
+	enabled: true,
+	disableImplicitLinking: true,
+} as const;
+
 export const auth = betterAuth({
 	baseURL: serverEnv.BETTER_AUTH_URL,
 	secret: serverEnv.BETTER_AUTH_SECRET,
@@ -89,6 +94,12 @@ export const auth = betterAuth({
 			twoFactor: quickengineTwoFactors,
 		},
 	}),
+	account: {
+		// A matching email is not consent to add another sign-in method. Customers
+		// keep the provider they chose at signup unless they explicitly link another
+		// provider from an authenticated account settings flow.
+		accountLinking: accountLinkingPolicy,
+	},
 	emailAndPassword: {
 		enabled: true,
 		// Password is an optional method (passkeys/OTP come next); when used, an

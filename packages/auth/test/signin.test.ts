@@ -82,4 +82,21 @@ describe("sign-in", () => {
 		});
 		expect(session).toBeNull();
 	});
+
+	it("preserves password sign-in after signing out", async () => {
+		const email = "returning@example.com";
+		const password = "password123";
+		const firstCookie = await createVerifiedUser(email, password);
+
+		await apiSignOut(firstCookie);
+		const secondSignIn = await apiSignIn(email, password);
+
+		expect(secondSignIn.res.status).toBe(200);
+		expect(secondSignIn.cookie).not.toBe("");
+		const session = await auth.api.getSession({
+			headers: new Headers({ cookie: secondSignIn.cookie }),
+			query: { disableCookieCache: true },
+		});
+		expect(session?.user.email).toBe(email);
+	});
 });

@@ -30,6 +30,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Password accounts remain password accounts after sign-out.** A verified email-and-password
+  customer can end their session and sign back in with the same credentials instead of being
+  forced toward an unrelated OAuth method.
 - **Account and QuickDash never send production users to local development.** Both authenticated
   apps now validate the complete Vite URL contract during production builds, including workspace,
   account, sign-out, checkout and monitoring links.
@@ -71,6 +74,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Sign-in methods only link with the customer's consent.** A matching email from Google or
+  GitHub no longer silently adds that provider to an existing password account; additional
+  methods can still be linked deliberately from an authenticated account.
 - **Every app now uses the restored QuickEngine mark.** The shared logo, wordmark, onboarding
   artwork and browser favicons now come from the preferred brand asset instead of the temporary
   placeholder.

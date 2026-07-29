@@ -30,6 +30,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **QuickDash Files now handles repeat folder creation without breaking the workflow.**
+  Folder names that already exist in the same location return a clear conflict instead of an
+  internal-server error, successful changes refresh immediately, and pending forms cannot be
+  submitted twice.
 - **Each Vite app now reports readable errors to its own monitoring project.** Web, Auth,
   Account and QuickDash use isolated local DSNs, QuickDash initializes browser monitoring,
   and production builds upload source maps without publishing them.

@@ -30,6 +30,7 @@ import {
 	createFileFolderInTx,
 	deleteFileFolderInTx,
 	enqueueFileDocumentCleanup,
+	isFileFolderNameConstraint,
 	releaseQuarantinedFileVersionInTx,
 	removeFileAttachmentInTx,
 	requestFileDocumentDeletionInTx,
@@ -66,6 +67,8 @@ const FRIENDLY: Record<string, string> = {
 		"This folder still has subfolders. Move or delete them first.",
 	FILE_FOLDER_HAS_DOCUMENTS:
 		"This folder still has documents. Move or delete them first.",
+	FILE_FOLDER_NAME_CONFLICT:
+		"A folder with that name already exists in this location.",
 
 	FILE_DOCUMENT_NOT_FOUND: "The document was not found.",
 	FILE_DOCUMENT_NOT_EDITABLE: "This document can no longer be edited.",
@@ -108,6 +111,9 @@ const FRIENDLY: Record<string, string> = {
 
 function mapFilesError(error: unknown): never {
 	if (error instanceof DomainError) throw error;
+	if (isFileFolderNameConstraint(error)) {
+		throw new DomainError("CONFLICT", FRIENDLY.FILE_FOLDER_NAME_CONFLICT);
+	}
 	if (error instanceof Error) {
 		const message = FRIENDLY[error.message] ?? error.message;
 		if (error.message.endsWith("NOT_FOUND")) {

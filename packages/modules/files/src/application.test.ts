@@ -112,6 +112,43 @@ describe("Files durable commands", () => {
 		expect(conflict).toEqual({ kind: "conflict" });
 	});
 
+	it("reports a duplicate root folder name as a conflict", async () => {
+		await createFileFolderCommand(
+			context("files.folder.create", "fil-root-1"),
+			{ name: "TestEngine" },
+		);
+
+		await expect(
+			createFileFolderCommand(context("files.folder.create", "fil-root-2"), {
+				name: " testengine ",
+			}),
+		).rejects.toThrow(
+			"A folder with that name already exists in this location.",
+		);
+	});
+
+	it("reports a duplicate child folder name as a conflict", async () => {
+		const parentId = idOf(
+			await createFileFolderCommand(
+				context("files.folder.create", "fil-parent"),
+				{ name: "Parent" },
+			),
+		);
+		await createFileFolderCommand(
+			context("files.folder.create", "fil-child-1"),
+			{ name: "Receipts", parentId },
+		);
+
+		await expect(
+			createFileFolderCommand(context("files.folder.create", "fil-child-2"), {
+				name: "RECEIPTS",
+				parentId,
+			}),
+		).rejects.toThrow(
+			"A folder with that name already exists in this location.",
+		);
+	});
+
 	it("refuses to delete a folder that still has subfolders", async () => {
 		const parent = idOf(
 			await createFileFolderCommand(context("files.folder.create", "fil-3a"), {

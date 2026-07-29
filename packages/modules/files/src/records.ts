@@ -41,6 +41,39 @@ export type FilesTransaction = Parameters<
 	Parameters<typeof db.transaction>[0]
 >[0];
 
+const FOLDER_NAME_CONSTRAINTS = new Set([
+	"file_folders_root_name_idx",
+	"file_folders_child_name_idx",
+]);
+
+/**
+ * Folder names are unique within one parent. Postgres owns the final race-safe
+ * decision, so translate its unique-index error instead of leaking a driver
+ * failure as an internal-server error.
+ */
+export function isFileFolderNameConstraint(error: unknown): boolean {
+	let candidate = error;
+	for (let depth = 0; depth < 4 && candidate; depth += 1) {
+		if (typeof candidate !== "object") return false;
+		const details = candidate as {
+			code?: string;
+			constraint?: string;
+			constraint_name?: string;
+			cause?: unknown;
+		};
+		if (
+			details.code === "23505" &&
+			FOLDER_NAME_CONSTRAINTS.has(
+				details.constraint_name ?? details.constraint ?? "",
+			)
+		) {
+			return true;
+		}
+		candidate = details.cause;
+	}
+	return false;
+}
+
 type QueryExecutor = Pick<typeof db, "select">;
 export type FileTransaction = Parameters<
 	Parameters<typeof db.transaction>[0]

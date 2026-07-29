@@ -45,6 +45,7 @@ import {
 	saveVariantAction,
 } from "../_lib/catalog-actions";
 import { useRouter } from "../compat/router-navigation";
+import { ConnectedRecords } from "./connected-records";
 import {
 	buildResourceListPage,
 	ResourceListPagination,
@@ -471,6 +472,19 @@ function ItemDetails({
 						</>
 					)}
 				</div>
+				{item.status === "active" &&
+					(item.type === "physical" || item.type === "rental") && (
+						<ConnectedRecords
+							records={[
+								{
+									label: "Next step",
+									value: "Stock tracking",
+									href: `/${workspaceId}/inventory`,
+									action: "Open inventory",
+								},
+							]}
+						/>
+					)}
 				<div className="mt-2 flex items-center justify-between">
 					<h3 className="font-medium">Variants</h3>
 					{item.status !== "archived" && (

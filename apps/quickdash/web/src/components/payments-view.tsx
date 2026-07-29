@@ -41,6 +41,7 @@ import {
 	refundOfflinePaymentAction,
 } from "../_lib/payment-actions";
 import { useRouter } from "../compat/router-navigation";
+import { ConnectedRecords } from "./connected-records";
 
 export type PaymentInvoiceOption = {
 	id: string;
@@ -61,6 +62,7 @@ export type PaymentViewModel = {
 	id: string;
 	invoiceId: string | null;
 	invoiceNumber: string | null;
+	clientId: string | null;
 	clientName: string | null;
 	clientCompany: string | null;
 	amountCents: number;
@@ -361,6 +363,30 @@ function PaymentDetails({
 				{payment.notes ? (
 					<p className="rounded-lg bg-muted/50 p-3 text-sm">{payment.notes}</p>
 				) : null}
+				<ConnectedRecords
+					records={[
+						...(payment.invoiceId && payment.invoiceNumber
+							? [
+									{
+										label: "Invoice",
+										value: payment.invoiceNumber,
+										href: `/${workspaceId}/invoicing`,
+										action: "Open invoices",
+									},
+								]
+							: []),
+						...(payment.clientId && payment.clientName
+							? [
+									{
+										label: "Client",
+										value: payment.clientName,
+										href: `/${workspaceId}/client-records`,
+										action: "Open clients",
+									},
+								]
+							: []),
+					]}
+				/>
 				{payment.refunds.length ? (
 					<div>
 						<h3 className="mb-2 font-medium text-sm">Refund history</h3>

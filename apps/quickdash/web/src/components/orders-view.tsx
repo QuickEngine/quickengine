@@ -43,6 +43,7 @@ import {
 } from "../_lib/order-actions";
 import Link from "../compat/router-link";
 import { useRouter } from "../compat/router-navigation";
+import { ConnectedRecords } from "./connected-records";
 import {
 	buildResourceListPage,
 	ResourceListPagination,
@@ -539,6 +540,40 @@ function OrderDetails({
 					{order.notes && (
 						<p className="rounded-lg border p-3 text-sm">{order.notes}</p>
 					)}
+					<ConnectedRecords
+						records={[
+							...(order.clientId
+								? [
+										{
+											label: "Client",
+											value: order.clientName,
+											href: `/${workspaceId}/client-records`,
+											action: "Open clients",
+										},
+									]
+								: []),
+							...(order.lines.some((line) => line.catalogItemId)
+								? [
+										{
+											label: "Catalog",
+											value: `${order.lines.filter((line) => line.catalogItemId).length} linked item${order.lines.filter((line) => line.catalogItemId).length === 1 ? "" : "s"}`,
+											href: `/${workspaceId}/products-services`,
+											action: "Open catalog",
+										},
+									]
+								: []),
+							...(order.fulfillmentId
+								? [
+										{
+											label: "Fulfillment",
+											value: "Created from this order",
+											href: `/${workspaceId}/fulfillment`,
+											action: "Open fulfillment",
+										},
+									]
+								: []),
+						]}
+					/>
 					<div className="flex flex-wrap gap-2">
 						{order.status === "draft" && (
 							<>

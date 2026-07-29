@@ -11,6 +11,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **Commerce records now keep their working view.** Products, inventory and orders share
   consistent search, status filters, sorting, result counts and pagination, with the current
   view encoded in the URL so it survives refreshes and can be shared.
+- **Commerce records now show how work connects.** Catalog items, inventory, orders, payments,
+  fulfillments and shipments expose their real related records and the correct module handoff
+  without inventing links that the backend does not actually store.
 - **QuickDash now has one operator-first experience contract.** Workspace recipes remain fully
   editable, first-run guidance is tied to real business outcomes instead of fake sample data,
   developers receive a dedicated Connect path, and the redesign now follows a measured,

@@ -6,6 +6,7 @@ export type QuickDashWorkspace = {
 	name: string;
 	slug: string | null;
 	businessType: string;
+	organizationId?: string | null;
 };
 
 export type QuickDashContext = {

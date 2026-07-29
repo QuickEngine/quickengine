@@ -8,11 +8,13 @@ import {
 	deleteInventoryItemCommand,
 	getInventoryItemDto,
 	INVENTORY_ITEM_STATUSES,
+	inventorySettingsSchema,
 	listInventoryAdjustmentsPage,
 	listInventoryItemsPage,
 	setInventoryItemStatusCommand,
 	updateInventoryItemCommand,
 } from "@quickengine/mod-inventory";
+import { getWorkspaceModules } from "@quickengine/module-registry";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
@@ -25,6 +27,13 @@ import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
 const statusSchema = z.object({ status: z.enum(INVENTORY_ITEM_STATUSES) });
+
+async function inventorySettings(workspaceId: string) {
+	const module = (await getWorkspaceModules(workspaceId)).find(
+		(candidate) => candidate.id === "inventory" && candidate.enabled,
+	);
+	return inventorySettingsSchema.parse(module?.settings ?? {});
+}
 
 export function registerInventoryRoutes(
 	app: Hono<PlatformEnv>,
@@ -138,6 +147,7 @@ export function registerInventoryRoutes(
 		async (c) => {
 			const id = uuid.parse(c.req.param("id"));
 			const body = await c.req.json();
+			const settings = await inventorySettings(c.get("authorized").workspaceId);
 			const context = await mutationContext(c, "inventory.adjust", {
 				body,
 				id,
@@ -148,7 +158,7 @@ export function registerInventoryRoutes(
 					context,
 					id,
 					body,
-					{},
+					{ allowNegativeStock: settings.allowNegativeStock },
 					options.uow,
 				),
 			);

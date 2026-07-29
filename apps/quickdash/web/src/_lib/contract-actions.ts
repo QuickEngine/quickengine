@@ -1,4 +1,5 @@
 import { workspaceApi } from "../lib/api";
+import type { QuickDashContext } from "../lib/quickdash-api";
 import {
 	type ActionState,
 	actionResult,
@@ -36,9 +37,21 @@ export function createContractAction(
 	form: FormData,
 ) {
 	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
-	return state(() =>
-		api.contracts.create(contractInput(form), idempotencyKey(form)),
-	);
+	return state(async () => {
+		const context = (await api.request<QuickDashContext>("/quickdash/context"))
+			.data;
+		const settings = context.modules.find(
+			(module) => module.id === "contracts-esign",
+		)?.settings as { contractNumberPrefix?: string } | undefined;
+		await api.request("/contracts", {
+			method: "POST",
+			body: {
+				...contractInput(form),
+				numberPrefix: settings?.contractNumberPrefix ?? "CTR",
+			},
+			idempotencyKey: idempotencyKey(form),
+		});
+	});
 }
 
 export function updateContractAction(

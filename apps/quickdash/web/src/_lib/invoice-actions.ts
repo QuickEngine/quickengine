@@ -1,4 +1,5 @@
 import { workspaceApi } from "../lib/api";
+import type { QuickDashContext } from "../lib/quickdash-api";
 import {
 	type ActionState,
 	actionResult,
@@ -28,12 +29,21 @@ const invoiceInput = (form: FormData) => {
 	};
 };
 
-function save(form: FormData) {
-	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
+async function save(form: FormData) {
+	const workspaceId = String(form.get("workspaceId") ?? "");
+	const api = workspaceApi(workspaceId);
 	const id = String(form.get("invoiceId") ?? "");
+	const body = invoiceInput(form);
+	if (!id) {
+		const context = (await api.request<QuickDashContext>("/quickdash/context"))
+			.data;
+		const settings = context.modules.find((module) => module.id === "invoicing")
+			?.settings as { numberPrefix?: string } | undefined;
+		Object.assign(body, { numberPrefix: settings?.numberPrefix ?? "INV" });
+	}
 	return api.request(id ? `/invoices/${id}` : "/invoices", {
 		method: id ? "PATCH" : "POST",
-		body: invoiceInput(form),
+		body,
 		idempotencyKey: idempotencyKey(form),
 	});
 }

@@ -17,6 +17,7 @@ export default defineConfig({
 	},
 	server: {
 		port: 3011,
+		strictPort: true,
 		proxy: {
 			"/v1": {
 				target: process.env.API_URL ?? "http://127.0.0.1:3020",

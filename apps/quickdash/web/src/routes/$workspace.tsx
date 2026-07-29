@@ -4,47 +4,62 @@ import {
 	SidebarProvider,
 } from "@quickengine/ui/components/ui/sidebar";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { CommandPalette } from "../components/command-palette";
 import { FirstActionChecklist } from "../components/first-action-checklist";
+import { ModuleNav } from "../components/module-nav";
+import { ProfileMenu } from "../components/profile-menu";
 import { QuickDashOrientation } from "../components/quickdash-orientation";
-import { clientEnv } from "../lib/env";
+import { WorkspaceSwitcher } from "../components/workspace-switcher";
 import { quickDashQueries } from "../lib/quickdash-api";
 
 function WorkspaceShell() {
 	const { workspace } = Route.useParams();
+	const { user } = Route.useRouteContext();
 	const context = useQuery(quickDashQueries.context(workspace));
+	if (!user) throw new Error("Authenticated user missing from route context.");
 	if (context.isPending) return <main className="p-6">Loading workspace…</main>;
 	if (context.isError) throw context.error;
 	return (
 		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
-			<header className="fixed inset-x-0 top-0 z-30 flex h-(--header-height) items-center justify-between border-b bg-background px-4">
-				<Link to="/$workspace" params={{ workspace }} className="font-medium">
-					{context.data.workspace.name}
-				</Link>
-				<div className="flex items-center gap-3 text-sm">
-					<CommandPalette workspaceId={workspace} />
-					<a href={clientEnv.ACCOUNT_URL}>Account</a>
-					<a href="/signout">Sign out</a>
+			<header className="fixed inset-x-0 top-0 z-30 flex h-(--header-height) items-center border-sidebar-border border-b bg-background">
+				<div
+					data-orientation-target="workspace-switcher"
+					className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4"
+				>
+					<WorkspaceSwitcher
+						active={context.data.workspace}
+						workspaces={context.data.workspaces}
+						organizationId={context.data.workspace.organizationId ?? null}
+					/>
+				</div>
+				<div className="flex flex-1 items-center justify-between px-4">
+					<div className="min-w-0">
+						<p className="truncate font-medium text-sm">
+							{context.data.workspace.name}
+						</p>
+						<p className="truncate text-muted-foreground text-xs">
+							QuickDash workspace
+						</p>
+					</div>
+					<div className="flex items-center gap-3">
+						<CommandPalette workspaceId={workspace} />
+						<ProfileMenu
+							workspaceId={workspace}
+							seed={user.id}
+							name={user.name ?? ""}
+							email={user.email}
+						/>
+					</div>
 				</div>
 			</header>
-			<Sidebar className="pt-(--header-height)">
-				<nav className="space-y-1 p-3">
-					<Link to="/$workspace" params={{ workspace }} className="block p-2">
-						Overview
-					</Link>
-					{context.data.modules.map((module) => (
-						<Link
-							key={module.id}
-							to="/$workspace/$module"
-							params={{ workspace, module: module.id }}
-							className="block rounded p-2 capitalize hover:bg-sidebar-accent"
-						>
-							{module.id.replaceAll("-", " ")}
-						</Link>
-					))}
-				</nav>
+			<Sidebar>
+				<ModuleNav
+					workspaceId={workspace}
+					workspaceSlug={context.data.workspace.slug}
+					moduleIds={context.data.modules.map((module) => module.id)}
+				/>
 			</Sidebar>
 			<SidebarInset className="pt-(--header-height)">
 				<Outlet />

@@ -13,6 +13,9 @@ import { defineConfig } from "vite";
  * on the clean domain.
  */
 export default defineConfig({
+	// All apps share the repository-root `.env.local`; Vite only exposes keys
+	// carrying its `VITE_` prefix to browser code.
+	envDir: fileURLToPath(new URL("../../../", import.meta.url)),
 	plugins: [
 		// Must precede the React plugin: it generates the route tree the app imports.
 		tanstackRouter({ target: "react", autoCodeSplitting: true }),

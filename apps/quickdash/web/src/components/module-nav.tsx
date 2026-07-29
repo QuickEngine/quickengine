@@ -1,4 +1,4 @@
-import { ArrowLeft, Gear, House } from "@phosphor-icons/react";
+import { ArrowLeft, Gear, House, Plugs } from "@phosphor-icons/react";
 import {
 	SidebarContent,
 	SidebarFooter,
@@ -92,6 +92,20 @@ export function ModuleNav({
 			</SidebarContent>
 			<SidebarFooter className="border-sidebar-border border-t px-3 py-2">
 				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							asChild
+							isActive={pathname === `/${workspaceId}/connect`}
+							className={navButton}
+						>
+							<Link
+								to="/$workspace/connect"
+								params={{ workspace: workspaceId }}
+							>
+								<Plugs /> <span>Connect</span>
+							</Link>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
 					<SidebarMenuItem>
 						<SidebarMenuButton asChild className={navButton}>
 							<a

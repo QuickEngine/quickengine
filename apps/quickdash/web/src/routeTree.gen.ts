@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceRouteImport } from './routes/$workspace'
 import { Route as WorkspaceIndexRouteImport } from './routes/$workspace.index'
 import { Route as WorkspaceModuleRouteImport } from './routes/$workspace.$module'
+import { Route as WorkspaceConnectRouteImport } from './routes/$workspace.connect'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,11 @@ const WorkspaceModuleRoute = WorkspaceModuleRouteImport.update({
   path: '/$module',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceConnectRoute = WorkspaceConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const SignTokenRoute = SignTokenRouteImport.update({
   id: '/sign/$token',
   path: '/sign/$token',
@@ -45,12 +51,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$workspace': typeof WorkspaceRouteWithChildren
   '/$workspace/$module': typeof WorkspaceModuleRoute
+  '/$workspace/connect': typeof WorkspaceConnectRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$workspace/$module': typeof WorkspaceModuleRoute
+  '/$workspace/connect': typeof WorkspaceConnectRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace': typeof WorkspaceIndexRoute
 }
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/$workspace': typeof WorkspaceRouteWithChildren
   '/$workspace/$module': typeof WorkspaceModuleRoute
+  '/$workspace/connect': typeof WorkspaceConnectRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
 }
@@ -68,15 +77,22 @@ export interface FileRouteTypes {
     | '/'
     | '/$workspace'
     | '/$workspace/$module'
+    | '/$workspace/connect'
     | '/sign/$token'
     | '/$workspace/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$workspace/$module' | '/sign/$token' | '/$workspace'
+  to:
+    | '/'
+    | '/$workspace/$module'
+    | '/$workspace/connect'
+    | '/sign/$token'
+    | '/$workspace'
   id:
     | '__root__'
     | '/'
     | '/$workspace'
     | '/$workspace/$module'
+    | '/$workspace/connect'
     | '/sign/$token'
     | '/$workspace/'
   fileRoutesById: FileRoutesById
@@ -117,6 +133,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceModuleRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/$workspace/connect': {
+      id: '/$workspace/connect'
+      path: '/connect'
+      fullPath: '/$workspace/connect'
+      preLoaderRoute: typeof WorkspaceConnectRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/sign/$token': {
       id: '/sign/$token'
       path: '/sign/$token'
@@ -129,11 +152,13 @@ declare module '@tanstack/react-router' {
 
 interface WorkspaceRouteChildren {
   WorkspaceModuleRoute: typeof WorkspaceModuleRoute
+  WorkspaceConnectRoute: typeof WorkspaceConnectRoute
   WorkspaceIndexRoute: typeof WorkspaceIndexRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceModuleRoute: WorkspaceModuleRoute,
+  WorkspaceConnectRoute: WorkspaceConnectRoute,
   WorkspaceIndexRoute: WorkspaceIndexRoute,
 }
 

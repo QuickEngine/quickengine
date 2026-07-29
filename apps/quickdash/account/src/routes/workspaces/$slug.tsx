@@ -2,9 +2,13 @@ import { Button } from "@quickengine/ui/components/ui/button";
 import { Input } from "@quickengine/ui/components/ui/input";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { accountQueries, useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
+import {
+	type CredentialPurpose,
+	credentialPresets,
+} from "../../lib/credential-presets";
 import { clientEnv } from "../../lib/env";
 import { getBusinessType } from "../../lib/workspace-catalog";
 
@@ -56,12 +60,23 @@ function WorkspacePage() {
 	const [keyType, setKeyType] = useState<"publishable" | "secret" | "scoped">(
 		"publishable",
 	);
+	const [credentialPurpose, setCredentialPurpose] =
+		useState<CredentialPurpose>("public-storefront");
+	const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>(
+		[],
+	);
 	const capabilities = useQuery({
 		queryKey: ["account", "apiCapabilities"],
 		queryFn: async () =>
 			(await api.request<{ items: string[] }>("/account/api-capabilities")).data
 				.items,
 	});
+	useEffect(() => {
+		if (!capabilities.data) return;
+		const preset = credentialPresets[credentialPurpose];
+		setKeyType(preset.type);
+		setSelectedCapabilities(preset.selectCapabilities(capabilities.data));
+	}, [capabilities.data, credentialPurpose]);
 	const invalidate = () =>
 		queryClient.invalidateQueries({
 			queryKey: ["account", active?.id, "workspaces"],
@@ -261,7 +276,7 @@ function WorkspacePage() {
 						createKey.mutate({
 							name: String(form.get("keyName") ?? ""),
 							type: keyType,
-							capabilities: form.getAll("capability").map(String),
+							capabilities: selectedCapabilities,
 							...(expiry > 0
 								? {
 										expiresAt: new Date(
@@ -279,18 +294,33 @@ function WorkspacePage() {
 							required
 						/>
 						<select
-							value={keyType}
+							value={credentialPurpose}
 							onChange={(event) =>
-								setKeyType(
-									event.target.value as "publishable" | "secret" | "scoped",
-								)
+								setCredentialPurpose(event.target.value as CredentialPurpose)
 							}
 							className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
 						>
-							<option value="publishable">Publishable</option>
-							<option value="secret">Secret</option>
-							<option value="scoped">Scoped</option>
+							{Object.entries(credentialPresets).map(([value, preset]) => (
+								<option key={value} value={value}>
+									{preset.label}
+								</option>
+							))}
 						</select>
+						{credentialPurpose === "custom" && (
+							<select
+								value={keyType}
+								onChange={(event) =>
+									setKeyType(
+										event.target.value as "publishable" | "secret" | "scoped",
+									)
+								}
+								className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+							>
+								<option value="publishable">Publishable</option>
+								<option value="secret">Secret</option>
+								<option value="scoped">Scoped</option>
+							</select>
+						)}
 						<select
 							name="expiry"
 							defaultValue="0"
@@ -302,6 +332,9 @@ function WorkspacePage() {
 							<option value="365">In 365 days</option>
 						</select>
 					</div>
+					<p className="text-muted-foreground text-sm">
+						{credentialPresets[credentialPurpose].description}
+					</p>
 					<fieldset className="grid max-h-48 gap-2 overflow-y-auto">
 						<legend className="mb-2 text-sm">Capabilities</legend>
 						{capabilities.data?.map((capability) => (
@@ -313,7 +346,19 @@ function WorkspacePage() {
 									type="checkbox"
 									name="capability"
 									value={capability}
-									defaultChecked
+									checked={selectedCapabilities.includes(capability)}
+									disabled={
+										credentialPurpose !== "custom" ||
+										(keyType === "publishable" &&
+											!["catalog:read", "events:write"].includes(capability))
+									}
+									onChange={(event) =>
+										setSelectedCapabilities((current) =>
+											event.target.checked
+												? [...new Set([...current, capability])]
+												: current.filter((item) => item !== capability),
+										)
+									}
 								/>
 								<code className="font-mono text-xs">{capability}</code>
 							</label>

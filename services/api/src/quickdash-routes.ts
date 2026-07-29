@@ -20,6 +20,7 @@ import {
 } from "@quickengine/mod-files";
 import {
 	accountSecurityGuidedGoal,
+	findRecipe,
 	getWorkspaceModules,
 	listModules,
 	resolveFirstActions,
@@ -121,6 +122,8 @@ export function registerQuickDashRoutes(
 		const firstActions = resolveFirstActions({
 			manifests: listModules(),
 			enabledModuleIds: enabledModules.map((module) => module.id),
+			preferredActionIds: findRecipe(workspace.workspace.businessType)
+				?.firstActions,
 		});
 		const completions = await resolveDatabaseGuidedStepCompletions(
 			workspaceId,

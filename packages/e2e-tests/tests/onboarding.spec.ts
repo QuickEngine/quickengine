@@ -33,23 +33,27 @@ test("minimal onboarding rolls back atomically, retries once, and enters QuickDa
 	).toBeVisible();
 	await assertNoOnboardingGate(page);
 
-	await page.getByRole("button", { name: "Set it up for me" }).click();
+	await page.getByRole("button", { name: "Ask AI" }).click();
 	await expect(
 		page.getByRole("heading", { name: "Describe your business" }),
 	).toBeVisible();
 	await page.getByRole("button", { name: "Back" }).click();
-	await page.getByRole("button", { name: "Use a preset" }).click();
 	await expect(
-		page.getByRole("heading", { name: "What are you building?" }),
+		page.getByRole("button", { name: "Build it myself" }),
 	).toBeVisible();
-	await page.getByRole("button", { name: "Agency", exact: true }).click();
-	await expect(page.getByText("Agency", { exact: true })).toBeVisible();
-	await page.getByRole("button", { name: "Back" }).click();
+	await expect(
+		page.getByRole("button", { name: "Start with defaults" }),
+	).toBeVisible();
+	await expect(page.getByRole("button", { name: "Use a preset" })).toHaveCount(
+		0,
+	);
+	await page.getByRole("button", { name: "Build it myself" }).click();
+	await expect(
+		page.getByRole("heading", { name: "Choose your modules" }),
+	).toBeVisible();
 	await page.getByRole("button", { name: "Back" }).click();
 
-	await page
-		.getByRole("button", { name: "Skip — use sensible defaults" })
-		.click();
+	await page.getByRole("button", { name: "Start with defaults" }).click();
 
 	await expect(
 		page.getByRole("heading", { name: "Ready to build" }),

@@ -89,6 +89,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Workspace setup now asks what help the operator wants.** New customers can describe their
+  business, choose modules themselves, or start immediately with QuickDash defaults without
+  browsing a catalog of business types. Internal recipes still provide editable recommendations
+  and now order the first real actions shown inside the resulting workspace.
 - **Production job registration now targets the stable QuickDash API domain.** Inngest keeps
   its existing application identity and credentials while future deployments sync through
   `api.quickdash.xyz`.

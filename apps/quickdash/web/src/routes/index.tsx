@@ -1,6 +1,7 @@
 import { Button } from "@quickengine/ui/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { clientEnv } from "../lib/env";
 import { quickDashQueries } from "../lib/quickdash-api";
 
 function WorkspacePicker() {
@@ -16,7 +17,7 @@ function WorkspacePicker() {
 					QuickDash is ready once your account has a workspace.
 				</p>
 				<Button asChild>
-					<a href="http://localhost:3001/workspaces/new">Open Account</a>
+					<a href={`${clientEnv.ACCOUNT_URL}/workspaces/new`}>Open Account</a>
 				</Button>
 			</main>
 		);

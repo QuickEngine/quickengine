@@ -24,13 +24,13 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { accountQueries, useActiveOrganization } from "../lib/account-api";
+import { clientEnv } from "../lib/env";
 import { getBusinessType } from "../lib/workspace-catalog";
 
 type View = "cards" | "table";
 type StatusFilter = "active" | "archived" | "all";
 
-const quickDashUrl =
-	import.meta.env.VITE_QUICKDASH_URL ?? "http://localhost:3011";
+const quickDashUrl = clientEnv.DASH_URL;
 const businessTypeLabel = (id: string) => getBusinessType(id)?.name ?? id;
 const createdDate = (value: string) =>
 	new Intl.DateTimeFormat("en", {

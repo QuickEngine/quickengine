@@ -28,8 +28,7 @@ export function ProfileMenu({
 	const [pending, setPending] = useState(false);
 	const [orientationError, setOrientationError] = useState<string | null>(null);
 	const displayName = name || email;
-	const webUrl = import.meta.env.VITE_WEB_URL ?? "http://localhost:3000";
-	const signOutHref = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(webUrl)}`;
+	const signOutHref = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(clientEnv.WEB_URL)}`;
 
 	async function restartOrientation() {
 		setPending(true);

@@ -16,6 +16,7 @@
 	"dependencies": {
 		"@phosphor-icons/react": "^2.1.10",
 		"@quickengine/auth": "workspace:*",
+		"@quickengine/env": "workspace:*",
 		"@quickengine/mod-reporting-analytics": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/quick": "workspace:*",

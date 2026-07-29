@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/react";
+import { clientEnv } from "./lib/env";
 
 /**
  * Error monitoring.
@@ -11,7 +12,7 @@ import * as Sentry from "@sentry/react";
  * builds stay silent rather than reporting noise as production incidents.
  */
 export function initSentry() {
-	const dsn = import.meta.env.VITE_SENTRY_DSN;
+	const dsn = clientEnv.SENTRY_DSN;
 	if (!dsn) return;
 
 	Sentry.init({

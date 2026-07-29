@@ -30,6 +30,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Each Vite app now reports readable errors to its own monitoring project.** Web, Auth,
+  Account and QuickDash use isolated local DSNs, QuickDash initializes browser monitoring,
+  and production builds upload source maps without publishing them.
 - **Password accounts remain password accounts after sign-out.** A verified email-and-password
   customer can end their session and sign back in with the same credentials instead of being
   forced toward an unrelated OAuth method.

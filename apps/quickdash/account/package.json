@@ -48,6 +48,7 @@
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
+		"@sentry/vite-plugin": "^5.4.0",
 		"@tailwindcss/vite": "^4.3.2",
 		"@tanstack/router-plugin": "^1.95.0",
 		"@types/node": "^22.15.3",

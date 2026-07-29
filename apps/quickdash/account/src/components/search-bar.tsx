@@ -12,7 +12,6 @@ import { useEffect, useState } from "react";
 const QUICK_LINKS = [
 	{ href: "/", label: "Dashboard" },
 	{ href: "/workspaces", label: "Workspaces" },
-	{ href: "/analytics", label: "Analytics" },
 	{ href: "/billing", label: "Billing" },
 ];
 

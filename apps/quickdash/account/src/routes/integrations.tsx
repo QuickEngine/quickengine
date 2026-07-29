@@ -51,7 +51,7 @@ function Page() {
 									href={p.href}
 									className="mt-4 inline-flex w-fit rounded-lg border border-foreground/15 px-3 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-foreground/5"
 								>
-									Open QuickDash →
+									Enter workspace →
 								</a>
 							)}
 						</Panel>

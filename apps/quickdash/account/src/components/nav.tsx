@@ -1,14 +1,4 @@
-import {
-	ChartLine,
-	CurrencyDollar,
-	Gauge,
-	Gear,
-	type Icon,
-	Pulse,
-	PuzzlePiece,
-	SquaresFour,
-	UsersThree,
-} from "@phosphor-icons/react";
+import { Gear } from "@phosphor-icons/react";
 import {
 	SidebarContent,
 	SidebarFooter,
@@ -18,6 +8,7 @@ import {
 	SidebarMenuItem,
 } from "@quickengine/ui/components/ui/sidebar";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { ACCOUNT_NAV_ITEMS, type AccountNavItem } from "./nav-items";
 import { SettingsDialog } from "./settings-dialog";
 
 // Subtle container on hover so buttons read as clickable; a stronger neutral gray
@@ -26,23 +17,17 @@ import { SettingsDialog } from "./settings-dialog";
 const navButton =
 	"hover:bg-foreground/5 active:bg-foreground/5 data-[active=true]:bg-foreground/10 data-[active=true]:text-foreground";
 
-type NavItem = { href: string; label: string; icon: Icon };
-
-const mainNav: NavItem[] = [
-	{ href: "/", label: "Workspaces", icon: SquaresFour },
-	{ href: "/overview", label: "Overview", icon: Gauge },
-	{ href: "/revenue", label: "Revenue", icon: CurrencyDollar },
-	{ href: "/analytics", label: "Analytics", icon: ChartLine },
-	{ href: "/team", label: "Team", icon: UsersThree },
-	{ href: "/integrations", label: "Products", icon: PuzzlePiece },
-	{ href: "/activity", label: "Activity", icon: Pulse },
-];
-
 function isActive(pathname: string, href: string): boolean {
 	return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-function NavList({ items, pathname }: { items: NavItem[]; pathname: string }) {
+function NavList({
+	items,
+	pathname,
+}: {
+	items: AccountNavItem[];
+	pathname: string;
+}) {
 	return (
 		<SidebarMenu>
 			{items.map(({ href, label, icon: IconComponent }) => (
@@ -76,7 +61,7 @@ export function DashboardNav() {
 				{/* px-3 (vs the default p-2's 8px) gives the buttons a bit more
 				    breathing room on the left/right edges of the sidebar. */}
 				<SidebarGroup className="px-3">
-					<NavList items={mainNav} pathname={pathname} />
+					<NavList items={ACCOUNT_NAV_ITEMS} pathname={pathname} />
 				</SidebarGroup>
 			</SidebarContent>
 			{/* Dedicated footer: same height as the header and the same divider (a top

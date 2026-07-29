@@ -3,10 +3,13 @@ import { Button } from "@quickengine/ui/components/ui/button";
 import { Input } from "@quickengine/ui/components/ui/input";
 import { NativeSelect } from "@quickengine/ui/components/ui/native-select";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
+import { useQueryClient } from "@tanstack/react-query";
 import { useActionState, useEffect, useState } from "react";
 import {
+	archiveProjectAction,
 	createProjectAction,
 	createTaskAction,
+	deleteProjectAction,
 	type ProjectActionState,
 	projectStatusAction,
 	taskStatusAction,
@@ -24,24 +27,41 @@ type Project = {
 	clientName: string | null;
 	status: string;
 	dueDate: string | null;
+	archivedAt: string | null;
 	tasks: Task[];
 };
 function F({
 	action,
 	children,
 	hidden,
+	confirmMessage,
 }: {
 	action: Action;
 	children: React.ReactNode;
 	hidden: Record<string, string>;
+	confirmMessage?: string;
 }) {
 	const [s, a] = useActionState(action, I);
 	const [key, setKey] = useState(() => crypto.randomUUID());
+	const queryClient = useQueryClient();
+	const workspaceId = hidden.workspaceId;
 	useEffect(() => {
-		if (s.completionId) setKey(crypto.randomUUID());
-	}, [s.completionId]);
+		if (!s.completionId) return;
+		setKey(crypto.randomUUID());
+		void queryClient.invalidateQueries({
+			queryKey: ["quickdash", workspaceId, "projects"],
+		});
+	}, [queryClient, s.completionId, workspaceId]);
 	return (
-		<form action={a} className="flex flex-wrap gap-2">
+		<form
+			action={a}
+			className="flex flex-wrap gap-2"
+			onSubmit={(event) => {
+				if (confirmMessage && !window.confirm(confirmMessage)) {
+					event.preventDefault();
+				}
+			}}
+		>
 			{Object.entries(hidden).map(([k, v]) => (
 				<input key={k} type="hidden" name={k} value={v} />
 			))}
@@ -97,41 +117,84 @@ export function ProjectsView({
 								<h3 className="font-medium">{p.name}</h3>
 								<p className="text-muted-foreground text-sm">
 									{p.clientName ?? "Internal"} · {p.status}
+									{p.archivedAt ? " · archived" : ""}
 									{p.dueDate ? ` · due ${p.dueDate}` : ""}
 								</p>
 							</div>
-							<F
-								action={projectStatusAction}
-								hidden={{ workspaceId, id: p.id }}
-							>
-								<NativeSelect name="target">
-									<option value="active">Active</option>
-									<option value="on_hold">On hold</option>
-									<option value="completed">Completed</option>
-									<option value="cancelled">Cancelled</option>
-									<option value="draft">Draft</option>
-								</NativeSelect>
-								<Button type="submit">Change status</Button>
-							</F>
+							<div className="flex flex-wrap gap-2">
+								{p.archivedAt ? (
+									<>
+										<F
+											action={archiveProjectAction}
+											hidden={{ workspaceId, id: p.id, target: "restore" }}
+										>
+											<Button type="submit" variant="outline">
+												Restore
+											</Button>
+										</F>
+										<F
+											action={deleteProjectAction}
+											hidden={{ workspaceId, id: p.id }}
+											confirmMessage={`Permanently delete “${p.name}”? This cannot be undone.`}
+										>
+											<Button type="submit" variant="destructive">
+												Delete permanently
+											</Button>
+										</F>
+									</>
+								) : (
+									<>
+										<F
+											action={projectStatusAction}
+											hidden={{ workspaceId, id: p.id }}
+										>
+											<NativeSelect name="target">
+												<option value="active">Active</option>
+												<option value="on_hold">On hold</option>
+												<option value="completed">Completed</option>
+												<option value="cancelled">Cancelled</option>
+												<option value="draft">Draft</option>
+											</NativeSelect>
+											<Button type="submit">Change status</Button>
+										</F>
+										{["completed", "cancelled"].includes(p.status) && (
+											<F
+												action={archiveProjectAction}
+												hidden={{ workspaceId, id: p.id, target: "archive" }}
+											>
+												<Button type="submit" variant="outline">
+													Archive
+												</Button>
+											</F>
+										)}
+									</>
+								)}
+							</div>
 						</div>
-						<F
-							action={createTaskAction}
-							hidden={{ workspaceId, projectId: p.id }}
-						>
-							<Input name="title" placeholder="Task or deliverable" required />
-							<NativeSelect name="kind">
-								<option value="task">Task</option>
-								<option value="deliverable">Deliverable</option>
-							</NativeSelect>
-							<NativeSelect name="priority">
-								<option value="normal">Normal</option>
-								<option value="low">Low</option>
-								<option value="high">High</option>
-								<option value="urgent">Urgent</option>
-							</NativeSelect>
-							<Input name="dueDate" type="date" />
-							<Button type="submit">Add task</Button>
-						</F>
+						{!p.archivedAt && (
+							<F
+								action={createTaskAction}
+								hidden={{ workspaceId, projectId: p.id }}
+							>
+								<Input
+									name="title"
+									placeholder="Task or deliverable"
+									required
+								/>
+								<NativeSelect name="kind">
+									<option value="task">Task</option>
+									<option value="deliverable">Deliverable</option>
+								</NativeSelect>
+								<NativeSelect name="priority">
+									<option value="normal">Normal</option>
+									<option value="low">Low</option>
+									<option value="high">High</option>
+									<option value="urgent">Urgent</option>
+								</NativeSelect>
+								<Input name="dueDate" type="date" />
+								<Button type="submit">Add task</Button>
+							</F>
+						)}
 						<div className="space-y-2">
 							{p.tasks.map((t) => (
 								<div
@@ -141,21 +204,23 @@ export function ProjectsView({
 									<span>
 										{t.title} · {t.priority} · {t.status}
 									</span>
-									<F
-										action={taskStatusAction}
-										hidden={{ workspaceId, id: t.id }}
-									>
-										<NativeSelect name="target">
-											<option value="in_progress">In progress</option>
-											<option value="blocked">Blocked</option>
-											<option value="completed">Completed</option>
-											<option value="todo">To do</option>
-											<option value="cancelled">Cancelled</option>
-										</NativeSelect>
-										<Button type="submit" size="sm">
-											Update
-										</Button>
-									</F>
+									{!p.archivedAt && (
+										<F
+											action={taskStatusAction}
+											hidden={{ workspaceId, id: t.id }}
+										>
+											<NativeSelect name="target">
+												<option value="in_progress">In progress</option>
+												<option value="blocked">Blocked</option>
+												<option value="completed">Completed</option>
+												<option value="todo">To do</option>
+												<option value="cancelled">Cancelled</option>
+											</NativeSelect>
+											<Button type="submit" size="sm">
+												Update
+											</Button>
+										</F>
+									)}
 								</div>
 							))}
 						</div>

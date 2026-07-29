@@ -47,6 +47,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Disposable workspace data can now be removed deliberately.** Trashed documents expose
+  permanent deletion through their durable storage-cleanup workflow, archived projects can be
+  restored or deleted, and Account clearly distinguishes reversible workspace archiving from
+  permanently discarding a test workspace and all of its data.
 - **Getting started now stays completed.** QuickDash records the first completed checklist pass
   per user and workspace, so deleting or changing later business data cannot resurrect
   onboarding that the operator already finished.

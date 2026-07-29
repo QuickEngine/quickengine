@@ -90,6 +90,36 @@ export function projectStatusAction(
 	);
 }
 
+export function archiveProjectAction(
+	_previous: ProjectActionState,
+	form: FormData,
+) {
+	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
+	const id = String(form.get("id") ?? "");
+	const target = String(form.get("target") ?? "");
+	return actionResult(
+		() =>
+			target === "restore"
+				? api.projects.restore(id, idempotencyKey(form))
+				: api.projects.archive(id, idempotencyKey(form)),
+		target === "restore"
+			? "The archived project could not be restored."
+			: "Complete or cancel the project before archiving it.",
+	);
+}
+
+export function deleteProjectAction(
+	_previous: ProjectActionState,
+	form: FormData,
+) {
+	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
+	return actionResult(
+		() =>
+			api.projects.delete(String(form.get("id") ?? ""), idempotencyKey(form)),
+		"Only an archived project can be permanently deleted. Remove any blocking records first.",
+	);
+}
+
 export function taskStatusAction(
 	_previous: ProjectActionState,
 	form: FormData,

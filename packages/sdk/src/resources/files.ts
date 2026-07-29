@@ -98,13 +98,27 @@ export class FilesResource {
 		);
 	}
 	/**
-	 * Move a document between active, archived, trashed, and deleting. A document must be
-	 * trashed before `deleting` is accepted — deletion is never one click away.
+	 * Move a document between active, archived, and trashed. Permanent deletion is a separate
+	 * durable operation so storage cleanup cannot be bypassed.
 	 */
-	setStatus(id: string, status: QuickDocumentStatus, idempotencyKey: string) {
+	setStatus(
+		id: string,
+		status: Exclude<QuickDocumentStatus, "deleting">,
+		idempotencyKey: string,
+	) {
 		return this.client.request<QuickDocument>(
 			`/documents/${encodeURIComponent(id)}/status`,
 			{ method: "POST", body: { status }, idempotencyKey },
+		);
+	}
+	/**
+	 * Permanently delete a trashed document. The API first commits the deletion request, then
+	 * schedules version-byte cleanup and final row purging.
+	 */
+	delete(id: string, idempotencyKey: string) {
+		return this.client.request<QuickDocument>(
+			`/documents/${encodeURIComponent(id)}`,
+			{ method: "DELETE", idempotencyKey },
 		);
 	}
 	listAttachments(id: string) {

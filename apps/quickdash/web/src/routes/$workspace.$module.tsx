@@ -289,7 +289,7 @@ function ModulePage() {
 		queryFn: async () => {
 			const api = workspaceApi(workspace);
 			const [page, clients] = await Promise.all([
-				api.projects.list({ limit: 100 }),
+				api.projects.list({ limit: 100, includeArchived: true }),
 				api.clients.list({ limit: 100 }),
 			]);
 			const tasks = await Promise.all(
@@ -1142,6 +1142,7 @@ function ModulePage() {
 								)?.name ?? null),
 					status: project.status,
 					dueDate: project.dueDate,
+					archivedAt: project.archivedAt,
 					tasks: (projects.data.tasks[index] ?? []).map((task) => ({
 						id: task.id,
 						title: task.title,

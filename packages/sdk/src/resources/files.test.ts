@@ -61,7 +61,7 @@ describe("files resource", () => {
 	it("moves a document through trash before deletion", async () => {
 		const { quick, fetcher } = server();
 		await quick.files.setStatus(document.id, "trashed", "fil-trash-1");
-		await quick.files.setStatus(document.id, "deleting", "fil-delete-1");
+		await quick.files.delete(document.id, "fil-delete-1");
 
 		expect(fetcher.mock.calls[0]?.[0]).toBe(
 			`https://api.quickengine.test/v1/documents/${document.id}/status`,
@@ -69,9 +69,10 @@ describe("files resource", () => {
 		expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({
 			status: "trashed",
 		});
-		expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual({
-			status: "deleting",
-		});
+		expect(fetcher.mock.calls[1]?.[0]).toBe(
+			`https://api.quickengine.test/v1/documents/${document.id}`,
+		);
+		expect(fetcher.mock.calls[1]?.[1]?.method).toBe("DELETE");
 	});
 
 	it("releases a quarantined version over its own route", async () => {

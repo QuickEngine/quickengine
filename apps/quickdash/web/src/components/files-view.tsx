@@ -11,7 +11,8 @@ import { Button } from "@quickengine/ui/components/ui/button";
 import { Input } from "@quickengine/ui/components/ui/input";
 import { NativeSelect } from "@quickengine/ui/components/ui/native-select";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
-import { useActionState, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
 	createFolderAction,
 	downloadFileAction,
@@ -47,7 +48,10 @@ function Form({
 	hidden: Record<string, string>;
 	children: React.ReactNode;
 }) {
-	const [state, formAction] = useActionState(action, INITIAL);
+	const [state, formAction, isPending] = useActionState(action, INITIAL);
+	const formRef = useRef<HTMLFormElement>(null);
+	const queryClient = useQueryClient();
+	const workspaceId = hidden.workspaceId;
 	// A per-submit key for every action behind this form: folder creates and status changes are
 	// durable commands that replay on retry, and an upload must store exactly one copy of the
 	// bytes. A fresh key is minted after each success.
@@ -55,15 +59,27 @@ function Form({
 		crypto.randomUUID(),
 	);
 	useEffect(() => {
-		if (state.completionId) setIdempotencyKey(crypto.randomUUID());
-	}, [state.completionId]);
+		if (!state.completionId) return;
+		setIdempotencyKey(crypto.randomUUID());
+		formRef.current?.reset();
+		void queryClient.invalidateQueries({
+			queryKey: ["quickdash", workspaceId, "files"],
+		});
+	}, [queryClient, state.completionId, workspaceId]);
 	return (
-		<form action={formAction} className="flex flex-wrap items-center gap-2">
+		<form
+			ref={formRef}
+			action={formAction}
+			aria-busy={isPending}
+			className="flex flex-wrap items-center gap-2"
+		>
 			{Object.entries(hidden).map(([name, value]) => (
 				<input key={name} type="hidden" name={name} value={value} />
 			))}
 			<input type="hidden" name="idempotencyKey" value={idempotencyKey} />
-			{children}
+			<fieldset disabled={isPending} className="contents">
+				{children}
+			</fieldset>
 			{state.error && (
 				<span className="text-destructive text-xs">{state.error}</span>
 			)}

@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
 	createFolderAction,
+	deleteFileAction,
 	downloadFileAction,
 	type FileActionState,
 	fileStatusAction,
@@ -43,10 +44,12 @@ function Form({
 	action,
 	hidden,
 	children,
+	confirmMessage,
 }: {
 	action: Action;
 	hidden: Record<string, string>;
 	children: React.ReactNode;
+	confirmMessage?: string;
 }) {
 	const [state, formAction, isPending] = useActionState(action, INITIAL);
 	const formRef = useRef<HTMLFormElement>(null);
@@ -72,6 +75,11 @@ function Form({
 			action={formAction}
 			aria-busy={isPending}
 			className="flex flex-wrap items-center gap-2"
+			onSubmit={(event) => {
+				if (confirmMessage && !window.confirm(confirmMessage)) {
+					event.preventDefault();
+				}
+			}}
 		>
 			{Object.entries(hidden).map(([name, value]) => (
 				<input key={name} type="hidden" name={name} value={value} />
@@ -239,16 +247,30 @@ export function FilesView({
 									</Form>
 								)}
 								{document.status === "trashed" && (
-									<Form
-										action={fileStatusAction}
-										hidden={{
-											workspaceId,
-											documentId: document.id,
-											target: "active",
-										}}
-									>
-										<Button type="submit">Restore</Button>
-									</Form>
+									<>
+										<Form
+											action={fileStatusAction}
+											hidden={{
+												workspaceId,
+												documentId: document.id,
+												target: "active",
+											}}
+										>
+											<Button type="submit">Restore</Button>
+										</Form>
+										<Form
+											action={deleteFileAction}
+											hidden={{
+												workspaceId,
+												documentId: document.id,
+											}}
+											confirmMessage={`Permanently delete “${document.title}”? Its stored versions will be removed and this cannot be undone.`}
+										>
+											<Button type="submit" variant="destructive">
+												<Trash /> Delete permanently
+											</Button>
+										</Form>
+									</>
 								)}
 							</div>
 						</article>

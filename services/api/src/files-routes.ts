@@ -2,6 +2,7 @@ import { API_HEADERS } from "@quickengine/api-contracts/headers";
 import type { MutationUnitOfWork } from "@quickengine/api-contracts/mutations";
 import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
+import { getJobQueue } from "@quickengine/jobs";
 import {
 	createFileFolderCommand,
 	DOCUMENT_STATUSES,
@@ -12,6 +13,7 @@ import {
 	listFileFoldersPage,
 	releaseQuarantinedFileVersionCommand,
 	removeFileAttachmentCommand,
+	requestFileDocumentDeletionCommand,
 	setFileDocumentStatusCommand,
 	updateFileDocumentCommand,
 	updateFileFolderCommand,
@@ -27,7 +29,16 @@ import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
 import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
-const statusSchema = z.object({ status: z.enum(DOCUMENT_STATUSES) });
+const visibleStatusSchema = z.object({
+	status: z.enum(
+		DOCUMENT_STATUSES.filter(
+			(
+				status,
+			): status is Exclude<(typeof DOCUMENT_STATUSES)[number], "deleting"> =>
+				status !== "deleting",
+		),
+	),
+});
 
 /**
  * Files HTTP surface.
@@ -162,10 +173,10 @@ export function registerFilesRoutes(
 			await updateFileDocumentCommand(context, id, body, options.uow),
 		);
 	});
-	/** A document must be trashed before it can be scheduled for deletion. */
+	/** Archive, trash, or restore a document. Permanent deletion has its own durable route. */
 	app.post("/v1/documents/:id/status", writeAccess, writeLimit, async (c) => {
 		const id = uuid.parse(c.req.param("id"));
-		const { status } = statusSchema.parse(await c.req.json());
+		const { status } = visibleStatusSchema.parse(await c.req.json());
 		const context = await mutationContext(c, "files.document.status", {
 			id,
 			status,
@@ -173,6 +184,19 @@ export function registerFilesRoutes(
 		return respondMutation(
 			c,
 			await setFileDocumentStatusCommand(context, id, status, options.uow),
+		);
+	});
+	app.delete("/v1/documents/:id", writeAccess, writeLimit, async (c) => {
+		const id = uuid.parse(c.req.param("id"));
+		const context = await mutationContext(c, "files.document.delete", { id });
+		return respondMutation(
+			c,
+			await requestFileDocumentDeletionCommand(
+				context,
+				id,
+				getJobQueue(),
+				options.uow,
+			),
 		);
 	});
 	app.get("/v1/documents/:id/attachments", readAccess, readLimit, async (c) =>

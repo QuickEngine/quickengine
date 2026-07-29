@@ -1707,6 +1707,27 @@ function declaredDocument(config: ApiConfig) {
 						"409": { description: "The document can no longer be edited." },
 					},
 				},
+				delete: {
+					operationId: "deleteFileDocument",
+					summary: "Permanently delete a trashed document",
+					description:
+						"The deletion request commits before durable storage cleanup is queued. Active or archived documents must be trashed first.",
+					parameters: [
+						{
+							in: "header",
+							name: "Idempotency-Key",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"200": { description: "Deletion requested and cleanup queued." },
+						"409": {
+							description:
+								"The document is not trashed or another relationship blocks deletion.",
+						},
+					},
+				},
 			},
 			"/v1/documents/{id}/status": {
 				parameters: [
@@ -1719,10 +1740,9 @@ function declaredDocument(config: ApiConfig) {
 				],
 				post: {
 					operationId: "setFileDocumentStatus",
-					summary:
-						"Move a document between active, archived, trashed, and deleting",
+					summary: "Move a document between active, archived, and trashed",
 					description:
-						"A document must be trashed before it can be scheduled for deletion. Storage cleanup is queued only once the request commits.",
+						"Permanent deletion uses DELETE /v1/documents/{id} so storage cleanup cannot be bypassed.",
 					responses: {
 						"200": { description: "Status changed." },
 						"409": { description: "Illegal or redundant transition." },

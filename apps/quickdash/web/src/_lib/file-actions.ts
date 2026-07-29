@@ -60,14 +60,22 @@ export function fileStatusAction(_previous: FileActionState, form: FormData) {
 		() =>
 			api.files.setStatus(
 				String(form.get("documentId") ?? ""),
-				String(form.get("target")) as
-					| "active"
-					| "archived"
-					| "trashed"
-					| "deleting",
+				String(form.get("target")) as "active" | "archived" | "trashed",
 				idempotencyKey(form),
 			),
 		"That file state transition is unavailable.",
+	);
+}
+
+export function deleteFileAction(_previous: FileActionState, form: FormData) {
+	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
+	return actionResult(
+		() =>
+			api.files.delete(
+				String(form.get("documentId") ?? ""),
+				idempotencyKey(form),
+			),
+		"Only a trashed document can be permanently deleted. Restore or remove any blocking attachments first.",
 	);
 }
 

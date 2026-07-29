@@ -252,6 +252,11 @@ function WorkspacePage() {
 			</form>
 			<section className="space-y-3 rounded-xl border border-foreground/10 p-5">
 				<h2 className="font-medium">Lifecycle</h2>
+				<p className="text-muted-foreground text-sm">
+					Archive keeps every record and can be reversed. If this was only a
+					test workspace, archive it first to reveal the permanent discard
+					option.
+				</p>
 				<Button
 					variant="outline"
 					disabled={archive.isPending}
@@ -458,16 +463,25 @@ function WorkspacePage() {
 			{workspace.archivedAt && (
 				<section className="space-y-3 rounded-xl border border-destructive/30 p-5">
 					<h2 className="font-medium text-destructive">Danger zone</h2>
+					<p className="text-muted-foreground text-sm">
+						Discard this workspace only when all of its records are disposable.
+						This permanently removes the workspace and its business data and
+						cannot be undone.
+					</p>
 					<Button
 						variant="destructive"
 						disabled={remove.isPending}
 						onClick={() => {
-							if (window.confirm(`Permanently delete ${workspace.name}?`)) {
+							if (
+								window.confirm(
+									`Permanently discard ${workspace.name} and all of its data? This cannot be undone.`,
+								)
+							) {
 								remove.mutate();
 							}
 						}}
 					>
-						Delete workspace
+						Discard workspace and all data
 					</Button>
 				</section>
 			)}

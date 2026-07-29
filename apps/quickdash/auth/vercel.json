@@ -2,11 +2,11 @@
 	"rewrites": [
 		{
 			"source": "/api/auth/:path*",
-			"destination": "https://api.quickengine.xyz/api/auth/:path*"
+			"destination": "https://api.quickdash.xyz/api/auth/:path*"
 		},
 		{
 			"source": "/signout",
-			"destination": "https://api.quickengine.xyz/api/auth-signout"
+			"destination": "https://api.quickdash.xyz/api/auth-signout"
 		},
 		{ "source": "/(.*)", "destination": "/index.html" }
 	]

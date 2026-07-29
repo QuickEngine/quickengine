@@ -7,11 +7,10 @@ import { Modules } from "@/components/modules";
 import { Showcase } from "@/components/showcase";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { env } from "@/lib/env";
 
-const AUTH_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_AUTH_URL ?? "http://localhost:3002";
-const ACCOUNT_URL =
-	process.env.NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL ?? "http://localhost:3001";
+const AUTH_URL = env.VITE_AUTH_URL;
+const ACCOUNT_URL = env.VITE_ACCOUNT_URL;
 
 function Page() {
 	// Returning users should land in the product, not be sold the product again.

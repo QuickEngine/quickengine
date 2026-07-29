@@ -30,6 +30,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Vite deployments now build from clean checkouts.** Vercel builds each frontend together
+  with its workspace dependencies, so production no longer relies on generated SDK files left
+  behind on a developer machine.
+- **Marketing and identity no longer embed development navigation in production.** Web and Auth
+  use the validated browser origin contract, and their production bundles contain no localhost
+  application URLs or legacy QuickEngine browser variables.
 - **QuickDash changes refresh in place without session churn or request floods.** Migrated
   module forms now keep a stable router adapter, refresh active TanStack data without rerunning
   the authentication boundary, and no longer exhaust API rate limits after a successful save.
@@ -59,6 +65,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Every app now uses the restored QuickEngine mark.** The shared logo, wordmark, onboarding
+  artwork and browser favicons now come from the preferred brand asset instead of the temporary
+  placeholder.
+- **QuickDash infrastructure now has product-owned names and domains.** Existing Vercel projects
+  were renamed in place for Auth, Account and API, and the new `quickdash.xyz` application
+  domains were attached without discarding the old rollback aliases.
 - **Browser tests now exercise the Vite applications and canonical API directly.** The
   end-to-end harness no longer starts a legacy Next.js server or creates Next build output.
 - **Auth and Account now live with the QuickDash product applications.** Their source roots

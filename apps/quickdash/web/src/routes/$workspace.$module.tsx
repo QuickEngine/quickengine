@@ -32,6 +32,10 @@ import {
 	type WorkspaceReport,
 } from "../components/reporting-view";
 import {
+	normalizeResourceListState,
+	type ResourceListState,
+} from "../components/resource-list";
+import {
 	type ShipmentViewModel,
 	ShippingView,
 } from "../components/shipping-view";
@@ -42,6 +46,14 @@ import { quickDashQueries } from "../lib/quickdash-api";
 function ModulePage() {
 	const { workspace, module } = Route.useParams();
 	const search = Route.useSearch();
+	const navigate = Route.useNavigate();
+	const listState = normalizeResourceListState(search);
+	const onListStateChange = (patch: Partial<ResourceListState>) => {
+		void navigate({
+			search: (previous) => ({ ...previous, ...patch }),
+			replace: true,
+		});
+	};
 	const reportDays = (REPORT_RANGE_PRESETS as readonly number[]).includes(
 		search.days ?? 30,
 	)
@@ -444,6 +456,8 @@ function ModulePage() {
 		return (
 			<CatalogView
 				workspaceId={workspace}
+				listState={listState}
+				onListStateChange={onListStateChange}
 				defaultCurrency={settings?.defaultCurrency ?? "USD"}
 				productLabel={settings?.productLabelPlural ?? "Products"}
 				serviceLabel={settings?.serviceLabelPlural ?? "Services"}
@@ -462,6 +476,8 @@ function ModulePage() {
 		return (
 			<InventoryView
 				workspaceId={workspace}
+				listState={listState}
+				onListStateChange={onListStateChange}
 				defaultThreshold={settings?.defaultLowStockThreshold ?? 5}
 				targets={inventory.data.catalog.flatMap((item, index) => {
 					if (item.status !== "active") return [];
@@ -531,6 +547,8 @@ function ModulePage() {
 		return (
 			<OrdersView
 				workspaceId={workspace}
+				listState={listState}
+				onListStateChange={onListStateChange}
 				defaultCurrency={defaultCurrency}
 				clients={orders.data.clients.map((client) => ({
 					id: client.id,
@@ -1229,10 +1247,21 @@ function ModulePage() {
 export const Route = createFileRoute("/$workspace/$module")({
 	validateSearch: (
 		search: Record<string, unknown>,
-	): { days?: number; granularity?: string } => ({
+	): {
+		days?: number;
+		granularity?: string;
+		q?: string;
+		status?: string;
+		sort?: string;
+		page?: number;
+	} => ({
 		days: search.days === undefined ? undefined : Number(search.days),
 		granularity:
 			search.granularity === undefined ? undefined : String(search.granularity),
+		q: search.q === undefined ? undefined : String(search.q),
+		status: search.status === undefined ? undefined : String(search.status),
+		sort: search.sort === undefined ? undefined : String(search.sort),
+		page: search.page === undefined ? undefined : Number(search.page),
 	}),
 	component: ModulePage,
 });

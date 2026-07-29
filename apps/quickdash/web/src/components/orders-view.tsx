@@ -1,6 +1,6 @@
 "use client";
 
-import { MagnifyingGlass, Package, Plus, Trash } from "@phosphor-icons/react";
+import { Package, Plus, Trash } from "@phosphor-icons/react";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { Button } from "@quickengine/ui/components/ui/button";
 import {
@@ -33,7 +33,7 @@ import {
 } from "@quickengine/ui/components/ui/table";
 import { Textarea } from "@quickengine/ui/components/ui/textarea";
 import { formatMoney } from "@quickengine/ui/lib/format";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
 	changeOrderStatusAction,
@@ -43,6 +43,12 @@ import {
 } from "../_lib/order-actions";
 import Link from "../compat/router-link";
 import { useRouter } from "../compat/router-navigation";
+import {
+	buildResourceListPage,
+	ResourceListPagination,
+	type ResourceListState,
+	ResourceListToolbar,
+} from "./resource-list";
 
 type OrderStatus =
 	| "draft"
@@ -639,29 +645,38 @@ export function OrdersView({
 	clients,
 	catalog,
 	defaultCurrency,
+	listState,
+	onListStateChange,
 }: {
 	workspaceId: string;
 	orders: OrderViewModel[];
 	clients: OrderClientChoice[];
 	catalog: OrderCatalogChoice[];
 	defaultCurrency: string;
+	listState: ResourceListState;
+	onListStateChange: (patch: Partial<ResourceListState>) => void;
 }) {
-	const [query, setQuery] = useState("");
-	const [status, setStatus] = useState("all");
-	const filtered = useMemo(
-		() =>
-			orders.filter(
-				(order) =>
-					(status === "all" || order.status === status) &&
-					[
-						order.number,
-						order.clientName,
-						order.clientEmail,
-						...order.lines.map((line) => line.name),
-					].some((value) => value?.toLowerCase().includes(query.toLowerCase())),
-			),
-		[orders, query, status],
-	);
+	const list = buildResourceListPage({
+		items: orders,
+		state: listState,
+		matches: (order, query) =>
+			[
+				order.number,
+				order.clientName,
+				order.clientEmail,
+				...order.lines.map((line) => line.name),
+			].some((value) => value?.toLowerCase().includes(query)),
+		inStatus: (order, status) => order.status === status,
+		compare: (left, right, sort) => {
+			if (sort === "newest")
+				return Date.parse(right.createdAt) - Date.parse(left.createdAt);
+			if (sort === "oldest")
+				return Date.parse(left.createdAt) - Date.parse(right.createdAt);
+			if (sort === "total-desc") return right.totalCents - left.totalCents;
+			if (sort === "total-asc") return left.totalCents - right.totalCents;
+			return 0;
+		},
+	});
 	const canCreate = clients.length > 0;
 	return (
 		<section className="mt-8 space-y-4">
@@ -723,37 +738,32 @@ export function OrdersView({
 				</Empty>
 			) : (
 				<>
-					<div className="flex gap-3">
-						<div className="relative flex-1">
-							<MagnifyingGlass className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-							<Input
-								className="pl-9"
-								value={query}
-								onChange={(event) => setQuery(event.target.value)}
-								placeholder="Search order, client, or item…"
-							/>
-						</div>
-						<NativeSelect
-							className="w-40"
-							value={status}
-							onChange={(event) => setStatus(event.target.value)}
-						>
-							<option value="all">All statuses</option>
-							{[
+					<ResourceListToolbar
+						state={listState}
+						onChange={onListStateChange}
+						searchPlaceholder="Search order, client, or item…"
+						statuses={[
+							{ value: "all", label: "All statuses" },
+							...[
 								"draft",
 								"placed",
 								"confirmed",
 								"processing",
 								"fulfilled",
 								"cancelled",
-							].map((value) => (
-								<option key={value} value={value}>
-									{title(value)}
-								</option>
-							))}
-						</NativeSelect>
-					</div>
-					{filtered.length === 0 ? (
+							].map((value) => ({ value, label: title(value) })),
+						]}
+						sorts={[
+							{ value: "default", label: "Default order" },
+							{ value: "newest", label: "Newest first" },
+							{ value: "oldest", label: "Oldest first" },
+							{ value: "total-desc", label: "Highest total" },
+							{ value: "total-asc", label: "Lowest total" },
+						]}
+						filteredCount={list.filteredCount}
+						totalCount={list.totalCount}
+					/>
+					{list.filteredCount === 0 ? (
 						<div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground text-sm">
 							No orders match those filters.
 						</div>
@@ -771,7 +781,7 @@ export function OrdersView({
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{filtered.map((order) => (
+									{list.items.map((order) => (
 										<TableRow key={order.id}>
 											<TableCell>
 												<div className="font-medium">{order.number}</div>
@@ -815,6 +825,11 @@ export function OrdersView({
 							</Table>
 						</div>
 					)}
+					<ResourceListPagination
+						page={list.page}
+						pageCount={list.pageCount}
+						onPageChange={(page) => onListStateChange({ page })}
+					/>
 				</>
 			)}
 		</section>

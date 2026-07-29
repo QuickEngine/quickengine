@@ -22,7 +22,7 @@ export default defineConfig({
 			"@": fileURLToPath(new URL("./src", import.meta.url)),
 		},
 	},
-	server: { port: 3000 },
+	server: { port: 3000, strictPort: true },
 	// TanStack Router ships modern syntax. The default esbuild target (es2020 /
 	// chrome87) cannot transform it and fails on destructuring, so the target is
 	// pinned explicitly here and for dependency pre-bundling.

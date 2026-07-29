@@ -1,4 +1,5 @@
 import { workspaceApi } from "../lib/api";
+import type { QuickDashContext } from "../lib/quickdash-api";
 import {
 	type ActionState,
 	actionResult,
@@ -33,15 +34,37 @@ const quoteInput = (form: FormData) => {
 
 export function createQuoteAction(_previous: QuoteActionState, form: FormData) {
 	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
-	return actionResult(
-		() =>
-			api.request("/quotes", {
-				method: "POST",
-				body: quoteInput(form),
-				idempotencyKey: idempotencyKey(form),
-			}),
-		"We couldn't save this quote.",
-	);
+	return actionResult(async () => {
+		const body = quoteInput(form);
+		const context = (await api.request<QuickDashContext>("/quickdash/context"))
+			.data;
+		const settings = context.modules.find(
+			(module) => module.id === "quotes-estimates",
+		)?.settings as
+			| {
+					quoteNumberPrefix?: string;
+					estimateNumberPrefix?: string;
+					proposalNumberPrefix?: string;
+			  }
+			| undefined;
+		const numberPrefix =
+			body.kind === "estimate"
+				? settings?.estimateNumberPrefix
+				: body.kind === "proposal"
+					? settings?.proposalNumberPrefix
+					: settings?.quoteNumberPrefix;
+		const fallbackPrefix =
+			body.kind === "estimate"
+				? "EST"
+				: body.kind === "proposal"
+					? "PRO"
+					: "QTE";
+		return api.request("/quotes", {
+			method: "POST",
+			body: { ...body, numberPrefix: numberPrefix ?? fallbackPrefix },
+			idempotencyKey: idempotencyKey(form),
+		});
+	}, "We couldn't save this quote.");
 }
 
 export function updateQuoteAction(_previous: QuoteActionState, form: FormData) {

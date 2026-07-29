@@ -8,6 +8,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **First-run setup now carries customers into their new QuickDash workspace.** New accounts
+  name their business, choose and review a starting recipe, create the workspace atomically,
+  and land in its orientation and getting-started checklist.
 - **QuickDash now runs on Vite, TanStack Router and TanStack Query.** Every operational
   module, workspace search, activity, onboarding, file transfer and public contract signing
   now uses the QuickEngine API without a Next.js server.
@@ -24,6 +27,22 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **QuickDash changes refresh in place without session churn or request floods.** Migrated
+  module forms now keep a stable router adapter, refresh active TanStack data without rerunning
+  the authentication boundary, and no longer exhaust API rate limits after a successful save.
+- **Invoice and fulfillment dates now cross the browser API boundary correctly.** ISO date
+  strings sent by QuickDash are coerced to domain dates instead of failing validation with a
+  400 response.
+- **QuickDash now serves its application icon.** Local and deployed Vite pages no longer
+  request a missing `/favicon.ico`.
+- **Local apps now keep their assigned development addresses.** Starting a second copy fails
+  clearly instead of silently moving Account or Auth onto another app's port.
+- **Account and QuickDash browser requests now call the native Fetch API correctly.** The
+  shared Quick.js client no longer detaches `window.fetch` from its browser receiver, avoiding
+  an `Illegal invocation` crash when a Vite app loads authenticated data.
+- **Local Auth, Account and QuickDash commands now start their API dependency.** Running
+  `pnpm auth`, `pnpm account` or `pnpm dash` no longer leaves the Vite proxy pointing at an
+  absent service on port 3020.
 - **Account management now verifies the target workspace belongs to the authorized
   organization.** Workspace changes and API-key operations can no longer be aimed at a
   workspace in another organization by substituting its identifier.
@@ -37,6 +56,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Browser tests now exercise the Vite applications and canonical API directly.** The
+  end-to-end harness no longer starts a legacy Next.js server or creates Next build output.
+- **Auth and Account now live with the QuickDash product applications.** Their source roots
+  moved under `apps/quickdash`, alongside placeholders for public docs, owned support, desktop
+  and mobile clients.
 - **The marketing site, the sign-in app and identity now run on a faster stack.** Pages load
   quicker and nothing about how you sign in has changed.
 

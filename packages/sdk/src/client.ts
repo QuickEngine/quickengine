@@ -110,7 +110,8 @@ export class QuickClient {
 		}
 		this.apiVersion = cleanSegment(options.apiVersion ?? "v1", "apiVersion");
 		this.credential = options.credential;
-		this.fetcher = options.fetcher ?? fetch;
+		this.fetcher =
+			options.fetcher ?? ((input, init) => globalThis.fetch(input, init));
 		this.catalog = new CatalogResource(this);
 		this.events = new EventsResource(this);
 		this.clients = new ClientsResource(this);

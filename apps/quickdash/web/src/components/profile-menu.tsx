@@ -1,0 +1,78 @@
+import { ArrowSquareOut } from "@phosphor-icons/react";
+import { GeneratedAvatar } from "@quickengine/ui";
+import { Avatar } from "@quickengine/ui/components/ui/avatar";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@quickengine/ui/components/ui/dropdown-menu";
+import { useRouter } from "@tanstack/react-router";
+import { useState } from "react";
+import { restartQuickDashOrientationAction } from "../_lib/quickdash-orientation-actions";
+import { clientEnv } from "../lib/env";
+
+export function ProfileMenu({
+	workspaceId,
+	seed,
+	name,
+	email,
+}: {
+	workspaceId: string;
+	seed: string;
+	name: string;
+	email: string;
+}) {
+	const router = useRouter();
+	const [pending, setPending] = useState(false);
+	const [orientationError, setOrientationError] = useState<string | null>(null);
+	const displayName = name || email;
+	const webUrl = import.meta.env.VITE_WEB_URL ?? "http://localhost:3000";
+	const signOutHref = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(webUrl)}`;
+
+	async function restartOrientation() {
+		setPending(true);
+		setOrientationError(null);
+		const result = await restartQuickDashOrientationAction(workspaceId);
+		if (result.ok) await router.invalidate();
+		else setOrientationError(result.error);
+		setPending(false);
+	}
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				data-orientation-target="account"
+				className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+			>
+				<Avatar className="size-8">
+					<GeneratedAvatar seed={seed} className="size-full" />
+				</Avatar>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" sideOffset={14} className="w-64">
+				<div className="px-2 py-1.5">
+					<p className="truncate font-medium text-sm">{displayName}</p>
+					<p className="truncate text-muted-foreground text-xs">{email}</p>
+				</div>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem disabled={pending} onSelect={restartOrientation}>
+					Restart QuickDash tour
+				</DropdownMenuItem>
+				<DropdownMenuItem asChild>
+					<a href={`${clientEnv.ACCOUNT_URL}/settings/profile`}>
+						<ArrowSquareOut /> Account settings
+					</a>
+				</DropdownMenuItem>
+				<DropdownMenuItem asChild>
+					<a href={signOutHref}>Sign out</a>
+				</DropdownMenuItem>
+				{orientationError && (
+					<p className="px-2 py-1.5 text-destructive text-xs" role="alert">
+						{orientationError}
+					</p>
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}

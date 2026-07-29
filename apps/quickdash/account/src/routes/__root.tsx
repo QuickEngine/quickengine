@@ -35,6 +35,7 @@ import {
 	activeOrganization,
 	useActiveOrganization,
 } from "../lib/account-api";
+import { api } from "../lib/api";
 import { clientEnv } from "../lib/env";
 
 /**
@@ -54,11 +55,30 @@ import { clientEnv } from "../lib/env";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 	{
 		beforeLoad: async ({ location }) => {
+			let authenticated:
+				| { user: { id: string; name: string; email: string } }
+				| undefined;
+			let onboardingCompleted = false;
 			try {
 				const { data } = await authClient.getSession();
-				if (data?.session && data.user) return { user: data.user };
+				if (data?.session && data.user) {
+					const state = (
+						await api.request<{
+							onboardingCompletedAt: string | null;
+						}>("/account/state")
+					).data;
+					authenticated = { user: data.user };
+					onboardingCompleted = Boolean(state.onboardingCompletedAt);
+				}
 			} catch {
 				// Fall through to the redirect. An unverifiable session is not a session.
+			}
+			if (authenticated) {
+				const isOnboarding = location.pathname === "/onboarding";
+				if (!onboardingCompleted && !isOnboarding)
+					throw redirect({ to: "/onboarding" });
+				if (onboardingCompleted && isOnboarding) throw redirect({ to: "/" });
+				return authenticated;
 			}
 			const target = new URL("/signin", clientEnv.AUTH_URL);
 			target.searchParams.set(

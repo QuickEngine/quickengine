@@ -9,9 +9,11 @@ import {
 	listShipmentsPage,
 	SHIPMENT_STATUSES,
 	setShipmentStatusCommand,
+	shippingSettingsSchema,
 	updateDraftShipmentCommand,
 	updateShipmentTrackingCommand,
 } from "@quickengine/mod-shipping";
+import { getWorkspaceModules } from "@quickengine/module-registry";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
@@ -25,8 +27,14 @@ import { respond, respondError } from "./respond";
 const uuid = z.uuid();
 const statusSchema = z.object({
 	status: z.enum(SHIPMENT_STATUSES),
-	requireTracking: z.boolean().optional(),
 });
+
+async function shippingSettings(workspaceId: string) {
+	const module = (await getWorkspaceModules(workspaceId)).find(
+		(candidate) => candidate.id === "shipping" && candidate.enabled,
+	);
+	return shippingSettingsSchema.parse(module?.settings ?? {});
+}
 
 export function registerShippingRoutes(
 	app: Hono<PlatformEnv>,
@@ -114,10 +122,11 @@ export function registerShippingRoutes(
 	});
 	app.post("/v1/shipments/:id/status", writeAccess, writeLimit, async (c) => {
 		const id = uuid.parse(c.req.param("id"));
-		const { status, requireTracking } = statusSchema.parse(await c.req.json());
+		const { status } = statusSchema.parse(await c.req.json());
+		const settings = await shippingSettings(c.get("authorized").workspaceId);
 		const context = await mutationContext(c, "shipments.set-status", {
 			id,
-			requireTracking,
+			requireTracking: settings.requireTracking,
 			status,
 		});
 		return respondMutation(
@@ -126,7 +135,7 @@ export function registerShippingRoutes(
 				context,
 				id,
 				status,
-				{ requireTracking },
+				{ requireTracking: settings.requireTracking },
 				options.uow,
 			),
 		);

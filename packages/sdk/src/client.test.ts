@@ -73,6 +73,32 @@ describe("Quick.js client", () => {
 		expect(headers.get("QuickEngine-Workspace")).toBeNull();
 	});
 
+	it("invokes the native browser transport with its global receiver", async () => {
+		const nativeFetch = globalThis.fetch;
+		const fetcher = vi.fn(function (
+			this: typeof globalThis,
+			_input: RequestInfo | URL,
+			_init?: RequestInit,
+		) {
+			expect(this).toBe(globalThis);
+			return Promise.resolve(
+				new Response(JSON.stringify({ items: [] }), { status: 200 }),
+			);
+		});
+		globalThis.fetch = fetcher as typeof fetch;
+		try {
+			const quick = createQuickBrowser({
+				baseUrl: "http://localhost:3001",
+				credential: { type: "session" },
+			});
+
+			await quick.request("/account/organizations");
+			expect(fetcher).toHaveBeenCalledOnce();
+		} finally {
+			globalThis.fetch = nativeFetch;
+		}
+	});
+
 	it("returns structured API failures with request correlation", async () => {
 		const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
 			new Response(

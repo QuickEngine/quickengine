@@ -39,8 +39,8 @@ await provisionTestDb();
 
 export default defineConfig({
 	testDir: "./tests",
-	// Server actions mutate shared workspace rows; run serially until the suite is
-	// big enough to justify per-test workspace isolation.
+	// Tests mutate shared workspace rows; run serially until the suite is big
+	// enough to justify per-test workspace isolation.
 	fullyParallel: false,
 	workers: 1,
 	forbidOnly: Boolean(process.env.CI),
@@ -73,10 +73,8 @@ export default defineConfig({
 	],
 	webServer: [
 		{
-			// --webpack matches the rest of the repo: Turbopack fatal-errors here.
-			command:
-				"pnpm --filter @quickengine/quickdash exec next dev --webpack --port 3111",
-			url: `${baseURL}/api/health`,
+			command: "pnpm --filter @quickengine/api dev",
+			url: "http://localhost:3020/health",
 			reuseExistingServer: !process.env.CI,
 			timeout: 180_000,
 			stdout: "pipe",
@@ -85,14 +83,25 @@ export default defineConfig({
 				DATABASE_URL: databaseUrl,
 				BETTER_AUTH_SECRET: authSecret,
 				TEST_DB_NAME: "quickengine_test_e2e",
-				NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL: accountURL,
-				NEXT_DIST_DIR: ".next-e2e",
 			},
 		},
 		{
 			command:
-				"pnpm --filter @quickengine/account exec next dev --webpack --port 3101",
-			url: `${accountURL}/api/health`,
+				"pnpm --filter @quickengine/quickdash exec vite --port 3111 --strictPort",
+			url: baseURL,
+			reuseExistingServer: !process.env.CI,
+			timeout: 180_000,
+			stdout: "pipe",
+			stderr: "pipe",
+			env: {
+				API_URL: "http://127.0.0.1:3020",
+				NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL: accountURL,
+			},
+		},
+		{
+			command:
+				"pnpm --filter @quickengine/account exec vite --port 3101 --strictPort",
+			url: accountURL,
 			reuseExistingServer: !process.env.CI,
 			timeout: 180_000,
 			stdout: "pipe",
@@ -103,7 +112,7 @@ export default defineConfig({
 				TEST_DB_NAME: "quickengine_test_e2e",
 				NEXT_PUBLIC_QUICKENGINE_ACCOUNT_URL: accountURL,
 				NEXT_PUBLIC_QUICKDASH_ADMIN_URL: baseURL,
-				NEXT_DIST_DIR: ".next-e2e",
+				API_URL: "http://127.0.0.1:3020",
 			},
 		},
 	],

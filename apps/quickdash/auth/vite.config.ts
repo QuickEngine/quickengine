@@ -5,12 +5,12 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 /**
- * The account console.
+ * The identity app.
  *
- * A static SPA. Everything it used to do in server actions now lives in
- * `services/api` under `/v1/account/*`, reached through the `@quickengine/quick`
- * SDK — the same client customers use, which is the only honest way to know it
- * works.
+ * A static SPA. The identity **server** is Better Auth mounted in `services/api`;
+ * this app only renders the screens and calls it. `vercel.json` rewrites
+ * `/api/auth/*` to the API so the URL a user or an OAuth provider ever sees stays
+ * on the clean domain.
  */
 export default defineConfig({
 	plugins: [
@@ -27,7 +27,8 @@ export default defineConfig({
 		},
 	},
 	server: {
-		port: 3001,
+		port: 3002,
+		strictPort: true,
 		// In production `vercel.json` rewrites these to the API. Locally there is no
 		// Vercel, so the dev server has to do the same job — without this, every
 		// auth call 404s and nothing on the page works.
@@ -36,10 +37,6 @@ export default defineConfig({
 		// first and the API binds IPv4 only, so `localhost` produces a confusing
 		// `AggregateError [ECONNREFUSED]` while the server is running perfectly.
 		proxy: {
-			"/v1": {
-				target: process.env.API_URL ?? "http://127.0.0.1:3020",
-				changeOrigin: false,
-			},
 			"/api/auth": {
 				target: process.env.API_URL ?? "http://127.0.0.1:3020",
 				changeOrigin: false,

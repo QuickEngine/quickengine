@@ -2039,6 +2039,52 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/account/state": {
+				get: {
+					operationId: "getAccountState",
+					summary: "Read first-run account state",
+					description:
+						"Returns the fresh onboarding completion state used to route a signed-in user.",
+					responses: {
+						"200": { description: "The account state." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account/module-catalog": {
+				get: {
+					operationId: "getAccountModuleCatalog",
+					summary: "List built and upcoming workspace modules",
+					responses: {
+						"200": { description: "The onboarding module catalog." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account/onboarding/recommend": {
+				post: {
+					operationId: "recommendAccountOnboarding",
+					summary: "Recommend a workspace recipe",
+					description:
+						"Chooses from the submitted bounded recipe catalog. Falls back deterministically when the optional model provider is unavailable.",
+					responses: {
+						"200": { description: "A recipe recommendation." },
+						"400": { description: "The business description is invalid." },
+						"401": { description: "Sign in to continue." },
+						"429": { description: "The recommendation limit was reached." },
+					},
+				},
+			},
+			"/v1/account/api-capabilities": {
+				get: {
+					operationId: "listAccountApiCapabilities",
+					summary: "List capabilities assignable to scoped API keys",
+					responses: {
+						"200": { description: "The API capability catalog." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
 			"/v1/account/api-keys": {
 				get: {
 					operationId: "listApiKeys",
@@ -2097,6 +2143,28 @@ function declaredDocument(config: ApiConfig) {
 						"503": {
 							description: "That plan is not available for checkout yet.",
 						},
+					},
+				},
+			},
+			"/v1/account/subscription/confirm": {
+				post: {
+					operationId: "confirmAccountSubscription",
+					summary: "Reconcile a completed Stripe subscription",
+					description:
+						"Updates the account immediately after Payment Element returns. Stripe webhooks remain the production source of truth.",
+					responses: {
+						"200": { description: "The subscription was reconciled." },
+						"403": { description: "You cannot manage billing." },
+					},
+				},
+			},
+			"/v1/account/billing/pricing": {
+				get: {
+					operationId: "getAccountBillingPricing",
+					summary: "Read live plan pricing and the current plan",
+					responses: {
+						"200": { description: "Live Stripe pricing and current plan." },
+						"403": { description: "You cannot manage billing." },
 					},
 				},
 			},

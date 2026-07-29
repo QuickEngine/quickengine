@@ -52,8 +52,10 @@ import {
 } from "@quickengine/mod-time-tracking";
 import type { z } from "zod";
 import {
+	confirmSubscriptionSchema,
 	createApiKeySchema,
 	createOrganizationSchema,
+	recommendationSchema,
 	startSubscriptionSchema,
 } from "./account-routes";
 import { inviteMemberSchema } from "./account-team-routes";
@@ -143,6 +145,8 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createOrganization: createOrganizationSchema,
 	createApiKey: createApiKeySchema,
 	startSubscription: startSubscriptionSchema,
+	confirmAccountSubscription: confirmSubscriptionSchema,
+	recommendAccountOnboarding: recommendationSchema,
 	createWorkspace: createWorkspaceSchema,
 	renameWorkspace: renameWorkspaceSchema,
 	setWorkspaceArchived: archiveWorkspaceSchema,

@@ -13,6 +13,7 @@ export type Workspace = {
 	name: string;
 	slug: string | null;
 	businessType: string;
+	modules: string[];
 	archivedAt: string | null;
 	createdAt: string;
 };
@@ -68,7 +69,14 @@ export const accountQueries = {
 					await api.request<{
 						planId: string;
 						subscription: unknown | null;
-						usage: Record<string, { state?: string }>;
+						usage: Record<
+							string,
+							{
+								used: number;
+								limit: number | null;
+								state: "ok" | "warn" | "over";
+							}
+						>;
 					}>(withOrganization("/account/plan", organizationId))
 				).data,
 			enabled: Boolean(organizationId),
@@ -118,6 +126,10 @@ export const accountQueries = {
 							name: string;
 							type: string;
 							prefix: string;
+							capabilities: string[];
+							createdAt: string;
+							lastUsedAt: string | null;
+							expiresAt: string | null;
 							revokedAt: string | null;
 						}>;
 					}>(

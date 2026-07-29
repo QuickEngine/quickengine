@@ -48,15 +48,22 @@ export function saveOrderAction(_previous: OrderActionState, form: FormData) {
 	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
 	const id = String(form.get("orderId") ?? "");
 	const input = orderInput(form);
-	return actionResult(
-		() =>
-			api.request(id ? `/orders/${id}` : "/orders", {
-				method: id ? "PATCH" : "POST",
-				body: input,
-				idempotencyKey: idempotencyKey(form),
-			}),
-		"We couldn't save this order.",
-	);
+	return actionResult(async () => {
+		let body: typeof input & { numberPrefix?: string } = input;
+		if (!id) {
+			const context = (
+				await api.request<QuickDashContext>("/quickdash/context")
+			).data;
+			const settings = context.modules.find((module) => module.id === "orders")
+				?.settings as { numberPrefix?: string } | undefined;
+			body = { ...input, numberPrefix: settings?.numberPrefix ?? "ORD" };
+		}
+		return api.request(id ? `/orders/${id}` : "/orders", {
+			method: id ? "PATCH" : "POST",
+			body,
+			idempotencyKey: idempotencyKey(form),
+		});
+	}, "We couldn't save this order.");
 }
 
 export function changeOrderStatusAction(

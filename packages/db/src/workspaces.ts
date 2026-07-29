@@ -226,6 +226,7 @@ export async function listWorkspacesForOrganization(organizationId: string) {
 			name: quickengineWorkspaces.name,
 			slug: quickengineWorkspaces.slug,
 			businessType: quickengineWorkspaces.businessType,
+			modules: quickengineWorkspaces.modules,
 			archivedAt: quickengineWorkspaces.archivedAt,
 			createdAt: quickengineWorkspaces.createdAt,
 		})
@@ -248,6 +249,7 @@ export async function listAccessibleWorkspaces(userId: string) {
 			name: quickengineWorkspaces.name,
 			slug: quickengineWorkspaces.slug,
 			businessType: quickengineWorkspaces.businessType,
+			organizationId: quickengineWorkspaces.organizationId,
 		})
 		.from(quickengineWorkspaces)
 		.leftJoin(

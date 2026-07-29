@@ -36,7 +36,8 @@ export const createFulfillmentInputSchema = z
 		sourceRecordId: z.string().uuid().nullable().optional(),
 		instructions: z.string().trim().max(10_000).nullable().optional(),
 		details: z.record(z.string(), z.unknown()).optional(),
-		dueAt: z.date().nullable().optional(),
+		// Browser/API callers serialize dates as ISO strings.
+		dueAt: z.coerce.date().nullable().optional(),
 	})
 	.refine(
 		(value) => Boolean(value.sourceModule) === Boolean(value.sourceRecordId),

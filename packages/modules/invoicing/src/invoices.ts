@@ -72,7 +72,9 @@ export const createInvoiceInputSchema = z.object({
 		.optional(),
 	taxCents: z.number().int().min(0).max(2_000_000_000).optional(),
 	notes: z.string().trim().max(10_000).nullable().optional(),
-	dueAt: z.date().nullable().optional(),
+	// HTTP clients send ISO strings; server actions previously handed this schema
+	// a Date object directly. Coercion preserves both inputs at the API boundary.
+	dueAt: z.coerce.date().nullable().optional(),
 	numberPrefix: z.string().trim().min(1).max(12).optional(),
 	lineItems: z.array(invoiceLineItemInputSchema).min(1).max(100),
 });

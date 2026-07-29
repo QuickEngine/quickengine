@@ -1,4 +1,5 @@
 import {
+	API_CAPABILITIES,
 	issueApiKey,
 	listApiKeys,
 	revokeApiKey,
@@ -6,17 +7,23 @@ import {
 import {
 	createSubscriptionForPaymentElement,
 	getAccountPlanId,
+	getPlanPricing,
+	getStripe,
 	getSubscriptionForOrg,
 	getUsage,
+	upsertSubscriptionFromStripe,
 } from "@quickengine/billing";
+import { getCacheProvider } from "@quickengine/cache";
 import {
 	createOrganization,
 	deleteUserAccount,
+	getUserOnboardingState,
 	listOrganizationsForUser,
 	markAllNotificationsRead,
 	markNotificationRead,
 	workspaceBelongsToOrganization,
 } from "@quickengine/db";
+import { listModules } from "@quickengine/module-registry";
 import type { Hono } from "hono";
 import { z } from "zod";
 import { authorizeAccount, authorizeSession } from "./authorize-account";
@@ -52,11 +59,296 @@ export const startSubscriptionSchema = z.object({
 	billingName: z.string().trim().optional(),
 	seats: z.number().int().min(1).optional(),
 });
+export const confirmSubscriptionSchema = z.object({
+	subscriptionId: z.string().trim().min(1),
+});
+export const recommendationSchema = z.object({
+	description: z.string().trim().min(10).max(500),
+	recipes: z
+		.array(
+			z.object({
+				id: z.string().min(1).max(100),
+				name: z.string().min(1).max(120),
+				category: z.string().min(1).max(120),
+				keywords: z.array(z.string().max(80)).max(30),
+				moduleIds: z.array(z.string().max(100)).max(30),
+			}),
+		)
+		.min(1)
+		.max(300),
+});
+const upcomingModules = [
+	[
+		"forms-intake",
+		"Forms & Intake",
+		"Public forms that create records in your workspace.",
+		"shared",
+	],
+	[
+		"notifications",
+		"Notifications",
+		"In-app and email alerts for what matters.",
+		"shared",
+	],
+	[
+		"subscriptions",
+		"Subscriptions",
+		"Recurring plans, renewals, and churn.",
+		"domain",
+	],
+	[
+		"expenses",
+		"Expenses & Bookkeeping",
+		"Track spending and reconcile the books.",
+		"shared",
+	],
+	[
+		"suppliers",
+		"Suppliers & Purchasing",
+		"Supplier records, purchase orders, and receiving.",
+		"domain",
+	],
+	[
+		"discounts",
+		"Discounts & Promotions",
+		"Codes, offers, eligibility, and date windows.",
+		"domain",
+	],
+	[
+		"locations",
+		"Locations & Resources",
+		"Sites, rooms, equipment, and capacity.",
+		"domain",
+	],
+	[
+		"production-jobs",
+		"Production Jobs",
+		"Custom production work from order to finished piece.",
+		"domain",
+	],
+	[
+		"content-cms",
+		"Content & CMS",
+		"Pages, posts, and editable site content.",
+		"domain",
+	],
+	[
+		"sales-pipeline",
+		"Sales Pipeline",
+		"Leads, deals, stages, and follow-ups.",
+		"domain",
+	],
+	[
+		"client-communications",
+		"Client Communications",
+		"Conversations with customers in one thread.",
+		"shared",
+	],
+	[
+		"reviews",
+		"Reviews & Feedback",
+		"Collect and publish customer reviews.",
+		"domain",
+	],
+	[
+		"support",
+		"Support & Tickets",
+		"Customer requests tracked to resolution.",
+		"shared",
+	],
+	["tax", "Tax", "Rates, jurisdictions, and calculation snapshots.", "domain"],
+	[
+		"loyalty",
+		"Loyalty & Rewards",
+		"Points, tiers, and store credit.",
+		"domain",
+	],
+	["gift-cards", "Gift Cards", "Issue, redeem, and track balances.", "domain"],
+	[
+		"returns",
+		"Returns & Exchanges",
+		"Requests, inspection, restocking, and refunds.",
+		"domain",
+	],
+	["auctions", "Auctions", "Listings, bidding windows, and winners.", "domain"],
+	[
+		"email-marketing",
+		"Email Marketing",
+		"Audiences, campaigns, and delivery reporting.",
+		"domain",
+	],
+	[
+		"referrals",
+		"Referrals & Affiliates",
+		"Attribution, conversions, and rewards.",
+		"domain",
+	],
+] as const;
+
+const terms = (value: string) =>
+	value
+		.toLowerCase()
+		.split(/[^a-z0-9]+/)
+		.filter((term) => term.length > 2);
+
+function fallbackRecommendation(
+	description: string,
+	recipes: z.infer<typeof recommendationSchema>["recipes"],
+) {
+	const input = description.toLowerCase();
+	const inputTerms = new Set(terms(description));
+	let best = recipes[0];
+	let bestScore = -1;
+	for (const recipe of recipes) {
+		const phrases = [recipe.name, recipe.category, ...recipe.keywords];
+		const recipeTerms = new Set(terms(phrases.join(" ")));
+		let score = phrases.reduce((total, phrase) => {
+			const normalized = phrase.toLowerCase();
+			const exact = normalized.includes(" ")
+				? input.includes(normalized)
+				: inputTerms.has(normalized) ||
+					[...inputTerms].some(
+						(term) => normalized.length >= 4 && term.startsWith(normalized),
+					);
+			return total + (exact ? 4 : 0);
+		}, 0);
+		for (const term of inputTerms) if (recipeTerms.has(term)) score += 1;
+		if (score > bestScore) {
+			best = recipe;
+			bestScore = score;
+		}
+	}
+	return {
+		recipeId: best.id,
+		recipeName: best.name,
+		moduleIds: best.moduleIds,
+		rationale: `A practical ${best.name.toLowerCase()} starting point based on your description.`,
+		source: "catalog-fallback" as const,
+	};
+}
 
 export function registerAccountRoutes(
 	app: Hono<PlatformEnv>,
 	options: { platform: PlatformDependencies },
 ) {
+	app.get(
+		"/v1/account/module-catalog",
+		authorizeSession(options.platform),
+		async (c) =>
+			respond(c, {
+				items: [
+					...listModules().map((module) => ({
+						id: module.id,
+						name: module.name,
+						description: module.description,
+						kind: module.kind,
+						dependsOn: module.dependsOn,
+						status: "built" as const,
+					})),
+					...upcomingModules.map(([id, name, description, kind]) => ({
+						id,
+						name,
+						description,
+						kind,
+						dependsOn: [],
+						status: "upcoming" as const,
+					})),
+				],
+			}),
+	);
+	app.post(
+		"/v1/account/onboarding/recommend",
+		authorizeSession(options.platform),
+		async (c) => {
+			const { description, recipes } = recommendationSchema.parse(
+				await c.req.json(),
+			);
+			const fallback = fallbackRecommendation(description, recipes);
+			try {
+				const cache = getCacheProvider();
+				const [attempts, globalAttempts] = await Promise.all([
+					cache.increment(
+						`onboarding:recommend:${c.get("account").userId}`,
+						60 * 60,
+					),
+					cache.increment("onboarding:recommend:global", 24 * 60 * 60),
+				]);
+				if (attempts > 3) {
+					return respondError(
+						c,
+						"RATE_LIMITED",
+						"You've reached the recommendation limit for now.",
+						429,
+					);
+				}
+				if (globalAttempts > 500 || !process.env.ANTHROPIC_API_KEY) {
+					return respond(c, fallback);
+				}
+			} catch {
+				return respond(c, fallback);
+			}
+
+			try {
+				const catalog = recipes
+					.map(
+						(recipe) =>
+							`${recipe.id}|${recipe.name}|${recipe.category}|${recipe.keywords.join(",")}`,
+					)
+					.join("\n");
+				const response = await fetch("https://api.anthropic.com/v1/messages", {
+					method: "POST",
+					headers: {
+						"anthropic-version": "2023-06-01",
+						"content-type": "application/json",
+						"x-api-key": process.env.ANTHROPIC_API_KEY as string,
+					},
+					body: JSON.stringify({
+						model: process.env.ANTHROPIC_MODEL ?? "claude-3-5-haiku-latest",
+						max_tokens: 180,
+						messages: [
+							{
+								role: "user",
+								content: `Choose exactly one recipe from the catalog for this business. Return only JSON shaped as {"recipeId":"catalog-id","rationale":"one short sentence"}. Never invent an id. Do not discuss pricing.\n\nBusiness:\n${description}\n\nCatalog:\n${catalog}`,
+							},
+						],
+					}),
+					signal: c.req.raw.signal,
+				});
+				if (!response.ok) return respond(c, fallback);
+				const payload = (await response.json()) as {
+					content?: Array<{ type?: string; text?: string }>;
+				};
+				const content =
+					payload.content?.find((block) => block.type === "text")?.text ?? "";
+				const parsed = z
+					.object({
+						recipeId: z.string(),
+						rationale: z.string().min(1).max(240),
+					})
+					.safeParse(
+						JSON.parse(content.trim().replace(/^```(?:json)?\s*|\s*```$/g, "")),
+					);
+				const recipe = parsed.success
+					? recipes.find((item) => item.id === parsed.data.recipeId)
+					: null;
+				if (!parsed.success || !recipe) return respond(c, fallback);
+				return respond(c, {
+					recipeId: recipe.id,
+					recipeName: recipe.name,
+					moduleIds: recipe.moduleIds,
+					rationale: parsed.data.rationale,
+					source: "ai" as const,
+				});
+			} catch {
+				return respond(c, fallback);
+			}
+		},
+	);
+	app.get(
+		"/v1/account/api-capabilities",
+		authorizeSession(options.platform),
+		(c) => respond(c, { items: API_CAPABILITIES }),
+	);
 	const session = authorizeSession(options.platform);
 	const billing = authorizeAccount(options.platform, {
 		capability: "billing.manage",
@@ -64,8 +356,18 @@ export function registerAccountRoutes(
 	const keys = authorizeAccount(options.platform, {
 		capability: "apikeys.manage",
 	});
+	app.get("/v1/account/billing/pricing", billing, async (c) =>
+		respond(c, {
+			currentPlanId: await getAccountPlanId(c.get("account").organizationId),
+			pricing: await getPlanPricing(),
+		}),
+	);
 
 	// ---- Organizations ------------------------------------------------------
+
+	app.get("/v1/account/state", session, async (c) =>
+		respond(c, await getUserOnboardingState(c.get("account").userId)),
+	);
 
 	app.get("/v1/account/organizations", session, async (c) =>
 		respond(c, {
@@ -181,6 +483,15 @@ export function registerAccountRoutes(
 			});
 		},
 	);
+	app.post("/v1/account/subscription/confirm", billing, async (c) => {
+		const { subscriptionId } = confirmSubscriptionSchema.parse(
+			await c.req.json(),
+		);
+		const subscription =
+			await getStripe().subscriptions.retrieve(subscriptionId);
+		await upsertSubscriptionFromStripe(subscription);
+		return respond(c, { confirmed: true });
+	});
 
 	/**
 	 * Begin a subscription.

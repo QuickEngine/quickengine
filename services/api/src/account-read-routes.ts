@@ -4,7 +4,9 @@ import {
 	listNotifications,
 	listOrganizationMembers,
 	listWorkspacesForOrganization,
+	workspaceBelongsToOrganization,
 } from "@quickengine/db";
+import { getWorkspaceModules, listModules } from "@quickengine/module-registry";
 import type { Hono } from "hono";
 import { authorizeAccount, authorizeSession } from "./authorize-account";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
@@ -34,6 +36,33 @@ export function registerAccountReadRoutes(
 			),
 		}),
 	);
+
+	app.get("/v1/account/workspaces/:id/modules", view, async (c) => {
+		const workspaceId = c.req.param("id");
+		if (
+			!(await workspaceBelongsToOrganization(
+				workspaceId,
+				c.get("account").organizationId,
+			))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		const enabled = new Map(
+			(await getWorkspaceModules(workspaceId)).map((module) => [
+				module.id,
+				module,
+			]),
+		);
+		return respond(c, {
+			items: listModules().map((module) => ({
+				id: module.id,
+				name: module.name,
+				description: module.description,
+				settings: enabled.get(module.id)?.settings ?? {},
+				enabled: enabled.get(module.id)?.enabled ?? false,
+			})),
+		});
+	});
 
 	app.get("/v1/account/members", view, async (c) =>
 		respond(c, {

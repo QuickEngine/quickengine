@@ -185,7 +185,7 @@ function WorkspacesPage() {
 								<div className="mt-5 grid grid-cols-2 gap-2">
 									<Button asChild className="font-normal">
 										<a href={`${quickDashUrl}/${workspace.id}`}>
-											Open QuickDash
+											Enter {workspace.name}
 										</a>
 									</Button>
 									{workspace.slug && (

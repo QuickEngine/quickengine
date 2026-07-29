@@ -191,7 +191,7 @@ function WorkspacePage() {
 					{!workspace.archivedAt && (
 						<Button asChild>
 							<a href={`${clientEnv.DASH_URL}/${workspace.id}`}>
-								Open QuickDash
+								Enter {workspace.name}
 							</a>
 						</Button>
 					)}

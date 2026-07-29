@@ -34,6 +34,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Account no longer presents fabricated business performance.** The hardcoded Revenue and
+  Analytics pages, charts and navigation are gone; organization, workspace, member, module,
+  usage and billing figures remain because they come from live Account data. Workspace actions
+  now say which workspace they enter.
 - **Expected app failures now explain what happened and how to recover.** Auth, Account and
   QuickDash distinguish expired sessions, missing permission, missing or changed resources,
   rate limits, connection failures and server errors instead of presenting all of them as an

@@ -11,12 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityRouteImport } from './routes/activity'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OverviewRouteImport } from './routes/overview'
-import { Route as RevenueRouteImport } from './routes/revenue'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as UsageRouteImport } from './routes/usage'
@@ -42,11 +40,6 @@ const ActivityRoute = ActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsRoute = AnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BillingRoute = BillingRouteImport.update({
   id: '/billing',
   path: '/billing',
@@ -65,11 +58,6 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const OverviewRoute = OverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RevenueRoute = RevenueRouteImport.update({
-  id: '/revenue',
-  path: '/revenue',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SupportRoute = SupportRouteImport.update({
@@ -146,12 +134,10 @@ const WorkspacesNewRoute = WorkspacesNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/analytics': typeof AnalyticsRoute
   '/billing': typeof BillingRouteWithChildren
   '/integrations': typeof IntegrationsRoute
   '/onboarding': typeof OnboardingRoute
   '/overview': typeof OverviewRoute
-  '/revenue': typeof RevenueRoute
   '/support': typeof SupportRoute
   '/team': typeof TeamRoute
   '/usage': typeof UsageRoute
@@ -170,12 +156,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/analytics': typeof AnalyticsRoute
   '/billing': typeof BillingRouteWithChildren
   '/integrations': typeof IntegrationsRoute
   '/onboarding': typeof OnboardingRoute
   '/overview': typeof OverviewRoute
-  '/revenue': typeof RevenueRoute
   '/support': typeof SupportRoute
   '/team': typeof TeamRoute
   '/usage': typeof UsageRoute
@@ -195,12 +179,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/analytics': typeof AnalyticsRoute
   '/billing': typeof BillingRouteWithChildren
   '/integrations': typeof IntegrationsRoute
   '/onboarding': typeof OnboardingRoute
   '/overview': typeof OverviewRoute
-  '/revenue': typeof RevenueRoute
   '/support': typeof SupportRoute
   '/team': typeof TeamRoute
   '/usage': typeof UsageRoute
@@ -221,12 +203,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/activity'
-    | '/analytics'
     | '/billing'
     | '/integrations'
     | '/onboarding'
     | '/overview'
-    | '/revenue'
     | '/support'
     | '/team'
     | '/usage'
@@ -245,12 +225,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/activity'
-    | '/analytics'
     | '/billing'
     | '/integrations'
     | '/onboarding'
     | '/overview'
-    | '/revenue'
     | '/support'
     | '/team'
     | '/usage'
@@ -269,12 +247,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/activity'
-    | '/analytics'
     | '/billing'
     | '/integrations'
     | '/onboarding'
     | '/overview'
-    | '/revenue'
     | '/support'
     | '/team'
     | '/usage'
@@ -294,12 +270,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
-  AnalyticsRoute: typeof AnalyticsRoute
   BillingRoute: typeof BillingRouteWithChildren
   IntegrationsRoute: typeof IntegrationsRoute
   OnboardingRoute: typeof OnboardingRoute
   OverviewRoute: typeof OverviewRoute
-  RevenueRoute: typeof RevenueRoute
   SupportRoute: typeof SupportRoute
   TeamRoute: typeof TeamRoute
   UsageRoute: typeof UsageRoute
@@ -329,13 +303,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics': {
-      id: '/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AnalyticsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/billing': {
       id: '/billing'
       path: '/billing'
@@ -362,13 +329,6 @@ declare module '@tanstack/react-router' {
       path: '/overview'
       fullPath: '/overview'
       preLoaderRoute: typeof OverviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/revenue': {
-      id: '/revenue'
-      path: '/revenue'
-      fullPath: '/revenue'
-      preLoaderRoute: typeof RevenueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/support': {
@@ -490,12 +450,10 @@ const BillingRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
-  AnalyticsRoute: AnalyticsRoute,
   BillingRoute: BillingRouteWithChildren,
   IntegrationsRoute: IntegrationsRoute,
   OnboardingRoute: OnboardingRoute,
   OverviewRoute: OverviewRoute,
-  RevenueRoute: RevenueRoute,
   SupportRoute: SupportRoute,
   TeamRoute: TeamRoute,
   UsageRoute: UsageRoute,

@@ -13,8 +13,6 @@ import { Fragment } from "react";
 // Human labels for path segments; anything unmapped falls back to title case.
 const LABELS: Record<string, string> = {
 	overview: "Overview",
-	revenue: "Revenue",
-	analytics: "Analytics",
 	usage: "Usage",
 	team: "Team",
 	integrations: "Integrations",

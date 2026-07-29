@@ -8,6 +8,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **QuickDash now has one operator-first experience contract.** Workspace recipes remain fully
+  editable, first-run guidance is tied to real business outcomes instead of fake sample data,
+  developers receive a dedicated Connect path, and the redesign now follows a measured,
+  accessible sequence rather than disconnected screen changes.
 - **Vite deployments now share one validated browser URL contract.** Local development uses
   the documented application ports, while production configuration must provide complete HTTPS
   origins and cannot silently point a deployed app back at localhost.
@@ -30,6 +34,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Expected app failures now explain what happened and how to recover.** Auth, Account and
+  QuickDash distinguish expired sessions, missing permission, missing or changed resources,
+  rate limits, connection failures and server errors instead of presenting all of them as an
+  internal error; retries preserve the route and support-ready request IDs remain copyable.
 - **QuickDash Files now handles repeat folder creation without breaking the workflow.**
   Folder names that already exist in the same location return a clear conflict instead of an
   internal-server error, successful changes refresh immediately, and pending forms cannot be

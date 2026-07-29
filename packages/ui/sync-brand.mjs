@@ -17,8 +17,8 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const source = `${root}/apps/quickengine/web/public`;
 const targets = [
-	"apps/quickengine/auth/public",
-	"apps/quickengine/account/public",
+	"apps/quickdash/auth/public",
+	"apps/quickdash/account/public",
 	"apps/quickdash/web/public",
 ];
 

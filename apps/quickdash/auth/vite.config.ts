@@ -28,6 +28,7 @@ export default defineConfig({
 	},
 	server: {
 		port: 3002,
+		strictPort: true,
 		// In production `vercel.json` rewrites these to the API. Locally there is no
 		// Vercel, so the dev server has to do the same job — without this, every
 		// auth call 404s and nothing on the page works.

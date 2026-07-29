@@ -1,6 +1,6 @@
 import {
 	LoadingScreen,
-	primaryButton,
+	RequestErrorScreen,
 	StatusScreen,
 	textLink,
 } from "@quickengine/ui";
@@ -37,17 +37,13 @@ function NotFoundScreen() {
 	);
 }
 
-function ErrorScreen({ reset }: { error: Error; reset: () => void }) {
+function ErrorScreen({ error, reset }: { error: Error; reset: () => void }) {
 	return (
-		<StatusScreen
-			code="500"
-			title="Something went wrong"
-			message="An unexpected error occurred. Try again in a moment."
-			action={
-				<button type="button" onClick={reset} className={primaryButton}>
-					Try again
-				</button>
-			}
+		<RequestErrorScreen
+			error={error}
+			onRetry={reset}
+			homeHref="/signin"
+			homeLabel="Back to sign in"
 		/>
 	);
 }

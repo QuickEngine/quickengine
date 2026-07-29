@@ -84,7 +84,11 @@ export function StatusScreen({
 export function LoadingScreen({ label = "Loading…" }: { label?: string }) {
 	return (
 		<AuthShell>
-			<div className="flex flex-col items-center gap-4">
+			<div
+				className="flex flex-col items-center gap-4"
+				role="status"
+				aria-live="polite"
+			>
 				<div className="h-1 w-24 animate-pulse rounded-full bg-white/15" />
 				<p className="text-[13px] text-muted-foreground">{label}</p>
 			</div>

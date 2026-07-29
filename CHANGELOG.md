@@ -89,6 +89,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **QuickDash Home now points to work instead of repeating the sidebar.** The workspace landing
+  page shows the next real action, a small set of valid quick actions, setup completion and recent
+  activity; the redundant grid of enabled modules is gone.
 - **Workspace setup now asks what help the operator wants.** New customers can describe their
   business, choose modules themselves, or start immediately with QuickDash defaults without
   browsing a catalog of business types. Internal recipes still provide editable recommendations

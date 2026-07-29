@@ -21,6 +21,7 @@ export function createBookingAction(
 				method: "POST",
 				body: {
 					clientId: String(form.get("clientId") ?? ""),
+					catalogItemId: optional(form.get("catalogItemId")),
 					title: String(form.get("title") ?? ""),
 					scheduleKey: String(form.get("scheduleKey") ?? "default"),
 					startsAt: String(form.get("startsAt") ?? ""),

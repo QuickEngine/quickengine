@@ -45,6 +45,7 @@ import {
 	deleteBookingAction,
 } from "../_lib/booking-actions";
 import { useRouter } from "../compat/router-navigation";
+import { ConnectedRecords } from "./connected-records";
 
 type Status =
 	| "requested"
@@ -55,9 +56,12 @@ type Status =
 	| "no_show";
 export type BookingViewModel = {
 	id: string;
+	clientId: string;
 	title: string;
 	clientName: string;
 	clientCompany: string | null;
+	catalogItemId: string | null;
+	catalogItemName: string | null;
 	status: Status;
 	scheduleKey: string;
 	startsAt: string;
@@ -103,11 +107,13 @@ function CreateDialog({
 	clients,
 	defaultTimeZone,
 	defaultDuration,
+	services,
 }: {
 	workspaceId: string;
 	clients: Array<{ id: string; name: string; company: string | null }>;
 	defaultTimeZone: string;
 	defaultDuration: number;
+	services: Array<{ id: string; name: string; type: string }>;
 }) {
 	const [open, setOpen] = useState(false);
 	const [startsLocal, setStartsLocal] = useState("");
@@ -171,6 +177,17 @@ function CreateDialog({
 									<option key={client.id} value={client.id}>
 										{client.name}
 										{client.company ? ` — ${client.company}` : ""}
+									</option>
+								))}
+							</NativeSelect>
+						</div>
+						<div className="space-y-2">
+							<Label>Service or package</Label>
+							<NativeSelect name="catalogItemId">
+								<option value="">No catalog item</option>
+								{services.map((service) => (
+									<option key={service.id} value={service.id}>
+										{service.name} · {title(service.type)}
 									</option>
 								))}
 							</NativeSelect>
@@ -325,6 +342,26 @@ function Details({
 							</p>
 						)}
 					</div>
+					<ConnectedRecords
+						records={[
+							{
+								label: "Client",
+								value: booking.clientName,
+								href: `/${workspaceId}/client-records`,
+								action: "Open clients",
+							},
+							...(booking.catalogItemId && booking.catalogItemName
+								? [
+										{
+											label: "Service",
+											value: booking.catalogItemName,
+											href: `/${workspaceId}/products-services`,
+											action: "Open catalog",
+										},
+									]
+								: []),
+						]}
+					/>
 					<div className="flex flex-wrap gap-2">
 						{transitions[booking.status].map((target) => (
 							<Action
@@ -352,12 +389,14 @@ export function BookingsView({
 	clients,
 	defaultTimeZone,
 	defaultDuration,
+	services,
 }: {
 	workspaceId: string;
 	bookings: BookingViewModel[];
 	clients: Array<{ id: string; name: string; company: string | null }>;
 	defaultTimeZone: string;
 	defaultDuration: number;
+	services: Array<{ id: string; name: string; type: string }>;
 }) {
 	const [query, setQuery] = useState("");
 	const [status, setStatus] = useState("all");
@@ -387,6 +426,7 @@ export function BookingsView({
 					clients={clients}
 					defaultTimeZone={defaultTimeZone}
 					defaultDuration={defaultDuration}
+					services={services}
 				/>
 			</div>
 			<div className="flex gap-2">

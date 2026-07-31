@@ -55,37 +55,56 @@ import { clientEnv } from "../lib/env";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 	{
 		beforeLoad: async ({ location }) => {
+			const signIn = () => {
+				const target = new URL("/signin", clientEnv.AUTH_URL);
+				target.searchParams.set(
+					"redirect",
+					window.location.origin + location.href,
+				);
+				return redirect({ href: target.toString() });
+			};
+
 			let authenticated:
 				| { user: { id: string; name: string; email: string } }
 				| undefined;
-			let onboardingCompleted = false;
 			try {
 				const { data } = await authClient.getSession();
-				if (data?.session && data.user) {
-					const state = (
-						await api.request<{
-							onboardingCompletedAt: string | null;
-						}>("/account/state")
-					).data;
-					authenticated = { user: data.user };
-					onboardingCompleted = Boolean(state.onboardingCompletedAt);
-				}
+				if (data?.session && data.user) authenticated = { user: data.user };
 			} catch {
-				// Fall through to the redirect. An unverifiable session is not a session.
+				// An unverifiable session is not a session.
 			}
-			if (authenticated) {
-				const isOnboarding = location.pathname === "/onboarding";
-				if (!onboardingCompleted && !isOnboarding)
-					throw redirect({ to: "/onboarding" });
-				if (onboardingCompleted && isOnboarding) throw redirect({ to: "/" });
-				return authenticated;
+			if (!authenticated) throw signIn();
+
+			// 🔴 Past this point the session is REAL, so a failure here is our API
+			// being unreachable — not the visitor being signed out. Redirecting on
+			// it bounces off the sign-in guard, which can see the very same valid
+			// session, and sends the browser back here: an infinite loop.
+			//
+			// This is not hypothetical. It took production down when the account
+			// rewrite still pointed at the retired `api.quickengine.xyz`: sign-in
+			// succeeded, `/account/state` hit a dead host, and the two guards threw
+			// the user back and forth forever.
+			//
+			// So only a genuine 401 returns to sign-in. Everything else surfaces as
+			// an error screen, which is recoverable and tells the truth.
+			let onboardingCompleted = false;
+			try {
+				const state = (
+					await api.request<{
+						onboardingCompletedAt: string | null;
+					}>("/account/state")
+				).data;
+				onboardingCompleted = Boolean(state.onboardingCompletedAt);
+			} catch (error) {
+				if ((error as { status?: number })?.status === 401) throw signIn();
+				throw error;
 			}
-			const target = new URL("/signin", clientEnv.AUTH_URL);
-			target.searchParams.set(
-				"redirect",
-				window.location.origin + location.href,
-			);
-			throw redirect({ href: target.toString() });
+
+			const isOnboarding = location.pathname === "/onboarding";
+			if (!onboardingCompleted && !isOnboarding)
+				throw redirect({ to: "/onboarding" });
+			if (onboardingCompleted && isOnboarding) throw redirect({ to: "/" });
+			return authenticated;
 		},
 		component: RootLayout,
 		errorComponent: ErrorScreen,

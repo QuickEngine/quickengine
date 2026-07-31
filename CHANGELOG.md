@@ -47,6 +47,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Signing in on the live site no longer loops forever.** Account and QuickDash were still
+  routing their API calls to a retired address, so a successful sign-in could not load the
+  account behind it and sent people straight back to the sign-in page, over and over. Both now
+  reach the current API.
+- **A backend outage no longer looks like being signed out.** When the account console holds a
+  valid session but cannot reach the API, it now explains the problem and offers a retry
+  instead of bouncing to sign-in, which previously produced an endless redirect loop.
 - **Disposable workspace data can now be removed deliberately.** Trashed documents expose
   permanent deletion through their durable storage-cleanup workflow, archived projects can be
   restored or deleted, and Account clearly distinguishes reversible workspace archiving from

@@ -1615,9 +1615,6 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.17)
-      next:
-        specifier: ^16.2.5
-        version: 16.2.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       tailwindcss:
         specifier: ^4
         version: 4.3.3
@@ -8781,7 +8778,8 @@ snapshots:
 
   '@neondatabase/serverless@1.1.0': {}
 
-  '@next/env@16.2.11': {}
+  '@next/env@16.2.11':
+    optional: true
 
   '@next/swc-darwin-arm64@16.2.11':
     optional: true
@@ -10842,6 +10840,7 @@ snapshots:
   '@swc/helpers@0.5.15':
     dependencies:
       tslib: 2.8.1
+    optional: true
 
   '@tailwindcss/node@4.3.3':
     dependencies:
@@ -11769,7 +11768,8 @@ snapshots:
 
   cli-width@4.1.0: {}
 
-  client-only@0.0.1: {}
+  client-only@0.0.1:
+    optional: true
 
   cliui@8.0.1:
     dependencies:
@@ -12964,7 +12964,7 @@ snapshots:
     dependencies:
       '@next/env': 16.2.11
       '@swc/helpers': 0.5.15
-      baseline-browser-mapping: 2.11.0
+      baseline-browser-mapping: 2.11.3
       caniuse-lite: 1.0.30001806
       postcss: 8.5.18
       react: 19.2.8
@@ -12992,7 +12992,7 @@ snapshots:
     dependencies:
       '@next/env': 16.2.11
       '@swc/helpers': 0.5.15
-      baseline-browser-mapping: 2.11.0
+      baseline-browser-mapping: 2.11.3
       caniuse-lite: 1.0.30001806
       postcss: 8.5.18
       react: 19.2.8
@@ -13014,12 +13014,13 @@ snapshots:
       - '@babel/core'
       - '@types/node'
       - babel-plugin-macros
+    optional: true
 
   next@16.2.11(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@next/env': 16.2.11
       '@swc/helpers': 0.5.15
-      baseline-browser-mapping: 2.11.0
+      baseline-browser-mapping: 2.11.3
       caniuse-lite: 1.0.30001806
       postcss: 8.5.18
       react: 19.2.8
@@ -13988,6 +13989,7 @@ snapshots:
       react: 19.2.8
     optionalDependencies:
       '@babel/core': 7.29.7
+    optional: true
 
   sucrase@3.35.1:
     dependencies:

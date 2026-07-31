@@ -12,7 +12,6 @@ import { getEmailProvider } from "@quickengine/email";
 import { serverEnv } from "@quickengine/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { nextCookies } from "better-auth/next-js";
 import { bearer, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
 import { matchOrigin } from "./_origin";
 
@@ -165,8 +164,16 @@ export const auth = betterAuth({
 	// worse than a code; intentionally NOT surfaced in the web UI yet). Both send
 	// via the email provider. WebAuthn passkeys: the auth app hosts the ceremony;
 	// rpID/origin default to the BETTER_AUTH_URL host (localhost in dev, the auth
-	// domain in prod). nextCookies() must stay LAST so it can flush Set-Cookie in
-	// server actions.
+	// domain in prod).
+	//
+	// 🔴 `nextCookies()` was removed here on 2026-07-31 and must not come back.
+	// It exists to flush Set-Cookie into Next's server-action cookie store, and
+	// it calls `cookies()` from `next/headers`. There is no Next runtime any
+	// more, so it threw `TypeError: cookies is not a function` in production —
+	// intermittently, because it only runs when Better Auth actually refreshes
+	// the session cookie (`updateAge`, at most daily). Every signed-in user hit
+	// a 500 roughly once a day. Hono receives Better Auth's Response with its
+	// Set-Cookie headers intact, so no replacement plugin is needed.
 	plugins: [
 		// TOTP two-factor + recovery codes. With 2FA on, password sign-in returns
 		// a twoFactorRedirect instead of a session until a code is verified.
@@ -207,7 +214,6 @@ export const auth = betterAuth({
 				});
 			},
 		}),
-		nextCookies(),
 	],
 });
 

@@ -4,7 +4,7 @@
 	"tasks": {
 		"build": {
 			"dependsOn": ["^build"],
-			"outputs": [".next/**", "!.next/cache/**", "dist/**"],
+			"outputs": ["dist/**"],
 			"passThroughEnv": ["SENTRY_AUTH_TOKEN"],
 			"env": [
 				"DATABASE_URL",

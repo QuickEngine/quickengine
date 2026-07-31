@@ -35,14 +35,12 @@
 		"build": "turbo build",
 		"lint": "biome lint .",
 		"format": "biome format . --write",
-		"check": "biome check . && pnpm check:next-boundaries && pnpm check:error-maps",
-		"check:next-boundaries": "node .github/ci/check-next-boundaries.mjs",
+		"check": "biome check . && pnpm check:no-next && pnpm check:error-maps",
 		"check:error-maps": "node .github/ci/check-error-maps.mjs",
 		"brand:sync": "node packages/ui/sync-brand.mjs && biome check --write packages/ui/src/components",
 		"typecheck": "turbo typecheck",
-		"test": "turbo test && pnpm test:boundaries",
+		"test": "turbo test",
 		"test:api": "pnpm --filter @quickengine/api test",
-		"test:boundaries": "node --test .github/ci/check-next-boundaries.test.mjs",
 		"test:release": "node --test .github/release/*.test.mjs",
 		"ci:local": "act push",
 		"ci:local:ci": "act push --workflows .github/workflows/ci.yml",
@@ -62,7 +60,8 @@
 		"dev:account": "pnpm --filter @quickengine/account dev",
 		"dev:dash": "pnpm --filter @quickengine/quickdash dev",
 		"dev:api": "pnpm --filter @quickengine/api dev",
-		"user": "pnpm --filter @quickengine/account dev"
+		"user": "pnpm --filter @quickengine/account dev",
+		"check:no-next": "node .github/ci/check-no-next.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.5",

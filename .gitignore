@@ -24,9 +24,6 @@ coverage
 .vercel
 
 # Build Outputs
-.next/
-.next-e2e/
-next-env.d.ts
 out/
 build
 dist

@@ -10,7 +10,6 @@
 		".": "./src/index.ts",
 		"./brand.css": "./src/brand.css",
 		"./components/ui/*": "./src/components/ui/*.tsx",
-		"./fonts": "./src/fonts.ts",
 		"./globals.css": "./src/globals.css",
 		"./hooks/*": "./src/hooks/*.ts",
 		"./lib/*": "./src/lib/*.ts",
@@ -78,7 +77,6 @@
 		"@quickengine/config": "workspace:*",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
-		"next": "^16.2.5",
 		"tailwindcss": "^4",
 		"typescript": "^5",
 		"vitest": "^3.2.6"

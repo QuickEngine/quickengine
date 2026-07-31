@@ -27,7 +27,6 @@ export function AuthShell({ children }: { children: ReactNode }) {
 		<main className="flex min-h-dvh items-center justify-center px-6 py-16">
 			<div className="w-full max-w-sm">
 				<div className="mb-10 flex justify-center">
-					{/* biome-ignore lint/performance/noImgElement: framework-agnostic shared pkg — plain img for a tiny SVG logo */}
 					<img src="/logo.svg" alt="QuickEngine" width={28} height={28} />
 				</div>
 				{children}

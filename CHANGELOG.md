@@ -45,8 +45,18 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   without inventing a workspace header, while server-only webhook cryptography stays out of
   client bundles.
 
+### Removed
+
+- **Next.js is gone from the product entirely.** The last dependency, the unused font helper
+  and the file-counting boundary check were removed after the Vite migration completed. Nothing
+  in the product references Next any more.
+
 ### Fixed
 
+- **Workspaces open again after setup.** Finishing workspace setup could fail with a 500 because
+  a database column present in development was missing in production. Both databases now match.
+- **Signed-in sessions no longer fail roughly once a day.** A leftover Next.js integration ran
+  whenever a session cookie was refreshed and crashed the request. It has been removed.
 - **Signing in on the live site no longer loops forever.** Account and QuickDash were still
   routing their API calls to a retired address, so a successful sign-in could not load the
   account behind it and sent people straight back to the sign-in page, over and over. Both now

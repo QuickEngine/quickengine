@@ -1,3 +1,4 @@
+import { meter } from "@quickengine/billing";
 import {
 	and,
 	asc,
@@ -6,6 +7,7 @@ import {
 	inArray,
 	lt,
 	lte,
+	quickengineWorkspaces,
 	sql,
 	webhookDeliveries,
 	webhookEndpoints,
@@ -224,9 +226,19 @@ export async function deliverPendingWebhooks(
 		).map((endpoint) => [endpoint.id, endpoint]),
 	);
 
+	// Attempts per workspace, metered once at the end of the batch. Counted per
+	// ATTEMPT rather than per delivery, because a retry is another request to
+	// somebody else's server and costs the same egress as the first.
+	const attempts = new Map<string, number>();
+
 	for (const delivery of claimed) {
 		const endpoint = endpoints.get(delivery.endpointId);
 		if (!endpoint) continue;
+
+		attempts.set(
+			delivery.workspaceId,
+			(attempts.get(delivery.workspaceId) ?? 0) + 1,
+		);
 
 		const body = JSON.stringify(delivery.payload);
 		let responseStatus: number | null = null;
@@ -325,5 +337,56 @@ export async function deliverPendingWebhooks(
 		}
 	}
 
+	await meterDeliveryAttempts(database, attempts);
+
 	return result;
+}
+
+/**
+ * Charge webhook attempts to the organizations that own them.
+ *
+ * Deliveries are workspace-scoped and metering is organization-scoped, so the
+ * workspaces are resolved in one query rather than one per delivery.
+ *
+ * 🔴 Never throws. A metering failure must not fail a delivery cycle: the
+ * customer's endpoint was called either way, and losing the count is far cheaper
+ * than re-sending webhooks somebody has already received. Under-counting is the
+ * safe direction — the same trade the API request meter makes.
+ */
+async function meterDeliveryAttempts(
+	database: typeof defaultDb,
+	attempts: Map<string, number>,
+): Promise<void> {
+	if (attempts.size === 0) return;
+	try {
+		const rows = await database
+			.select({
+				id: quickengineWorkspaces.id,
+				organizationId: quickengineWorkspaces.organizationId,
+			})
+			.from(quickengineWorkspaces)
+			.where(inArray(quickengineWorkspaces.id, [...attempts.keys()]));
+
+		// Several workspaces in one batch may belong to one organization.
+		const perOrg = new Map<string, number>();
+		for (const row of rows) {
+			if (!row.organizationId) continue;
+			perOrg.set(
+				row.organizationId,
+				(perOrg.get(row.organizationId) ?? 0) + (attempts.get(row.id) ?? 0),
+			);
+		}
+
+		await Promise.all(
+			[...perOrg].map(([organizationId, amount]) =>
+				meter({
+					scopeId: organizationId,
+					meter: "webhookDeliveries",
+					amount,
+				}),
+			),
+		);
+	} catch {
+		// See above. Bookkeeping never blocks delivery.
+	}
 }

@@ -144,11 +144,14 @@ describe("metering engine", () => {
 
 	it("getUsage returns every meter", async () => {
 		const usage = await getUsage({ scopeId: "acc-usage" });
+		// Exhaustive on purpose: a new meter that nothing reports would be invisible
+		// on the usage dashboard, so adding one has to break this.
 		expect(Object.keys(usage).sort()).toEqual([
 			"aiActions",
 			"apiRequests",
 			"seats",
 			"storageBytes",
+			"webhookDeliveries",
 			"workspaces",
 		]);
 	});

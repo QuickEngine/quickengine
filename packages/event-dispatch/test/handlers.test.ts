@@ -165,8 +165,9 @@ describe("search handler", () => {
 	it("ignores events from modules that are not searchable", async () => {
 		const { indexed, removed, provider } = fakeSearch();
 
+		// Time entries carry no title anybody would search for.
 		await searchHandler(provider).handle(
-			event({ eventName: "quote.accepted" }),
+			event({ eventName: "time-entry.created" }),
 		);
 		// Address changes touch nothing that is indexed.
 		await searchHandler(provider).handle(
@@ -175,6 +176,18 @@ describe("search handler", () => {
 
 		expect(indexed).toHaveLength(0);
 		expect(removed).toHaveLength(0);
+	});
+
+	// Before 2026-08-01 the handler matched `client.` and returned on everything
+	// else, so fourteen modules were unsearchable while the index itself worked.
+	// This pins that a second module actually routes — the assertion above used
+	// to cover `quote.accepted` and would have hidden the change.
+	it("routes a non-client module to its own subject", async () => {
+		const { removed, provider } = fakeSearch();
+
+		await searchHandler(provider).handle(event({ eventName: "quote.deleted" }));
+
+		expect(removed).toEqual([[clientId]]);
 	});
 
 	it("tolerates a record that has already been deleted", async () => {

@@ -777,6 +777,9 @@ importers:
       '@quickengine/api-contracts':
         specifier: workspace:*
         version: link:../api-contracts
+      '@quickengine/billing':
+        specifier: workspace:*
+        version: link:../billing
       '@quickengine/db':
         specifier: workspace:*
         version: link:../db
@@ -789,6 +792,9 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../modules/client-records
+      '@quickengine/module-registry':
+        specifier: workspace:*
+        version: link:../module-registry
       '@quickengine/realtime':
         specifier: workspace:*
         version: link:../realtime

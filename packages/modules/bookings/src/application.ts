@@ -84,6 +84,15 @@ function mapBookingError(error: unknown): never {
 		if (error.message.endsWith("NOT_FOUND")) {
 			throw new DomainError("NOT_FOUND", message);
 		}
+		// Billing a booking needs Invoicing on. 403, not 500 — the workspace can fix
+		// it, and a mapper branch is what turns a thrown string into that answer.
+		//
+		// Written as a regex rather than `===` because `check-error-maps.mjs` reads
+		// `.test()` and `.endsWith()` branches only; an equality check is correct
+		// code the guard cannot see, and it would report this as a 500 risk.
+		if (/MODULE_DISABLED/.test(error.message)) {
+			throw new DomainError("MODULE_DISABLED", message);
+		}
 		if (/(MISMATCH|NOT_BOOKABLE|NOT_CONVERTIBLE)/.test(error.message)) {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}

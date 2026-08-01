@@ -1,0 +1,63 @@
+name: Migration parity
+
+# Has every migration committed to this repository actually reached production?
+#
+# 🔴 This exists because the answer was NO and nothing noticed. On 2026-07-31 a
+# migration was applied to Docker, merged, and never applied to Neon; the first
+# symptom was a 500 in production. Its ledger row was then missed a second time,
+# which would have aborted the next migration deploy. Both went undetected
+# because every developer's local database was correct.
+#
+# ⚠️ Deliberately NOT a pull-request check. At PR time a new migration has
+# legitimately not been applied yet, so this would fail on every PR that adds
+# one and teach everybody to ignore it. It runs after merge, when the answer
+# should be yes, and on a schedule, because a database can drift with no commit
+# involved at all.
+#
+# "Does this migration apply cleanly" is already covered: `pnpm test` provisions
+# a fresh database from the committed migrations on every run.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/db/drizzle/**"
+      - "packages/db/migration-parity.mjs"
+      - ".github/workflows/migration-parity.yml"
+  schedule:
+    # Daily. Catches drift introduced by hand, which is exactly how both of the
+    # incidents above happened.
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: Committed migrations reached production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.28.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Reads only `drizzle.__drizzle_migrations` and never prints a connection
+      # string. A read-only Neon role is sufficient and preferable.
+      - name: Check migration parity
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: pnpm --filter @quickengine/db db:migration-parity:ci

@@ -79,6 +79,16 @@ export type PlatformDependencies = {
 	 * nor gates on it. Production supplies `enforce` from `@quickengine/billing`.
 	 */
 	enforceUsage?: import("./usage-enforcement").UsageEnforcer;
+	/**
+	 * Optional, and set once by `registerAllRoutes`.
+	 *
+	 * 🔴 Lives here rather than as an argument because `authorizeWorkspace` is
+	 * called from ~20 route files and none of them passed a logger. The result
+	 * was that `enforceUsage` — which logs `usage.enforcement_failed` on a throw —
+	 * was always called without one, so metering could fail on every request in
+	 * production and emit nothing at all.
+	 */
+	logger?: import("./logger").ApiLogger;
 };
 
 export type RouteAccessRequirement = {

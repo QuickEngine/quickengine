@@ -3,6 +3,7 @@ import {
 	RATE_LIMIT_HEADERS,
 } from "@quickengine/api-contracts";
 import type { CacheProvider } from "@quickengine/cache";
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ApiLogger } from "./logger";
 import type { AuthorizedApiContext, PlatformEnv } from "./platform-types";
@@ -72,6 +73,41 @@ function principalSubject(context: AuthorizedApiContext): string {
 		: `user:${context.principal.userId}`;
 }
 
+/**
+ * The bucket this request counts against.
+ *
+ * 🔴 Handles BOTH authorization shapes. `authorizeWorkspace` sets `authorized`;
+ * `authorizeSession` and `authorizeAccount` set only `account`. This previously
+ * read `authorized` and dereferenced it unconditionally, so every session-scoped
+ * route behind a rate limit threw a TypeError and returned 500 — which is
+ * exactly what `/v1/product-events` did on every call from the day it shipped.
+ *
+ * Returning `undefined` rather than throwing means a route with neither is
+ * simply not rate limited, which is the safe direction: a missing budget serves
+ * the customer, a thrown one does not.
+ */
+function bucketFor(c: Context<PlatformEnv>): string | undefined {
+	const authorized = c.get("authorized");
+	if (authorized) {
+		return `${authorized.workspaceId}:${principalSubject(authorized)}`;
+	}
+	const account = c.get("account");
+	if (account) {
+		// Organization rather than workspace: a session route is account-scoped,
+		// and the person is the principal.
+		return `org:${account.organizationId ?? "none"}:user:${account.userId}`;
+	}
+	return undefined;
+}
+
+/**
+ * 🔴 Must be given the PLAN-SCALED policy, not `options.policy`.
+ *
+ * Both call sites passed the unscaled base, so every plan except Launch was told
+ * the wrong ceiling: a Free account (0.25x) was cut off at 150 while the header
+ * advertised 600, and Teams (8x) was told 600 when the real limit was 4800. A
+ * client backing off on those numbers backs off against a fiction.
+ */
 function writeHeaders(
 	response: Response,
 	policy: RateLimitPolicy,
@@ -96,19 +132,16 @@ export function createRateLimit(options: {
 }) {
 	const now = options.now ?? Date.now;
 	return createMiddleware<PlatformEnv>(async (c, next) => {
-		const authorized = c.get("authorized");
+		const bucket = bucketFor(c);
+		// Nothing to scope a budget to. See `bucketFor`: serving is safer than
+		// throwing, and a route with no principal has nothing to abuse.
+		if (!bucket) return next();
 		// Set during usage enforcement, which resolves the plan anyway. Absent
 		// outside production, where enforcement is off — the base policy applies.
 		const policy = policyForPlan(options.policy, c.get("planId"));
 		const epochSeconds = Math.floor(now() / 1000);
 		const window = Math.floor(epochSeconds / policy.windowSeconds);
-		const key = [
-			"ratelimit",
-			authorized.workspaceId,
-			principalSubject(authorized),
-			options.scope,
-			window,
-		].join(":");
+		const key = ["ratelimit", bucket, options.scope, window].join(":");
 
 		let count: number;
 		try {
@@ -118,7 +151,7 @@ export function createRateLimit(options: {
 				error,
 				failureMode: policy.failureMode,
 				scope: options.scope,
-				workspaceId: authorized.workspaceId,
+				bucket,
 			});
 			if (policy.failureMode === "open") return next();
 			return respondError(
@@ -140,12 +173,12 @@ export function createRateLimit(options: {
 				"Too many requests. Slow down and retry shortly.",
 				429,
 			);
-			writeHeaders(response, options.policy, count, resetSeconds);
+			writeHeaders(response, policy, count, resetSeconds);
 			response.headers.set(RATE_LIMIT_HEADERS.retryAfter, String(resetSeconds));
 			return response;
 		}
 
 		await next();
-		writeHeaders(c.res, options.policy, count, resetSeconds);
+		writeHeaders(c.res, policy, count, resetSeconds);
 	});
 }

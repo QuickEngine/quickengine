@@ -21,7 +21,9 @@ export class TimeResource {
 	list(
 		options: {
 			cursor?: string;
+			direction?: "asc" | "desc";
 			limit?: number;
+			sort?: string;
 			projectId?: string;
 			taskId?: string;
 			trackerKey?: string;
@@ -33,6 +35,8 @@ export class TimeResource {
 		const query = new URLSearchParams();
 		if (options.cursor) query.set("cursor", options.cursor);
 		if (options.limit) query.set("limit", String(options.limit));
+		if (options.sort) query.set("sort", options.sort);
+		if (options.direction) query.set("direction", options.direction);
 		if (options.projectId) query.set("projectId", options.projectId);
 		if (options.taskId) query.set("taskId", options.taskId);
 		if (options.trackerKey) query.set("trackerKey", options.trackerKey);

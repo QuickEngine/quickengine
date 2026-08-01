@@ -29,7 +29,9 @@ export class FilesResource {
 	listFolders(
 		options: {
 			cursor?: string;
+			direction?: "asc" | "desc";
 			limit?: number;
+			sort?: string;
 			parentId?: string;
 			/** Only top-level folders. Takes precedence over `parentId`. */
 			rootOnly?: boolean;
@@ -38,6 +40,8 @@ export class FilesResource {
 		const query = new URLSearchParams();
 		if (options.cursor) query.set("cursor", options.cursor);
 		if (options.limit) query.set("limit", String(options.limit));
+		if (options.sort) query.set("sort", options.sort);
+		if (options.direction) query.set("direction", options.direction);
 		if (options.parentId) query.set("parentId", options.parentId);
 		if (options.rootOnly) query.set("rootOnly", "true");
 		return this.client.request(`/file-folders${query.size ? `?${query}` : ""}`);
@@ -73,7 +77,9 @@ export class FilesResource {
 	list(
 		options: {
 			cursor?: string;
+			direction?: "asc" | "desc";
 			limit?: number;
+			sort?: string;
 			folderId?: string;
 			status?: QuickDocumentStatus;
 		} = {},
@@ -81,6 +87,8 @@ export class FilesResource {
 		const query = new URLSearchParams();
 		if (options.cursor) query.set("cursor", options.cursor);
 		if (options.limit) query.set("limit", String(options.limit));
+		if (options.sort) query.set("sort", options.sort);
+		if (options.direction) query.set("direction", options.direction);
 		if (options.folderId) query.set("folderId", options.folderId);
 		if (options.status) query.set("status", options.status);
 		return this.client.request(`/documents${query.size ? `?${query}` : ""}`);

@@ -18,13 +18,17 @@ export class PaymentsResource {
 	list(
 		options: {
 			cursor?: string;
+			direction?: "asc" | "desc";
 			limit?: number;
+			sort?: string;
 			status?: QuickPaymentStatus;
 		} = {},
 	): Promise<QuickResponse<QuickCursorPage<QuickPayment>>> {
 		const query = new URLSearchParams();
 		if (options.cursor) query.set("cursor", options.cursor);
 		if (options.limit) query.set("limit", String(options.limit));
+		if (options.sort) query.set("sort", options.sort);
+		if (options.direction) query.set("direction", options.direction);
 		if (options.status) query.set("status", options.status);
 		return this.client.request(`/payments${query.size ? `?${query}` : ""}`);
 	}

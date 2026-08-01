@@ -26,7 +26,9 @@ export class ProjectsResource {
 	list(
 		options: {
 			cursor?: string;
+			direction?: "asc" | "desc";
 			limit?: number;
+			sort?: string;
 			status?: QuickProjectStatus;
 			/** Archived projects are hidden unless this is set. */
 			includeArchived?: boolean;
@@ -35,6 +37,8 @@ export class ProjectsResource {
 		const query = new URLSearchParams();
 		if (options.cursor) query.set("cursor", options.cursor);
 		if (options.limit) query.set("limit", String(options.limit));
+		if (options.sort) query.set("sort", options.sort);
+		if (options.direction) query.set("direction", options.direction);
 		if (options.status) query.set("status", options.status);
 		if (options.includeArchived) query.set("includeArchived", "true");
 		return this.client.request(`/projects${query.size ? `?${query}` : ""}`);
@@ -89,7 +93,9 @@ export class ProjectsResource {
 		list: (
 			options: {
 				cursor?: string;
+				direction?: "asc" | "desc";
 				limit?: number;
+				sort?: string;
 				projectId?: string;
 				status?: QuickMilestoneStatus;
 			} = {},
@@ -97,6 +103,8 @@ export class ProjectsResource {
 			const query = new URLSearchParams();
 			if (options.cursor) query.set("cursor", options.cursor);
 			if (options.limit) query.set("limit", String(options.limit));
+			if (options.sort) query.set("sort", options.sort);
+			if (options.direction) query.set("direction", options.direction);
 			if (options.projectId) query.set("projectId", options.projectId);
 			if (options.status) query.set("status", options.status);
 			return this.client.request(`/milestones${query.size ? `?${query}` : ""}`);
@@ -137,7 +145,9 @@ export class ProjectsResource {
 		list: (
 			options: {
 				cursor?: string;
+				direction?: "asc" | "desc";
 				limit?: number;
+				sort?: string;
 				milestoneId?: string;
 				projectId?: string;
 				status?: QuickTaskStatus;
@@ -146,6 +156,8 @@ export class ProjectsResource {
 			const query = new URLSearchParams();
 			if (options.cursor) query.set("cursor", options.cursor);
 			if (options.limit) query.set("limit", String(options.limit));
+			if (options.sort) query.set("sort", options.sort);
+			if (options.direction) query.set("direction", options.direction);
 			if (options.milestoneId) query.set("milestoneId", options.milestoneId);
 			if (options.projectId) query.set("projectId", options.projectId);
 			if (options.status) query.set("status", options.status);

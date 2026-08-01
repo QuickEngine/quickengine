@@ -107,3 +107,22 @@ describe("compound cursor paging", () => {
 		expect(decodeCursor(encodeCursor({ value: "x", id: "" }))).toBeUndefined();
 	});
 });
+
+describe("cursor encoding", () => {
+	// 🔴 The bug this fixes. The first version joined with a space and split on
+	// it, so "Acme Corporation" decoded as { value: "Acme", id: "Corporation" }
+	// and the id half hit a uuid comparison. Every free-text sort column — client
+	// name, catalog name, booking title, project name — was exposed, and no
+	// fixture happened to contain a space.
+	it.each([
+		["a plain value", "alice"],
+		["a value with a space", "Acme Corporation"],
+		["a value with the delimiter", "a b: c 12:34"],
+		["an empty value", ""],
+		["only delimiters", ":::"],
+		["a very long value", "x".repeat(300)],
+	])("round-trips %s", (_label, value) => {
+		const id = "11111111-2222-4333-8444-555555555555";
+		expect(decodeCursor(encodeCursor({ value, id }))).toEqual({ value, id });
+	});
+});

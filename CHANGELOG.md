@@ -94,6 +94,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Deleting a file, a workspace or an account now completes.** Permanently deleted documents
+  were left in a pending state forever, which kept their storage counted against the plan and
+  made workspace and account deletion fail outright.
+- **Analytics events sent from the browser are accepted.** The endpoint returned an error on
+  every call.
+- **Every list can be sorted from the SDK.** The API accepted sorting and no client could ask
+  for it.
+- **Rate-limit responses now report the real ceiling.** Every plan except Launch was told the
+  wrong number, so a client backing off used a figure that did not match what it was measured
+  against.
+- **Archived workspaces no longer count against the plan.** Archiving the only workspace on a
+  plan left an account unable to create another or remove the archived one.
+- **Stored copies of past responses are cleared once they can no longer be replayed.** They were
+  kept indefinitely.
+
 - **Seat counts are recorded for accounts created by signing up.** They were only counted when
   an organization was created directly, so a new account reported no seats in use.
 - **Plan limits on people and workspaces are now enforced.** Inviting someone or creating a

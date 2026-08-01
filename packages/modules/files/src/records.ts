@@ -1168,3 +1168,33 @@ export async function releaseQuarantinedFileVersion(
 		releaseQuarantinedFileVersionInTx(tx, workspaceId, versionId),
 	);
 }
+
+/** A document sitting in `deleting`, waiting for its bytes to be freed. */
+export type FileDocumentDeletionCandidate = {
+	id: string;
+	workspaceId: string;
+};
+
+/**
+ * Documents whose permanent deletion was requested but never completed.
+ *
+ * 🔴 Swept rather than driven purely by the enqueued job. Every document deleted
+ * before a cleanup worker existed is stuck in `deleting`, and those rows block
+ * workspace deletion (`ON DELETE restrict`) and account deletion outright. A
+ * queue-only design would never reach them.
+ *
+ * Oldest first, so the backlog drains in the order it accumulated.
+ */
+export async function listFileDocumentsAwaitingPurge(
+	limit = 25,
+): Promise<FileDocumentDeletionCandidate[]> {
+	return db
+		.select({
+			id: fileDocuments.id,
+			workspaceId: fileDocuments.workspaceId,
+		})
+		.from(fileDocuments)
+		.where(eq(fileDocuments.status, "deleting"))
+		.orderBy(asc(fileDocuments.deletionRequestedAt))
+		.limit(limit);
+}

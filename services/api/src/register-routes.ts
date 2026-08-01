@@ -50,7 +50,9 @@ export function registerAllRoutes(
 	const dependencies = {
 		cache: getCacheProvider(),
 		logger: options.logger,
-		platform: options.dependencies,
+		// Carries the logger so `enforceUsage` can report a metering failure. See
+		// the note on `PlatformDependencies.logger`.
+		platform: { ...options.dependencies, logger: options.logger },
 		uow: mutationUnitOfWork,
 	};
 	const logger = options.logger;

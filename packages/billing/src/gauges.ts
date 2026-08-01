@@ -1,4 +1,4 @@
-import { count, db, eq } from "@quickengine/db";
+import { and, count, db, eq, isNull } from "@quickengine/db";
 import {
 	quickengineOrganizationMembers,
 	quickengineSubscriptions,
@@ -49,7 +49,17 @@ const countWorkspaces = async (organizationId: string): Promise<number> => {
 	const [row] = await db
 		.select({ total: count() })
 		.from(quickengineWorkspaces)
-		.where(eq(quickengineWorkspaces.organizationId, organizationId));
+		.where(
+			and(
+				eq(quickengineWorkspaces.organizationId, organizationId),
+				// 🔴 Archived workspaces do not occupy a plan slot. Without this, a
+				// Free account (one workspace) that archived its only workspace —
+				// the documented step before discarding it — could not create
+				// another, and could not delete the archived one either. The
+				// customer was stuck with no way forward.
+				isNull(quickengineWorkspaces.archivedAt),
+			),
+		);
 	return row?.total ?? 0;
 };
 

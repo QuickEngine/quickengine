@@ -18,7 +18,9 @@ export class ShipmentsResource {
 	list(
 		options: {
 			cursor?: string;
+			direction?: "asc" | "desc";
 			limit?: number;
+			sort?: string;
 			orderId?: string;
 			status?: QuickShipmentStatus;
 		} = {},
@@ -26,6 +28,8 @@ export class ShipmentsResource {
 		const query = new URLSearchParams();
 		if (options.cursor) query.set("cursor", options.cursor);
 		if (options.limit) query.set("limit", String(options.limit));
+		if (options.sort) query.set("sort", options.sort);
+		if (options.direction) query.set("direction", options.direction);
 		if (options.orderId) query.set("orderId", options.orderId);
 		if (options.status) query.set("status", options.status);
 		return this.client.request(`/shipments${query.size ? `?${query}` : ""}`);

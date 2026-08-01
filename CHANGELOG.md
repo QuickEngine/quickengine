@@ -8,6 +8,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **One workspace can be recovered without affecting anyone else.** Restoring a single
+  workspace's data from an earlier point no longer means rolling the whole platform back, so
+  other customers keep every change they made in the meantime.
+
 - **A completed appointment can become an invoice.** The service and its price are recorded as
   they were on the day, the invoice arrives as a draft so nobody is billed by accident, and
   raising it twice returns the same invoice rather than charging twice.

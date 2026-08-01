@@ -63,6 +63,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Database changes can no longer reach development and miss production.** Every change
+  committed to the codebase is now checked against the live database automatically, so one that
+  never arrived is reported by name instead of surfacing later as a broken page.
 - **Seat and workspace limits are now enforced.** Both were listed on every plan and neither
   was ever counted, so an account could hold any number of members or workspaces regardless of
   its tier. Both are counted from the real records, so a missed update can never leave the

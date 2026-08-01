@@ -61,7 +61,8 @@
 		"dev:dash": "pnpm --filter @quickengine/quickdash dev",
 		"dev:api": "pnpm --filter @quickengine/api dev",
 		"user": "pnpm --filter @quickengine/account dev",
-		"check:no-next": "node .github/ci/check-no-next.mjs"
+		"check:no-next": "node .github/ci/check-no-next.mjs",
+		"db:migration-parity": "pnpm --filter @quickengine/db db:migration-parity"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.5",

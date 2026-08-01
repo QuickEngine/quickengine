@@ -798,6 +798,9 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../modules/client-records
+      '@quickengine/mod-files':
+        specifier: workspace:*
+        version: link:../modules/files
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../module-registry
@@ -807,6 +810,9 @@ importers:
       '@quickengine/search':
         specifier: workspace:*
         version: link:../search
+      '@quickengine/storage':
+        specifier: workspace:*
+        version: link:../storage
       zod:
         specifier: ^4.3.6
         version: 4.4.3

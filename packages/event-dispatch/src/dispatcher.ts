@@ -5,6 +5,7 @@ import {
 } from "@quickengine/events";
 import { inngest } from "@quickengine/jobs";
 import { defaultOutboxHandlers } from "./handlers";
+import { mutationRetention, storageCleanup } from "./storage-cleanup";
 import { deliverPendingWebhooks } from "./webhooks";
 
 /**
@@ -95,4 +96,9 @@ export const webhookDelivery = inngest.createFunction(
 );
 
 /** Durable functions this package contributes to the Inngest serve endpoint. */
-export const eventDispatchFunctions = [outboxDispatch, webhookDelivery];
+export const eventDispatchFunctions = [
+	outboxDispatch,
+	webhookDelivery,
+	storageCleanup,
+	mutationRetention,
+];

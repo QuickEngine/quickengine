@@ -29,7 +29,13 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
 		// Without this the SDK infers its own URL from request headers, which is
 		// wrong behind Vercel's proxy — it would register a callback URL that
 		// Inngest cannot reach.
-		serveOrigin: process.env.API_BASE_URL,
+		// 🔴 Reads BOTH. `.env.example` documents `INNGEST_SERVE_ORIGIN` and this
+		// read `API_BASE_URL`, which appears in no example file — so a deployment
+		// following the docs left this undefined and the SDK fell back to inferring
+		// its callback URL from proxy headers, which the comment above says is
+		// wrong behind Vercel. The documented name wins; the other is the fallback
+		// so existing deployments keep working.
+		serveOrigin: process.env.INNGEST_SERVE_ORIGIN || process.env.API_BASE_URL,
 		servePath: "/api/inngest",
 	});
 

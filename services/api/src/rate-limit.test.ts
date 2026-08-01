@@ -9,6 +9,7 @@ import {
 	createRateLimit,
 	PLAN_RATE_MULTIPLIER,
 	policyForPlan,
+	RATE_LIMIT_POLICIES,
 } from "./rate-limit";
 
 function testApp(options: {
@@ -185,5 +186,22 @@ describe("plan coverage", () => {
 				PLAN_RATE_MULTIPLIER[ladder[i - 1]],
 			);
 		}
+	});
+});
+
+describe("advertised limits", () => {
+	// 🔴 Regression guard. Both writeHeaders calls previously passed the unscaled
+	// base policy, so a Free account saw 600 while being cut off at 150.
+	it("reports the plan-scaled ceiling, not the base policy", () => {
+		const base = RATE_LIMIT_POLICIES.read;
+		expect(policyForPlan(base, "free").limit).toBe(
+			Math.max(1, Math.round(base.limit * PLAN_RATE_MULTIPLIER.free)),
+		);
+		expect(policyForPlan(base, "teams").limit).toBe(
+			base.limit * PLAN_RATE_MULTIPLIER.teams,
+		);
+		// And the base is unchanged by scaling — a shared object would corrupt
+		// every later request on the process.
+		expect(base.limit).toBe(RATE_LIMIT_POLICIES.read.limit);
 	});
 });

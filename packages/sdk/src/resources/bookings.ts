@@ -19,7 +19,9 @@ export class BookingsResource {
 	list(
 		options: {
 			cursor?: string;
+			direction?: "asc" | "desc";
 			limit?: number;
+			sort?: string;
 			scheduleKey?: string;
 			status?: QuickBookingStatus;
 			/** Inclusive window on the booking's start time. */
@@ -30,6 +32,8 @@ export class BookingsResource {
 		const query = new URLSearchParams();
 		if (options.cursor) query.set("cursor", options.cursor);
 		if (options.limit) query.set("limit", String(options.limit));
+		if (options.sort) query.set("sort", options.sort);
+		if (options.direction) query.set("direction", options.direction);
 		if (options.scheduleKey) query.set("scheduleKey", options.scheduleKey);
 		if (options.status) query.set("status", options.status);
 		if (options.from)

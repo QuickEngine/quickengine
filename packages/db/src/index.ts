@@ -9,6 +9,7 @@ export * from "./first-action-state";
 export * from "./first-action-state-policy";
 export * from "./idempotency";
 export * from "./invitations";
+export * from "./mutation-retention";
 export * from "./mutation-unit-of-work";
 export * from "./notifications";
 export * from "./organization-revenue";

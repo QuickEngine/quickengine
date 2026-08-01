@@ -12,11 +12,18 @@ export class ClientsResource {
 	constructor(private readonly client: QuickClient) {}
 
 	list(
-		options: { cursor?: string; limit?: number } = {},
+		options: {
+			cursor?: string;
+			direction?: "asc" | "desc";
+			limit?: number;
+			sort?: string;
+		} = {},
 	): Promise<QuickResponse<QuickCursorPage<QuickClientRecord>>> {
 		const query = new URLSearchParams();
 		if (options.cursor) query.set("cursor", options.cursor);
 		if (options.limit) query.set("limit", String(options.limit));
+		if (options.sort) query.set("sort", options.sort);
+		if (options.direction) query.set("direction", options.direction);
 		return this.client.request(`/clients${query.size ? `?${query}` : ""}`);
 	}
 

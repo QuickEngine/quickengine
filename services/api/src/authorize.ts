@@ -123,6 +123,7 @@ export function authorizeWorkspace(
 				c,
 				dependencies.enforceUsage,
 				c.get("authorized").workspace.organizationId,
+				dependencies.logger,
 			);
 			if (overKey) return overKey;
 			return next();
@@ -186,6 +187,7 @@ export function authorizeWorkspace(
 			c,
 			dependencies.enforceUsage,
 			workspace.organizationId,
+			dependencies.logger,
 		);
 		if (over) return over;
 		return next();

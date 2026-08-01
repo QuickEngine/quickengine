@@ -72,12 +72,17 @@ const NOT_WORKSPACE_SCOPED = [
 	// Account-level: scoped to the session's own organization, never to a
 	// workspace supplied by the caller.
 	"/v1/account",
-	// A signature-verified public link. The token IS the authorization, and the
-	// recipient has no session at all.
-	"/v1/sign",
-	// Platform metadata with no tenant data in it.
-	"/v1/catalog",
-	"/v1/modules",
+	/**
+	 * 🔴 `/v1/catalog` was here as "platform metadata with no tenant data". That
+	 * was wrong — it is the products-services module and its 8 routes carry a
+	 * workspace's real product catalog. `skipped()` is a prefix match, so the
+	 * sweep silently covered 8 fewer routes than it claimed. They are swept now.
+	 *
+	 * `/v1/modules` was also here and matches no registered route at all.
+	 */
+	// The public signing link. The token IS the authorization and the recipient
+	// has no session, so a membership check would make signing impossible.
+	"/v1/quickdash/sign",
 	/**
 	 * Org-scoped, not workspace-scoped, and verified by reading it:
 	 *  · `/v1/billing/plans` is the public plan ladder — the same information on

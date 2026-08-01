@@ -16,7 +16,12 @@ export {
 	MIN_TOPUP_CENTS,
 	maybeAutoRecharge,
 } from "./credit-topup";
-export { syncSeats, syncWorkspaces } from "./gauges";
+export {
+	admitSeat,
+	admitWorkspace,
+	syncSeats,
+	syncWorkspaces,
+} from "./gauges";
 export {
 	checkAllowance,
 	checkLimit,

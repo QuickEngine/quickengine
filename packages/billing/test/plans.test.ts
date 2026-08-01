@@ -75,3 +75,21 @@ describe("per-seat plans", () => {
 		expect(teams.workspaces).toBeNull();
 	});
 });
+
+// The gauges these gates read were never written before 2026-08-01, so both
+// limits were advertised on every plan and enforced on none.
+describe("gauge limits", () => {
+	it("gives Free exactly one seat and one workspace", () => {
+		const free = getPlanLimits("free");
+		expect(free.seats).toBe(1);
+		expect(free.workspaces).toBe(1);
+	});
+
+	it("raises both on every paid flat tier", () => {
+		for (const id of ["launch", "grow", "scale"] as const) {
+			const paid = getPlanLimits(id);
+			expect(paid.seats ?? 0).toBeGreaterThan(1);
+			expect(paid.workspaces ?? 0).toBeGreaterThan(1);
+		}
+	});
+});

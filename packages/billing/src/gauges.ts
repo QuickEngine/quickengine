@@ -4,7 +4,7 @@ import {
 	quickengineSubscriptions,
 	quickengineWorkspaces,
 } from "@quickengine/db/schema/quickengine";
-import { meter } from "./metering";
+import { checkAllowance, type EnforceResult, meter } from "./metering";
 import { billableSeats, isPerSeatPlan } from "./plans";
 import { getStripe, isStripeConfigured } from "./stripe";
 
@@ -37,12 +37,24 @@ import { getStripe, isStripeConfigured } from "./stripe";
  * next change reconciles the quantity. What it must not do is silently diverge
  * forever, which is why it recounts instead of adjusting.
  */
-export async function syncSeats(organizationId: string): Promise<number> {
+const countMembers = async (organizationId: string): Promise<number> => {
 	const [row] = await db
 		.select({ total: count() })
 		.from(quickengineOrganizationMembers)
 		.where(eq(quickengineOrganizationMembers.organizationId, organizationId));
-	const members = row?.total ?? 0;
+	return row?.total ?? 0;
+};
+
+const countWorkspaces = async (organizationId: string): Promise<number> => {
+	const [row] = await db
+		.select({ total: count() })
+		.from(quickengineWorkspaces)
+		.where(eq(quickengineWorkspaces.organizationId, organizationId));
+	return row?.total ?? 0;
+};
+
+export async function syncSeats(organizationId: string): Promise<number> {
+	const members = await countMembers(organizationId);
 
 	// The gauge is set, not incremented — `seats` is a current total.
 	await meter({ scopeId: organizationId, meter: "seats", amount: members });
@@ -113,15 +125,45 @@ async function syncStripeQuantity(
  * Counting it against a plan ceiling is a different thing entirely.
  */
 export async function syncWorkspaces(organizationId: string): Promise<number> {
-	const [row] = await db
-		.select({ total: count() })
-		.from(quickengineWorkspaces)
-		.where(eq(quickengineWorkspaces.organizationId, organizationId));
-	const workspaces = row?.total ?? 0;
+	const workspaces = await countWorkspaces(organizationId);
 	await meter({
 		scopeId: organizationId,
 		meter: "workspaces",
 		amount: workspaces,
 	});
 	return workspaces;
+}
+
+/**
+ * May this organization take on one more member?
+ *
+ * Asked BEFORE the membership is written, with the total the account would have
+ * rather than the total it has — `seats` is a gauge, so the allowance is checked
+ * against the proposed state, the same shape the file-storage gate uses.
+ *
+ * Returns rather than throws: the caller owns the HTTP response, and a refusal
+ * needs to say which plan and which limit or it is just a wall. Teams has no
+ * seat ceiling, so this always admits there — every seat is billed instead.
+ */
+export async function admitSeat(
+	organizationId: string,
+): Promise<EnforceResult> {
+	const proposed = (await countMembers(organizationId)) + 1;
+	return checkAllowance({
+		scopeId: organizationId,
+		meter: "seats",
+		amount: proposed,
+	});
+}
+
+/** May this organization create one more workspace? Same contract as `admitSeat`. */
+export async function admitWorkspace(
+	organizationId: string,
+): Promise<EnforceResult> {
+	const proposed = (await countWorkspaces(organizationId)) + 1;
+	return checkAllowance({
+		scopeId: organizationId,
+		meter: "workspaces",
+		amount: proposed,
+	});
 }

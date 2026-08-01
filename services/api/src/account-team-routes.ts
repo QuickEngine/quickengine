@@ -2,6 +2,7 @@ import {
 	canGrantCapabilities,
 	resolveCapabilities,
 } from "@quickengine/auth/rbac";
+import { syncSeats } from "@quickengine/billing";
 import {
 	acceptOrganizationInvitation,
 	createOrganizationInvitation,
@@ -110,6 +111,10 @@ export function registerAccountTeamRoutes(
 					c.req.param("token"),
 					userId,
 				);
+				// The organization just grew. On a per-seat plan this is also what
+				// Stripe bills, so the count has to move before the next request is
+				// measured against it.
+				await syncSeats(accepted.organizationId);
 				return respond(c, accepted);
 			} catch (error) {
 				const reason = error instanceof Error ? error.message : "";
@@ -166,6 +171,9 @@ export function registerAccountTeamRoutes(
 				409,
 			);
 		}
+		// Shrinking matters as much as growing: without this the organization keeps
+		// paying for a seat nobody occupies.
+		await syncSeats(organizationId);
 		return respond(c, { removed: true });
 	});
 }

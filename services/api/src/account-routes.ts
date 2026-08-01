@@ -11,6 +11,7 @@ import {
 	getStripe,
 	getSubscriptionForOrg,
 	getUsage,
+	syncSeats,
 	upsertSubscriptionFromStripe,
 } from "@quickengine/billing";
 import { getCacheProvider } from "@quickengine/cache";
@@ -384,6 +385,9 @@ export function registerAccountRoutes(
 	app.post("/v1/account/organizations", session, async (c) => {
 		const input = createOrganizationSchema.parse(await c.req.json());
 		const org = await createOrganization(input.name, c.get("account").userId);
+		// Starts the gauge at one rather than zero. Without this the owner is
+		// invisible to enforcement until somebody else joins.
+		await syncSeats(org.id);
 		return respond(c, org, 201);
 	});
 

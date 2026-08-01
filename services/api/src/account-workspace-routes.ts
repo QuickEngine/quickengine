@@ -1,3 +1,4 @@
+import { syncWorkspaces } from "@quickengine/billing";
 import {
 	createWorkspaceForUser,
 	deleteWorkspace,
@@ -137,6 +138,10 @@ export function registerAccountWorkspaceRoutes(
 						409,
 					);
 				}
+				// The count moved. `workspace.organizationId` rather than the caller's,
+				// because onboarding creates the workspace under the personal org the
+				// data layer resolved, which is not always the one on the request.
+				await syncWorkspaces(workspace.organizationId);
 				return respond(c, workspace, 201);
 			} catch (error) {
 				const mapped = messageFor(error);
@@ -199,6 +204,13 @@ export function registerAccountWorkspaceRoutes(
 		const workspace = await deleteWorkspace(c.req.param("id"));
 		if (!workspace) {
 			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		// Without this a deleted workspace keeps occupying its slot, and a customer
+		// on Launch could delete all three and still be told they are at the limit.
+		// The column is nullable for legacy rows; there is nothing to recount when
+		// a workspace belonged to no organization.
+		if (workspace.organizationId) {
+			await syncWorkspaces(workspace.organizationId);
 		}
 		return respond(c, { deleted: true });
 	});

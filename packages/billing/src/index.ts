@@ -16,11 +16,13 @@ export {
 	MIN_TOPUP_CENTS,
 	maybeAutoRecharge,
 } from "./credit-topup";
+export { syncSeats, syncWorkspaces } from "./gauges";
 export {
 	checkAllowance,
 	checkLimit,
 	type EnforceResult,
 	enforce,
+	getAccountLimits,
 	getAccountPlanId,
 	getUsage,
 	type LimitCheck,
@@ -28,15 +30,18 @@ export {
 	meter,
 } from "./metering";
 export {
+	billableSeats,
 	getPlan,
 	getPlanLimits,
 	getStripePriceId,
+	isPerSeatPlan,
 	METER_KIND,
 	type MeterKey,
 	PLANS,
 	type PlanDefinition,
 	type PlanLimits,
 	planIdForPriceId,
+	TEAMS_MIN_SEATS,
 } from "./plans";
 export {
 	type CyclePrice,

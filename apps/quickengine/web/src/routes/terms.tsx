@@ -79,10 +79,11 @@ function TermsPage() {
 			<h2>5. Subscriptions, Billing, and Usage</h2>
 			<p>
 				The Service is offered under a tiered subscription model (currently
-				including Free, Starter, Pro, Growth, and Team tiers, plus custom
-				Enterprise arrangements), as described at checkout and in your account
-				settings. Pricing, included usage, and tier features are subject to
-				change with reasonable advance notice for existing subscribers.
+				including Free, Launch, Grow, Scale, and Teams tiers, plus Custom
+				arrangements agreed directly with us), as described at checkout and in
+				your account settings. Pricing, included usage, and tier features are
+				subject to change with reasonable advance notice for existing
+				subscribers.
 			</p>
 			<ul>
 				<li>
@@ -90,9 +91,9 @@ function TermsPage() {
 					signup, through our payment processor, Stripe.
 				</li>
 				<li>
-					Usage beyond a plan’s included allowance (“Actions,” storage or seats,
-					as applicable) may be billed as additional usage, as described in your
-					plan details.
+					Usage beyond a plan’s included allowance (API requests, AI actions,
+					storage, seats or workspaces, as applicable) may be billed as
+					additional usage, as described in your plan details.
 				</li>
 				<li>
 					You authorize us and our payment processor to charge your selected

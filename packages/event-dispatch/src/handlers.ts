@@ -1,6 +1,6 @@
 import { recordActivity } from "@quickengine/db";
 import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
-import { getClientRecord } from "@quickengine/mod-client-records";
+import { searchSubjectFor } from "@quickengine/module-registry";
 import {
 	getRealtimeProvider,
 	type RealtimeProvider,
@@ -75,33 +75,31 @@ export function searchHandler(
 	return {
 		name: "search",
 		async handle(event: OutboxEvent) {
-			if (!event.eventName.startsWith("client.")) return;
-			// `client.address.*` changes nothing that is indexed (name, email, company).
+			const subject = searchSubjectFor(event.eventName);
+			if (!subject) return;
+
+			// Sub-entity events. An address change moves nothing that is indexed, and
+			// re-indexing on one only costs a read.
 			if (event.eventName.startsWith("client.address.")) return;
 
-			if (event.eventName === "client.deleted") {
+			if (event.eventName.endsWith(".deleted")) {
 				await provider.remove("quickdash", [event.aggregateId]);
 				return;
 			}
 
-			const record = await getClientRecord(
-				event.workspaceId,
-				event.aggregateId,
-			);
+			const record = await subject.read(event.workspaceId, event.aggregateId);
 			// Already gone: a later delete event will remove it from the index.
 			if (!record) return;
 
-			const description =
-				[record.email, record.company].filter(Boolean).join(" · ") || undefined;
 			await provider.index("quickdash", [
 				{
-					objectID: record.id,
-					title: record.name,
-					description,
-					url: `/${event.workspaceId}/client-records`,
+					objectID: event.aggregateId,
+					title: record.title,
+					description: record.description,
+					url: `/${event.workspaceId}/${subject.module}`,
 					metadata: {
 						workspaceId: event.workspaceId,
-						module: "client-records",
+						module: subject.module,
 					},
 				},
 			]);

@@ -43,6 +43,15 @@ export type PlanLimits = {
 	seats: number | null;
 	/** Gauge: number of workspaces. */
 	workspaces: number | null;
+	/**
+	 * Counter: outbound webhook attempts, retries included.
+	 *
+	 * ⚠️ `null` on every tier today — **counted, not capped.** The allowance rule
+	 * in `STEP_9_AUDIT.md` is that an included amount must be predictable to a
+	 * customer, and nobody can predict a number nobody has measured. Real volume
+	 * comes first; the limits come after.
+	 */
+	webhookDeliveries: number | null;
 };
 
 export type PlanDefinition = {
@@ -98,6 +107,7 @@ export const PLANS: readonly PlanDefinition[] = [
 			storageBytes: 1 * GB,
 			seats: 1,
 			workspaces: 1,
+			webhookDeliveries: null,
 		},
 	},
 	paidPlan("launch", "Launch", {
@@ -106,6 +116,7 @@ export const PLANS: readonly PlanDefinition[] = [
 		storageBytes: 25 * GB,
 		seats: 2,
 		workspaces: 3,
+		webhookDeliveries: null,
 	}),
 	paidPlan("grow", "Grow", {
 		apiRequests: 1_000_000,
@@ -113,6 +124,7 @@ export const PLANS: readonly PlanDefinition[] = [
 		storageBytes: 100 * GB,
 		seats: 5,
 		workspaces: 10,
+		webhookDeliveries: null,
 	}),
 	paidPlan("scale", "Scale", {
 		apiRequests: 5_000_000,
@@ -120,6 +132,7 @@ export const PLANS: readonly PlanDefinition[] = [
 		storageBytes: 500 * GB,
 		seats: 15,
 		workspaces: 25,
+		webhookDeliveries: null,
 	}),
 	// 🔴 Teams is the only PER-SEAT tier. Launch, Grow and Scale are flat prices
 	// with a seat ceiling; Teams bills $30 x quantity, where the quantity IS the
@@ -146,6 +159,7 @@ export const PLANS: readonly PlanDefinition[] = [
 			// Not a ceiling. Every seat is billed, so there is nothing to cap.
 			seats: null,
 			workspaces: null,
+			webhookDeliveries: null,
 		},
 	},
 	// Custom is a conversation, not self-serve checkout. It deliberately has no
@@ -190,6 +204,7 @@ export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
 	storageBytes: "gauge",
 	seats: "gauge",
 	workspaces: "gauge",
+	webhookDeliveries: "counter",
 };
 
 export const getPlan = (id: QuickEnginePlanId): PlanDefinition | undefined =>
@@ -218,6 +233,7 @@ export const getPlanLimits = (
 		apiRequests: scale(plan.limits.apiRequests),
 		aiActions: scale(plan.limits.aiActions),
 		storageBytes: scale(plan.limits.storageBytes),
+		webhookDeliveries: scale(plan.limits.webhookDeliveries),
 		seats: plan.limits.seats,
 		workspaces: plan.limits.workspaces,
 	};

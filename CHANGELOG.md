@@ -8,6 +8,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Search now finds records across your whole workspace.** Clients, catalog items, invoices,
+  orders, quotes, bookings, projects, milestones, shipments, contracts, fulfillments and
+  payments are all searchable. Previously only clients were.
 - **Teams is now a real tier.** Organizations that outgrow Scale can buy seats directly, with
   every allowance growing as the team does rather than being fixed at the size the plan was
   bought at. Adding or removing a member updates what is billed straight away.

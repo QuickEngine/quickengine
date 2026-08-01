@@ -16,6 +16,7 @@ import { createDefaultReadinessChecks } from "./default-readiness";
 import { registerFilesRoutes } from "./files-routes";
 import { registerFulfillmentRoutes } from "./fulfillment-routes";
 import { registerInngestRoutes } from "./inngest-routes";
+import { registerIntegrationHealthRoutes } from "./integration-health-routes";
 import { registerInventoryRoutes } from "./inventory-routes";
 import { registerInvoicesRoutes } from "./invoices-routes";
 import { createJsonLogger } from "./logger";
@@ -82,6 +83,7 @@ const app = createApp(config, {
 		registerFilesRoutes(app, dependencies);
 		registerReportingRoutes(app, dependencies);
 		registerWebhookRoutes(app, dependencies);
+		registerIntegrationHealthRoutes(app, dependencies);
 		registerRealtimeRoutes(app, dependencies);
 		registerRolesRoutes(app, dependencies);
 		registerResendWebhookRoutes(app, { logger });

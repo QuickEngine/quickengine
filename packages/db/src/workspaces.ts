@@ -39,6 +39,14 @@ export type CreatedWorkspace = {
 	slug: string;
 	businessType: string;
 	moduleIds: readonly string[];
+	/**
+	 * The organization this landed in.
+	 *
+	 * Returned because it is not always the one the caller asked for: onboarding
+	 * omits it and the personal org is resolved here. A caller that assumed its
+	 * own organization would count the workspace against the wrong account.
+	 */
+	organizationId: string;
 };
 
 /**
@@ -125,6 +133,7 @@ export async function createWorkspaceForUser(
 			slug: workspace.slug,
 			businessType: workspace.businessType,
 			moduleIds,
+			organizationId,
 		};
 	});
 }

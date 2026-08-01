@@ -10,7 +10,13 @@ import {
 	periodFor,
 	withinGrace,
 } from "./_metering-core";
-import { getPlanLimits, METER_KIND, type MeterKey } from "./plans";
+import type { PlanLimits } from "./plans";
+import {
+	getPlanLimits,
+	isPerSeatPlan,
+	METER_KIND,
+	type MeterKey,
+} from "./plans";
 
 export type { LimitCheck, LimitState } from "./_metering-core";
 
@@ -94,6 +100,29 @@ async function readValue(scopeId: string, key: MeterKey): Promise<number> {
 	return row?.value ?? 0;
 }
 
+/**
+ * The plan and the limits that actually apply to an account.
+ *
+ * 🔴 Every enforcement path must resolve limits through here, never through
+ * `getPlanLimits(planId)` alone. A per-seat plan's allowances are meaningless
+ * without the seat count, and a caller that forgets it would quietly hold a
+ * fifty-person company to sixteen seats' worth of capacity.
+ *
+ * The seat count comes from the `seats` gauge, which member changes already
+ * maintain — so there is no second source of truth to keep in step. It is read
+ * only for per-seat plans, so the flat tiers pay nothing for this.
+ */
+export async function getAccountLimits(
+	scopeId: string,
+): Promise<{ planId: QuickEnginePlanId; limits: PlanLimits }> {
+	const planId = await getAccountPlanId(scopeId);
+	if (!isPerSeatPlan(planId)) {
+		return { planId, limits: getPlanLimits(planId) };
+	}
+	const seats = await readValue(scopeId, "seats");
+	return { planId, limits: getPlanLimits(planId, seats) };
+}
+
 /** Read-only status of one meter for an account. */
 export async function checkLimit({
 	scopeId,
@@ -102,9 +131,8 @@ export async function checkLimit({
 	scopeId: string;
 	meter: MeterKey;
 }): Promise<LimitCheck> {
-	const planId = await getAccountPlanId(scopeId);
-	const limit = getPlanLimits(planId)[key];
-	return evaluate(key, limit, await readValue(scopeId, key));
+	const { limits } = await getAccountLimits(scopeId);
+	return evaluate(key, limits[key], await readValue(scopeId, key));
 }
 
 export type EnforceResult = LimitCheck & {
@@ -125,8 +153,8 @@ export async function checkAllowance({
 	meter: key,
 	amount = 1,
 }: MeterInput): Promise<EnforceResult> {
-	const planId = await getAccountPlanId(scopeId);
-	const limit = getPlanLimits(planId)[key];
+	const { planId, limits } = await getAccountLimits(scopeId);
+	const limit = limits[key];
 	const used = await readValue(scopeId, key);
 	const allowed = withinGrace(limit, used);
 	const nextUsed = METER_KIND[key] === "gauge" ? amount : used + amount;
@@ -160,7 +188,7 @@ export async function getUsage({
 }: {
 	scopeId: string;
 }): Promise<Record<MeterKey, LimitCheck>> {
-	const limits = getPlanLimits(await getAccountPlanId(scopeId));
+	const { limits } = await getAccountLimits(scopeId);
 	const meters = Object.keys(METER_KIND) as MeterKey[];
 	const entries = await Promise.all(
 		meters.map(

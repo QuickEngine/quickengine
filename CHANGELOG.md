@@ -8,6 +8,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Teams is now a real tier.** Organizations that outgrow Scale can buy seats directly, with
+  every allowance growing as the team does rather than being fixed at the size the plan was
+  bought at. Adding or removing a member updates what is billed straight away.
 - **QuickDash is now a desktop app.** A Tauri shell wraps the same QuickDash you use in the
   browser, so anything that ships to the web appears in the app without an update, and the app
   itself updates only when the shell genuinely changes.
@@ -60,6 +63,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Seat and workspace limits are now enforced.** Both were listed on every plan and neither
+  was ever counted, so an account could hold any number of members or workspaces regardless of
+  its tier. Both are counted from the real records, so a missed update can never leave the
+  number permanently wrong.
+- **The terms and privacy pages now describe the real product.** Plan names match the tiers
+  actually sold, usage allowances name the units actually measured, and the provider list
+  includes the email and AI providers it had been missing along with a plain description of what
+  is sent for AI-assisted setup.
 - **The desktop window can be moved and its header is no longer squashed.** The strip macOS
   reserves for its window buttons is now added above the header rather than taken out of it,
   and the top of the window responds to dragging again.

@@ -141,9 +141,24 @@ function PrivacyPage() {
 				<li>Error monitoring (Sentry)</li>
 				<li>Real-time features (Pusher)</li>
 				<li>Background processing (Inngest)</li>
+				<li>Transactional email (Resend)</li>
+				<li>AI provider (Anthropic), for the optional setup suggestion</li>
 			</ul>
 			<p>
 				A current list of subprocessors is maintained and available on request.
+			</p>
+
+			<h2>5a. AI-assisted setup</h2>
+			<p>
+				If you choose to describe your business during setup, we send that
+				description to Anthropic, our AI provider, to suggest a starting
+				configuration. We send only the description you write and our own
+				catalogue of available configurations. We do not send your business
+				records, clients, invoices, or files. Anthropic processes the request
+				and returns a suggestion; it does not use this content to train its
+				models. This step is optional. You can skip it, and QuickEngine will
+				suggest a configuration without contacting any AI provider. You always
+				review a suggestion before anything is created.
 			</p>
 
 			<h2>6. International Data Transfers</h2>

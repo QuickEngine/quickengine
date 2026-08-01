@@ -17,12 +17,18 @@ import {
 // utility apps) now lives as a module inside QuickDash, not as its own app.
 export type QuickEngineAppId = "quickengine" | "quickdash";
 
-// The self-serve tier ladder, plus Enterprise as a custom conversation.
+// The self-serve tier ladder, plus a custom conversation at the top.
+//
+// ⚠️ `enterprise` is the STORED name for what the pricing ladder now calls
+// "Custom". Renaming it would rewrite a persisted column value, so it stays
+// until someone decides that migration is worth running. Display names live in
+// `plans.ts`; nothing user-facing reads this string.
 export type QuickEnginePlanId =
 	| "free"
 	| "launch"
 	| "grow"
 	| "scale"
+	| "teams"
 	| "enterprise";
 
 export type QuickEngineBillingCycle = "monthly" | "annual";

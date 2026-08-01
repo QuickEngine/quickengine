@@ -18,6 +18,7 @@ import { getCacheProvider } from "@quickengine/cache";
 import {
 	createOrganization,
 	deleteUserAccount,
+	getOrganizationRevenue,
 	getUserOnboardingState,
 	listOrganizationsForUser,
 	markAllNotificationsRead,
@@ -39,6 +40,12 @@ import { respond, respondError } from "./respond";
  * belongs to one workspace, so letting it mint further keys, change billing or
  * delete the account would turn one leaked credential into total control.
  */
+
+/** Both bounds optional: the default window is the last 30 days. */
+const revenueRangeSchema = z.object({
+	from: z.coerce.date().optional(),
+	to: z.coerce.date().optional(),
+});
 
 export const createOrganizationSchema = z.object({
 	name: z.string().trim().min(1).max(120),
@@ -357,6 +364,43 @@ export function registerAccountRoutes(
 	const keys = authorizeAccount(options.platform, {
 		capability: "apikeys.manage",
 	});
+	/**
+	 * Revenue across every workspace the organization owns.
+	 *
+	 * 🔴 Behind `billing.manage`, not `workspace.view`. Whole-organization
+	 * revenue is commercially sensitive in a way one workspace's operational
+	 * numbers are not — a member who can work inside a business does not
+	 * automatically get to see what the company earns.
+	 *
+	 * Defaults to the last 30 days. Both bounds are accepted so a caller can ask
+	 * for a closed month without arithmetic in the browser.
+	 */
+	app.get("/v1/account/revenue", billing, async (c) => {
+		const now = new Date();
+		const parsed = revenueRangeSchema.parse({
+			from: c.req.query("from"),
+			to: c.req.query("to"),
+		});
+		const to = parsed.to ?? now;
+		const from =
+			parsed.from ?? new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+		if (from >= to) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"The start of the range must come before the end.",
+				400,
+			);
+		}
+		return respond(
+			c,
+			await getOrganizationRevenue(c.get("account").organizationId, {
+				from,
+				to,
+			}),
+		);
+	});
+
 	app.get("/v1/account/billing/pricing", billing, async (c) =>
 		respond(c, {
 			currentPlanId: await getAccountPlanId(c.get("account").organizationId),

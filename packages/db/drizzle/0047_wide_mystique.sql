@@ -1,0 +1,2 @@
+CREATE INDEX "api_audit_events_request_idx" ON "api_audit_events" USING btree ("workspace_id","request_id");--> statement-breakpoint
+CREATE INDEX "api_mutations_request_idx" ON "api_mutations" USING btree ("workspace_id","request_id");

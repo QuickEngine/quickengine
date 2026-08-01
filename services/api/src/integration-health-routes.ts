@@ -1,11 +1,12 @@
 import type { CacheProvider } from "@quickengine/cache";
+import { getRequestTrace, getSupportBundle } from "@quickengine/db";
 import { getDegradedProviders } from "@quickengine/provider-health";
 import type { Hono } from "hono";
 import { authorizeWorkspace } from "./authorize";
 import type { ApiLogger } from "./logger";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
-import { respond } from "./respond";
+import { respond, respondError } from "./respond";
 
 /**
  * What is degraded right now, for the workspace's Connect page.
@@ -48,6 +49,38 @@ export function registerIntegrationHealthRoutes(
 		logger: options.logger,
 		policy: RATE_LIMIT_POLICIES.read,
 		scope: "integration-health.read",
+	});
+
+	/**
+	 * What happened under one request id.
+	 *
+	 * Lives beside integration health because they are one surface to a customer:
+	 * "my integration is misbehaving, here is the id it gave me." Same
+	 * authorization, same rate policy.
+	 */
+	app.get("/v1/requests/:requestId", readAccess, readLimit, async (c) =>
+		respond(
+			c,
+			await getRequestTrace(
+				c.get("authorized").workspaceId,
+				c.req.param("requestId"),
+			),
+		),
+	);
+
+	/**
+	 * A diagnostic snapshot to attach to a support request.
+	 *
+	 * Built by allowlist in the data layer — see `support-bundle.ts`. Nothing
+	 * here filters or redacts, because a route that had to strip fields would be
+	 * the wrong place to get it right.
+	 */
+	app.get("/v1/support-bundle", readAccess, readLimit, async (c) => {
+		const bundle = await getSupportBundle(c.get("authorized").workspaceId);
+		if (!bundle) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		return respond(c, bundle);
 	});
 
 	app.get("/v1/integration-health", readAccess, readLimit, (c) => {

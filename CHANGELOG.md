@@ -8,6 +8,17 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A completed appointment can become an invoice.** The service and its price are recorded as
+  they were on the day, the invoice arrives as a draft so nobody is billed by accident, and
+  raising it twice returns the same invoice rather than charging twice.
+- **Saved views.** Filters, sorting and paging for any module list can be named and kept, pinned
+  to your home page, and are private to you rather than shared with the workspace.
+- **Revenue across the whole organization.** The account console can show what every workspace
+  collected and refunded over a period, reconciled to real payments and reported per currency
+  rather than added together.
+- **A support bundle and a request lookup.** A workspace can produce a diagnostic snapshot to
+  send with a support request, and look up exactly what happened under any request id the API
+  returned. Neither carries credentials or customer records.
 - **Connect now shows when an integration is degraded.** A workspace can see which capabilities
   are running on a stand-in and what stops working, instead of a feature quietly returning
   nothing that looks the same as having no records.

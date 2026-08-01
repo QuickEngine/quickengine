@@ -30,6 +30,7 @@ import { registerRealtimeRoutes } from "./realtime-routes";
 import { registerReportingRoutes } from "./reporting-routes";
 import { registerResendWebhookRoutes } from "./resend-webhook-routes";
 import { registerRolesRoutes } from "./roles-routes";
+import { registerSavedViewRoutes } from "./saved-view-routes";
 import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
 import { initializeTelemetry } from "./telemetry";
@@ -84,6 +85,7 @@ const app = createApp(config, {
 		registerReportingRoutes(app, dependencies);
 		registerWebhookRoutes(app, dependencies);
 		registerIntegrationHealthRoutes(app, dependencies);
+		registerSavedViewRoutes(app, dependencies);
 		registerRealtimeRoutes(app, dependencies);
 		registerRolesRoutes(app, dependencies);
 		registerResendWebhookRoutes(app, { logger });

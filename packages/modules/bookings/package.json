@@ -21,6 +21,7 @@
 	"dependencies": {
 		"@quickengine/api-contracts": "workspace:*",
 		"@quickengine/db": "workspace:*",
+		"@quickengine/mod-invoicing": "workspace:*",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

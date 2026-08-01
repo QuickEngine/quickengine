@@ -1,4 +1,8 @@
-import { admitWorkspace, syncWorkspaces } from "@quickengine/billing";
+import {
+	admitWorkspace,
+	syncSeats,
+	syncWorkspaces,
+} from "@quickengine/billing";
 import {
 	createWorkspaceForUser,
 	deleteWorkspace,
@@ -159,6 +163,16 @@ export function registerAccountWorkspaceRoutes(
 				// because onboarding creates the workspace under the personal org the
 				// data layer resolved, which is not always the one on the request.
 				await syncWorkspaces(workspace.organizationId);
+				// 🔴 Also seats, and this path is the ONLY one that initialises them for
+				// a real account. `syncSeats` is otherwise called from organization
+				// creation, member add and member remove — none of which onboarding
+				// touches, because it creates the personal org inside the data layer via
+				// `ensurePersonalOrg`. Without this every signed-up account records
+				// `seats = 0` forever: the gate still holds (it counts members directly)
+				// but the usage dashboard reads zero and a per-seat plan falls back to
+				// its floor instead of the real headcount. Found in production on
+				// 2026-08-01, not by any test.
+				await syncSeats(workspace.organizationId);
 				return respond(c, workspace, 201);
 			} catch (error) {
 				const mapped = messageFor(error);

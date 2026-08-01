@@ -24,7 +24,8 @@
 		"db:studio": "drizzle-kit studio",
 		"db:parity": "node --env-file=../../.env.local parity.mjs",
 		"db:migration-parity": "node --env-file=../../.env.local migration-parity.mjs",
-		"db:migration-parity:ci": "node migration-parity.mjs"
+		"db:migration-parity:ci": "node migration-parity.mjs",
+		"db:restore-drill": "node --env-file=../../.env.local restore-drill.mjs"
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.0.2",

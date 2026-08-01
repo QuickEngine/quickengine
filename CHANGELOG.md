@@ -8,6 +8,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Connect now shows when an integration is degraded.** A workspace can see which capabilities
+  are running on a stand-in and what stops working, instead of a feature quietly returning
+  nothing that looks the same as having no records.
 - **Search now finds records across your whole workspace.** Clients, catalog items, invoices,
   orders, quotes, bookings, projects, milestones, shipments, contracts, fulfillments and
   payments are all searchable. Previously only clients were.
@@ -66,6 +69,8 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Seat counts are recorded for accounts created by signing up.** They were only counted when
+  an organization was created directly, so a new account reported no seats in use.
 - **Plan limits on people and workspaces are now enforced.** Inviting someone or creating a
   workspace beyond what a plan includes is refused with a clear explanation and the two ways
   forward, instead of being allowed silently.

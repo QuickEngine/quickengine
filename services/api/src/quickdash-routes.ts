@@ -1,3 +1,4 @@
+import { trackProductEvent } from "@quickengine/analytics";
 import {
 	claimIdempotencyKey,
 	completeFirstActionChecklistState,
@@ -140,6 +141,21 @@ export function registerQuickDashRoutes(
 			!alreadyCompleted && firstActions.length > 0 && guided.nextStep === null;
 		if (completedNow) {
 			await completeFirstActionChecklistState(userId, workspaceId);
+
+			// 🔴 The most important event in the system. The guided actions are real
+			// business outcomes — an invoice sent, an order taken — so finishing them
+			// is the moment an account becomes a user rather than a signup.
+			//
+			// `completedNow` rather than `checklistComplete`: the latter is true on
+			// every subsequent request, which would report one activation thousands
+			// of times and make the rate meaningless.
+			trackProductEvent({
+				name: "activation.first_outcome",
+				surface: "quickdash",
+				userId,
+				workspaceId,
+				properties: { goals: firstActions.length },
+			});
 		}
 		const checklistComplete = alreadyCompleted || completedNow;
 		const checklistItems = [
@@ -210,6 +226,18 @@ export function registerQuickDashRoutes(
 			limit: 8,
 			filters: { workspaceId: c.get("authorized").workspaceId },
 		});
+		// 🔴 A failed search is a feature backlog written by users. The QUERY is
+		// deliberately never recorded — it is customer content and can quote a
+		// client's name straight back into telemetry. Only that it failed, and how
+		// long it was, which is enough to tell a typo from a missing capability.
+		trackProductEvent({
+			name: results.length > 0 ? "command.succeeded" : "command.failed",
+			surface: "quickdash",
+			userId: sessionIdentity(c),
+			workspaceId: c.get("authorized").workspaceId,
+			properties: { results: results.length, queryLength: query.length },
+		});
+
 		return respond(c, {
 			items: results.map((result) => ({
 				objectID: result.objectID,

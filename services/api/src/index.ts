@@ -22,11 +22,13 @@ import { registerInvoicesRoutes } from "./invoices-routes";
 import { createJsonLogger } from "./logger";
 import { registerOrdersRoutes } from "./orders-routes";
 import { registerPaymentsRoutes } from "./payments-routes";
+import { registerProductEventRoutes } from "./product-event-routes";
 import { registerProductsServicesRoutes } from "./products-services-routes";
 import { registerProjectsRoutes } from "./projects-routes";
 import { registerQuickDashRoutes } from "./quickdash-routes";
 import { registerQuotesRoutes } from "./quotes-routes";
 import { registerRealtimeRoutes } from "./realtime-routes";
+import { registerAllRoutes } from "./register-routes";
 import { registerReportingRoutes } from "./reporting-routes";
 import { registerResendWebhookRoutes } from "./resend-webhook-routes";
 import { registerRolesRoutes } from "./roles-routes";
@@ -45,10 +47,12 @@ const app = createApp(config, {
 	}),
 	readinessChecks: createDefaultReadinessChecks(config),
 	registerRoutes(app, logger) {
-		const dependencies = {
-			cache: getCacheProvider(),
+		// Delegated so `tenant-isolation.test.ts` can build the identical route
+		// table. A sweep over routes the test registers itself would prove nothing
+		// about the app that actually ships.
+		registerAllRoutes(app, {
 			logger,
-			platform: {
+			dependencies: {
 				...defaultPlatformDependencies,
 				// Only real deployments meter and gate; local development and tests do
 				// neither. Imported lazily — pulling billing into this module's type
@@ -66,38 +70,7 @@ const app = createApp(config, {
 						}
 					: {}),
 			},
-			uow: mutationUnitOfWork,
-		};
-		registerClientRecordRoutes(app, dependencies);
-		registerProductsServicesRoutes(app, dependencies);
-		registerQuotesRoutes(app, dependencies);
-		registerInvoicesRoutes(app, dependencies);
-		registerPaymentsRoutes(app, dependencies);
-		registerOrdersRoutes(app, dependencies);
-		registerFulfillmentRoutes(app, dependencies);
-		registerInventoryRoutes(app, dependencies);
-		registerShippingRoutes(app, dependencies);
-		registerProjectsRoutes(app, dependencies);
-		registerBookingsRoutes(app, dependencies);
-		registerTimeTrackingRoutes(app, dependencies);
-		registerContractsRoutes(app, dependencies);
-		registerFilesRoutes(app, dependencies);
-		registerReportingRoutes(app, dependencies);
-		registerWebhookRoutes(app, dependencies);
-		registerIntegrationHealthRoutes(app, dependencies);
-		registerSavedViewRoutes(app, dependencies);
-		registerRealtimeRoutes(app, dependencies);
-		registerRolesRoutes(app, dependencies);
-		registerResendWebhookRoutes(app, { logger });
-		registerBillingInfoRoutes(app);
-		registerAuthRoutes(app);
-		registerAccountWorkspaceRoutes(app, { platform: dependencies.platform });
-		registerAccountTeamRoutes(app, { platform: dependencies.platform });
-		registerAccountRoutes(app, { platform: dependencies.platform });
-		registerAccountReadRoutes(app, { platform: dependencies.platform });
-		registerQuickDashRoutes(app, { platform: dependencies.platform });
-		registerInngestRoutes(app);
-		registerStripeWebhookRoutes(app, { logger });
+		});
 	},
 	telemetry: initializeTelemetry(config),
 });

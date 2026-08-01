@@ -344,6 +344,13 @@
 			"when": 1785579673004,
 			"tag": "0048_black_risque",
 			"breakpoints": true
+		},
+		{
+			"idx": 49,
+			"version": "7",
+			"when": 1785614898054,
+			"tag": "0049_smart_radioactive_man",
+			"breakpoints": true
 		}
 	]
 }

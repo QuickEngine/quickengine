@@ -22,10 +22,12 @@ module recipes rather than forked into separate applications.
 | `account.quickdash.xyz` | Console — organizations, workspaces, team, billing, usage |
 | `auth.quickdash.xyz` | Identity — signup, login, passkeys, TOTP, sessions |
 | `api.quickdash.xyz` | The public API |
-| `docs.` · `help.` · `status.` | Documentation, support, status — planned |
+| `quickdash.statuspage.io` | **Status — live.** Incidents and uptime |
+| `docs.` · `help.` | Documentation and support — planned |
 
-**QuickDash Desktop** (macOS · Windows · Linux) and **QuickDash Mobile** (iOS · Android) are
-planned, both wrapping the same web product.
+**QuickDash Desktop** (macOS · Windows · Linux) is a Tauri shell around the deployed web
+product, so a web release reaches the app without an update. **QuickDash Mobile** (iOS ·
+Android) is planned from the same project.
 
 ---
 
@@ -66,8 +68,8 @@ always finishes** — limits stop the next request, never the one in progress.
 
 ## Stack
 
-TypeScript (strict) · **Hono** (the canonical API) · Next.js 16 → **migrating to Vite +
-TanStack** · Tailwind + shadcn/ui · Drizzle + Postgres (Neon) · Better Auth · Redis · Stripe ·
+TypeScript (strict) · **Hono** (the canonical API) · **Vite + TanStack Router/Query** ·
+Tailwind + shadcn/ui · Drizzle + Postgres (Neon) · Better Auth · Redis · Stripe ·
 Resend · Cloudinary + Vercel Blob · Algolia · Sentry · Pusher · Inngest · **Biome** ·
 pnpm + Turborepo · Vercel
 
@@ -113,23 +115,28 @@ pnpm test
 
 ## Plans
 
-| | Free | Launch | Grow | Scale | Custom |
-|---|---|---|---|---|---|
-| Price / mo | $0 | $30 | $90 | $240 | conversation |
-| Seats | 1 | 2 | 5 | 15 | custom |
-| Storage | 1 GB | 25 GB | 100 GB | 500 GB | custom |
-| API requests | 10k | 250k | 1M | 5M | custom |
-| AI actions | 25 | 500 | 2,500 | 10,000 | custom |
+| | Free | Launch | Grow | Scale | Teams | Custom |
+|---|---|---|---|---|---|---|
+| Price / mo | $0 | $30 | $90 | $240 | **$30 per seat** | conversation |
+| Seats | 1 | 2 | 5 | 15 | 16 minimum | custom |
+| Workspaces | 1 | 3 | 10 | 25 | unlimited | custom |
+| Storage | 1 GB | 25 GB | 100 GB | 500 GB | 50 GB per seat | custom |
+| API requests | 10k | 250k | 1M | 5M | 500k per seat | custom |
+| AI actions | 25 | 500 | 2,500 | 10,000 | 1,500 per seat | custom |
+
+Annual is ten months on every tier. **Teams bills per seat and starts at 16**, so its entry
+price is $480/mo — the point at which a company has outgrown Scale's flat 15.
 
 Modules are free, paid-to-unlock-then-unlimited, or resource-metered. AI beyond the included
-allowance draws on prepaid credits.
+allowance draws on prepaid credits. Outbound webhook deliveries are counted but not capped.
 
 ---
 
 ## Status
 
-Backend complete and deployed. Currently migrating the frontends off Next.js, then a full
-UI/UX pass. Automation and workflow orchestration stay deliberately out of the current delivery
-path — the goal is one complete, truthful business workflow before the ecosystem widens.
+Backend complete and deployed. The frontends run on Vite and TanStack; **Next.js is gone
+entirely**. A full UI/UX pass is the next major body of work. Automation and workflow
+orchestration stay deliberately out of the current delivery path — the goal is one complete,
+truthful business workflow before the ecosystem widens.
 
 Not open source. All rights reserved.

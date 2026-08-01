@@ -1,4 +1,5 @@
 import { passkey } from "@better-auth/passkey";
+import { trackProductEvent } from "@quickengine/analytics";
 import { db, ensurePersonalOrg } from "@quickengine/db";
 import {
 	quickengineAccounts,
@@ -78,6 +79,19 @@ export const auth = betterAuth({
 			create: {
 				after: async (user) => {
 					await ensurePersonalOrg(user.id, user.name ?? user.email);
+					// The top of the funnel and the denominator for activation.
+					// Fire-and-forget: telemetry must never be able to fail a signup.
+					//
+					// ⚠️ No name, no email, no provider-supplied profile — a signup event
+					// carries WHO by id and nothing else. `verified` is a dimension
+					// because social signups arrive pre-verified and that changes what
+					// the verification step means.
+					trackProductEvent({
+						name: "signup.completed",
+						surface: "auth",
+						userId: user.id,
+						properties: { verified: Boolean(user.emailVerified) },
+					});
 				},
 			},
 		},

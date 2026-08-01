@@ -19,6 +19,7 @@
 	},
 	"dependencies": {
 		"@better-auth/passkey": "^1.6.23",
+		"@quickengine/analytics": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/email": "workspace:*",
 		"@quickengine/env": "workspace:*",

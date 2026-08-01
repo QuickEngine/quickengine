@@ -4,6 +4,7 @@ import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
 import {
 	BOOKING_STATUSES,
+	convertBookingToInvoiceCommand,
 	createBookingCommand,
 	deleteBookingCommand,
 	getBookingDto,
@@ -134,6 +135,25 @@ export function registerBookingsRoutes(
 			),
 		);
 	});
+	/**
+	 * Raise a draft invoice from a completed booking.
+	 *
+	 * Idempotent by the booking, not only by the header: calling it twice returns
+	 * the same invoice with a 200 rather than billing the customer again. A retry
+	 * after a dropped connection is the case this has to survive, and that caller
+	 * has no idempotency key to offer.
+	 */
+	app.post("/v1/bookings/:id/invoice", writeAccess, writeLimit, async (c) => {
+		const id = uuid.parse(c.req.param("id"));
+		const context = await mutationContext(c, "bookings.convert-to-invoice", {
+			id,
+		});
+		return respondMutation(
+			c,
+			await convertBookingToInvoiceCommand(context, id, {}, options.uow),
+		);
+	});
+
 	app.delete("/v1/bookings/:id", writeAccess, writeLimit, async (c) => {
 		const id = uuid.parse(c.req.param("id"));
 		const context = await mutationContext(c, "bookings.delete", { id });

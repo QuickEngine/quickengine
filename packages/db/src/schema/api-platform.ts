@@ -50,6 +50,10 @@ export const apiMutations = pgTable(
 			table.idempotencyKey,
 		),
 		index("api_mutations_started_idx").on(table.startedAt),
+		// Diagnostics: "what happened with request X". Workspace-scoped because a
+		// request id is only ever looked up from inside the workspace that made it,
+		// and the index has to match that access path or it scans the table.
+		index("api_mutations_request_idx").on(table.workspaceId, table.requestId),
 		check(
 			"api_mutations_completed_result_check",
 			sql`${table.state} <> 'completed' or (${table.responseStatus} is not null and ${table.completedAt} is not null)`,
@@ -87,6 +91,11 @@ export const apiAuditEvents = pgTable(
 		index("api_audit_events_workspace_time_idx").on(
 			table.workspaceId,
 			table.occurredAt,
+		),
+		// Same access path as the mutation index: one request id, one workspace.
+		index("api_audit_events_request_idx").on(
+			table.workspaceId,
+			table.requestId,
 		),
 		index("api_audit_events_resource_idx").on(
 			table.workspaceId,

@@ -848,6 +848,9 @@ importers:
       '@quickengine/event-dispatch':
         specifier: workspace:*
         version: link:../event-dispatch
+      '@quickengine/mod-bookings':
+        specifier: workspace:*
+        version: link:../modules/bookings
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../modules/client-records
@@ -863,6 +866,9 @@ importers:
       '@quickengine/mod-payments':
         specifier: workspace:*
         version: link:../modules/payments
+      '@quickengine/mod-products-services':
+        specifier: workspace:*
+        version: link:../modules/products-services
       '@quickengine/mod-projects-tasks':
         specifier: workspace:*
         version: link:../modules/projects-tasks
@@ -980,6 +986,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
+      '@quickengine/mod-invoicing':
+        specifier: workspace:*
+        version: link:../invoicing
       zod:
         specifier: ^4.3.6
         version: 4.4.3

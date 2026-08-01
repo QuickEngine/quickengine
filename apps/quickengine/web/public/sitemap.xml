@@ -2,331 +2,331 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 	<url>
 		<loc>https://quickengine.xyz/</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>weekly</changefreq>
 		<priority>1.0</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/about</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/blog</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/brand</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/business</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/business/agencies</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/business/ecommerce</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/business/enterprise</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/business/freelancers</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/business/migrations</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/business/saas</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/business/startups</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/careers</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/case-studies</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/changelog</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/checkout/cancel</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/checkout/success</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/community</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/company</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/contact</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/cookies</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/customers</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/developers</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/docs</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/docs/api</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/docs/cli</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/docs/examples</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/docs/quickstarts</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/docs/sdks</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/events</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/guides</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/partners</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/pricing</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/privacy</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/marketplace</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/analytics</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/auth</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/billing</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/email</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/jobs</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/realtime</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/search</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/storage</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/modules/webhooks</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.5</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/products/workspaces</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.6</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/refund</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/resources</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/startup-program</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/status</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/support</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/terms</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/tutorials</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>
 	<url>
 		<loc>https://quickengine.xyz/webinars</loc>
-		<lastmod>2026-08-01T06:36:39.430Z</lastmod>
+		<lastmod>2026-08-01T10:51:28.030Z</lastmod>
 		<changefreq>monthly</changefreq>
 		<priority>0.8</priority>
 	</url>

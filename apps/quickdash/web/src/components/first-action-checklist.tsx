@@ -1,12 +1,12 @@
 "use client";
 
 import {
-	CaretDown,
-	CaretUp,
-	Check,
-	CheckCircle,
-	Circle,
-	X,
+	CaretDownIcon,
+	CaretUpIcon,
+	CheckCircleIcon,
+	CheckIcon,
+	CircleIcon,
+	XIcon,
 } from "@phosphor-icons/react";
 import {
 	Accordion,
@@ -71,22 +71,22 @@ export function FirstActionChecklist({
 
 	if (collapsed) {
 		return (
-			<div className="fixed right-5 bottom-5 z-40">
+			<div className="fixed right-8 bottom-8 z-40">
 				<Button
 					type="button"
 					variant="secondary"
-					className="h-11 rounded-full border bg-card px-4 text-card-foreground opacity-100 shadow-lg hover:bg-muted"
+					className="btn btn-secondary h-9 gap-2 rounded-full border-[var(--b3)] bg-[var(--b2)] px-4 font-body text-[13px] text-ink shadow-2xl shadow-black/50"
 					disabled={pending}
 					onClick={() => {
 						setOpenGoalId("");
 						persist(false, false);
 					}}
 				>
-					<span className="font-medium">Getting started</span>
-					<span className="text-muted-foreground text-xs">
+					<span className="font-[450]">Getting started</span>
+					<span className="text-[12px] text-dim">
 						{completed}/{requiredSteps.length}
 					</span>
-					<CaretUp />
+					<CaretUpIcon size={13} />
 				</Button>
 			</div>
 		);
@@ -97,31 +97,36 @@ export function FirstActionChecklist({
 			<aside
 				aria-label="Getting started complete"
 				aria-live="polite"
-				className="fixed right-5 bottom-5 z-40 w-[min(24rem,calc(100vw-2.5rem))] rounded-2xl border bg-background p-5 shadow-xl"
+				className="fixed right-8 bottom-8 z-40 w-[min(22rem,calc(100vw-4rem))] rounded-xl border border-[var(--b3)] bg-[var(--b2)] p-5 shadow-2xl shadow-black/50"
 			>
 				<div className="flex items-start gap-3">
-					<span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-						<CheckCircle className="size-6" weight="fill" />
+					<span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-void text-signal">
+						<CheckCircleIcon size={18} weight="fill" />
 					</span>
 					<div>
-						<h2 className="font-semibold">You’re ready to go</h2>
-						<p className="mt-1 text-muted-foreground text-sm">
+						<h2 className="font-body font-[450] text-[14px] text-ink">
+							You’re ready to go
+						</h2>
+						<p className="mt-1 font-body text-[12px] text-dim leading-relaxed">
 							Your workspace setup is complete. Everything is ready for what you
 							build next.
 						</p>
 					</div>
 				</div>
-				<div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
-					<div className="h-full w-full rounded-full bg-primary" />
+				<div className="mt-4 h-1 overflow-hidden rounded-full bg-void">
+					<div className="h-full w-full rounded-full bg-signal" />
 				</div>
 				{error && (
-					<p className="mt-3 text-destructive text-xs" role="alert">
+					<p
+						className="mt-3 font-body text-[11px] text-destructive"
+						role="alert"
+					>
 						{error}
 					</p>
 				)}
 				<Button
 					type="button"
-					className="mt-4 w-full"
+					className="btn btn-primary mt-4 h-8 w-full rounded-full bg-invert font-body font-[450] text-[13px] text-on-invert"
 					disabled={pending}
 					onClick={() => persist(true, true)}
 				>
@@ -134,19 +139,21 @@ export function FirstActionChecklist({
 	return (
 		<aside
 			aria-label="Getting started"
-			className="fixed right-5 bottom-5 z-40 w-[min(24rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border bg-background shadow-xl"
+			className="fixed right-8 bottom-8 z-40 w-[min(22rem,calc(100vw-4rem))] overflow-hidden rounded-xl border border-[var(--b3)] bg-[var(--b2)] shadow-2xl shadow-black/50"
 		>
-			<div className="flex items-start justify-between gap-4 border-b px-4 py-3">
+			<div className="flex items-start justify-between gap-4 border-[var(--b3)] border-b px-4 py-3">
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center justify-between gap-3">
-						<h2 className="font-semibold text-sm">Getting started</h2>
-						<span className="text-muted-foreground text-xs">
+						<h2 className="font-body font-[450] text-[13px] text-ink">
+							Getting started
+						</h2>
+						<span className="font-body text-[12px] text-dim">
 							{completed} of {requiredSteps.length}
 						</span>
 					</div>
-					<div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+					<div className="mt-2 h-1 overflow-hidden rounded-full bg-void">
 						<div
-							className="h-full rounded-full bg-primary transition-[width]"
+							className="h-full rounded-full bg-signal transition-[width]"
 							style={{ width: `${percent}%` }}
 						/>
 					</div>
@@ -160,7 +167,7 @@ export function FirstActionChecklist({
 						disabled={pending}
 						onClick={() => persist(true, false)}
 					>
-						<CaretDown />
+						<CaretDownIcon size={13} />
 					</Button>
 					<Button
 						type="button"
@@ -170,7 +177,7 @@ export function FirstActionChecklist({
 						disabled={pending}
 						onClick={() => persist(true, true)}
 					>
-						<X />
+						<XIcon size={13} />
 					</Button>
 				</div>
 			</div>
@@ -186,12 +193,13 @@ export function FirstActionChecklist({
 						<AccordionTrigger className="gap-2 px-1 py-3 hover:no-underline">
 							<span className="flex min-w-0 items-center gap-2">
 								{item.completed ? (
-									<Check
-										className="size-4 shrink-0 text-primary"
+									<CheckIcon
+										size={14}
 										weight="bold"
+										className="shrink-0 text-signal"
 									/>
 								) : (
-									<Circle className="size-4 shrink-0 text-muted-foreground" />
+									<CircleIcon size={14} className="shrink-0 text-dim" />
 								)}
 								<span className="truncate">{item.label}</span>
 							</span>
@@ -204,12 +212,16 @@ export function FirstActionChecklist({
 									className={`-ml-2 flex gap-2 rounded-lg px-2 py-2 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${step.isNext ? "bg-muted" : ""}`}
 								>
 									{step.completed ? (
-										<Check
-											className="mt-0.5 size-3.5 shrink-0 text-primary"
+										<CheckIcon
+											size={13}
 											weight="bold"
+											className="mt-0.5 shrink-0 text-signal"
 										/>
 									) : (
-										<Circle className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+										<CircleIcon
+											size={13}
+											className="mt-0.5 shrink-0 text-dim"
+										/>
 									)}
 									<span className="min-w-0">
 										<span
@@ -233,7 +245,10 @@ export function FirstActionChecklist({
 				))}
 			</Accordion>
 			{error && (
-				<p className="border-t px-4 py-2 text-destructive text-xs" role="alert">
+				<p
+					className="border-[var(--b3)] border-t px-4 py-2 font-body text-[11px] text-destructive"
+					role="alert"
+				>
 					{error}
 				</p>
 			)}

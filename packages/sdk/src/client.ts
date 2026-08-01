@@ -18,11 +18,10 @@ import { ShipmentsResource } from "./resources/shipments";
 import { TimeResource } from "./resources/time";
 import { WebhooksResource } from "./resources/webhooks";
 import type {
-	QuickClientOptions,
+	QuickClientConstructorOptions,
 	QuickCredential,
 	QuickRequestOptions,
 	QuickResponse,
-	QuickSessionCredential,
 } from "./types";
 
 const cleanSegment = (value: string, label: string) => {
@@ -66,6 +65,10 @@ const credentialHeaders = (credential: QuickCredential): HeadersInit => {
 			};
 		case "session":
 			return {};
+		case "bearer":
+			// The same session token a cookie would have carried. Better Auth's
+			// `bearer()` plugin accepts it on any endpoint that accepts a session.
+			return { Authorization: `Bearer ${credential.token}` };
 	}
 };
 
@@ -96,16 +99,18 @@ export class QuickClient {
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
-	constructor(
-		options:
-			| QuickClientOptions<QuickCredential>
-			| QuickClientOptions<QuickSessionCredential>,
-	) {
+	constructor(options: QuickClientConstructorOptions) {
 		this.baseUrl = cleanBaseUrl(options.baseUrl);
 		this.workspaceId = options.workspaceId
 			? cleanSegment(options.workspaceId, "workspaceId")
 			: null;
-		if (!this.workspaceId && options.credential.type !== "session") {
+		// `bearer` is a session token carried explicitly, so it reaches the same
+		// account-scoped endpoints without a workspace.
+		if (
+			!this.workspaceId &&
+			options.credential.type !== "session" &&
+			options.credential.type !== "bearer"
+		) {
 			throw new TypeError("workspaceId is required");
 		}
 		this.apiVersion = cleanSegment(options.apiVersion ?? "v1", "apiVersion");
@@ -177,6 +182,9 @@ export class QuickClient {
 				...requestInit,
 				method,
 				credentials:
+					// `bearer` deliberately does NOT include cookies: the token is the
+					// entire credential, and a native shell has no first-party cookie to
+					// send anyway.
 					this.credential.type === "session"
 						? (requestInit.credentials ?? "include")
 						: requestInit.credentials,

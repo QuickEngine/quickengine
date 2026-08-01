@@ -1,0 +1,30 @@
+[package]
+name = "quickdash-desktop"
+version = "0.1.0"
+description = "QuickDash desktop shell"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "quickdash_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# `generate_context!` expands to code that names `serde_json` directly, so it has
+# to be a declared dependency even though nothing here calls it.
+serde_json = "1"
+# The shell updates itself; the UI does not need to. See the note in main.rs.
+tauri-plugin-updater = "2"
+# Catches the `quickdash://` callback after the system browser finishes OAuth.
+tauri-plugin-deep-link = "2"
+# Opens the system browser for sign-in. Google degrades and can refuse OAuth in
+# an embedded webview, so authentication has to leave this window.
+tauri-plugin-opener = "2"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

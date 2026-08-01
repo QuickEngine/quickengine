@@ -1,6 +1,7 @@
 import {
 	createWorkspaceForUser,
 	deleteWorkspace,
+	nameOrganizationFromBusiness,
 	renameWorkspace,
 	setWorkspaceArchived,
 	setWorkspaceModuleEnabled,
@@ -118,6 +119,14 @@ export function registerAccountWorkspaceRoutes(
 					organizationId: input.organizationId,
 					completeOnboarding: input.completeOnboarding,
 				});
+				// Onboarding only: the business name the customer typed names their
+				// organisation, not just the workspace. Runs after the workspace commits
+				// so a failure here cannot leave a half-created workspace behind — a
+				// wrongly-named org is recoverable, a missing workspace is not.
+				if (input.completeOnboarding) {
+					await nameOrganizationFromBusiness(userId, input.name);
+				}
+
 				if (!workspace) {
 					// Onboarding already ran. Replaying it would create a duplicate first
 					// workspace, so this is a conflict rather than a silent success.

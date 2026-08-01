@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **QuickDash is now a desktop app.** A Tauri shell wraps the same QuickDash you use in the
+  browser, so anything that ships to the web appears in the app without an update, and the app
+  itself updates only when the shell genuinely changes.
+- **Signing in from the desktop app now happens in your own browser.** Choosing Google or
+  GitHub opens your normal browser, and the app is signed in the moment you finish, instead of
+  showing the stripped-down sign-in that providers give apps that embed a browser window.
+
 - **Commerce records now keep their working view.** Products, inventory and orders share
   consistent search, status filters, sorting, result counts and pagination, with the current
   view encoded in the URL so it survives refreshes and can be shared.
@@ -53,6 +60,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **The desktop window can be moved and its header is no longer squashed.** The strip macOS
+  reserves for its window buttons is now added above the header rather than taken out of it,
+  and the top of the window responds to dragging again.
 - **Workspaces open again after setup.** Finishing workspace setup could fail with a 500 because
   a database column present in development was missing in production. Both databases now match.
 - **Signed-in sessions no longer fail roughly once a day.** A leftover Next.js integration ran

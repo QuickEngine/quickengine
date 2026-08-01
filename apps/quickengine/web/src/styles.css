@@ -1,5 +1,6 @@
 @import "@quickengine/ui/fonts.css";
 @import "@quickengine/ui/globals.css";
+@import "@quickengine/ui/theme.css";
 @import "@quickengine/ui/brand.css";
 
 /* Tailwind v4 must scan the shared UI package so its component + brand classes
@@ -17,5 +18,29 @@
 @media (min-width: 640px) {
 	.page-gutter {
 		padding-inline: 9.5rem;
+	}
+}
+
+/* The header is `fixed`, so it no longer reserves its own height and the content
+   below must offset by exactly as much. Both read this one value, so changing the
+   header height cannot leave the page overlapping or gapped. */
+:root {
+	--header-h: 4rem;
+}
+
+/* ── The mesh ─────────────────────────────────────────────────────────────
+   Three soft blobs, static. They drifted on staggered periods until 2026-07-31;
+   the animation was removed because opaque page content covers this entirely and
+   it is only ever glimpsed at the overscroll edge — real GPU cost for something
+   nobody sees. */
+.mesh-blob {
+	position: absolute;
+	border-radius: 9999px;
+	filter: blur(90px);
+	will-change: transform;
+}
+@media (min-width: 768px) {
+	.mesh-blob {
+		filter: blur(130px);
 	}
 }

@@ -74,7 +74,10 @@ export function Breadcrumbs() {
 
 					return (
 						<Fragment key={path}>
-							<BreadcrumbItem>
+							{/* Parent crumbs are desktop-only. On a phone the header shows the
+							    page name alone — a trail at 375px costs the width the name
+							    needs, and the leaf is the whole answer. */}
+							<BreadcrumbItem className={isLast ? "" : "hidden md:inline-flex"}>
 								{isLast ? (
 									<BreadcrumbPage>{label}</BreadcrumbPage>
 								) : (
@@ -84,7 +87,7 @@ export function Breadcrumbs() {
 								)}
 							</BreadcrumbItem>
 							{!isLast && (
-								<BreadcrumbSeparator>
+								<BreadcrumbSeparator className="hidden md:block">
 									<CaretRight />
 								</BreadcrumbSeparator>
 							)}

@@ -24,6 +24,24 @@ export type QuickDashContext = {
 };
 
 export const quickDashQueries = {
+	/**
+	 * The organisation's plan, for the tier badge in the header.
+	 *
+	 * Read from the account boundary rather than the QuickDash context, which
+	 * carries no billing state. `sessionApi` because account endpoints are
+	 * session-scoped, not workspace-scoped.
+	 */
+	plan: (organizationId: string | null | undefined) =>
+		queryOptions({
+			queryKey: ["quickdash", "plan", organizationId],
+			queryFn: async () =>
+				(
+					await sessionApi.request<{ planId: string }>(
+						`/account/plan?organizationId=${encodeURIComponent(organizationId ?? "")}`,
+					)
+				).data,
+			enabled: Boolean(organizationId),
+		}),
 	workspaces: () =>
 		queryOptions({
 			queryKey: ["quickdash", "workspaces"],

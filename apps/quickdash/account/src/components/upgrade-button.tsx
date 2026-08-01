@@ -29,7 +29,7 @@ export function UpgradeButton() {
 		<Link
 			to="/billing/plans"
 			title={title}
-			className="inline-flex items-center gap-1.5 rounded-full border border-foreground/15 px-3 py-1 font-medium text-foreground text-xs transition-colors hover:bg-foreground/5"
+			className="btn btn-secondary pointer-events-auto inline-flex h-7 items-center gap-1.5 rounded-full bg-void px-3 font-body font-[450] text-[13px] text-ink"
 		>
 			{attention ? (
 				<span

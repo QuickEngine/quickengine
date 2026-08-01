@@ -1,7 +1,6 @@
 import { CaretUpDown, Check, Plus } from "@phosphor-icons/react";
 import { GeneratedAvatar } from "@quickengine/ui";
 import { Avatar } from "@quickengine/ui/components/ui/avatar";
-import { Badge } from "@quickengine/ui/components/ui/badge";
 import {
 	Command,
 	CommandEmpty,
@@ -52,27 +51,27 @@ export function TeamSwitcher({
 
 	return (
 		<div className="flex w-full items-center gap-2">
-			<Avatar className="size-8 shrink-0">
+			<span className="size-6 shrink-0 overflow-hidden rounded-full ring-1 ring-edge">
 				<GeneratedAvatar seed={`account:${active.id}`} className="size-full" />
-			</Avatar>
-			<span className="min-w-0 truncate font-normal text-[15px] text-foreground">
-				{active.name}
 			</span>
-			<Badge
-				variant="secondary"
-				className="h-5 shrink-0 rounded-full border-transparent bg-foreground/10 px-2.5 font-medium text-[11px] text-foreground"
-			>
-				{tier}
-			</Badge>
+			{/* Name, tier and caret all INSIDE the trigger, matching QuickDash's
+			    workspace switcher. Previously only the 20px caret was clickable while
+			    the name sat inert beside it — a control that looks like one button has
+			    to behave like one. */}
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger className="ml-auto flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-foreground/40">
-					<CaretUpDown className="size-5" />
+				<PopoverTrigger className="btn btn-secondary pointer-events-auto inline-flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-lg bg-void px-2.5 text-ink outline-none">
+					<span className="truncate font-body text-[13px]">{active.name}</span>
+					<span className="shrink-0 rounded-full bg-field px-2 py-0.5 font-body text-[10px] text-dim capitalize">
+						{tier}
+					</span>
+					<CaretUpDown size={12} className="ml-auto shrink-0 text-dim" />
 				</PopoverTrigger>
 				<PopoverContent
-					align="end"
-					sideOffset={20}
+					align="start"
+					alignOffset={-32}
+					sideOffset={8}
 					collisionPadding={8}
-					className="w-80 p-0"
+					className="w-72 p-0 [&_[data-slot=command-input-wrapper]]:border-0"
 				>
 					<Command>
 						<CommandInput placeholder="Find organization..." />

@@ -1,0 +1,15 @@
+{
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "What the QuickDash window is allowed to ask the shell for.",
+	"windows": ["main"],
+	"remote": {
+		"urls": ["https://quickdash.xyz/*", "http://localhost:3011/*"]
+	},
+	"permissions": [
+		"core:default",
+		"deep-link:default",
+		"opener:default",
+		"updater:default"
+	]
+}

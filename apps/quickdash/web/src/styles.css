@@ -1,5 +1,6 @@
 @import "@quickengine/ui/fonts.css";
 @import "@quickengine/ui/globals.css";
+@import "@quickengine/ui/theme.css";
 @import "@quickengine/ui/brand.css";
 
 @source "../../../../packages/ui/src";
@@ -12,4 +13,19 @@
 		transition-duration: 300ms;
 		transition-timing-function: ease;
 	}
+}
+
+/* The dashboard is a fixed-viewport application, not a document. Locking the
+   page here rather than on a wrapper is what actually holds: a `h-svh
+   overflow-hidden` div cannot stop `body` scrolling if anything inside it
+   overflows, and the inset panel's own top and bottom margins do exactly that —
+   its height plus 44px + 16px of margin exceeds the viewport by design.
+
+   With the page pinned, scrolling happens only where it is declared: the module
+   list in the rail, and the content inside the panel. */
+html,
+body,
+#root {
+	height: 100%;
+	overflow: hidden;
 }

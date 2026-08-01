@@ -25,6 +25,8 @@
 		"@sentry/react": "^10.67.0",
 		"@tanstack/react-query": "^5.62.0",
 		"@tanstack/react-router": "^1.95.0",
+		"@tauri-apps/plugin-deep-link": "^2.4.9",
+		"@tauri-apps/plugin-opener": "^2.5.4",
 		"react": "19.2.8",
 		"react-dom": "19.2.8"
 	},

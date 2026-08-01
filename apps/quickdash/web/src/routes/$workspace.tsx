@@ -1,83 +1,180 @@
-import {
-	Sidebar,
-	SidebarInset,
-	SidebarProvider,
-} from "@quickengine/ui/components/ui/sidebar";
+import { ChatCircleIcon, CodeIcon } from "@phosphor-icons/react";
+import { ConsoleShell, Logo } from "@quickengine/ui";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import type { CSSProperties } from "react";
-import { CommandPalette } from "../components/command-palette";
+import { Breadcrumbs } from "../components/breadcrumbs";
 import { FirstActionChecklist } from "../components/first-action-checklist";
-import { ModuleNav } from "../components/module-nav";
 import { ProfileMenu } from "../components/profile-menu";
 import { QuickDashOrientation } from "../components/quickdash-orientation";
+import { SidebarNav, SidebarTop } from "../components/sidebar-nav";
+import { WorkspaceDevelopers } from "../components/workspace-developers";
+import { WorkspaceSearch } from "../components/workspace-search";
 import { WorkspaceSwitcher } from "../components/workspace-switcher";
 import { quickDashQueries } from "../lib/quickdash-api";
 
+/**
+ * The workspace shell — inset layout, deliberately empty.
+ *
+ * `variant="inset"` is shadcn's own dashboard-01 layout and it was already in
+ * `sidebar.tsx`: the content panel gets `m-2 ml-0 rounded-xl shadow-sm` and the
+ * wrapper takes the sidebar's colour, which is the floating-panel look in the
+ * mock. Installing the block would have added charts, a data table, four nav
+ * components and a JSON file of invented records to the SHARED ui package —
+ * content that would be deleted immediately, and fake data in a repo where
+ * fabricated records have already caused problems.
+ *
+ * ⚠️ Cleared for redesign 2026-07-31 — **presentation only**. Nothing was
+ * deleted. Still on disk, still working, simply not rendered:
+ *
+ *   components/module-nav.tsx              the sidebar and its module list
+ *   components/workspace-switcher.tsx      org + workspace switching
+ *   components/command-palette.tsx         ⌘K search
+ *   components/profile-menu.tsx            avatar menu and sign-out
+ *   components/first-action-checklist.tsx  first-value checklist
+ *   components/quickdash-orientation.tsx   the one-time orientation
+ *   components/*-view.tsx                  all fifteen module views
+ *
+ * The route context, workspace query, auth guard and every module route are
+ * untouched.
+ */
 function WorkspaceShell() {
 	const { workspace } = Route.useParams();
 	const { user } = Route.useRouteContext();
 	const context = useQuery(quickDashQueries.context(workspace));
+	const plan = useQuery(
+		quickDashQueries.plan(context.data?.workspace.organizationId),
+	);
+
 	if (!user) throw new Error("Authenticated user missing from route context.");
-	if (context.isPending) return <main className="p-6">Loading workspace…</main>;
+	if (context.isPending) return <main className="min-h-dvh bg-void" />;
 	if (context.isError) throw context.error;
+
 	return (
-		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
-			<header className="fixed inset-x-0 top-0 z-30 flex h-(--header-height) items-center border-sidebar-border border-b bg-background">
-				<div
-					data-orientation-target="workspace-switcher"
-					className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4"
-				>
-					<WorkspaceSwitcher
-						active={context.data.workspace}
-						workspaces={context.data.workspaces}
-						organizationId={context.data.workspace.organizationId ?? null}
+		<ConsoleShell
+			switcher={
+				<WorkspaceSwitcher
+					active={context.data.workspace}
+					workspaces={context.data.workspaces}
+					organizationId={context.data.workspace.organizationId ?? null}
+					planId={plan.data?.planId ?? null}
+				/>
+			}
+			breadcrumbs={<Breadcrumbs workspaceId={workspace} />}
+			actions={
+				<>
+					<a
+						href="/"
+						className="btn btn-secondary pointer-events-auto inline-flex h-7 items-center rounded-full bg-void px-3 font-body font-[450] text-[13px] text-ink"
+					>
+						Upgrade
+					</a>
+					<WorkspaceSearch
+						workspaceId={workspace}
+						moduleIds={context.data.modules.map((module) => module.id)}
 					/>
-				</div>
-				<div className="flex flex-1 items-center justify-between px-4">
-					<div className="min-w-0">
-						<p className="truncate font-medium text-sm">
-							{context.data.workspace.name}
-						</p>
-						<p className="truncate text-muted-foreground text-xs">
-							QuickDash workspace
-						</p>
-					</div>
-					<div className="flex items-center gap-3">
-						<CommandPalette workspaceId={workspace} />
-						<ProfileMenu
-							workspaceId={workspace}
-							seed={user.id}
-							name={user.name ?? ""}
-							email={user.email}
-						/>
-					</div>
-				</div>
-			</header>
-			<Sidebar>
-				<ModuleNav
+				</>
+			}
+			account={
+				<ProfileMenu
 					workspaceId={workspace}
-					workspaceSlug={context.data.workspace.slug}
+					seed={user.id}
+					name={user.name ?? ""}
+					email={user.email}
+					planId={plan.data?.planId ?? null}
+					mobileItems={
+						<>
+							<button
+								type="button"
+								className="inline-flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[13px] text-ink"
+							>
+								<ChatCircleIcon size={14} className="shrink-0 text-dim" />
+								Feedback
+							</button>
+							{/* A route, not the dialog. The dialog is 960px wide with a 224px
+							    rail inside it — on a 375px phone that leaves 121px of content.
+							    Connect already exists as a real page with a back button, so
+							    mobile goes there and desktop keeps the dialog. */}
+							<a
+								href={`/${workspace}/connect`}
+								className="inline-flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[13px] text-ink"
+							>
+								<CodeIcon size={14} className="shrink-0 text-dim" />
+								Developers
+							</a>
+						</>
+					}
+				/>
+			}
+			navTop={
+				<SidebarTop
+					workspaceId={workspace}
 					moduleIds={context.data.modules.map((module) => module.id)}
 				/>
-			</Sidebar>
-			<SidebarInset className="pt-(--header-height)">
-				<Outlet />
-			</SidebarInset>
-			<QuickDashOrientation
-				workspaceId={workspace}
-				workspaceName={context.data.workspace.name}
-				shouldOffer={context.data.orientation.shouldOffer}
-			/>
-			{!context.data.orientation.shouldOffer && (
-				<FirstActionChecklist
+			}
+			nav={
+				<SidebarNav
 					workspaceId={workspace}
-					items={context.data.checklist.items}
-					initialCollapsed={context.data.checklist.collapsed}
-					initialDismissed={context.data.checklist.dismissed}
+					moduleIds={context.data.modules.map((module) => module.id)}
 				/>
-			)}
-		</SidebarProvider>
+			}
+			navBottom={
+				<>
+					<button
+						type="button"
+						className="inline-flex h-8 items-center gap-2.5 rounded-md px-2 text-dim transition-colors hover:bg-field hover:text-ink"
+					>
+						<ChatCircleIcon size={16} className="shrink-0" />
+						<span className="font-body text-[13px]">Feedback</span>
+					</button>
+
+					<WorkspaceDevelopers
+						workspaceId={workspace}
+						workspaceSlug={context.data.workspace.slug}
+						workspaceName={context.data.workspace.name}
+						businessType={context.data.workspace.businessType}
+						moduleIds={context.data.modules.map((module) => module.id)}
+						trigger={
+							<button
+								type="button"
+								className="inline-flex h-8 items-center gap-2.5 rounded-md px-2 text-dim transition-colors hover:bg-field hover:text-ink"
+							>
+								<CodeIcon size={16} className="shrink-0" />
+								<span className="font-body text-[13px]">Developers</span>
+							</button>
+						}
+					/>
+				</>
+			}
+			overlays={
+				<>
+					{!context.data.orientation.shouldOffer ? (
+						<FirstActionChecklist
+							workspaceId={workspace}
+							items={context.data.checklist.items}
+							initialCollapsed={context.data.checklist.collapsed}
+							initialDismissed={context.data.checklist.dismissed}
+						/>
+					) : null}
+
+					<QuickDashOrientation
+						key={String(context.data.orientation.shouldOffer)}
+						workspaceId={workspace}
+						workspaceName={context.data.workspace.name}
+						shouldOffer={context.data.orientation.shouldOffer}
+					/>
+				</>
+			}
+		>
+			{/* Watermark behind the content — a module view lands on top of it. */}
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0 flex items-center justify-center"
+			>
+				<Logo className="h-40 w-auto text-ink opacity-[0.07] dark:opacity-[0.03]" />
+			</div>
+
+			<Outlet />
+		</ConsoleShell>
 	);
 }
 

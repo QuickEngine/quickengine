@@ -81,9 +81,9 @@ export function NotificationBell({
 				<button
 					type="button"
 					aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
-					className="relative flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+					className="btn btn-secondary pointer-events-auto relative inline-flex size-7 items-center justify-center rounded-full bg-void text-dim transition-colors hover:text-ink"
 				>
-					<Bell className="size-5" />
+					<Bell size={14} />
 					{unread > 0 && (
 						<span className="-right-0.5 -top-0.5 absolute flex min-w-4 items-center justify-center rounded-full bg-primary px-1 font-medium text-[10px] text-primary-foreground">
 							{unread > 9 ? "9+" : unread}
@@ -91,7 +91,7 @@ export function NotificationBell({
 					)}
 				</button>
 			</PopoverTrigger>
-			<PopoverContent align="end" className="w-80 p-0">
+			<PopoverContent align="end" sideOffset={10} className="w-72 p-0">
 				<div className="flex items-center justify-between border-foreground/[0.06] border-b px-4 py-3">
 					<span className="font-medium text-foreground text-sm">
 						Notifications

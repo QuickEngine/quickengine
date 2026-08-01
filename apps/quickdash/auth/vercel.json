@@ -8,6 +8,17 @@
 			"source": "/signout",
 			"destination": "https://api.quickdash.xyz/api/auth-signout"
 		},
-		{ "source": "/(.*)", "destination": "/index.html" }
+		{
+			"source": "/api/auth-native-start",
+			"destination": "https://api.quickdash.xyz/api/auth-native-start"
+		},
+		{
+			"source": "/api/auth-native-handoff",
+			"destination": "https://api.quickdash.xyz/api/auth-native-handoff"
+		},
+		{
+			"source": "/(.*)",
+			"destination": "/index.html"
+		}
 	]
 }

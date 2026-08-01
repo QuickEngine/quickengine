@@ -37,10 +37,10 @@ export function SearchBar() {
 			<button
 				type="button"
 				onClick={() => setOpen(true)}
-				className="flex h-9 w-52 items-center gap-2 rounded-md border border-input bg-transparent px-3 text-muted-foreground text-sm outline-none transition-colors hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-foreground/40"
+				className="btn btn-secondary pointer-events-auto inline-flex h-7 w-52 items-center gap-2 rounded-lg bg-void px-2.5 text-dim transition-colors hover:text-ink"
 			>
-				<MagnifyingGlass className="size-4 shrink-0" />
-				<span className="flex-1 text-left">Search...</span>
+				<MagnifyingGlass size={14} className="shrink-0" />
+				<span className="flex-1 text-left font-body text-[13px]">Search</span>
 				<kbd className="pointer-events-none hidden rounded border border-foreground/15 bg-foreground/5 px-1.5 py-0.5 font-medium text-[10px] text-muted-foreground sm:inline-block">
 					⌘K
 				</kbd>

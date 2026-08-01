@@ -1,4 +1,4 @@
-import { syncWorkspaces } from "@quickengine/billing";
+import { admitWorkspace, syncWorkspaces } from "@quickengine/billing";
 import {
 	createWorkspaceForUser,
 	deleteWorkspace,
@@ -109,6 +109,23 @@ export function registerAccountWorkspaceRoutes(
 				requested.length > 0
 					? resolveModules(requested)
 					: resolveFoundationModules();
+
+			// ⚠️ Only checked when the caller names an organization. Onboarding does
+			// not: it creates the first workspace in a personal org resolved inside
+			// the data layer, and a first workspace is exactly what every plan
+			// includes. Gating a path whose answer is always "yes" would only risk
+			// blocking signup.
+			if (input.organizationId) {
+				const room = await admitWorkspace(input.organizationId);
+				if (!room.allowed) {
+					return respondError(
+						c,
+						"USAGE_LIMIT_EXCEEDED",
+						`Your plan includes ${room.limit} workspace${room.limit === 1 ? "" : "s"}. Upgrade your plan or delete one to create another.`,
+						402,
+					);
+				}
+			}
 
 			try {
 				const workspace = await createWorkspaceForUser({

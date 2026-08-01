@@ -63,6 +63,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Plan limits on people and workspaces are now enforced.** Inviting someone or creating a
+  workspace beyond what a plan includes is refused with a clear explanation and the two ways
+  forward, instead of being allowed silently.
+- **Teams accounts get the request headroom they pay for.** The new tier was being held to the
+  rate limits of the cheapest paid plan.
 - **Database changes can no longer reach development and miss production.** Every change
   committed to the codebase is now checked against the live database automatically, so one that
   never arrived is reported by name instead of surfacing later as a broken page.

@@ -2,10 +2,11 @@ import {
 	canGrantCapabilities,
 	resolveCapabilities,
 } from "@quickengine/auth/rbac";
-import { syncSeats } from "@quickengine/billing";
+import { admitSeat, syncSeats } from "@quickengine/billing";
 import {
 	acceptOrganizationInvitation,
 	createOrganizationInvitation,
+	getInvitationByToken,
 	listOrganizationInvitations,
 	loadOrgRoleCapabilities,
 	removeOrganizationMember,
@@ -80,6 +81,20 @@ export function registerAccountTeamRoutes(
 			);
 		}
 
+		// Checked here as well as on accept. The accept path is the one that
+		// protects the limit; this one exists so nobody emails an invitation that
+		// is guaranteed to bounce, and so the person who can fix it — the admin
+		// sending it — is the one who sees why.
+		const seat = await admitSeat(organizationId);
+		if (!seat.allowed) {
+			return respondError(
+				c,
+				"USAGE_LIMIT_EXCEEDED",
+				`Your plan includes ${seat.limit} seat${seat.limit === 1 ? "" : "s"} and all of them are taken. Upgrade your plan or remove a member to invite someone else.`,
+				402,
+			);
+		}
+
 		const invitation = await createOrganizationInvitation({
 			organizationId,
 			email: input.email,
@@ -107,6 +122,27 @@ export function registerAccountTeamRoutes(
 		async (c) => {
 			const { userId } = c.get("account");
 			try {
+				// 🔴 The authoritative seat gate. The one on invitation creation is a
+				// courtesy — an invitation issued while there was room can still arrive
+				// after the last seat is taken, and only this check sees the state that
+				// actually matters.
+				//
+				// Peeked before redeeming rather than rolled back after, because
+				// accepting writes the membership and marks the invitation used in one
+				// transaction; undoing that is strictly worse than not doing it.
+				const pending = await getInvitationByToken(c.req.param("token"));
+				if (pending) {
+					const seat = await admitSeat(pending.organizationId);
+					if (!seat.allowed) {
+						return respondError(
+							c,
+							"USAGE_LIMIT_EXCEEDED",
+							"This organization has used every seat on its plan. Ask an administrator to upgrade or free a seat, then open this invitation again.",
+							402,
+						);
+					}
+				}
+
 				const accepted = await acceptOrganizationInvitation(
 					c.req.param("token"),
 					userId,

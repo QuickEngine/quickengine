@@ -1,10 +1,15 @@
+import { PLANS } from "@quickengine/billing";
 import { createMemoryCacheProvider } from "@quickengine/cache";
 import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 import { describe, expect, it } from "vitest";
 import { noopLogger } from "./logger";
 import type { PlatformEnv } from "./platform-types";
-import { createRateLimit, policyForPlan } from "./rate-limit";
+import {
+	createRateLimit,
+	PLAN_RATE_MULTIPLIER,
+	policyForPlan,
+} from "./rate-limit";
 
 function testApp(options: {
 	cache?: ReturnType<typeof createMemoryCacheProvider>;
@@ -155,5 +160,30 @@ describe("policyForPlan", () => {
 		const scaled = policyForPlan(base, "scale");
 		expect(scaled.windowSeconds).toBe(60);
 		expect(scaled.failureMode).toBe("closed");
+	});
+});
+
+describe("plan coverage", () => {
+	// 🔴 Regression guard. `teams` was added to `plans.ts` and missed here, and an
+	// unlisted plan falls back to multiplier 1 — silently giving the most
+	// expensive tier stricter limits than the one below it. Nothing about that
+	// looks wrong until a customer complains, so the coupling is pinned here.
+	it("gives every sellable plan a rate multiplier", () => {
+		for (const plan of PLANS) {
+			expect(
+				PLAN_RATE_MULTIPLIER[plan.id],
+				`${plan.id} has no rate multiplier`,
+			).toBeTypeOf("number");
+		}
+	});
+
+	// A paid tier that throttles harder than a cheaper one is always a mistake.
+	it("never lets a higher tier have a lower multiplier", () => {
+		const ladder = ["free", "launch", "grow", "scale", "teams"] as const;
+		for (let i = 1; i < ladder.length; i++) {
+			expect(PLAN_RATE_MULTIPLIER[ladder[i]]).toBeGreaterThanOrEqual(
+				PLAN_RATE_MULTIPLIER[ladder[i - 1]],
+			);
+		}
 	});
 });

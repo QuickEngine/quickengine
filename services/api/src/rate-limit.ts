@@ -41,7 +41,15 @@ export const PLAN_RATE_MULTIPLIER: Record<string, number> = {
 	launch: 1,
 	grow: 2,
 	scale: 4,
+	// 🔴 Every plan must appear here. An unlisted plan falls back to multiplier 1,
+	// which silently gives the most expensive tier Launch-level limits — stricter
+	// than Scale. `teams` was added to `plans.ts` on 2026-08-01 and missed here,
+	// which is exactly that bug.
+	teams: 8,
 };
+
+// Pinned by a test in `rate-limit.test.ts`: every plan in `PLANS` must appear
+// above, and the ladder must never decrease. A comment cannot enforce that.
 
 /** Falls back to the base policy when the plan is unknown or unresolved. */
 export function policyForPlan(

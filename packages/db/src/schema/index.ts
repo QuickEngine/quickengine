@@ -13,6 +13,7 @@ export * from "./notifications";
 export * from "./orders";
 export * from "./orientation";
 export * from "./payments";
+export * from "./product-events";
 export * from "./projects-tasks";
 export * from "./quickdash";
 export * from "./quickengine";

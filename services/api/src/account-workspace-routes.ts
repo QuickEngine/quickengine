@@ -1,3 +1,4 @@
+import { trackProductEvent } from "@quickengine/analytics";
 import {
 	admitWorkspace,
 	syncSeats,
@@ -173,6 +174,32 @@ export function registerAccountWorkspaceRoutes(
 				// its floor instead of the real headcount. Found in production on
 				// 2026-08-01, not by any test.
 				await syncSeats(workspace.organizationId);
+
+				// The line between an account and a user. Fire-and-forget: telemetry
+				// must never be able to fail a workspace creation.
+				trackProductEvent({
+					name: "workspace.created",
+					surface: "account",
+					userId,
+					organizationId: workspace.organizationId,
+					workspaceId: workspace.id,
+					// Dimensions only — the business TYPE tells us which recipes work,
+					// the business NAME would be customer content.
+					properties: {
+						businessType: workspace.businessType,
+						moduleCount: workspace.moduleIds.length,
+						onboarding: Boolean(input.completeOnboarding),
+					},
+				});
+				if (input.completeOnboarding) {
+					trackProductEvent({
+						name: "onboarding.completed",
+						surface: "account",
+						userId,
+						organizationId: workspace.organizationId,
+						workspaceId: workspace.id,
+					});
+				}
 				return respond(c, workspace, 201);
 			} catch (error) {
 				const mapped = messageFor(error);
@@ -265,6 +292,17 @@ export function registerAccountWorkspaceRoutes(
 					400,
 				);
 			}
+			// Which of the fifteen modules anybody actually wants — the answer to
+			// what to invest in and what to retire.
+			trackProductEvent({
+				name: "module.configured",
+				surface: "account",
+				userId: c.get("account").userId,
+				organizationId: c.get("account").organizationId,
+				workspaceId: c.req.param("id"),
+				properties: { moduleId, enabled: input.enabled },
+			});
+
 			try {
 				await setWorkspaceModuleEnabled({
 					workspaceId: c.req.param("id"),

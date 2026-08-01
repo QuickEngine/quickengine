@@ -1,3 +1,4 @@
+import { trackProductEvent } from "@quickengine/analytics";
 import {
 	API_CAPABILITIES,
 	issueApiKey,
@@ -447,6 +448,14 @@ export function registerAccountRoutes(
 	 * database.
 	 */
 	app.post("/v1/account/api-keys", keys, async (c) => {
+		// Whether anybody gets as far as a credential — the developer funnel's
+		// second step, after `connect.opened`.
+		trackProductEvent({
+			name: "credential.created",
+			surface: "account",
+			userId: c.get("account").userId,
+			organizationId: c.get("account").organizationId,
+		});
 		const input = createApiKeySchema.parse(await c.req.json());
 		if (
 			!(await workspaceBelongsToOrganization(

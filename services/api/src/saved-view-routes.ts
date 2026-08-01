@@ -1,3 +1,4 @@
+import { trackProductEvent } from "@quickengine/analytics";
 import type { CacheProvider } from "@quickengine/cache";
 import {
 	deleteSavedView,
@@ -125,7 +126,16 @@ export function registerSavedViewRoutes(
 		try {
 			// Upsert: saving twice under one name updates it, which is what everyone
 			// who has used a spreadsheet expects.
-			return respond(c, await saveView(resolved.owner, input), 201);
+			const view = await saveView(resolved.owner, input);
+			// Whether anybody builds their own workflow, by module.
+			trackProductEvent({
+				name: "saved_view.created",
+				surface: "quickdash",
+				userId: resolved.owner.userId,
+				workspaceId: resolved.owner.workspaceId,
+				properties: { moduleId: input.moduleId, pinned: view.pinned },
+			});
+			return respond(c, view, 201);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "";
 			if (FRIENDLY[message]) {

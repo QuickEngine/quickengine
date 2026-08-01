@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **We can now see how people actually get on with QuickEngine.** Signup, setup, first real
+  outcome, module use, and where search comes up empty are all measured, so it is possible to
+  tell where people get stuck instead of guessing. Nothing recorded carries customer names,
+  record contents, or anything typed into a search box.
+- **Signups record where they came from.** Campaign, source, medium and referring site are kept
+  alongside the signup, so it is possible to tell which channels bring people who stay.
 - **One workspace can be recovered without affecting anyone else.** Restoring a single
   workspace's data from an earlier point no longer means rolling the whole platform back, so
   other customers keep every change they made in the meantime.

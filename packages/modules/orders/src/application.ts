@@ -4,16 +4,21 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	db,
+	decodeCursor,
 	eq,
 	gt,
 	mutationUnitOfWork,
 	orderLineItems,
 	orders,
+	pageOrder,
+	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import type { OrderInput } from "./order";
@@ -29,9 +34,28 @@ import { ORDER_STATUSES, type OrderStatus } from "./status";
 
 export type OrderMutationUnitOfWork = MutationUnitOfWork<DatabaseTransaction>;
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request — an arbitrary column would
+ * let a caller sort by fields the DTO never exposes and read their values off the
+ * ordering.
+ */
+const ORDER_SORTS = {
+	number: orders.number,
+	placedAt: orders.placedAt,
+	status: orders.status,
+	totalCents: orders.totalCents,
+	createdAt: orders.createdAt,
+	updatedAt: orders.updatedAt,
+} as const satisfies SortMap;
+
 export const orderListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
+	sort: z.string().trim().min(1).optional(),
 	status: z.enum(ORDER_STATUSES).optional(),
 });
 
@@ -105,29 +129,36 @@ export type OrderDto = ReturnType<typeof serializeOrder>;
 
 export async function listOrdersPage(
 	workspaceId: string,
-	query: { cursor?: string; limit?: number | string; status?: string },
+	query: {
+		cursor?: string;
+		direction?: string;
+		limit?: number | string;
+		sort?: string;
+		status?: string;
+	},
 ) {
 	const page = orderListQuerySchema.parse(query);
+	// Newest first by default: an operational list ordered by id is effectively
+	// random to the person reading it.
+	const sort = resolveSort(ORDER_SORTS, page.sort, "createdAt");
 	const where = and(
 		eq(orders.workspaceId, workspaceId),
-		page.cursor ? gt(orders.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			orders.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.status ? eq(orders.status, page.status) : undefined,
 	);
 	const rows = await db
 		.select()
 		.from(orders)
 		.where(where)
-		.orderBy(asc(orders.id))
+		.orderBy(...pageOrder(sort.column, orders.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
-	return {
-		items: items.map(serializeOrder),
-		page: {
-			hasMore,
-			nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
-		},
-	};
+	const paged = toPage(rows, page.limit, sort.key, "id");
+	return { items: paged.items.map(serializeOrder), page: paged.page };
 }
 
 export async function getOrderDto(workspaceId: string, id: string) {

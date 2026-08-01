@@ -4,16 +4,21 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	db,
+	decodeCursor,
 	eq,
 	gt,
 	mutationUnitOfWork,
+	pageOrder,
 	paymentRefunds,
 	payments,
+	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import {
@@ -27,8 +32,26 @@ import { PAYMENT_STATUSES, type PaymentStatus } from "./status";
 
 export type PaymentMutationUnitOfWork = MutationUnitOfWork<DatabaseTransaction>;
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const PAYMENT_SORTS = {
+	reference: payments.reference,
+	status: payments.status,
+	amountCents: payments.amountCents,
+	succeededAt: payments.succeededAt,
+	createdAt: payments.createdAt,
+} as const satisfies SortMap;
+
 export const paymentListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	status: z.enum(PAYMENT_STATUSES).optional(),
 });
@@ -91,29 +114,36 @@ export type PaymentRefundDto = ReturnType<typeof serializeRefund>;
 
 export async function listPaymentsPage(
 	workspaceId: string,
-	query: { cursor?: string; limit?: number | string; status?: string },
+	query: {
+		cursor?: string;
+		direction?: string;
+		limit?: number | string;
+		sort?: string;
+		status?: string;
+	},
 ) {
 	const page = paymentListQuerySchema.parse(query);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(PAYMENT_SORTS, page.sort, "createdAt");
 	const where = and(
 		eq(payments.workspaceId, workspaceId),
-		page.cursor ? gt(payments.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			payments.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.status ? eq(payments.status, page.status) : undefined,
 	);
 	const rows = await db
 		.select()
 		.from(payments)
 		.where(where)
-		.orderBy(asc(payments.id))
+		.orderBy(...pageOrder(sort.column, payments.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
-	return {
-		items: items.map(serializePayment),
-		page: {
-			hasMore,
-			nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
-		},
-	};
+	const paged = toPage(rows, page.limit, sort.key, "id");
+	return { items: paged.items.map(serializePayment), page: paged.page };
 }
 
 export async function getPaymentDto(workspaceId: string, id: string) {

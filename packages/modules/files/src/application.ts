@@ -4,11 +4,13 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	db,
+	decodeCursor,
 	eq,
 	fileAttachments,
 	fileDocuments,
@@ -17,6 +19,9 @@ import {
 	gt,
 	isNull,
 	mutationUnitOfWork,
+	pageOrder,
+	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import type { JobQueue } from "@quickengine/jobs";
 import { z } from "zod";
@@ -41,15 +46,48 @@ import {
 
 export type FilesMutationUnitOfWork = MutationUnitOfWork<DatabaseTransaction>;
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const DOCUMENT_SORTS = {
+	title: fileDocuments.title,
+	status: fileDocuments.status,
+	createdAt: fileDocuments.createdAt,
+	updatedAt: fileDocuments.updatedAt,
+} as const satisfies SortMap;
+
 export const documentListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	folderId: z.uuid().optional(),
 	status: z.enum(DOCUMENT_STATUSES).optional(),
 });
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const FOLDER_SORTS = {
+	name: fileFolders.name,
+	createdAt: fileFolders.createdAt,
+	updatedAt: fileFolders.updatedAt,
+} as const satisfies SortMap;
+
 export const folderListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	parentId: z.uuid().optional(),
 	/** Only root-level folders. Takes precedence over `parentId`. */
@@ -164,15 +202,25 @@ export async function listFileFoldersPage(
 	workspaceId: string,
 	query: {
 		cursor?: string;
+		direction?: string;
 		limit?: number | string;
+		sort?: string;
 		parentId?: string;
 		rootOnly?: boolean | string;
 	},
 ) {
 	const page = folderListQuerySchema.parse(query);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(FOLDER_SORTS, page.sort, "name");
 	const where = and(
 		eq(fileFolders.workspaceId, workspaceId),
-		page.cursor ? gt(fileFolders.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			fileFolders.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.rootOnly
 			? isNull(fileFolders.parentId)
 			: page.parentId
@@ -183,7 +231,7 @@ export async function listFileFoldersPage(
 		.select()
 		.from(fileFolders)
 		.where(where)
-		.orderBy(asc(fileFolders.id))
+		.orderBy(...pageOrder(sort.column, fileFolders.id, page.direction))
 		.limit(page.limit + 1);
 	const hasMore = rows.length > page.limit;
 	const items = rows.slice(0, page.limit);
@@ -197,15 +245,25 @@ export async function listFileDocumentsPage(
 	workspaceId: string,
 	query: {
 		cursor?: string;
+		direction?: string;
 		limit?: number | string;
+		sort?: string;
 		folderId?: string;
 		status?: string;
 	},
 ) {
 	const page = documentListQuerySchema.parse(query);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(DOCUMENT_SORTS, page.sort, "createdAt");
 	const where = and(
 		eq(fileDocuments.workspaceId, workspaceId),
-		page.cursor ? gt(fileDocuments.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			fileDocuments.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.folderId ? eq(fileDocuments.folderId, page.folderId) : undefined,
 		page.status ? eq(fileDocuments.status, page.status) : undefined,
 	);
@@ -213,7 +271,7 @@ export async function listFileDocumentsPage(
 		.select()
 		.from(fileDocuments)
 		.where(where)
-		.orderBy(asc(fileDocuments.id))
+		.orderBy(...pageOrder(sort.column, fileDocuments.id, page.direction))
 		.limit(page.limit + 1);
 	const hasMore = rows.length > page.limit;
 	const items = rows.slice(0, page.limit);

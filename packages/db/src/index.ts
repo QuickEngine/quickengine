@@ -3,6 +3,7 @@ export { and, asc, eq, gt, isNotNull, isNull, or, sql } from "drizzle-orm";
 export * from "./activity";
 export * from "./client";
 export * from "./credits";
+export * from "./cursor-page";
 export * from "./drizzle";
 export * from "./first-action-state";
 export * from "./first-action-state-policy";

@@ -4,16 +4,21 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	contractSigners,
 	contracts,
 	db,
+	decodeCursor,
 	eq,
 	gt,
 	mutationUnitOfWork,
+	pageOrder,
+	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import type { ContractInput } from "./contract";
@@ -32,8 +37,27 @@ import { CONTRACT_STATUSES } from "./status";
 export type ContractMutationUnitOfWork =
 	MutationUnitOfWork<DatabaseTransaction>;
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const CONTRACT_SORTS = {
+	number: contracts.number,
+	title: contracts.title,
+	status: contracts.status,
+	sentAt: contracts.sentAt,
+	createdAt: contracts.createdAt,
+	updatedAt: contracts.updatedAt,
+} as const satisfies SortMap;
+
 export const contractListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	clientId: z.uuid().optional(),
 	status: z.enum(CONTRACT_STATUSES).optional(),
@@ -130,15 +154,25 @@ export async function listContractsPage(
 	workspaceId: string,
 	query: {
 		cursor?: string;
+		direction?: string;
 		limit?: number | string;
+		sort?: string;
 		clientId?: string;
 		status?: string;
 	},
 ) {
 	const page = contractListQuerySchema.parse(query);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(CONTRACT_SORTS, page.sort, "createdAt");
 	const where = and(
 		eq(contracts.workspaceId, workspaceId),
-		page.cursor ? gt(contracts.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			contracts.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.clientId ? eq(contracts.clientId, page.clientId) : undefined,
 		page.status ? eq(contracts.status, page.status) : undefined,
 	);
@@ -146,7 +180,7 @@ export async function listContractsPage(
 		.select()
 		.from(contracts)
 		.where(where)
-		.orderBy(asc(contracts.id))
+		.orderBy(...pageOrder(sort.column, contracts.id, page.direction))
 		.limit(page.limit + 1);
 	const hasMore = rows.length > page.limit;
 	const items = rows.slice(0, page.limit);

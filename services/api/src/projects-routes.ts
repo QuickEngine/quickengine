@@ -96,6 +96,8 @@ export function registerProjectsRoutes(
 			c,
 			await listProjectsPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				includeArchived: c.req.query("includeArchived"),
 				limit: c.req.query("limit"),
 				status: c.req.query("status"),
@@ -172,6 +174,8 @@ export function registerProjectsRoutes(
 			c,
 			await listMilestonesPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				limit: c.req.query("limit"),
 				projectId: c.req.query("projectId"),
 				status: c.req.query("status"),
@@ -232,6 +236,8 @@ export function registerProjectsRoutes(
 			c,
 			await listTasksPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				limit: c.req.query("limit"),
 				milestoneId: c.req.query("milestoneId"),
 				projectId: c.req.query("projectId"),

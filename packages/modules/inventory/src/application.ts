@@ -4,17 +4,22 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	db,
+	decodeCursor,
 	desc,
 	eq,
 	gt,
 	inventoryAdjustments,
 	inventoryItems,
 	mutationUnitOfWork,
+	pageOrder,
+	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import {
@@ -33,8 +38,26 @@ import {
 export type InventoryMutationUnitOfWork =
 	MutationUnitOfWork<DatabaseTransaction>;
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const INVENTORY_SORTS = {
+	onHand: inventoryItems.onHand,
+	reserved: inventoryItems.reserved,
+	status: inventoryItems.status,
+	createdAt: inventoryItems.createdAt,
+	updatedAt: inventoryItems.updatedAt,
+} as const satisfies SortMap;
+
 export const inventoryListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	status: z.enum(INVENTORY_ITEM_STATUSES).optional(),
 });
@@ -111,29 +134,36 @@ export type InventoryAdjustmentDto = ReturnType<typeof serializeAdjustment>;
 
 export async function listInventoryItemsPage(
 	workspaceId: string,
-	query: { cursor?: string; limit?: number | string; status?: string },
+	query: {
+		cursor?: string;
+		direction?: string;
+		limit?: number | string;
+		sort?: string;
+		status?: string;
+	},
 ) {
 	const page = inventoryListQuerySchema.parse(query);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(INVENTORY_SORTS, page.sort, "createdAt");
 	const where = and(
 		eq(inventoryItems.workspaceId, workspaceId),
-		page.cursor ? gt(inventoryItems.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			inventoryItems.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.status ? eq(inventoryItems.status, page.status) : undefined,
 	);
 	const rows = await db
 		.select()
 		.from(inventoryItems)
 		.where(where)
-		.orderBy(asc(inventoryItems.id))
+		.orderBy(...pageOrder(sort.column, inventoryItems.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
-	return {
-		items: items.map(serializeItem),
-		page: {
-			hasMore,
-			nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
-		},
-	};
+	const paged = toPage(rows, page.limit, sort.key, "id");
+	return { items: paged.items.map(serializeItem), page: paged.page };
 }
 
 export async function getInventoryItemDto(workspaceId: string, id: string) {

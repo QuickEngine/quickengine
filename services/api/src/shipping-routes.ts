@@ -88,6 +88,8 @@ export function registerShippingRoutes(
 			c,
 			await listShipmentsPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				limit: c.req.query("limit"),
 				orderId: c.req.query("orderId"),
 				status: c.req.query("status"),

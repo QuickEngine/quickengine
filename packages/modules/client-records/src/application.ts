@@ -3,16 +3,21 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	clientAddresses,
 	clientRecords,
 	db,
+	decodeCursor,
 	eq,
 	gt,
 	mutationUnitOfWork,
+	pageOrder,
+	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import { clientRecordInputSchema, clientRecordPatchSchema } from "./records";
@@ -39,8 +44,25 @@ export const clientAddressPatchSchema = clientAddressInputSchema
 		message: "At least one address field is required.",
 	});
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const CLIENT_SORTS = {
+	name: clientRecords.name,
+	company: clientRecords.company,
+	createdAt: clientRecords.createdAt,
+	updatedAt: clientRecords.updatedAt,
+} as const satisfies SortMap;
+
 export const clientListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 });
 
@@ -72,30 +94,38 @@ export type ClientAddressDto = ReturnType<typeof serializeAddress>;
 
 export async function listClientRecordsPage(
 	workspaceId: string,
-	query: z.input<typeof clientListQuerySchema>,
+	// Loose strings rather than `z.input`: these arrive straight from the query
+	// string, and the schema is what validates them. Typing the parameter to the
+	// schema's input would force every caller to narrow before parsing, which is
+	// the parser's job.
+	query: {
+		cursor?: string;
+		direction?: string;
+		limit?: number | string;
+		sort?: string;
+	},
 ) {
 	const page = clientListQuerySchema.parse(query);
-	const where = page.cursor
-		? and(
-				eq(clientRecords.workspaceId, workspaceId),
-				gt(clientRecords.id, page.cursor),
-			)
-		: eq(clientRecords.workspaceId, workspaceId);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(CLIENT_SORTS, page.sort, "createdAt");
+	const where = and(
+		eq(clientRecords.workspaceId, workspaceId),
+		afterCursor(
+			sort.column,
+			clientRecords.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
+	);
 	const rows = await db
 		.select()
 		.from(clientRecords)
 		.where(where)
-		.orderBy(asc(clientRecords.id))
+		.orderBy(...pageOrder(sort.column, clientRecords.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
-	return {
-		items: items.map(serializeClient),
-		page: {
-			hasMore,
-			nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
-		},
-	};
+	const paged = toPage(rows, page.limit, sort.key, "id");
+	return { items: paged.items.map(serializeClient), page: paged.page };
 }
 
 export async function getClientRecordDto(workspaceId: string, id: string) {

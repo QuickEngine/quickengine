@@ -8,6 +8,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Every list can be sorted.** Records, catalog items, invoices, orders, quotes, bookings,
+  payments, shipments, projects, tasks, contracts, files and time entries can each be ordered by
+  the columns that make sense for them, in either direction, and paged through without a record
+  going missing or turning up twice.
 - **We can now see how people actually get on with QuickEngine.** Signup, setup, first real
   outcome, module use, and where search comes up empty are all measured, so it is possible to
   tell where people get stuck instead of guessing. Nothing recorded carries customer names,

@@ -90,6 +90,8 @@ export function registerTimeTrackingRoutes(
 			c,
 			await listTimeEntriesPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				from: c.req.query("from"),
 				limit: c.req.query("limit"),
 				projectId: c.req.query("projectId"),

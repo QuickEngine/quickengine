@@ -1,0 +1,335 @@
+/* ── QuickEngine theme: one hue, nine steps ───────────────────────────────
+   Opt-in. Import it alongside `globals.css` in an app that has been through the
+   design pass; apps that have not stay on the shared neutral tokens and are
+   unaffected. That is why this is a separate file rather than part of
+   `globals.css` — enabling it everywhere would restyle three authenticated
+   products nobody has designed yet.
+
+   Greyscale works because every shade is the same colour at a different
+   lightness, so nothing can clash. This is that, with the hue moved off zero.
+
+   🔑 The chroma is CURVED, not constant, and that is the whole trick. A flat
+   chroma carries real colour into the darks, which reads as washed-out navy
+   rather than black. Here chroma is almost nil at the dark end and peaks
+   mid-ramp, so darks read as genuine black and blue only emerges where there is
+   light in the image. Black TO blue, rather than navy everywhere.
+
+   OKLCH because it is perceptually uniform: equal lightness steps look equally
+   spaced, which is exactly what a greyscale-style ramp needs and what hex
+   cannot give you.
+
+   Four dials, and only four:
+     --h         hue
+     --c         SURFACE chroma   (steel 0.55 · neutral steel 0.11 · cobalt 1.3)
+     --ca        ACCENT chroma, independent — muted surfaces, saturated accent
+     --invert-l  primary fill lightness. 1.0 is pure white and glares. */
+:root {
+	--h: 248;
+	/* Neutral. Surfaces carry only a trace of hue — enough that the darks are not
+	   dead grey, not enough to read as a colour. The accent keeps full saturation
+	   through `--ca`, which is what makes this work now and did not before: the
+	   earlier neutral attempt dropped BOTH, so the accent went grey too, and it
+	   lifted the floor to 0.17 which washed it out further. Floor stays 0.13.
+
+	   Shelved: steel blue --c 0.55 · cobalt --h 258 / --c 1.3 */
+	--c: 0.2;
+	--ca: 1;
+	--invert-l: 0.93;
+
+	--b0: oklch(0.13 calc(0.008 * var(--c)) var(--h)); /* near-black floor */
+	--b1: oklch(0.18 calc(0.018 * var(--c)) var(--h));
+	--b2: oklch(0.24 calc(0.035 * var(--c)) var(--h));
+	--b3: oklch(0.34 calc(0.07 * var(--c)) var(--h));
+	--b4: oklch(0.45 calc(0.11 * var(--c)) var(--h));
+	--b5: oklch(0.58 calc(0.16 * var(--c)) var(--h)); /* peak chroma */
+	--b6: oklch(0.7 calc(0.14 * var(--c)) var(--h));
+	--b7: oklch(0.82 calc(0.09 * var(--c)) var(--h));
+	--b8: oklch(0.93 calc(0.03 * var(--c)) var(--h));
+	--b9: oklch(0.97 calc(0.006 * var(--c)) var(--h)); /* near-white ceiling */
+}
+
+/* Semantic layer. Components never touch the ramp directly — they use these, so
+   a theme is a remap rather than a rewrite. Light is the default; `.dark` flips
+   it.
+
+   🔑 Light is NOT the dark ramp inverted, and that is the whole reason the first
+   attempt looked cheap. Three things differ:
+
+   1. **Depth runs the other way.** On dark, raised surfaces get LIGHTER. On
+      light, a raised surface stays white and the page behind it goes darker —
+      paper on a desk, not a light bulb. So `--surface` is the tinted one here
+      and `--surface-2` is the near-white card.
+   2. **Borders carry more weight.** Dark has luminance to spare for separating
+      surfaces; light does not, so the line does the work and needs real
+      contrast, not a 2% wash.
+   3. **Text is never pure black**, the same reason dark text is never pure
+      white — the contrast is harsh at body sizes and reads as unfinished. */
+:root {
+	/* Off-white, not white. `0.995` is effectively #FFF and glares at full-screen
+	   size — the same halation that made the primary button unusable at 0.97.
+	   Every good light product UI sits in the 0.93–0.97 band rather than at the
+	   top of the range. */
+	/* Light surfaces sit on their own hue so they can be tuned independently of
+	   the accent.
+
+	   ⚠️ Warm paper (hue 75) was tried on 2026-07-31 and read as cream — at these
+	   lightnesses even a trace of yellow is unmistakably yellow. This sits just
+	   off the accent instead: neutral to the eye, with only enough cast that the
+	   greys are not dead. */
+	--h-paper: 265;
+
+	--surface: oklch(0.945 calc(0.018 * var(--c)) var(--h-paper));
+	--surface-2: oklch(0.985 calc(0.008 * var(--c)) var(--h-paper));
+	--line: oklch(0.875 calc(0.02 * var(--c)) var(--h-paper));
+	--text: oklch(0.22 calc(0.02 * var(--c)) var(--h-paper));
+	/* Darker than a mirrored dark-mode dim would be. Light backgrounds swallow
+	   low-contrast text far faster than dark ones. */
+	--text-dim: oklch(0.46 calc(0.025 * var(--c)) var(--h-paper));
+	/* Darker than the dark theme's accent, not lighter. An accent has to hold its
+	   contrast against the surface it sits on, and light surfaces demand the
+	   opposite direction. */
+	--accent: oklch(0.52 calc(0.19 * var(--ca)) var(--h));
+	--accent-hi: oklch(0.45 calc(0.2 * var(--ca)) var(--h));
+	/* The inverted pair — a filled button. Flipping these per theme is what lets
+	   one `bg-invert text-on-invert` work in both without a dark: variant. */
+	--invert: oklch(0.22 calc(0.02 * var(--c)) var(--h-paper));
+	--on-invert: oklch(0.99 0 0);
+
+	/* Elevation is a SHADOW on light and a TONE on dark. A card that is merely a
+	   slightly different grey reads as pasted on when the page is bright; on a
+	   dark page the same shadow is invisible and the tone step does the work.
+	   Both themes define this so a component can just use `var(--elevate)`. */
+	--elevate:
+		0 1px 2px oklch(0.22 0.02 var(--h-paper) / 0.06),
+		0 4px 12px oklch(0.22 0.02 var(--h-paper) / 0.05),
+		0 12px 32px oklch(0.22 0.02 var(--h-paper) / 0.04);
+}
+
+.dark {
+	--surface: var(--b0);
+	--surface-2: var(--b1);
+	--line: oklch(0.26 calc(0.03 * var(--c)) var(--h));
+	--text: oklch(0.94 calc(0.012 * var(--c)) var(--h));
+	--text-dim: oklch(0.68 calc(0.028 * var(--c)) var(--h));
+	--accent: oklch(0.6 calc(0.2 * var(--ca)) var(--h));
+	--accent-hi: oklch(0.67 calc(0.19 * var(--ca)) var(--h));
+	--invert: oklch(var(--invert-l) calc(0.02 * var(--c)) var(--h));
+	--on-invert: var(--b0);
+
+	/* Barely there. On a near-black page a real shadow is invisible, and the
+	   surface tone step is already doing the separating. */
+	--elevate: 0 1px 2px oklch(0 0 0 / 0.4);
+}
+
+/* ── shadcn remap ─────────────────────────────────────────────────────────
+   The reason opting in was not enough on its own: every existing component uses
+   `bg-background`, `bg-sidebar`, `text-muted-foreground` and friends, which
+   resolve from `globals.css`'s NEUTRAL tokens. Adding new names beside them
+   changed nothing anyone could see.
+
+   Pointing shadcn's own tokens at the ramp is what makes the theme actually
+   apply — every button, dialog, table and sidebar already built adopts it with
+   no component edits at all. */
+:root {
+	--background: var(--surface);
+	--foreground: var(--text);
+	--card: var(--surface-2);
+	--card-foreground: var(--text);
+	--popover: var(--surface-2);
+	--popover-foreground: var(--text);
+	--primary: var(--invert);
+	--primary-foreground: var(--on-invert);
+	--secondary: var(--surface-2);
+	--secondary-foreground: var(--text);
+	--muted: var(--surface-2);
+	--muted-foreground: var(--text-dim);
+	--accent: var(--surface-2);
+	--accent-foreground: var(--text);
+	--border: var(--line);
+	--input: var(--line);
+	--ring: var(--accent-hi);
+	/* The rail is the page FLOOR, not a raised surface. In the inset layout the
+	   wrapper takes this colour and the content panel floats above it, so the
+	   sidebar has to be the darker of the two or the panel reads as a hole. */
+	/* Dark: the rail is the page floor, so the panel floats on it. Light: the
+	   rail is the tinted surface and the content is the near-white card. Both are
+	   `--surface`, because the semantic layer already flipped which of the two is
+	   tinted. */
+	--sidebar: var(--surface);
+	--sidebar-foreground: var(--text);
+	--sidebar-primary: var(--accent);
+	--sidebar-primary-foreground: var(--on-invert);
+	--sidebar-accent: var(--line);
+	--sidebar-accent-foreground: var(--text);
+	--sidebar-border: var(--line);
+	--sidebar-ring: var(--accent-hi);
+}
+
+/* `--accent` above is shadcn's HOVER-SURFACE token, not a brand colour — it is
+   why hovering a menu item tints it. The brand accent stays available as
+   `--color-signal`; overwriting it here would paint every hover steel blue. */
+
+/* `inline` so Tailwind emits the var() reference rather than resolving it at
+   build time — without it the `.dark` remap above would never take effect. */
+@theme inline {
+	--color-void: var(--surface);
+	--color-field: var(--surface-2);
+	--color-edge: var(--line);
+	--color-ink: var(--text);
+	--color-dim: var(--text-dim);
+	--color-signal: var(--accent);
+	--color-glow: var(--accent-hi);
+	--color-invert: var(--invert);
+	--color-on-invert: var(--on-invert);
+
+	--font-display: "Clash Grotesk", ui-sans-serif, system-ui, sans-serif;
+	--font-body: "General Sans", ui-sans-serif, system-ui, sans-serif;
+	/* `--font-mono` in globals points at `--font-geist-mono`, which is not loaded
+	   anywhere — a Next leftover. System mono is sharp on macOS and costs zero
+	   bytes; swap for a licensed face later. */
+	--font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* `globals.css` paints `body` with its own neutral `--background`. This has to
+   win, or the page floor is a flat grey unrelated to the ramp above it. */
+body {
+	background-color: var(--surface);
+}
+
+/* The shared horizontal gutter. Marketing header, auth shell and every section
+   reference this one class, so their left edges line up across surfaces and a
+   change is one value in one place. Distinct from `.page-gutter`, which the
+   un-redesigned marketing routes still use at 9.5rem. */
+.site-gutter {
+	padding-inline: 1.25rem;
+}
+@media (min-width: 640px) {
+	.site-gutter {
+		padding-inline: 6.5rem;
+	}
+}
+
+/* Film grain. A large gradient in this ramp WILL band on 8-bit displays; noise
+   is the standard fix and doubles as texture. Generated, not a file — no
+   request, no cache, scales to any viewport. */
+.noise-layer {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+	opacity: 0.035;
+}
+
+/* ── Entry ────────────────────────────────────────────────────────────────
+   A short rise-and-fade, staggered down the page. It is the cheapest thing that
+   makes a static screen feel composed rather than dumped: the eye follows the
+   order the elements arrive in, which is the order you want them read.
+
+   Deliberately small — 6px and 400ms. Anything longer is a thing you wait for,
+   and this runs on every visit to a page people use daily. */
+@keyframes rise {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+.rise {
+	animation: rise 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rise-1 {
+	animation-delay: 60ms;
+}
+.rise-2 {
+	animation-delay: 120ms;
+}
+.rise-3 {
+	animation-delay: 180ms;
+}
+@media (prefers-reduced-motion: reduce) {
+	.rise {
+		animation: none;
+	}
+}
+
+/* A slow pulse for status dots. Deliberately long and shallow: this sits in
+   peripheral vision all day, and anything faster or higher-contrast becomes
+   something you keep noticing instead of something you can ignore. */
+@keyframes status-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
+}
+.status-dot {
+	animation: status-pulse 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.status-dot {
+		animation: none;
+	}
+}
+
+/* ── Native shell ─────────────────────────────────────────────────────────
+   macOS with an overlay title bar draws the traffic lights on top of the web
+   content, so the app has to leave room for them itself: a 28px strip along the
+   top that belongs to the window, not to the page.
+
+   🔴 The strip is ADDED to the element's height, never padded into it. Padding a
+   fixed-height bar leaves 16px for a 44px header and crushes everything in it —
+   which is exactly what it did. `--titlebar` is 0 in a browser, so the same
+   `calc()` is correct on both and there is one number to change.
+
+   Nothing else compensates. Only the topmost bar carries the strip; the frame
+   below it is positioned under that bar and would otherwise shift twice.
+
+   `data-tauri` is set in the app entry point and is absent in a browser. */
+:root {
+	--titlebar: 0px;
+}
+[data-tauri] {
+	--titlebar: 28px;
+}
+.native-titlebar-inset {
+	padding-top: var(--titlebar);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────
+   Flat. Fill, border, hover fade, press. `active:scale` is the cheapest and
+   most valuable part: without it a click is acknowledged only by whatever
+   happens next, and on touch it is the only feedback there is at all. */
+.btn {
+	position: relative;
+	transition:
+		transform 120ms ease-out,
+		background-color 200ms ease-out;
+}
+.btn:active {
+	transform: scale(0.985);
+}
+.btn-primary {
+	border: 1px solid oklch(0 0 0 / 0.16);
+}
+/* Dark theme: the fill is near-white, so hover brightens toward white. */
+.dark .btn-primary:hover {
+	background-color: color-mix(in oklab, var(--invert), oklch(1 0 0) 12%);
+}
+/* Light theme: the fill is near-black, so brightening washes it out — hover has
+   to LIFT it away from the page instead. */
+:root:not(.dark) .btn-primary:hover {
+	background-color: color-mix(in oklab, var(--invert), oklch(0.5 0 0) 18%);
+}
+.btn-secondary {
+	border: 1px solid var(--line);
+}
+.btn-secondary:hover {
+	background-color: color-mix(in oklab, var(--surface-2), var(--text) 6%);
+}
+@media (prefers-reduced-motion: reduce) {
+	.btn:active {
+		transform: none;
+	}
+}

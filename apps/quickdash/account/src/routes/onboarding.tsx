@@ -186,7 +186,8 @@ function OnboardingPage() {
 				</p>
 				<h1 className={`mt-3 ${heading}`}>What's your business called?</h1>
 				<p className="mt-3 text-muted-foreground">
-					This names your first workspace. You can rename it later.
+					This names your organisation and your first workspace. You can rename
+					either later.
 				</p>
 				<form onSubmit={submit}>
 					<input

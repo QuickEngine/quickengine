@@ -1,17 +1,20 @@
 import { authClient } from "@quickengine/auth/client";
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense } from "react";
-import { SignUpForm } from "@/components/signup-form";
+import { AuthLayout } from "@/components/auth-layout";
+import { SignUpPanel } from "@/components/signup-panel";
 import { resolveDestination } from "@/lib/destination";
 
 /**
- * Send an already-authenticated visitor straight to their destination rather
- * than showing them a sign-in form.
+ * Create an account.
  *
- * This was a server guard under Next. It now runs in the browser, and
- * **deliberately fails open**: if the session lookup errors, the form renders.
- * The worst case is a signed-in user seeing a sign-in page, which is harmless —
- * unlike an authenticated surface, where failing open would leak.
+ * The working flow — name, email, password, `signUp.email` and the "check your
+ * email" state — is untouched in `components/signup-form.tsx`. `SignUpPanel` is
+ * the new layout and currently wires social plus the email hand-off; the rest
+ * gets laid in from that file as it is designed.
+ *
+ * Send an already-authenticated visitor to their destination rather than showing
+ * them a form. **Deliberately fails open** — if the session lookup errors the
+ * form renders, and the worst case is a signed-in user seeing a sign-up page.
  */
 const redirectIfSignedIn = async ({
 	search,
@@ -34,8 +37,8 @@ export const Route = createFileRoute("/signup")({
 	}),
 	beforeLoad: redirectIfSignedIn,
 	component: () => (
-		<Suspense>
-			<SignUpForm />
-		</Suspense>
+		<AuthLayout>
+			<SignUpPanel />
+		</AuthLayout>
 	),
 });

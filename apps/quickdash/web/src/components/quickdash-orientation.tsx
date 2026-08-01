@@ -1,6 +1,11 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Compass, X } from "@phosphor-icons/react";
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	CompassIcon,
+	XIcon,
+} from "@phosphor-icons/react";
 import { Button } from "@quickengine/ui/components/ui/button";
 import { useState, useTransition } from "react";
 import {
@@ -51,17 +56,17 @@ export function QuickDashOrientation({
 		<aside
 			aria-label="QuickDash orientation"
 			aria-live="polite"
-			className={`fixed z-40 w-[min(21rem,calc(100vw-2rem))] rounded-xl border bg-muted p-4 shadow-lg ${placement}`}
+			className={`fixed z-40 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-[var(--b3)] bg-[var(--b2)] p-4 shadow-2xl shadow-black/50 ${placement}`}
 		>
 			{current && (
 				<span
 					aria-hidden="true"
-					className={`absolute hidden size-3 rotate-45 bg-muted md:block ${getQuickDashOrientationNotchClass(current.placement)}`}
+					className={`absolute hidden size-3 rotate-45 border-[var(--b3)] bg-[var(--b2)] md:block ${getQuickDashOrientationNotchClass(current.placement)}`}
 				/>
 			)}
 			<div className="flex items-start justify-between gap-4">
-				<span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-					<Compass className="size-5" weight="fill" />
+				<span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-void text-ink">
+					<CompassIcon size={15} />
 				</span>
 				<Button
 					type="button"
@@ -71,20 +76,24 @@ export function QuickDashOrientation({
 					disabled={pending}
 					onClick={() => close("skipped")}
 				>
-					<X />
+					<XIcon size={14} />
 				</Button>
 			</div>
-			<p className="mt-3 text-muted-foreground text-xs">
+			<p className="mt-3 font-body text-[11px] text-dim">
 				A quick tour · {step + 1} of {steps.length}
 			</p>
-			<h2 className="mt-1 font-semibold">{current?.title}</h2>
-			<p className="mt-1.5 text-muted-foreground text-sm leading-5">
+			<h2 className="mt-1 font-body font-[450] text-[14px] text-ink">
+				{current?.title}
+			</h2>
+			<p className="mt-1.5 font-body text-[12px] text-dim leading-relaxed">
 				{current?.description}
 			</p>
 			<div className="mt-4 flex items-center justify-between gap-3">
 				<Button
 					type="button"
 					variant="ghost"
+					size="sm"
+					className="h-7 gap-1.5 px-2.5 font-body text-[12px] text-dim hover:text-ink"
 					disabled={pending}
 					onClick={() => (step === 0 ? close("skipped") : setStep(step - 1))}
 				>
@@ -92,21 +101,25 @@ export function QuickDashOrientation({
 						"Skip"
 					) : (
 						<>
-							<ArrowLeft /> Back
+							<ArrowLeftIcon size={13} /> Back
 						</>
 					)}
 				</Button>
 				{step < steps.length - 1 ? (
 					<Button
 						type="button"
+						size="sm"
+						className="btn btn-primary h-7 gap-1.5 rounded-full bg-invert px-3.5 font-body font-[450] text-[12px] text-on-invert"
 						disabled={pending}
 						onClick={() => setStep(step + 1)}
 					>
-						Next <ArrowRight />
+						Next <ArrowRightIcon size={13} />
 					</Button>
 				) : (
 					<Button
 						type="button"
+						size="sm"
+						className="btn btn-primary h-7 rounded-full bg-invert px-3.5 font-body font-[450] text-[12px] text-on-invert"
 						disabled={pending}
 						onClick={() => close("completed")}
 					>
@@ -115,7 +128,7 @@ export function QuickDashOrientation({
 				)}
 			</div>
 			{error && (
-				<p className="mt-3 text-destructive text-xs" role="alert">
+				<p className="mt-3 font-body text-[11px] text-destructive" role="alert">
 					{error}
 				</p>
 			)}

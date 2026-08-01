@@ -10,6 +10,7 @@ export {
 	textLink,
 } from "./components/auth-ui";
 export { Background } from "./components/background";
+export { ConsoleShell } from "./components/console-shell";
 export { GeneratedAvatar } from "./components/generated-avatar";
 export { GlobalErrorScreen } from "./components/global-error-screen";
 export { Logo } from "./components/logo";
@@ -22,5 +23,11 @@ export {
 	RequestErrorScreen,
 } from "./components/request-state";
 export { StatusIndicator } from "./components/status-indicator";
+export {
+	type Theme,
+	ThemeProvider,
+	useTheme,
+} from "./components/theme-provider";
+export { ThemeSwitch } from "./components/theme-switch";
 export { Wordmark } from "./components/wordmark";
 export { cn } from "./lib/utils";

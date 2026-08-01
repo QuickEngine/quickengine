@@ -1,5 +1,11 @@
 packages:
+  # `apps/*/*` covers the product apps, which are grouped by brand
+  # (quickengine/web, quickdash/account). The native shells sit one level up
+  # because they are not brand-scoped — there is one desktop app, not one per
+  # brand — so they need their own entry.
   - "apps/*/*"
+  - "apps/desktop"
+  - "apps/mobile"
   - "services/*"
   - "packages/*"
   - "packages/modules/*"

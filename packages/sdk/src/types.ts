@@ -17,11 +17,26 @@ export type QuickSessionCredential = {
 	type: "session";
 };
 
+/**
+ * A session token carried explicitly rather than by cookie.
+ *
+ * For native shells. A cookie set during a system-browser sign-in cannot reach a
+ * Tauri webview — different process, different cookie store — so the token is
+ * handed over once and sent as `Authorization: Bearer` from then on. The API
+ * already accepts this via Better Auth's `bearer()` plugin; it is the same
+ * session, transported differently.
+ */
+export type QuickBearerCredential = {
+	type: "bearer";
+	token: string;
+};
+
 export type QuickCredential =
 	| QuickSecretCredential
 	| QuickScopedCredential
 	| QuickPublishableCredential
-	| QuickSessionCredential;
+	| QuickSessionCredential
+	| QuickBearerCredential;
 
 export type QuickServerCredential =
 	| QuickSecretCredential
@@ -29,7 +44,8 @@ export type QuickServerCredential =
 
 export type QuickBrowserCredential =
 	| QuickPublishableCredential
-	| QuickSessionCredential;
+	| QuickSessionCredential
+	| QuickBearerCredential;
 
 type QuickClientBaseOptions = {
 	baseUrl: string;
@@ -40,7 +56,10 @@ type QuickClientBaseOptions = {
 export type QuickClientOptions<
 	TCredential extends QuickCredential = QuickCredential,
 > = QuickClientBaseOptions &
-	([TCredential] extends [QuickSessionCredential]
+	// `bearer` sits alongside `session` here because it IS a session — the same
+	// token, carried explicitly instead of by cookie — so it reaches the same
+	// account-scoped endpoints and has the same optional workspace.
+	([TCredential] extends [QuickSessionCredential | QuickBearerCredential]
 		? {
 				credential: TCredential;
 				/** Optional for session-scoped account endpoints. */
@@ -50,6 +69,23 @@ export type QuickClientOptions<
 				credential: TCredential;
 				workspaceId: string;
 			});
+
+/**
+ * What the `QuickClient` constructor accepts.
+ *
+ * Every `QuickClientOptions<…>` narrows to this, so the class takes any of them
+ * without the constructor having to enumerate the combinations — that union grew
+ * a member every time a credential was added and started rejecting unions the
+ * callers legitimately hold.
+ *
+ * `workspaceId` is optional here and enforced at runtime instead. The
+ * compile-time requirement lives on the factories, which is where callers
+ * actually get typed.
+ */
+export type QuickClientConstructorOptions = QuickClientBaseOptions & {
+	credential: QuickCredential;
+	workspaceId?: string;
+};
 
 export type QuickRequestOptions = Omit<RequestInit, "body" | "method"> & {
 	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

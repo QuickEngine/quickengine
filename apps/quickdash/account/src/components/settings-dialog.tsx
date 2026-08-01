@@ -73,7 +73,7 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
 	return (
 		<Dialog>
 			<DialogTrigger asChild>{children}</DialogTrigger>
-			<DialogContent className="gap-0 overflow-hidden p-0 md:max-h-[520px] md:max-w-[760px]">
+			<DialogContent className="h-[min(88vh,52rem)] w-[min(92vw,60rem)] gap-0 overflow-hidden p-0 sm:max-w-[min(92vw,60rem)]">
 				<DialogTitle className="sr-only">Settings</DialogTitle>
 				<DialogDescription className="sr-only">
 					Manage your account settings.

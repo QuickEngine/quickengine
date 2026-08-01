@@ -137,6 +137,40 @@ export type OrganizationMember = {
 };
 
 /** The members of an org with their identity + role, oldest first (owner is typically first). */
+/**
+ * Name the user's auto-created org after their business, at onboarding.
+ *
+ * 🔑 Why this exists. Signup calls `ensurePersonalOrg(userId, displayName)`,
+ * which names the organisation after the PERSON — the Vercel model, where a
+ * personal account is a real scope because developers have side projects.
+ * QuickEngine's customers are businesses from the first minute, so that left the
+ * billing entity called "Asher Wilson" while the thing actually named after the
+ * company was one workspace inside it. Inverted, and confusing the moment you
+ * saw both switchers.
+ *
+ * Linear's model instead: you name your company once and it names the
+ * organisation. The auto-created org stays — the auth flow needs one to exist at
+ * signup, before onboarding runs — but it becomes an invisible placeholder that
+ * gets its real name here.
+ *
+ * Only ever touches a `isPersonal` org, and clears the flag. A user who has
+ * already created a real organisation, or been invited to someone else's, keeps
+ * whatever it is called.
+ */
+export async function nameOrganizationFromBusiness(
+	userId: string,
+	businessName: string,
+): Promise<void> {
+	const name = businessName.trim();
+	if (!name) return;
+	const personal = await getPersonalOrg(userId);
+	if (!personal) return;
+	await db
+		.update(quickengineOrganizations)
+		.set({ name, slug: orgSlug(name), isPersonal: false })
+		.where(eq(quickengineOrganizations.id, personal.id));
+}
+
 export async function listOrganizationMembers(
 	organizationId: string,
 ): Promise<OrganizationMember[]> {

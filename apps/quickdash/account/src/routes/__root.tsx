@@ -1,15 +1,12 @@
+import { GearSixIcon } from "@phosphor-icons/react";
 import { authClient } from "@quickengine/auth/client";
 import {
+	ConsoleShell,
 	LoadingScreen,
 	RequestErrorScreen,
 	StatusScreen,
 	textLink,
 } from "@quickengine/ui";
-import {
-	Sidebar,
-	SidebarInset,
-	SidebarProvider,
-} from "@quickengine/ui/components/ui/sidebar";
 import {
 	type QueryClient,
 	useQuery,
@@ -21,12 +18,12 @@ import {
 	redirect,
 	useRouterState,
 } from "@tanstack/react-router";
-import type { CSSProperties } from "react";
+import { AccountNav, AccountNavTop } from "../components/account-nav";
 import { Breadcrumbs } from "../components/breadcrumbs";
-import { DashboardNav } from "../components/nav";
 import { NotificationBell } from "../components/notification-bell";
 import { ProfileMenu } from "../components/profile-menu";
 import { SearchBar } from "../components/search-bar";
+import { SettingsDialog } from "../components/settings-dialog";
 import { TeamSwitcher } from "../components/team-switcher";
 import { ThemeProvider } from "../components/theme-provider";
 import { UpgradeButton } from "../components/upgrade-button";
@@ -153,40 +150,66 @@ function AccountShell() {
 	}));
 
 	return (
-		<SidebarProvider style={{ "--header-height": "3.5rem" } as CSSProperties}>
-			<header className="fixed inset-x-0 top-0 z-30 flex h-(--header-height) items-center border-sidebar-border border-b bg-background">
-				<div className="flex h-full w-(--sidebar-width) items-center border-sidebar-border border-r px-4">
-					<TeamSwitcher
-						orgs={organizations.data.items}
-						activeOrgId={active?.id ?? ""}
-						tier={plan.data?.planId ?? "Free"}
-						onSelect={selectOrganization}
-					/>
-				</div>
-				<div className="flex flex-1 items-center justify-between px-4">
-					<Breadcrumbs />
-					<div className="flex items-center gap-3">
-						<SearchBar />
-						<UpgradeButton />
-						<NotificationBell
-							items={inbox}
-							unread={notifications.data.unread}
-						/>
-						<ProfileMenu
-							seed={user.id}
-							name={user.name ?? ""}
-							email={user.email}
-						/>
-					</div>
-				</div>
-			</header>
-			<Sidebar>
-				<DashboardNav />
-			</Sidebar>
-			<SidebarInset className="pt-(--header-height)">
-				<Outlet />
-			</SidebarInset>
-		</SidebarProvider>
+		// The shared shell. QuickDash is master: every measurement in ConsoleShell
+		// came from it, and Account conforms rather than the reverse. Only content
+		// differs here — switcher, nav and actions.
+		<ConsoleShell
+			switcher={
+				<TeamSwitcher
+					orgs={organizations.data.items}
+					activeOrgId={active?.id ?? ""}
+					tier={plan.data?.planId ?? "Free"}
+					onSelect={selectOrganization}
+				/>
+			}
+			breadcrumbs={<Breadcrumbs />}
+			actions={
+				<>
+					<UpgradeButton />
+					<SearchBar />
+					<NotificationBell items={inbox} unread={notifications.data.unread} />
+				</>
+			}
+			account={
+				<ProfileMenu
+					seed={user.id}
+					name={user.name ?? ""}
+					email={user.email}
+					planId={plan.data?.planId ?? null}
+					// A route, not the dialog. The dialog is 960px wide with a 224px rail
+					// inside it — on a 375px phone that leaves 121px of content. These
+					// settings screens already exist at /settings/*, with a back button.
+					mobileItems={
+						<a
+							href="/settings/profile"
+							className="inline-flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[13px] text-ink"
+						>
+							<GearSixIcon size={14} className="shrink-0 text-dim" />
+							Settings
+						</a>
+					}
+				/>
+			}
+			navTop={<AccountNavTop />}
+			nav={<AccountNav />}
+			navBottom={
+				/* The real dialog — profile, security, billing, sessions, theme — not a
+				   link out. It already existed and I replaced it with a link when the
+				   shell was rebuilt; this restores it. Mirrors QuickDash's Developers
+				   dialog: same size, same rail. */
+				<SettingsDialog>
+					<button
+						type="button"
+						className="inline-flex h-8 items-center gap-2.5 rounded-md px-2 text-dim transition-colors hover:bg-field hover:text-ink"
+					>
+						<GearSixIcon size={16} className="shrink-0" />
+						<span className="font-body text-[13px]">Settings</span>
+					</button>
+				</SettingsDialog>
+			}
+		>
+			<Outlet />
+		</ConsoleShell>
 	);
 }
 

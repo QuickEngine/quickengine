@@ -1,17 +1,21 @@
 import { authClient } from "@quickengine/auth/client";
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense } from "react";
-import { SignInForm } from "@/components/signin-form";
+import { AuthLayout } from "@/components/auth-layout";
+import { SignInPanel } from "@/components/signin-panel";
 import { resolveDestination } from "@/lib/destination";
 
 /**
- * Send an already-authenticated visitor straight to their destination rather
- * than showing them a sign-in form.
+ * Sign in.
  *
- * This was a server guard under Next. It now runs in the browser, and
- * **deliberately fails open**: if the session lookup errors, the form renders.
- * The worst case is a signed-in user seeing a sign-in page, which is harmless —
- * unlike an authenticated surface, where failing open would leak.
+ * The full legacy flow — password, magic link, 2FA, recovery codes — is
+ * untouched in `components/signin-form.tsx`. `SignInPanel` is the new layout and
+ * currently wires social, passkey and the email hand-off; the remaining steps
+ * get laid in from that file as they are designed.
+ *
+ * Send an already-authenticated visitor straight to their destination rather
+ * than showing them a form. **Deliberately fails open** — if the session lookup
+ * errors the form renders, and the worst case is a signed-in user seeing a
+ * sign-in page.
  */
 const redirectIfSignedIn = async ({
 	search,
@@ -34,8 +38,8 @@ export const Route = createFileRoute("/signin")({
 	}),
 	beforeLoad: redirectIfSignedIn,
 	component: () => (
-		<Suspense>
-			<SignInForm />
-		</Suspense>
+		<AuthLayout>
+			<SignInPanel />
+		</AuthLayout>
 	),
 });

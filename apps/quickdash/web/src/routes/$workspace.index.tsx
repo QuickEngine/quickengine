@@ -18,18 +18,12 @@ function Overview() {
 			(await workspaceApi(workspace).activity.list({ limit: 20 })).data,
 	});
 	if (context.isPending || activity.isPending)
-		return (
-			<PageLoadingState
-				label="Loading workspace home"
-				rows={4}
-				className="mx-auto w-full max-w-6xl"
-			/>
-		);
+		return <PageLoadingState label="Loading workspace home" rows={4} />;
 	if (context.isError) throw context.error;
 	if (activity.isError) throw activity.error;
 	const home = buildWorkspaceHomeModel(context.data.checklist.items);
 	return (
-		<main className="mx-auto w-full max-w-6xl space-y-8 p-6">
+		<main className="space-y-8 p-6">
 			<header>
 				<p className="text-muted-foreground text-sm">Workspace home</p>
 				<h1 className="mt-1 font-semibold text-2xl">

@@ -27,6 +27,18 @@ pnpm dash                                # :3011
 pnpm --filter @quickengine/desktop dev   # the window
 ```
 
+To produce installers locally:
+
+```bash
+pnpm --filter @quickengine/desktop bundle
+```
+
+🔴 The script is `bundle`, **not** `build`. `turbo build` runs every package's
+`build`, and compiling this one needs Rust plus GTK and webkit system libraries
+that a generic CI runner does not have — it failed the whole pipeline on
+`glib-sys`. Bundling belongs to the release workflow, which installs those
+toolchains deliberately.
+
 There is deliberately no `beforeDevCommand`: those servers stay up across
 sessions, so having Tauri start its own means a second Vite on an occupied port
 and the whole run fails.

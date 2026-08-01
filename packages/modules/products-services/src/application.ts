@@ -4,17 +4,22 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	catalogItems,
 	catalogItemVariants,
 	db,
+	decodeCursor,
 	eq,
 	gt,
 	mutationUnitOfWork,
+	pageOrder,
 	quickengineWorkspaces,
+	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import {
@@ -32,8 +37,27 @@ import {
 	variantCombinationKey,
 } from "./variant";
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const CATALOG_SORTS = {
+	name: catalogItems.name,
+	sku: catalogItems.sku,
+	priceCents: catalogItems.priceCents,
+	status: catalogItems.status,
+	createdAt: catalogItems.createdAt,
+	updatedAt: catalogItems.updatedAt,
+} as const satisfies SortMap;
+
 export const catalogListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	// A published/storefront (publishable) read is clamped to active items by the route; an admin
 	// read may filter to any status or omit this to see all.
@@ -106,29 +130,36 @@ async function assertSkuAvailable(
 
 export async function listCatalogItemsPage(
 	workspaceId: string,
-	query: { cursor?: string; limit?: number | string; status?: string },
+	query: {
+		cursor?: string;
+		direction?: string;
+		limit?: number | string;
+		sort?: string;
+		status?: string;
+	},
 ) {
 	const page = catalogListQuerySchema.parse(query);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(CATALOG_SORTS, page.sort, "createdAt");
 	const where = and(
 		eq(catalogItems.workspaceId, workspaceId),
-		page.cursor ? gt(catalogItems.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			catalogItems.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.status ? eq(catalogItems.status, page.status) : undefined,
 	);
 	const rows = await db
 		.select()
 		.from(catalogItems)
 		.where(where)
-		.orderBy(asc(catalogItems.id))
+		.orderBy(...pageOrder(sort.column, catalogItems.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
-	return {
-		items: items.map(serializeItem),
-		page: {
-			hasMore,
-			nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
-		},
-	};
+	const paged = toPage(rows, page.limit, sort.key, "id");
+	return { items: paged.items.map(serializeItem), page: paged.page };
 }
 
 export async function getCatalogItemDto(

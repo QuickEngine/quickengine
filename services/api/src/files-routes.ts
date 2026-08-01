@@ -103,6 +103,8 @@ export function registerFilesRoutes(
 			c,
 			await listFileFoldersPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				limit: c.req.query("limit"),
 				parentId: c.req.query("parentId"),
 				rootOnly: c.req.query("rootOnly"),
@@ -145,6 +147,8 @@ export function registerFilesRoutes(
 			c,
 			await listFileDocumentsPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				folderId: c.req.query("folderId"),
 				limit: c.req.query("limit"),
 				status: c.req.query("status"),

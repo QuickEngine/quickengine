@@ -94,6 +94,8 @@ export function registerProductsServicesRoutes(
 			c,
 			await listCatalogItemsPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				limit: c.req.query("limit"),
 				status: activeOnlyFor(c) ?? c.req.query("status"),
 			}),

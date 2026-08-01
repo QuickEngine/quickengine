@@ -4,17 +4,22 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	db,
+	decodeCursor,
 	eq,
 	gt,
 	gte,
 	lte,
 	mutationUnitOfWork,
+	pageOrder,
+	resolveSort,
 	timeEntries,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import type { BillingRoundingMode } from "./billing";
@@ -42,8 +47,26 @@ import {
 
 export type TimeMutationUnitOfWork = MutationUnitOfWork<DatabaseTransaction>;
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const TIME_ENTRY_SORTS = {
+	startedAt: timeEntries.startedAt,
+	status: timeEntries.status,
+	durationSeconds: timeEntries.durationSeconds,
+	amountCents: timeEntries.amountCents,
+	createdAt: timeEntries.createdAt,
+} as const satisfies SortMap;
+
 export const timeEntryListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	projectId: z.uuid().optional(),
 	taskId: z.uuid().optional(),
@@ -153,7 +176,9 @@ export async function listTimeEntriesPage(
 	workspaceId: string,
 	query: {
 		cursor?: string;
+		direction?: string;
 		limit?: number | string;
+		sort?: string;
 		projectId?: string;
 		taskId?: string;
 		trackerKey?: string;
@@ -163,9 +188,17 @@ export async function listTimeEntriesPage(
 	},
 ) {
 	const page = timeEntryListQuerySchema.parse(query);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(TIME_ENTRY_SORTS, page.sort, "startedAt");
 	const where = and(
 		eq(timeEntries.workspaceId, workspaceId),
-		page.cursor ? gt(timeEntries.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			timeEntries.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.projectId ? eq(timeEntries.projectId, page.projectId) : undefined,
 		page.taskId ? eq(timeEntries.taskId, page.taskId) : undefined,
 		page.trackerKey ? eq(timeEntries.trackerKey, page.trackerKey) : undefined,
@@ -177,7 +210,7 @@ export async function listTimeEntriesPage(
 		.select()
 		.from(timeEntries)
 		.where(where)
-		.orderBy(asc(timeEntries.id))
+		.orderBy(...pageOrder(sort.column, timeEntries.id, page.direction))
 		.limit(page.limit + 1);
 	const hasMore = rows.length > page.limit;
 	const items = rows.slice(0, page.limit);

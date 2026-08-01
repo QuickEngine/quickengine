@@ -4,17 +4,22 @@ import type {
 	MutationResult,
 	MutationUnitOfWork,
 } from "@quickengine/api-contracts/mutations";
-import type { DatabaseTransaction } from "@quickengine/db";
+import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
+	afterCursor,
 	and,
 	asc,
 	bookings,
 	db,
+	decodeCursor,
 	eq,
 	gt,
 	gte,
 	lte,
 	mutationUnitOfWork,
+	pageOrder,
+	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import {
@@ -31,8 +36,26 @@ import {
 
 export type BookingMutationUnitOfWork = MutationUnitOfWork<DatabaseTransaction>;
 
+/**
+ * What an operator would order this list by.
+ *
+ * An allowlist, never a column name from the request: an arbitrary column
+ * would let a caller sort by fields the DTO never exposes and read their
+ * values off the ordering.
+ */
+const BOOKING_SORTS = {
+	startsAt: bookings.startsAt,
+	title: bookings.title,
+	status: bookings.status,
+	createdAt: bookings.createdAt,
+	updatedAt: bookings.updatedAt,
+} as const satisfies SortMap;
+
 export const bookingListQuerySchema = z.object({
-	cursor: z.uuid().optional(),
+	// Opaque now: it encodes (sortValue, id), so it is no longer a bare uuid.
+	cursor: z.string().trim().min(1).optional(),
+	direction: z.enum(["asc", "desc"]).default("desc"),
+	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	scheduleKey: z.string().trim().min(1).max(200).optional(),
 	status: z.enum(BOOKING_STATUSES).optional(),
@@ -127,7 +150,9 @@ export async function listBookingsPage(
 	workspaceId: string,
 	query: {
 		cursor?: string;
+		direction?: string;
 		limit?: number | string;
+		sort?: string;
 		scheduleKey?: string;
 		status?: string;
 		from?: string | Date;
@@ -135,9 +160,17 @@ export async function listBookingsPage(
 	},
 ) {
 	const page = bookingListQuerySchema.parse(query);
+	// Newest first by default: a list ordered by id is effectively random
+	// to the person reading it.
+	const sort = resolveSort(BOOKING_SORTS, page.sort, "startsAt");
 	const where = and(
 		eq(bookings.workspaceId, workspaceId),
-		page.cursor ? gt(bookings.id, page.cursor) : undefined,
+		afterCursor(
+			sort.column,
+			bookings.id,
+			decodeCursor(page.cursor),
+			page.direction,
+		),
 		page.scheduleKey ? eq(bookings.scheduleKey, page.scheduleKey) : undefined,
 		page.status ? eq(bookings.status, page.status) : undefined,
 		page.from ? gte(bookings.startsAt, page.from) : undefined,
@@ -147,7 +180,7 @@ export async function listBookingsPage(
 		.select()
 		.from(bookings)
 		.where(where)
-		.orderBy(asc(bookings.id))
+		.orderBy(...pageOrder(sort.column, bookings.id, page.direction))
 		.limit(page.limit + 1);
 	const hasMore = rows.length > page.limit;
 	const items = rows.slice(0, page.limit);

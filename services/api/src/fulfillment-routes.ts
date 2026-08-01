@@ -75,6 +75,8 @@ export function registerFulfillmentRoutes(
 			c,
 			await listFulfillmentsPage(c.get("authorized").workspaceId, {
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				limit: c.req.query("limit"),
 				status: c.req.query("status"),
 			}),

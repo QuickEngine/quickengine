@@ -78,6 +78,8 @@ export function registerContractsRoutes(
 			await listContractsPage(c.get("authorized").workspaceId, {
 				clientId: c.req.query("clientId"),
 				cursor: c.req.query("cursor"),
+				direction: c.req.query("direction"),
+				sort: c.req.query("sort"),
 				limit: c.req.query("limit"),
 				status: c.req.query("status"),
 			}),

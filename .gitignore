@@ -59,4 +59,15 @@ yarn-error.log*
 .DS_Store
 *.pem
 *.tsbuildinfo
-routeTree.gen.ts
+
+# ⚠️ `routeTree.gen.ts` is NOT ignored, despite being generated.
+#
+# It was ignored once, and every app that predates that rule has it committed
+# anyway — gitignore only applies to files git is not already tracking. So four
+# apps had it and the fifth silently did not, and CI failed on the new one with
+# "Cannot find module './routeTree.gen'".
+#
+# It has to be committed: `typecheck` runs `tsc --noEmit` without building
+# first, so nothing regenerates the file in CI. Committing it is the choice this
+# repository already made; the ignore rule just hid that from the next app.
+

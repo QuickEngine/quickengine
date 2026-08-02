@@ -2592,6 +2592,101 @@ function declaredDocument(config: ApiConfig) {
 				},
 			},
 
+			// ── Customer API ────────────────────────────────────────────────────
+			// Our USERS' USERS: a shopper, a massage client, a student. Authenticated
+			// by a publishable key (which workspace) plus a customer session (which
+			// person). A customer session can never satisfy an operator route.
+			"/v1/customer/context": {
+				get: {
+					operationId: "getCustomerContext",
+					summary: "The workspace behind a publishable key, and its modules",
+					description:
+						"Public. Drives a portal's navigation the same way enabled modules drive QuickDash's sidebar. Carries the workspace's public identity only — nothing about its operators, billing or customers.",
+					responses: {
+						"200": { description: "Workspace name, slug and enabled modules." },
+					},
+				},
+			},
+			"/v1/customer/auth/request-link": {
+				post: {
+					operationId: "requestCustomerSignInLink",
+					summary: "Email a sign-in link to a customer",
+					description:
+						"Always answers 202, whether or not the address is known. Any observable difference would turn a public sign-in form into an oracle for whether somebody is a customer of that business.",
+					responses: {
+						"202": { description: "Accepted. A link is sent if applicable." },
+					},
+				},
+			},
+			"/v1/customer/auth/verify": {
+				post: {
+					operationId: "verifyCustomerSignInLink",
+					summary: "Exchange a sign-in link for a session",
+					description:
+						"Single use. The session token is returned in the body rather than set as a cookie, so it works from a storefront on any domain and carries no CSRF surface. Expired, used, unknown and wrong-workspace tokens are answered identically.",
+					responses: {
+						"200": { description: "A session token and its expiry." },
+						"401": { description: "The link is no longer valid." },
+					},
+				},
+			},
+			"/v1/customer/auth/me": {
+				get: {
+					operationId: "getCustomer",
+					summary: "Who the presented customer session belongs to",
+					responses: {
+						"200": { description: "The customer's workspace-scoped id." },
+						"401": { description: "No valid session." },
+					},
+				},
+			},
+			"/v1/customer/auth/sign-out": {
+				post: {
+					operationId: "signOutCustomer",
+					summary: "Revoke a customer session",
+					description: "Idempotent. An already-revoked token answers the same.",
+					responses: { "200": { description: "Signed out." } },
+				},
+			},
+
+			// A customer's own records. No client id is accepted on any of these —
+			// the filter comes from the session, so there is no parameter a caller
+			// could point at somebody else. Each is gated on its module, so a shop
+			// has no bookings endpoint rather than an empty one.
+			"/v1/customer/orders": {
+				get: {
+					operationId: "listCustomerOrders",
+					summary: "The signed-in customer's own orders",
+					responses: {
+						"200": { description: "A page of the caller's orders." },
+						"401": { description: "No valid session." },
+						"403": { description: "Orders is not enabled." },
+					},
+				},
+			},
+			"/v1/customer/bookings": {
+				get: {
+					operationId: "listCustomerBookings",
+					summary: "The signed-in customer's own bookings",
+					responses: {
+						"200": { description: "A page of the caller's bookings." },
+						"401": { description: "No valid session." },
+						"403": { description: "Bookings is not enabled." },
+					},
+				},
+			},
+			"/v1/customer/invoices": {
+				get: {
+					operationId: "listCustomerInvoices",
+					summary: "The signed-in customer's own invoices",
+					responses: {
+						"200": { description: "A page of the caller's invoices." },
+						"401": { description: "No valid session." },
+						"403": { description: "Invoicing is not enabled." },
+					},
+				},
+			},
+
 			// ── Credits ─────────────────────────────────────────────────────────
 			"/v1/account/credits": {
 				get: {

@@ -56,6 +56,14 @@ export const invoiceListQuerySchema = z.object({
 	sort: z.string().trim().min(1).optional(),
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	status: z.enum(INVOICE_STATUSES).optional(),
+	/**
+	 * Restrict to one client's own records.
+	 *
+	 * Exists for the customer surface, where a signed-in person may only see
+	 * their own. Optional because the operator list is legitimately unfiltered;
+	 * `customerScope` is the single place that supplies it.
+	 */
+	clientId: z.uuid().optional(),
 });
 
 const FRIENDLY: Record<string, string> = {
@@ -138,6 +146,7 @@ export async function listInvoicesPage(
 			page.direction,
 		),
 		page.status ? eq(invoices.status, page.status) : undefined,
+		page.clientId ? eq(invoices.clientId, page.clientId) : undefined,
 	);
 	const rows = await db
 		.select()

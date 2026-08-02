@@ -7,6 +7,7 @@ import {
 	workspaceChannel,
 } from "@quickengine/realtime";
 import { getSearchProvider, type SearchProvider } from "@quickengine/search";
+import { customerNotificationHandler } from "./customer-notifications";
 import { webhookFanoutHandler } from "./webhooks";
 
 /**
@@ -119,6 +120,10 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 		activityHandler(),
 		realtimeHandler(),
 		searchHandler(),
+		// Transactional mail to the workspace's own customers. Sits before webhook
+		// fan-out because a receipt matters more than a third-party integration,
+		// and it swallows its own failures so a mail outage cannot stall the rest.
+		customerNotificationHandler(),
 		webhookFanoutHandler(),
 	];
 }

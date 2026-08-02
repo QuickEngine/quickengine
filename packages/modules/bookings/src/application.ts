@@ -59,6 +59,14 @@ export const bookingListQuerySchema = z.object({
 	/** Inclusive window filters on the booking's start time. */
 	from: z.coerce.date().optional(),
 	to: z.coerce.date().optional(),
+	/**
+	 * Restrict to one client's own records.
+	 *
+	 * Exists for the customer surface, where a signed-in person may only see
+	 * their own. Optional because the operator list is legitimately unfiltered;
+	 * `customerScope` is the single place that supplies it.
+	 */
+	clientId: z.uuid().optional(),
 });
 
 import {
@@ -170,6 +178,7 @@ export async function listBookingsPage(
 		),
 		page.scheduleKey ? eq(bookings.scheduleKey, page.scheduleKey) : undefined,
 		page.status ? eq(bookings.status, page.status) : undefined,
+		page.clientId ? eq(bookings.clientId, page.clientId) : undefined,
 		page.from ? gte(bookings.startsAt, page.from) : undefined,
 		page.to ? lte(bookings.startsAt, page.to) : undefined,
 	);

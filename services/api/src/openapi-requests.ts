@@ -116,7 +116,19 @@ const autoRechargeInputSchema = z.object({
 	amountCents: z.number().int().positive().optional(),
 });
 
+// Customer API. Both bodies are deliberately one field: these are the two
+// endpoints an unauthenticated stranger can reach, so the parse surface is kept
+// as small as the operation allows.
+const customerSignInRequestSchema = z.object({
+	email: z.email().max(320),
+});
+const customerVerifySchema = z.object({
+	token: z.string().min(16).max(512),
+});
+
 export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
+	requestCustomerSignInLink: customerSignInRequestSchema,
+	verifyCustomerSignInLink: customerVerifySchema,
 	// Client records
 	saveView: savedViewInputSchema,
 	pinSavedView: savedViewPinSchema,

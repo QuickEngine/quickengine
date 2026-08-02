@@ -43,6 +43,44 @@ export type ApiPrincipal =
 	| { kind: "session"; role: string; userId: string }
 	| { keyId: string; kind: "key"; type: QuickEngineApiKeyType };
 
+/**
+ * An END CUSTOMER — one of our users' users. A shopper, a massage client, an
+ * agency's client, a student.
+ *
+ * 🔴 Deliberately NOT a member of `ApiPrincipal`. An operator principal and a
+ * customer principal must never be assignable to one another: the day they
+ * unify by accident is the day a shopper's token satisfies an operator route.
+ * They live in separate context slots (`authorized` vs `customer`) set by
+ * separate middleware, and no code path produces both.
+ */
+export type CustomerPrincipal = {
+	kind: "customer";
+	/** The membership. Scoped to ONE workspace — this is what isolates tenants. */
+	workspaceCustomerId: string;
+	/** The person, who may hold memberships elsewhere. Never used for scoping. */
+	identityId: string;
+	/**
+	 * The `client_records` row this customer is bound to, and the ONLY value any
+	 * customer read may filter by.
+	 *
+	 * Null when an identity exists but has not yet been matched to a record —
+	 * verified, signed in, and simply has no history. Routes must treat null as
+	 * "no records", never as "no filter".
+	 */
+	clientRecordId: string | null;
+};
+
+export type CustomerContext = {
+	workspaceId: string;
+	workspace: WorkspaceResolution;
+	/**
+	 * Null on public customer routes — a publishable key alone identifies the
+	 * workspace but nobody in particular. Reading catalog: fine. Reading orders:
+	 * requires this.
+	 */
+	customer: CustomerPrincipal | null;
+};
+
 export type AuditActor =
 	| { id: string; type: "user" }
 	| { id: string; type: "api_key" };
@@ -56,6 +94,13 @@ export type AuthorizedApiContext = {
 
 export type PlatformVariables = {
 	authorized: AuthorizedApiContext;
+	/**
+	 * Set ONLY by `authorizeCustomer`, and `authorized` is never set alongside
+	 * it. An operator route reading `authorized` therefore cannot be reached by
+	 * a customer, and a customer route reading this cannot be reached by an
+	 * operator key. The wall is that the two slots are disjoint.
+	 */
+	customer: CustomerContext;
 	/** The plan whose limits applied, set during usage enforcement. */
 	planId?: string;
 	abortSignal: AbortSignal;
@@ -66,8 +111,26 @@ export type PlatformEnv = {
 	Variables: RequestIdVariables & PlatformVariables;
 };
 
+/** What a valid customer session token resolves to. */
+export type CustomerSessionResolution = {
+	workspaceCustomerId: string;
+	workspaceId: string;
+	identityId: string;
+	clientRecordId: string | null;
+};
+
 export type PlatformDependencies = {
 	getSession(headers: Headers): Promise<SessionIdentity | null>;
+	/**
+	 * Resolve a customer session token. Hashes the presented token and looks it
+	 * up; returns null for unknown, expired or revoked.
+	 *
+	 * Optional so an app assembled without the customer surface simply has no
+	 * customer routes, rather than routes that fail at request time.
+	 */
+	resolveCustomerSession?(
+		token: string,
+	): Promise<CustomerSessionResolution | null>;
 	getWorkspaceForKey(workspaceId: string): Promise<WorkspaceResolution | null>;
 	getWorkspaceForUser(
 		userId: string,

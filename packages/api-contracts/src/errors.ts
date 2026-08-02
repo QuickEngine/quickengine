@@ -4,6 +4,10 @@ export const API_ERROR_CODES = [
 	"AUTHENTICATION_REQUIRED",
 	"INVALID_API_KEY",
 	"CREDENTIAL_CHANNEL_MISMATCH",
+	// Customer boundary (`/v1/customer/*`) — our users' users.
+	"PUBLISHABLE_KEY_REQUIRED",
+	"SESSION_EXPIRED",
+	"SESSION_WORKSPACE_MISMATCH",
 	"WORKSPACE_REQUIRED",
 	"WORKSPACE_MISMATCH",
 	"WORKSPACE_NOT_FOUND",
@@ -31,6 +35,15 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
 	AUTHENTICATION_REQUIRED: 401,
 	INVALID_API_KEY: 401,
 	CREDENTIAL_CHANNEL_MISMATCH: 401,
+	PUBLISHABLE_KEY_REQUIRED: 401,
+	// 401, not 403. The session is gone, not forbidden — signing in again fixes
+	// it, and a client that treats it as 403 will show "access denied" to someone
+	// who simply needs to log back in.
+	SESSION_EXPIRED: 401,
+	// 403, not 401. Signing in again would NOT fix this: the session is valid,
+	// just for somebody else's storefront. Answering 401 would send a client into
+	// a re-authentication loop it can never win.
+	SESSION_WORKSPACE_MISMATCH: 403,
 	WORKSPACE_REQUIRED: 400,
 	WORKSPACE_MISMATCH: 403,
 	WORKSPACE_NOT_FOUND: 404,

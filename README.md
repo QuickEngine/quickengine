@@ -43,6 +43,22 @@ configurations — enabling Shipping brings Orders and its prerequisites with it
 
 ---
 
+## Two audiences, two surfaces
+
+**Operators** run their business in QuickDash: a session or a secret key, every module they
+enabled, everything in the workspace.
+
+**Their customers** — a shopper, a client, a patient, a student — reach `/v1/customer/*` with a
+publishable key and a session of their own. They see their own orders, bookings and invoices and
+nothing else, and they are a separate kind of identity: no seat, no team membership, no route
+into anybody's dashboard. One hosted portal serves every workspace, showing each business's name
+and only the sections it runs.
+
+The two are separate namespaces with no foreign key between them, resolved by different
+middleware from different headers. A customer session cannot satisfy an operator route.
+
+---
+
 ## Architecture
 
 **The API is the product boundary.** Every write goes through a Hono service that commits
@@ -75,7 +91,8 @@ pnpm + Turborepo · Vercel
 
 ```txt
 apps/quickengine/{web,auth,account}   the frontends
-apps/quickdash/web
+apps/quickdash/web                    the operator's workspace
+apps/quickdash/customer               the customer portal — our users' users
 services/api                          the canonical Hono boundary
 packages/
   modules/          15 isolated business capabilities
@@ -100,7 +117,8 @@ pnpm db:push
 pnpm dev                # everything
 ```
 
-Individually: `pnpm web` · `pnpm auth` · `pnpm account` · `pnpm dash` · `pnpm api`
+Individually: `pnpm web` · `pnpm auth` · `pnpm account` · `pnpm dash` ·
+`pnpm customer` · `pnpm api`
 
 ```sh
 pnpm check              # Biome + boundary ratchet + error-map check
@@ -115,7 +133,7 @@ pnpm test
 
 ## Plans
 
-| | Free | Launch | Grow | Scale | Teams | Custom |
+| | Free | Launch | Grow | Scale | Expand | Custom |
 |---|---|---|---|---|---|---|
 | Price / mo | $0 | $30 | $90 | $240 | **$30 per seat** | conversation |
 | Seats | 1 | 2 | 5 | 15 | 16 minimum | custom |
@@ -124,8 +142,12 @@ pnpm test
 | API requests | 10k | 250k | 1M | 5M | 500k per seat | custom |
 | AI actions | 25 | 500 | 2,500 | 10,000 | 1,500 per seat | custom |
 
-Annual is ten months on every tier. **Teams bills per seat and starts at 16**, so its entry
+Annual is ten months on every tier. **Expand bills per seat and starts at 16**, so its entry
 price is $480/mo — the point at which a company has outgrown Scale's flat 15.
+
+A hidden **Bypass** tier exists for internal use. It is never sold or listed: unlimited on
+everything that costs only our own infrastructure, with AI still capped, because that allowance
+is prepaid and shared across every customer.
 
 Modules are free, paid-to-unlock-then-unlimited, or resource-metered. AI beyond the included
 allowance draws on prepaid credits. Outbound webhook deliveries are counted but not capped.

@@ -8,6 +8,45 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Your customers can now sign in and see their own records.** Somebody who buys from you,
+  books with you, or is invoiced by you can sign in with their email — no password — and see
+  their orders, bookings and invoices. Nothing else. Until now there was no way for the people
+  your business serves to see anything at all.
+- **They keep what they bought before they had an account.** Somebody who checked out as a guest
+  and later signs in with the same address finds their earlier purchases already there. Nothing
+  to import, no reference number to quote.
+- **Signing in as a customer does not create a QuickEngine account.** Your customers are yours.
+  They cost you no seats, never appear in your team, and cannot reach your dashboard. A person
+  can be a customer of several businesses and see only what belongs to them at each one.
+- **A customer portal, hosted for you.** Every workspace gets one. It shows your business's name
+  and only the sections you actually run — a shop shows Orders, a clinic shows Bookings, an
+  agency shows Invoices. Nothing to deploy or maintain.
+- **Receipts and confirmations are sent.** An order, a payment, a shipment and a booking each
+  send an email now. Previously a customer paid and heard nothing, which reads as a failure even
+  when the payment worked. Guest purchases are included.
+- **The emails come from your business, not from us.** Your name, your support address, your
+  colour. QuickEngine is not mentioned.
+- **A Bypass plan for internal use.** Unlimited on everything we pay for ourselves; AI stays
+  capped, because that allowance is bought up-front and shared with every customer.
+
+### Changed
+
+- **The Teams plan is now called Expand.** Same plan, same price. The name simply did not fit
+  beside Launch, Grow and Scale.
+
+### Fixed
+
+- **Custom plans were being held to the free plan's limits.** An account on a negotiated plan
+  resolved to the smallest allowance we offer — ten thousand requests and a single seat. The
+  largest accounts were the ones affected.
+- **Some features were missing from local development.** Credits, integration health, product
+  events and saved views existed everywhere except a developer's own machine, so work could look
+  broken locally and behave correctly once deployed.
+- **A sign-in email that fails to send no longer breaks signing in.** The request now succeeds
+  and the failure is recorded, rather than surfacing an error to the person trying to log in.
+
+### Added — earlier
+
 - **The API has a front door.** Visiting `api.quickdash.xyz` used to answer with a not-found
   error for a request that was not wrong. It now greets you and points at the documentation.
 - **Credits can be bought.** Balance, top-up and auto-recharge are reachable for the first

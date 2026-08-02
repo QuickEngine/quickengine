@@ -56,6 +56,15 @@ export const orderListQuerySchema = z.object({
 	limit: z.coerce.number().int().min(1).max(100).default(25),
 	sort: z.string().trim().min(1).optional(),
 	status: z.enum(ORDER_STATUSES).optional(),
+	/**
+	 * Restrict to one client's own orders.
+	 *
+	 * Exists for the customer surface, where a signed-in shopper may only see
+	 * their own. Optional here because the operator list is legitimately
+	 * unfiltered — the customer routes never call this without it, and
+	 * `customerScope` is the single place that supplies it.
+	 */
+	clientId: z.uuid().optional(),
 });
 
 const FRIENDLY: Record<string, string> = {
@@ -149,6 +158,7 @@ export async function listOrdersPage(
 			page.direction,
 		),
 		page.status ? eq(orders.status, page.status) : undefined,
+		page.clientId ? eq(orders.clientId, page.clientId) : undefined,
 	);
 	const rows = await db
 		.select()

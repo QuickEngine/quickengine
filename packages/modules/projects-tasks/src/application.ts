@@ -8,11 +8,9 @@ import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
 	afterCursor,
 	and,
-	asc,
 	db,
 	decodeCursor,
 	eq,
-	gt,
 	isNull,
 	mutationUnitOfWork,
 	pageOrder,
@@ -20,7 +18,6 @@ import {
 	projects,
 	projectTasks,
 	resolveSort,
-	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import {

@@ -2,6 +2,7 @@
 export { and, asc, eq, gt, isNotNull, isNull, or, sql } from "drizzle-orm";
 export * from "./activity";
 export * from "./client";
+export * from "./control-plane-audit";
 export * from "./credits";
 export * from "./cursor-page";
 export * from "./drizzle";

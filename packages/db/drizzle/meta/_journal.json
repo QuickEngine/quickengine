@@ -351,6 +351,13 @@
 			"when": 1785614898054,
 			"tag": "0049_smart_radioactive_man",
 			"breakpoints": true
+		},
+		{
+			"idx": 50,
+			"version": "7",
+			"when": 1785627819223,
+			"tag": "0050_early_patriot",
+			"breakpoints": true
 		}
 	]
 }

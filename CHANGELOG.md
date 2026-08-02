@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Credits can be bought.** Balance, top-up and auto-recharge are reachable for the first
+  time; the code existed and nothing could call it. Auto-recharge needs both a trigger balance
+  and an amount stated explicitly, because it authorises future payments.
+- **Changes to your organization are recorded.** Creating or changing a role, inviting or
+  removing a member, issuing or revoking an API key, and deleting a workspace now leave an
+  entry showing who did it and when.
+
 - **Every list can be sorted.** Records, catalog items, invoices, orders, quotes, bookings,
   payments, shipments, projects, tasks, contracts, files and time entries can each be ordered by
   the columns that make sense for them, in either direction, and paged through without a record

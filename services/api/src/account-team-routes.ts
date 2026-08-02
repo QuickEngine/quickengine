@@ -9,6 +9,7 @@ import {
 	getInvitationByToken,
 	listOrganizationInvitations,
 	loadOrgRoleCapabilities,
+	recordControlPlaneAudit,
 	removeOrganizationMember,
 	revokeOrganizationInvitation,
 } from "@quickengine/db";
@@ -102,6 +103,18 @@ export function registerAccountTeamRoutes(
 			invitedByUserId: userId,
 			expiresInDays: input.expiresInDays,
 		});
+		await recordControlPlaneAudit({
+			organizationId,
+			actorId: userId,
+			actorType: "user",
+			action: "invitation.created",
+			resourceType: "invitation",
+			resourceId: invitation.id,
+			requestId: c.get("requestId"),
+			// The ROLE, never the email — that is a person's contact detail, and a
+			// security log is not the place to accumulate them.
+			metadata: { role: input.role },
+		});
 		// The token is returned once, to be emailed. It is stored hashed, so it can
 		// never be read back out afterwards.
 		return respond(c, invitation, 201);
@@ -151,6 +164,16 @@ export function registerAccountTeamRoutes(
 				// Stripe bills, so the count has to move before the next request is
 				// measured against it.
 				await syncSeats(accepted.organizationId);
+				await recordControlPlaneAudit({
+					organizationId: accepted.organizationId,
+					actorId: userId,
+					actorType: "user",
+					action: "member.joined",
+					resourceType: "member",
+					resourceId: userId,
+					requestId: c.get("requestId"),
+					metadata: { role: accepted.role },
+				});
 				return respond(c, accepted);
 			} catch (error) {
 				const reason = error instanceof Error ? error.message : "";
@@ -210,6 +233,17 @@ export function registerAccountTeamRoutes(
 		// Shrinking matters as much as growing: without this the organization keeps
 		// paying for a seat nobody occupies.
 		await syncSeats(organizationId);
+		// 🔴 The one that mattered most. A member could be granted billing.manage
+		// and later removed with no evidence anyone did it.
+		await recordControlPlaneAudit({
+			organizationId,
+			actorId: c.get("account").userId,
+			actorType: "user",
+			action: "member.removed",
+			resourceType: "member",
+			resourceId: c.req.param("userId"),
+			requestId: c.get("requestId"),
+		});
 		return respond(c, { removed: true });
 	});
 }

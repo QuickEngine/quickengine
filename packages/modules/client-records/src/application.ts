@@ -13,7 +13,6 @@ import {
 	db,
 	decodeCursor,
 	eq,
-	gt,
 	mutationUnitOfWork,
 	pageOrder,
 	resolveSort,

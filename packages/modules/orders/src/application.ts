@@ -12,7 +12,6 @@ import {
 	db,
 	decodeCursor,
 	eq,
-	gt,
 	mutationUnitOfWork,
 	orderLineItems,
 	orders,

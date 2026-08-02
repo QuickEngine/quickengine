@@ -8,12 +8,10 @@ import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
 	afterCursor,
 	and,
-	asc,
 	db,
 	decodeCursor,
 	desc,
 	eq,
-	gt,
 	inventoryAdjustments,
 	inventoryItems,
 	mutationUnitOfWork,

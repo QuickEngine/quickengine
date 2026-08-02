@@ -10,6 +10,7 @@ import { registerBillingInfoRoutes } from "./billing-info-routes";
 import { registerBookingsRoutes } from "./bookings-routes";
 import { registerClientRecordRoutes } from "./client-records-routes";
 import { registerContractsRoutes } from "./contracts-routes";
+import { registerCreditRoutes } from "./credit-routes";
 import { registerFilesRoutes } from "./files-routes";
 import { registerFulfillmentRoutes } from "./fulfillment-routes";
 import { registerInngestRoutes } from "./inngest-routes";
@@ -79,6 +80,7 @@ export function registerAllRoutes(
 	registerRolesRoutes(app, dependencies);
 	registerResendWebhookRoutes(app, { logger });
 	registerBillingInfoRoutes(app);
+	registerCreditRoutes(app, { platform: dependencies.platform });
 	registerAuthRoutes(app);
 	registerAccountWorkspaceRoutes(app, { platform: dependencies.platform });
 	registerAccountTeamRoutes(app, { platform: dependencies.platform });

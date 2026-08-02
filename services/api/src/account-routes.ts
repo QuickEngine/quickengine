@@ -24,6 +24,7 @@ import {
 	listOrganizationsForUser,
 	markAllNotificationsRead,
 	markNotificationRead,
+	recordControlPlaneAudit,
 	workspaceBelongsToOrganization,
 } from "@quickengine/db";
 import { listModules } from "@quickengine/module-registry";
@@ -473,6 +474,23 @@ export function registerAccountRoutes(
 			capabilities: input.capabilities,
 			expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
 		});
+		await recordControlPlaneAudit({
+			organizationId: c.get("account").organizationId,
+			actorId: c.get("account").userId,
+			actorType: "user",
+			action: "apikey.issued",
+			resourceType: "apikey",
+			resourceId: issued.id,
+			requestId: c.get("requestId"),
+			// Name, type and capability count. Never the key, never its hash — the
+			// response returns the secret once and nothing else may retain it.
+			metadata: {
+				name: input.name,
+				type: input.type,
+				capabilities: input.capabilities.length,
+				workspaceId: input.workspaceId,
+			},
+		});
 		return respond(c, issued, 201);
 	});
 
@@ -496,6 +514,16 @@ export function registerAccountRoutes(
 		}
 		const revoked = await revokeApiKey(workspaceId, c.req.param("id"));
 		if (!revoked) return respondError(c, "NOT_FOUND", "Key not found.", 404);
+		await recordControlPlaneAudit({
+			organizationId: c.get("account").organizationId,
+			actorId: c.get("account").userId,
+			actorType: "user",
+			action: "apikey.revoked",
+			resourceType: "apikey",
+			resourceId: c.req.param("id"),
+			requestId: c.get("requestId"),
+			metadata: { workspaceId },
+		});
 		return respond(c, { revoked: true });
 	});
 

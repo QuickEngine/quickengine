@@ -50,7 +50,7 @@ import {
 	timeEntryDetailsInputSchema,
 	timerStartInputSchema,
 } from "@quickengine/mod-time-tracking";
-import type { z } from "zod";
+import { z } from "zod";
 import {
 	confirmSubscriptionSchema,
 	createApiKeySchema,
@@ -80,8 +80,49 @@ import { roleInputSchema, rolePatchSchema } from "./roles-routes";
  * carrying its value in the path, an archive/restore) or documented inline.
  * `openapi.test.ts` holds the coverage line so the gap can only shrink.
  */
+
+/**
+ * Bodies for platform routes that parse inline rather than exporting a module
+ * schema. Kept here so the document and the route cannot disagree about shape.
+ */
+const savedViewInputSchema = z.object({
+	moduleId: z.string().min(1).max(100),
+	name: z.string().min(1).max(80),
+	state: z.record(z.string(), z.unknown()),
+	pinned: z.boolean().optional(),
+});
+
+const savedViewPinSchema = z.object({ pinned: z.boolean() });
+
+const productEventInputSchema = z.object({
+	name: z.string().min(1),
+	surface: z.enum(["web", "auth", "account", "quickdash"]),
+	workspaceId: z.uuid().optional(),
+	properties: z.record(z.string(), z.unknown()).optional(),
+	attribution: z.record(z.string(), z.unknown()).optional(),
+});
+
+const creditTopUpInputSchema = z.object({
+	pack: z.enum(["small", "medium", "large"]).optional(),
+	amountCents: z.number().int().positive().optional(),
+	savePaymentMethod: z.boolean().optional(),
+	billingEmail: z.string().email(),
+	billingName: z.string().min(1).max(200).optional(),
+});
+
+const autoRechargeInputSchema = z.object({
+	enabled: z.boolean(),
+	thresholdMicros: z.number().int().nonnegative().optional(),
+	amountCents: z.number().int().positive().optional(),
+});
+
 export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	// Client records
+	saveView: savedViewInputSchema,
+	pinSavedView: savedViewPinSchema,
+	recordProductEvent: productEventInputSchema,
+	createCreditTopUp: creditTopUpInputSchema,
+	setAutoRecharge: autoRechargeInputSchema,
 	createClient: clientRecordInputSchema,
 	updateClient: clientRecordPatchSchema,
 	createClientAddress: clientAddressInputSchema,

@@ -8,6 +8,7 @@ import {
 	createWorkspaceForUser,
 	deleteWorkspace,
 	nameOrganizationFromBusiness,
+	recordControlPlaneAudit,
 	renameWorkspace,
 	setWorkspaceArchived,
 	setWorkspaceModuleEnabled,
@@ -269,6 +270,16 @@ export function registerAccountWorkspaceRoutes(
 		// a workspace belonged to no organization.
 		if (workspace.organizationId) {
 			await syncWorkspaces(workspace.organizationId);
+			await recordControlPlaneAudit({
+				organizationId: workspace.organizationId,
+				actorId: c.get("account").userId,
+				actorType: "user",
+				action: "workspace.deleted",
+				resourceType: "workspace",
+				resourceId: workspace.id,
+				requestId: c.get("requestId"),
+				metadata: { name: workspace.name },
+			});
 		}
 		return respond(c, { deleted: true });
 	});

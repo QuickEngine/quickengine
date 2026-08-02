@@ -1,0 +1,1 @@
+DROP TABLE "quickdash_workspaces" CASCADE;

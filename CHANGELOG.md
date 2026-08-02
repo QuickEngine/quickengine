@@ -8,6 +8,8 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The API has a front door.** Visiting `api.quickdash.xyz` used to answer with a not-found
+  error for a request that was not wrong. It now greets you and points at the documentation.
 - **Credits can be bought.** Balance, top-up and auto-recharge are reachable for the first
   time; the code existed and nothing could call it. Auto-recharge needs both a trigger balance
   and an amount stated explicitly, because it authorises future payments.

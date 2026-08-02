@@ -358,6 +358,13 @@
 			"when": 1785627819223,
 			"tag": "0050_early_patriot",
 			"breakpoints": true
+		},
+		{
+			"idx": 51,
+			"version": "7",
+			"when": 1785645706070,
+			"tag": "0051_legal_scarlet_spider",
+			"breakpoints": true
 		}
 	]
 }

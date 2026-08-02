@@ -141,6 +141,69 @@ export function createApp(
 		}),
 	);
 
+	/**
+	 * The front door.
+	 *
+	 * Without this, `api.quickdash.xyz` falls through to the 404 handler and a
+	 * developer's first impression of the API is an error envelope for a request
+	 * that was not wrong. Every major API answers its own root with a pointer —
+	 * this is that pointer, and nothing else.
+	 *
+	 * Deliberately outside the `/v1` envelope: it is not an API operation, carries
+	 * no request id, and needs no version. A machine reading this is lost; a human
+	 * reading it wants a link.
+	 */
+	/**
+	 * The front door.
+	 *
+	 * Without this, `api.quickdash.xyz` falls through to the 404 handler and a
+	 * developer's first impression of the API is an error envelope for a request
+	 * that was not wrong.
+	 *
+	 * Content-negotiated, because the two audiences want different things: a
+	 * person in a browser gets the wordmark, a script gets JSON it can parse.
+	 * Serving one shape to both would mean either escaped newlines in a JSON
+	 * string or a machine parsing ASCII art.
+	 */
+	const WORDMARK = [
+		"  ____       _     __    ___           __ ",
+		" / __ \\__ __(_)___/ /__ / _ \\___ ____ / / ",
+		"/ /_/ / // / / __/  '_// // / _ `(_-</ _ \\",
+		"\\___\\_\\_,_/_/\\__/_/\\_\\/____/\\_,_/___/_//_/",
+	].join("\n");
+
+	app.get("/", (c) => {
+		// QuickDash, not QuickEngine. QuickEngine is the company; QuickDash is the
+		// product a developer integrates with, and this host is its API.
+		const message =
+			"This is the QuickDash API! Docs are available at docs.quickdash.xyz";
+
+		// `Accept` decides. A browser sends `text/html` and never asks for JSON;
+		// fetch and curl default to `*/*`, which lands here as JSON.
+		// `Accept` decides. A browser sends `text/html` and never asks for JSON;
+		// fetch and curl default to `*/*`, which lands here as JSON.
+		// `Accept` decides. A browser sends `text/html` and never asks for JSON;
+		// fetch and curl default to `*/*`, which lands here as JSON.
+		if (c.req.header("accept")?.includes("text/html")) {
+			// Left-aligned, four spaces in. Centring the wordmark over the message
+			// was tried and read worse — the ragged left edge fought the text.
+			const indent = "    ";
+			const art = WORDMARK.split("\n")
+				.map((line) => `${indent}${line}`)
+				.join("\n");
+
+			return c.body(`\n${art}\n\n${indent}${message}\n\n`, 200, {
+				"content-type": "text/plain; charset=utf-8",
+			});
+		}
+
+		// Pretty-printed rather than `c.json`, which minifies. The two extra bytes
+		// buy a response that reads as written.
+		return c.body(`${JSON.stringify({ message }, null, 2)}\n`, 200, {
+			"content-type": "application/json; charset=utf-8",
+		});
+	});
+
 	app.get("/openapi.json", (c) => c.json(createOpenApiDocument(config)));
 	options.registerRoutes?.(app, logger);
 

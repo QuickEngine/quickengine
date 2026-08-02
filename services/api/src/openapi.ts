@@ -2462,6 +2462,228 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			// ── Quote lifecycle ─────────────────────────────────────────────────
+			// Shipped 2026-07-27 (TECH_DEBT 5) and never documented.
+			"/v1/quotes/{id}/expire": {
+				post: {
+					operationId: "expireQuote",
+					summary: "Mark a quote expired",
+					description:
+						"A quote past its valid-until date. Writes audit and outbox records like every other lifecycle change.",
+					responses: { "200": { description: "The expired quote." } },
+				},
+			},
+			"/v1/quotes/{id}/revise": {
+				post: {
+					operationId: "reviseQuote",
+					summary: "Supersede a quote with a new revision",
+					responses: { "201": { description: "The new revision." } },
+				},
+			},
+			"/v1/quotes/{id}/void": {
+				post: {
+					operationId: "voidQuote",
+					summary: "Void a quote",
+					responses: { "200": { description: "The voided quote." } },
+				},
+			},
+
+			// ── Bookings → Invoicing ────────────────────────────────────────────
+			"/v1/bookings/{id}/invoice": {
+				post: {
+					operationId: "invoiceBooking",
+					summary: "Raise a draft invoice from a completed booking",
+					description:
+						"Idempotent by the booking itself, not only by the header: calling twice returns the same invoice with 200 rather than billing again. The service description and price are recorded as they were on the day, so repricing later never rewrites an issued bill. Only a completed booking can be invoiced.",
+					responses: {
+						"201": { description: "The invoice that was created." },
+						"200": {
+							description: "The invoice that already existed for this booking.",
+						},
+						"402": {
+							description: "Invoicing is not enabled on this workspace.",
+						},
+					},
+				},
+			},
+
+			// ── Saved views ─────────────────────────────────────────────────────
+			"/v1/saved-views": {
+				get: {
+					operationId: "listSavedViews",
+					summary: "Saved views for a module, or everything pinned",
+					description:
+						"With `moduleId`, that module's views in the caller's order. Without it, every pinned view across all modules — what a home page asks for. Views are personal: one member never sees another's.",
+					parameters: [
+						{ in: "query", name: "moduleId", schema: { type: "string" } },
+					],
+					responses: { "200": { description: "The caller's saved views." } },
+				},
+				post: {
+					operationId: "saveView",
+					summary: "Create or update a saved view",
+					description:
+						"Saving twice under one name updates it rather than erroring or creating a duplicate.",
+					responses: {
+						"201": { description: "The saved view." },
+						"403": {
+							description:
+								"An API key cannot own a view. Use a signed-in session.",
+						},
+					},
+				},
+			},
+			"/v1/saved-views/{id}": {
+				delete: {
+					operationId: "deleteSavedView",
+					summary: "Delete one of the caller's saved views",
+					responses: { "200": { description: "Deleted." } },
+				},
+			},
+			"/v1/saved-views/{id}/pin": {
+				post: {
+					operationId: "pinSavedView",
+					summary: "Pin or unpin a saved view",
+					responses: { "200": { description: "The updated view." } },
+				},
+			},
+
+			// ── Diagnostics ─────────────────────────────────────────────────────
+			"/v1/integration-health": {
+				get: {
+					operationId: "getIntegrationHealth",
+					summary: "Which capabilities are degraded",
+					description:
+						"Reports providers running on a stand-in and what stops working. `severity` escalates `data-loss` above `feature-loss`. Carries environment variable NAMES only, never values.",
+					responses: { "200": { description: "Current provider health." } },
+				},
+			},
+			"/v1/requests/{requestId}": {
+				get: {
+					operationId: "getRequestTrace",
+					summary: "What happened under one request id",
+					description:
+						"The mutations and audit events for a request id this API returned. Stored response bodies are deliberately excluded — they hold customer records.",
+					responses: { "200": { description: "The request trace." } },
+				},
+			},
+			"/v1/support-bundle": {
+				get: {
+					operationId: "getSupportBundle",
+					summary: "A diagnostic snapshot to attach to a support request",
+					description:
+						"Workspace, modules, credential metadata, webhook configuration and recent operations. Built from an explicit allowlist, so it can carry no credential and no customer record.",
+					responses: { "200": { description: "The support bundle." } },
+				},
+			},
+
+			// ── Product analytics ───────────────────────────────────────────────
+			"/v1/product-events": {
+				post: {
+					operationId: "recordProductEvent",
+					summary: "Record a product event from a browser",
+					description:
+						"For moments only a client can observe. The event name is validated against the contract, and the person is taken from the session rather than the body. Properties that look like content are dropped.",
+					responses: {
+						"202": {
+							description: "Accepted. Telemetry is recorded asynchronously.",
+						},
+					},
+				},
+			},
+
+			// ── Credits ─────────────────────────────────────────────────────────
+			"/v1/account/credits": {
+				get: {
+					operationId: "getCredits",
+					summary: "Credit balance, packs and auto-recharge settings",
+					responses: { "200": { description: "The organization's credits." } },
+				},
+			},
+			"/v1/account/credits/top-up": {
+				post: {
+					operationId: "createCreditTopUp",
+					summary: "Start a credit purchase",
+					description:
+						"Returns a Stripe client secret for Elements. Nothing is credited here — the balance moves when the charge succeeds and the webhook records it.",
+					responses: {
+						"201": { description: "A payment intent to complete." },
+						"503": {
+							description: "Payments unavailable. Nothing was charged.",
+						},
+					},
+				},
+			},
+			"/v1/account/credits/auto-recharge": {
+				put: {
+					operationId: "setAutoRecharge",
+					summary: "Turn auto-recharge on or off",
+					description:
+						"A standing authorisation to take payment, so enabling it requires both a trigger balance and an amount explicitly.",
+					responses: { "200": { description: "The saved settings." } },
+				},
+			},
+
+			// ── Account reads ───────────────────────────────────────────────────
+			"/v1/account/revenue": {
+				get: {
+					operationId: "getOrganizationRevenue",
+					summary: "Revenue across every workspace in the organization",
+					description:
+						"Reconciled to real payments. Reported per currency and never summed across them. A refund counts in the period it was refunded.",
+					parameters: [
+						{
+							in: "query",
+							name: "from",
+							schema: { type: "string", format: "date-time" },
+						},
+						{
+							in: "query",
+							name: "to",
+							schema: { type: "string", format: "date-time" },
+						},
+					],
+					responses: { "200": { description: "Revenue for the range." } },
+				},
+			},
+			"/v1/account/invitations/{token}": {
+				get: {
+					operationId: "getInvitation",
+					summary: "Preview an invitation before accepting it",
+					responses: { "200": { description: "The invitation." } },
+				},
+			},
+			"/v1/account/workspaces/{id}/modules": {
+				get: {
+					operationId: "listWorkspaceModules",
+					summary: "Which modules are enabled on a workspace",
+					responses: { "200": { description: "The module list." } },
+				},
+			},
+
+			// ── Billing information ─────────────────────────────────────────────
+			"/v1/billing/plans": {
+				get: {
+					operationId: "listBillingPlans",
+					summary: "The plan ladder as configured",
+					description:
+						"Public. Exposes whether a price is configured, never the price id.",
+					responses: { "200": { description: "The plans." } },
+				},
+			},
+			"/v1/billing/subscription": {
+				get: {
+					operationId: "getBillingSubscription",
+					summary: "An organization's current subscription",
+					description:
+						"Answers `signedIn: false` rather than 401 when nobody is signed in, because both surfaces ask before they know.",
+					parameters: [
+						{ in: "query", name: "organizationId", schema: { type: "string" } },
+					],
+					responses: { "200": { description: "The subscription, or null." } },
+				},
+			},
+
 			"/v1/activity": {
 				get: {
 					operationId: "listActivity",

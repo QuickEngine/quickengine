@@ -41,6 +41,15 @@ const BODYLESS = new Set([
 	// The token is the whole request — it is in the path, and a body would only
 	// give a caller somewhere to put a second, conflicting one.
 	"acceptInvitation",
+	// Quote lifecycle: the transition is the operation and the record is in the
+	// path. `reviseQuote` copies the quote it supersedes; there is nothing to send.
+	"expireQuote",
+	"reviseQuote",
+	"voidQuote",
+	// The booking is in the path and everything else is read from it — the
+	// service, its price, the client. Accepting a body would invite a caller to
+	// override the price that was actually agreed.
+	"invoiceBooking",
 	// Nothing to send: which notification is in the path, and who is the session.
 	"markNotificationRead",
 	"markAllNotificationsRead",
@@ -229,5 +238,63 @@ describe("OpenAPI document", () => {
 				),
 		);
 		expect(undocumented).toEqual([]);
+	});
+});
+
+/**
+ * 🔴 Every registered `/v1` route must be documented.
+ *
+ * 26 were not when this was written — including quote expire/void/revise,
+ * booking-to-invoice, saved views, support bundle, request lookup, account
+ * revenue and the credit routes. The document drifted silently because nothing
+ * compared it against the real route table, exactly like the tenant-isolation
+ * sweep before it enumerated routes.
+ */
+describe("OpenAPI completeness", () => {
+	it("documents every registered v1 route", async () => {
+		const { createApp } = await import("./app");
+		const { registerAllRoutes } = await import("./register-routes");
+		const { noopLogger } = await import("./logger");
+
+		const app = createApp(config, {
+			logger: noopLogger,
+			registerRoutes: (instance, logger) =>
+				registerAllRoutes(instance, {
+					dependencies: {
+						getSession: async () => null,
+						getWorkspaceForUser: async () => null,
+						getWorkspaceForKey: async () => null,
+						verifyApiKey: async () => null,
+					},
+					logger,
+				}),
+		});
+
+		const document = createOpenApiDocument(config);
+
+		// Hono uses `:param`; OpenAPI uses `{param}`.
+		const documented = new Set<string>();
+		for (const [path, methods] of Object.entries(document.paths ?? {})) {
+			for (const method of Object.keys(methods as object)) {
+				documented.add(`${method.toUpperCase()} ${path}`);
+			}
+		}
+
+		const missing = new Set<string>();
+		for (const route of app.routes) {
+			if (!route.path.startsWith("/v1")) continue;
+			if (route.method === "ALL") continue;
+			// QuickDash console routes are internal to our own apps, not public API.
+			if (route.path.startsWith("/v1/quickdash")) continue;
+			const openApiPath = route.path.replace(/:(\w+)/g, "{$1}");
+			const key = `${route.method} ${openApiPath}`;
+			if (!documented.has(key)) missing.add(key);
+		}
+
+		if (missing.size > 0) {
+			throw new Error(
+				`${missing.size} registered routes are absent from the OpenAPI document:\n  ${[...missing].sort().join("\n  ")}`,
+			);
+		}
 	});
 });

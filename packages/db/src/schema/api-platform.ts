@@ -65,9 +65,21 @@ export const apiAuditEvents = pgTable(
 	"api_audit_events",
 	{
 		id: uuid("id").primaryKey().defaultRandom(),
-		workspaceId: uuid("workspace_id")
-			.notNull()
-			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
+		/**
+		 * 🔴 Nullable, deliberately. The account and organization control plane —
+		 * roles, members, API keys, subscriptions, workspace lifecycle — is
+		 * org-scoped and has no workspace at all, and a NOT NULL column here meant
+		 * none of it could be audited. Module data writes were fully recorded while
+		 * the plane that controls access to them wrote nothing: a member could be
+		 * granted `billing.manage` and later removed with no evidence anyone did it.
+		 *
+		 * A row therefore carries a workspace, an organization, or both. Never
+		 * neither — see the check constraint below.
+		 */
+		workspaceId: uuid("workspace_id").references(
+			() => quickengineWorkspaces.id,
+			{ onDelete: "cascade" },
+		),
 		organizationId: uuid("organization_id").references(
 			() => quickengineOrganizations.id,
 			{ onDelete: "set null" },
@@ -96,6 +108,19 @@ export const apiAuditEvents = pgTable(
 		index("api_audit_events_request_idx").on(
 			table.workspaceId,
 			table.requestId,
+		),
+		// An audit row with neither scope belongs to nobody and can never be read
+		// back by any query in the product. Enforced rather than assumed, because
+		// the whole point of relaxing `workspace_id` was to admit org-scoped rows.
+		check(
+			"api_audit_events_scope_check",
+			sql`workspace_id is not null or organization_id is not null`,
+		),
+		// The control plane's own feed: everything that happened to an
+		// organization, newest first.
+		index("api_audit_events_org_time_idx").on(
+			table.organizationId,
+			table.occurredAt,
 		),
 		index("api_audit_events_resource_idx").on(
 			table.workspaceId,

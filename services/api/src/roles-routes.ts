@@ -9,9 +9,10 @@ import {
 	createOrgRole,
 	deleteOrgRole,
 	listOrgRoles,
+	recordControlPlaneAudit,
 	updateOrgRole,
 } from "@quickengine/db";
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
 import type { ApiLogger } from "./logger";
@@ -89,6 +90,17 @@ export function registerRolesRoutes(
 		get: (k: "authorized") => { workspace: { organizationId: string | null } };
 	}) => c.get("authorized").workspace.organizationId;
 
+	/**
+	 * Who is doing this, for the audit trail.
+	 *
+	 * Roles are org-scoped, so these rows carry no workspace — which is exactly
+	 * what migration `0050` relaxed the column to allow.
+	 */
+	const actorOf = (c: Context<PlatformEnv>) => {
+		const actor = c.get("authorized").auditActor;
+		return { actorId: actor.id, actorType: actor.type };
+	};
+
 	app.get("/v1/roles", readAccess, readLimit, async (c) => {
 		const organizationId = orgOf(c);
 		if (!organizationId) return respond(c, { items: [] });
@@ -128,6 +140,17 @@ export function registerRolesRoutes(
 
 		try {
 			const role = await createOrgRole({ organizationId, ...input });
+			await recordControlPlaneAudit({
+				organizationId,
+				...actorOf(c),
+				action: "role.created",
+				resourceType: "role",
+				resourceId: role.id,
+				requestId: c.get("requestId"),
+				// The capability COUNT, not the list: a name and a number describe
+				// what happened without copying a permission set into a log.
+				metadata: { name: role.name, capabilities: input.capabilities.length },
+			});
 			return respond(c, role, 201);
 		} catch {
 			// The unique index is case-insensitive, so a duplicate can only surface
@@ -171,6 +194,20 @@ export function registerRolesRoutes(
 
 		const role = await updateOrgRole(organizationId, c.req.param("id"), input);
 		if (!role) return respondError(c, "NOT_FOUND", "Role not found.", 404);
+		await recordControlPlaneAudit({
+			organizationId,
+			...actorOf(c),
+			action: "role.updated",
+			resourceType: "role",
+			resourceId: role.id,
+			requestId: c.get("requestId"),
+			// `updateOrgRole` also rewrites every member's role string, so a rename
+			// silently reassigns people. Worth recording as its own fact.
+			metadata: {
+				name: role.name,
+				capabilities: input.capabilities?.length ?? -1,
+			},
+		});
 		return respond(c, role);
 	});
 
@@ -200,6 +237,15 @@ export function registerRolesRoutes(
 		}
 
 		await deleteOrgRole(organizationId, c.req.param("id"));
+		await recordControlPlaneAudit({
+			organizationId,
+			...actorOf(c),
+			action: "role.deleted",
+			resourceType: "role",
+			resourceId: existing.id,
+			requestId: c.get("requestId"),
+			metadata: { name: existing.name },
+		});
 		return respond(c, { deleted: true });
 	});
 }

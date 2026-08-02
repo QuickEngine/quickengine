@@ -8,18 +8,15 @@ import type { DatabaseTransaction, SortMap } from "@quickengine/db";
 import {
 	afterCursor,
 	and,
-	asc,
 	db,
 	decodeCursor,
 	eq,
-	gt,
 	gte,
 	lte,
 	mutationUnitOfWork,
 	pageOrder,
 	resolveSort,
 	timeEntries,
-	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import type { BillingRoundingMode } from "./billing";

@@ -229,6 +229,28 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	updateWebhookEndpoint: { enabled: false },
 	// A deliberately odd name, because the name is decoration: authorization reads
 	// the permission list and never the label.
+	saveView: {
+		moduleId: "invoicing",
+		name: "Unpaid",
+		state: { status: "overdue", sort: "dueAt", direction: "asc" },
+		pinned: true,
+	},
+	pinSavedView: { pinned: true },
+	recordProductEvent: {
+		name: "signup.viewed",
+		surface: "web",
+		attribution: { utm_source: "twitter", utm_campaign: "launch-week" },
+	},
+	createCreditTopUp: {
+		pack: "medium",
+		billingEmail: "billing@northwind.example",
+		savePaymentMethod: false,
+	},
+	setAutoRecharge: {
+		enabled: true,
+		thresholdMicros: 50_000_000,
+		amountCents: 2_500,
+	},
 	createOrganization: { name: "Northwind Holdings" },
 	createApiKey: {
 		workspaceId: "3f1c9b52-8d64-4a1e-9f77-2c5e0d6b8a41",

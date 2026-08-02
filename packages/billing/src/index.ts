@@ -46,6 +46,7 @@ export {
 	type PlanDefinition,
 	type PlanLimits,
 	planIdForPriceId,
+	SELLABLE_PLANS,
 	TEAMS_MIN_SEATS,
 } from "./plans";
 export {

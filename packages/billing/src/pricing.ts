@@ -2,7 +2,7 @@ import type {
 	QuickEngineBillingCycle,
 	QuickEnginePlanId,
 } from "@quickengine/db/schema/quickengine";
-import { getStripePriceId, PLANS, type PlanLimits } from "./plans";
+import { getStripePriceId, type PlanLimits, SELLABLE_PLANS } from "./plans";
 import { getStripe, isStripeConfigured } from "./stripe";
 
 // A tier's price for one cycle, sourced from Stripe (never hardcoded). `amount` is in
@@ -48,7 +48,7 @@ export async function getPlanPricing(): Promise<PlanPricing[]> {
 	}
 
 	return Promise.all(
-		PLANS.map(async (plan) => ({
+		SELLABLE_PLANS.map(async (plan) => ({
 			planId: plan.id,
 			displayName: plan.displayName,
 			free: plan.free,

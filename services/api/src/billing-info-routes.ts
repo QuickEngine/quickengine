@@ -2,7 +2,7 @@ import { getSession } from "@quickengine/auth/server";
 import {
 	getStripePriceId,
 	getSubscriptionForOrg,
-	PLANS,
+	SELLABLE_PLANS,
 } from "@quickengine/billing";
 import { resolveOrgRole } from "@quickengine/db";
 import type { Hono } from "hono";
@@ -29,7 +29,7 @@ export function registerBillingInfoRoutes(app: Hono<PlatformEnv>) {
 	 */
 	app.get("/v1/billing/plans", (c) =>
 		c.json({
-			plans: PLANS.map((plan) => ({
+			plans: SELLABLE_PLANS.map((plan) => ({
 				id: plan.id,
 				displayName: plan.displayName,
 				free: plan.free,

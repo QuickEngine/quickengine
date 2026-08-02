@@ -73,6 +73,15 @@ export type PlanDefinition = {
 	limits: PlanLimits;
 	/** True when `limits` are per seat and scale with the billed quantity. */
 	perSeat?: boolean;
+	/**
+	 * Internal tier — assigned by hand, never sold.
+	 *
+	 * Anything that shows a customer what they can buy must read
+	 * `SELLABLE_PLANS`, not `PLANS`. Filtering at each call site instead would
+	 * mean every new pricing surface is one forgotten `.filter()` away from
+	 * advertising a free unlimited plan.
+	 */
+	internal?: boolean;
 };
 
 const GB = 1024 ** 3;
@@ -141,7 +150,10 @@ export const PLANS: readonly PlanDefinition[] = [
 	// value means on every other row. Read it together with `TEAMS_MIN_SEATS`.
 	{
 		id: "teams",
-		displayName: "Teams",
+		// Stored id stays `teams`; only the label changed. The ladder is a verb of
+		// progression at every other rung — Launch, Grow, Scale — and "Teams" was a
+		// noun describing who is on it, which broke the rhythm at the top.
+		displayName: "Expand",
 		free: false,
 		priceEnv: {
 			monthly: priceEnvKey("teams", "monthly"),
@@ -162,9 +174,76 @@ export const PLANS: readonly PlanDefinition[] = [
 			webhookDeliveries: null,
 		},
 	},
-	// Custom is a conversation, not self-serve checkout. It deliberately has no
-	// entry here: pricing it would mean committing to a margin nobody has modelled.
+	// 🔴 INTERNAL. `enterprise` is the STORED id for what the ladder calls
+	// "Custom" — see the note on `QuickEnginePlanId`. Custom is a conversation,
+	// not self-serve checkout, so it carries no price and never appears in a
+	// pricing list.
+	//
+	// It needs an entry all the same. `getPlanLimits` falls back to `PLANS[0]`
+	// for an unknown id, and `PLANS[0]` is Free — so without this row the first
+	// real Custom customer would silently be enforced at 10,000 requests and one
+	// seat. The largest account on the smallest allowance.
+	//
+	// Limits are unlimited because they are agreed in the contract, not in code.
+	// AI stays capped for the same reason as Bypass: the Anthropic pool is
+	// prepaid and shared, so no tier gets an infinite claim on it.
+	{
+		id: "enterprise",
+		displayName: "Custom",
+		free: false,
+		internal: true,
+		priceEnv: {},
+		limits: {
+			apiRequests: null,
+			aiActions: 100_000,
+			storageBytes: null,
+			seats: null,
+			workspaces: null,
+			webhookDeliveries: null,
+		},
+	},
+
+	// 🔴 INTERNAL. Never sold, never listed, assigned by hand — for the team,
+	// for family and friends, and for testing against real limits without
+	// hitting them.
+	//
+	// `free: true` because there is no Stripe price and no checkout path; it is
+	// not a tier anyone can reach. Filter it out of any pricing UI by id.
+	//
+	// ⚠️ `aiActions` is CAPPED, and generously rather than infinitely, which is
+	// the one number here that is not an oversight. Anthropic is PREPAID from a
+	// pool shared by every customer, so the failure mode is not an unpaid bill —
+	// it is the pool emptying and AI breaking for paying customers at the same
+	// moment. An unmetered internal tier handed to friends and family is exactly
+	// the shape of that accident. Everything that costs us only our own
+	// infrastructure is genuinely unlimited.
+	{
+		id: "bypass",
+		displayName: "Bypass",
+		free: true,
+		internal: true,
+		priceEnv: {},
+		limits: {
+			apiRequests: null,
+			aiActions: 25_000,
+			storageBytes: null,
+			seats: null,
+			workspaces: null,
+			webhookDeliveries: null,
+		},
+	},
 ] as const;
+
+/**
+ * The plans a customer may actually be shown or sold.
+ *
+ * `PLANS` is the full ladder including internal tiers, and is what enforcement
+ * and lookups read — an account ON `bypass` still has to resolve its limits.
+ * Anything customer-facing reads this instead.
+ */
+export const SELLABLE_PLANS: readonly PlanDefinition[] = PLANS.filter(
+	(plan) => !plan.internal,
+);
 
 /**
  * The smallest Teams subscription that can be bought.

@@ -47,6 +47,14 @@ export const PLAN_RATE_MULTIPLIER: Record<string, number> = {
 	// than Scale. `teams` was added to `plans.ts` on 2026-08-01 and missed here,
 	// which is exactly that bug.
 	teams: 8,
+	// Contract-negotiated, so the ceiling is a formality rather than a product
+	// decision — but it must still sit above Expand or moving up would tighten it.
+	enterprise: 16,
+	// Internal. Highest by definition; the tier exists so testing never hits a
+	// wall. Still a finite number rather than a bypass of the limiter itself,
+	// because a runaway loop on an internal account costs the same infrastructure
+	// as anyone else's.
+	bypass: 32,
 };
 
 // Pinned by a test in `rate-limit.test.ts`: every plan in `PLANS` must appear

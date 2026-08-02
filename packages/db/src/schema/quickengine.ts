@@ -29,7 +29,10 @@ export type QuickEnginePlanId =
 	| "grow"
 	| "scale"
 	| "teams"
-	| "enterprise";
+	| "enterprise"
+	// Internal only — never sold, never shown on the pricing page. Assigned by
+	// hand. See `plans.ts`.
+	| "bypass";
 
 export type QuickEngineBillingCycle = "monthly" | "annual";
 

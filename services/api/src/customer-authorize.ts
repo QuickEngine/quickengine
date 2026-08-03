@@ -1,4 +1,5 @@
 import { API_HEADERS } from "@quickengine/api-contracts/headers";
+import { isBrowserKeyType } from "@quickengine/auth/api-keys";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type {
@@ -94,7 +95,7 @@ export function authorizeCustomer(
 		// refusing it would force them to carry two credentials for one page.
 		// Admitting it is safe because these routes scope to a CUSTOMER SESSION,
 		// never to the key — the key only answers "which workspace".
-		if (key.type !== "publishable" && key.type !== "storefront") {
+		if (!isBrowserKeyType(key.type)) {
 			return respondError(
 				c,
 				"CREDENTIAL_CHANNEL_MISMATCH",

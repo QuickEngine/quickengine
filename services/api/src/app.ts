@@ -23,6 +23,7 @@ import { createOpenApiDocument } from "./openapi";
 import type { PlatformEnv } from "./platform-types";
 import { type ReadinessCheck, respondReadiness } from "./readiness";
 import { respond, respondError } from "./respond";
+import { isRegisteredStorefrontOrigin } from "./storefront-origins";
 import { type ApiTelemetry, noopTelemetry } from "./telemetry";
 
 export function createApp(
@@ -49,7 +50,14 @@ export function createApp(
 	app.use("*", secureHeaders());
 	app.use("*", async (c, next) => {
 		const corsMiddleware = cors({
-			origin: (origin) => (config.corsOrigins.has(origin) ? origin : ""),
+			// Our own surfaces come from config; a merchant storefront is registered
+			// on its API key. Static first because it is free and covers every
+			// first-party call — the database is only consulted for an origin we do
+			// not already recognise.
+			origin: async (origin) => {
+				if (config.corsOrigins.has(origin)) return origin;
+				return (await isRegisteredStorefrontOrigin(origin)) ? origin : "";
+			},
 			allowHeaders: [
 				API_HEADERS.apiKey,
 				"Content-Type",

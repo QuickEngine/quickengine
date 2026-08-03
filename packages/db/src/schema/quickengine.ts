@@ -433,6 +433,25 @@ export const quickengineApiKeys = pgTable(
 		prefix: text("prefix").notNull(),
 		keyHash: text("key_hash").notNull().unique(),
 		capabilities: jsonb("capabilities").$type<string[]>().notNull().default([]),
+		/**
+		 * Browser origins allowed to use this key, e.g. `https://gemsutopia.com`.
+		 *
+		 * 🔴 Lives on the KEY, not in an environment variable. The API's global
+		 * `corsOrigins` allowlist is fine for our own surfaces, but a storefront key
+		 * belongs to a customer's own domain — a global list would mean redeploying
+		 * the API every time somebody connects a site.
+		 *
+		 * Empty means "no browser may use this key", which is the correct default
+		 * for server credentials: a secret key has no business being called from a
+		 * page, and an empty list makes that structural rather than advisory.
+		 *
+		 * ⚠️ Compared by exact ORIGIN — scheme, host and port. Never by suffix. A
+		 * `endsWith` check would accept `https://gemsutopia.com.evil.com`.
+		 */
+		allowedOrigins: jsonb("allowed_origins")
+			.$type<string[]>()
+			.notNull()
+			.default([]),
 		lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
 		expiresAt: timestamp("expires_at", { withTimezone: true }),
 		revokedAt: timestamp("revoked_at", { withTimezone: true }),

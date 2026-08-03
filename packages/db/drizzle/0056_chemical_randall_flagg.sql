@@ -1,0 +1,1 @@
+ALTER TABLE "quickengine_api_keys" ADD COLUMN "allowed_origins" jsonb DEFAULT '[]'::jsonb NOT NULL;

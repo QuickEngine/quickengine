@@ -1,4 +1,5 @@
 import { API_HEADERS } from "@quickengine/api-contracts/headers";
+import { isBrowserKeyType } from "@quickengine/auth/api-keys";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type {
@@ -47,16 +48,11 @@ async function resolveKey(
 		);
 	}
 
-	// 🔴 Which types are BROWSER credentials, stated as a set rather than as
-	// `!== "publishable"`.
-	//
-	// The negation was correct while publishable was the only browser type. Adding
-	// `storefront` silently broke it in the dangerous direction: a storefront key
-	// would have been refused on the browser header and ACCEPTED as a bearer
-	// token, i.e. handled as a trusted server credential. Anything that ships in
-	// page source belongs on this list.
-	const browserTypes = new Set(["publishable", "storefront"]);
-	const isBrowserKey = browserTypes.has(key.type);
+	// 🔴 Classification comes from `KEY_CHANNEL`, which is exhaustive over the key
+	// type union — adding a type without classifying it fails the build. It
+	// replaces a `!== "publishable"` negation that silently mishandled the first
+	// new browser type by treating it as a trusted server credential.
+	const isBrowserKey = isBrowserKeyType(key.type);
 	const channelMatches =
 		channel === "publishable" ? isBrowserKey : !isBrowserKey;
 	if (!channelMatches) {

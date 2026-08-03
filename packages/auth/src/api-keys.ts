@@ -101,6 +101,40 @@ const KEY_PREFIX: Record<QuickEngineApiKeyType, string> = {
 	scoped: "qsc",
 };
 
+/**
+ * Where each key type is allowed to live: a browser, or a server.
+ *
+ * 🔴 A `Record` keyed by the union, NOT a set or a negation. Adding a fifth key
+ * type is a COMPILE ERROR until somebody classifies it here, which is the whole
+ * point.
+ *
+ * This exists because the negation it replaces was silently wrong. The gate read
+ * `key.type !== "publishable"` to mean "server key", which was true while
+ * publishable was the only browser type. Adding `storefront` broke it in the
+ * worst direction: a key designed for page source would have been refused on the
+ * browser header and ACCEPTED as a bearer token — handled as a trusted server
+ * credential.
+ *
+ * Nothing about that failure was visible in a diff, and no test caught it. A
+ * lookup that must be exhaustive turns the next occurrence into a build failure
+ * instead of a vulnerability.
+ *
+ * ⚠️ `browser` means "assume the value is public". Anything classified browser
+ * must survive being printed in page source and pasted into a bug report.
+ */
+export const KEY_CHANNEL: Record<QuickEngineApiKeyType, "browser" | "server"> =
+	{
+		publishable: "browser",
+		storefront: "browser",
+		secret: "server",
+		scoped: "server",
+	};
+
+/** True when this key type is expected to be public. */
+export function isBrowserKeyType(type: QuickEngineApiKeyType): boolean {
+	return KEY_CHANNEL[type] === "browser";
+}
+
 const isApiCapability = (value: string): value is ApiCapability =>
 	(API_CAPABILITIES as readonly string[]).includes(value);
 
@@ -108,7 +142,30 @@ function hashKey(raw: string): string {
 	return createHash("sha256").update(raw).digest("hex");
 }
 
-// Keep only known capabilities, and clamp publishable keys to the read-only allowlist.
+/**
+ * The capability ceiling for each key type.
+ *
+ * 🔴 Exhaustive, for the same reason as `KEY_CHANNEL` — and this one matters
+ * more. The chained ternary it replaces ended in `: API_CAPABILITIES`, so any
+ * key type not explicitly named fell through to **full workspace access**. A new
+ * browser-facing type added in a hurry would have been born able to move money.
+ *
+ * A missing entry is now a build failure rather than a silent grant of
+ * everything. Defaults should fail closed; that one failed as open as it gets.
+ */
+const CAPABILITY_CLAMP: Record<
+	QuickEngineApiKeyType,
+	readonly ApiCapability[]
+> = {
+	publishable: PUBLISHABLE_CAPABILITIES,
+	storefront: STOREFRONT_CAPABILITIES,
+	// Server-side credentials may hold anything; what they actually get is
+	// whatever the issuer selected, filtered to real capabilities below.
+	secret: API_CAPABILITIES,
+	scoped: API_CAPABILITIES,
+};
+
+// Keep only known capabilities, and clamp each key type to its ceiling.
 function normalizeCapabilities(
 	type: QuickEngineApiKeyType,
 	requested: readonly string[],
@@ -118,12 +175,7 @@ function normalizeCapabilities(
 	// an error, because the request is almost always a misconfigured integration
 	// rather than an attack — and a key that quietly holds less is safe, while a
 	// key that quietly holds more is not.
-	const allowed =
-		type === "publishable"
-			? PUBLISHABLE_CAPABILITIES
-			: type === "storefront"
-				? STOREFRONT_CAPABILITIES
-				: API_CAPABILITIES;
+	const allowed = CAPABILITY_CLAMP[type];
 	const set = new Set<ApiCapability>();
 	for (const value of requested) {
 		if (isApiCapability(value) && allowed.includes(value)) {

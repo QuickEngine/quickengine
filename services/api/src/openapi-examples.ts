@@ -297,6 +297,11 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	renameWorkspace: { name: "Northwind Trading Co." },
 	setWorkspaceArchived: { archived: true },
 	setWorkspaceModuleEnabled: { enabled: true },
+	startPaymentOnboarding: {
+		returnUrl: "https://account.quickdash.xyz/payments?connected=1",
+		refreshUrl: "https://account.quickdash.xyz/payments",
+		country: "CA",
+	},
 	createRole: {
 		name: "Bookkeeper",
 		description: "Keeps the books, cannot change the team",

@@ -53,6 +53,10 @@ const BODYLESS = new Set([
 	// service, its price, the client. Accepting a body would invite a caller to
 	// override the price that was actually agreed.
 	"invoiceBooking",
+	// A refresh takes no input: the workspace comes from the credential and the
+	// account from that workspace's stored row. A body would only offer a caller
+	// somewhere to name somebody else's connected account.
+	"refreshPaymentConnectAccount",
 	// Nothing to send: which notification is in the path, and who is the session.
 	"markNotificationRead",
 	"markAllNotificationsRead",

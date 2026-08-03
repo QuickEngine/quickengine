@@ -41,6 +41,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **One portal now serves every business.** Previously a single deployment could only ever
   answer for one workspace. Each business gets its own address, its own branding and its own
   sign-in, from the same place.
+- **Connect the account you get paid into.** You can now link your own payment account and
+  see whether it is ready to take charges and receive payouts. Until now there was no way to
+  connect one at all, which meant no way to be paid through QuickDash.
+- **Your payment account is not tied to one company.** Payments were built around a single
+  provider; the integration point is now a seam, so adding others later does not disturb what
+  already works or the records you have already collected.
 
 ### Changed
 

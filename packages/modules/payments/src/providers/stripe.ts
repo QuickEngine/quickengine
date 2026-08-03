@@ -63,16 +63,39 @@ export const stripePaymentProvider: PaymentProvider = {
 	},
 
 	async createCharge(params) {
-		const intent = await getStripe().paymentIntents.create({
-			amount: params.amountCents,
-			currency: params.currency.toLowerCase(),
-			// Omitted entirely when zero. Stripe rejects an explicit 0 here, and a
-			// workspace on no platform fee is the normal case.
-			application_fee_amount:
-				params.applicationFeeCents > 0 ? params.applicationFeeCents : undefined,
-			transfer_data: { destination: params.connectedAccountId },
-			metadata: params.metadata,
-		});
+		const intent = await getStripe().paymentIntents.create(
+			{
+				amount: params.amountCents,
+				currency: params.currency.toLowerCase(),
+				// Omitted entirely when zero. Stripe rejects an explicit 0 here, and a
+				// workspace on no platform fee is the normal case.
+				application_fee_amount:
+					params.applicationFeeCents > 0
+						? params.applicationFeeCents
+						: undefined,
+				metadata: params.metadata,
+			},
+			// 🔴 DIRECT CHARGE. The charge is created ON the business's account, not
+			// on ours with a transfer out (which is what `transfer_data.destination`
+			// did before 2026-08-03).
+			//
+			// Three reasons, in the order they matter:
+			//
+			// 1. **Liability.** With destination charges, chargebacks and refunds come
+			//    out of the PLATFORM's balance. A merchant who racks up disputes or
+			//    disappears owing money leaves QuickEngine holding it, and the
+			//    exposure grows with how successful our customers are.
+			// 2. **Whose name is on the statement.** Direct charges put the business
+			//    on the buyer's bank statement. Destination charges put ours there —
+			//    in front of a shopper who has never heard of us, which is the single
+			//    biggest cause of "I don't recognise this charge" disputes. It also
+			//    contradicts what every other surface here promises: the mail, the
+			//    portal and the branding all say the business, never us.
+			// 3. **Posture.** We sell software. Being merchant of record makes us a
+			//    payment facilitator, which is a heavier regulatory position than
+			//    this product wants.
+			{ stripeAccount: params.connectedAccountId },
+		);
 		return {
 			externalPaymentId: intent.id,
 			clientSecret: intent.client_secret,
@@ -80,16 +103,23 @@ export const stripePaymentProvider: PaymentProvider = {
 	},
 
 	async refund(params) {
-		const refund = await getStripe().refunds.create({
-			payment_intent: params.externalPaymentId,
-			// Absent means "all of it" to Stripe, which matches the seam's contract.
-			amount: params.amountCents,
-			...(params.reason === "duplicate" ||
-			params.reason === "fraudulent" ||
-			params.reason === "requested_by_customer"
-				? { reason: params.reason }
-				: {}),
-		});
+		const refund = await getStripe().refunds.create(
+			{
+				payment_intent: params.externalPaymentId,
+				// Absent means "all of it" to Stripe, which matches the seam's contract.
+				amount: params.amountCents,
+				...(params.reason === "duplicate" ||
+				params.reason === "fraudulent" ||
+				params.reason === "requested_by_customer"
+					? { reason: params.reason }
+					: {}),
+			},
+			// 🔴 Must run on the SAME account the charge was created on. A direct
+			// charge does not exist on the platform account at all, so refunding
+			// without this answers "no such payment_intent" — and the money stays
+			// with the merchant while our ledger says refunded.
+			{ stripeAccount: params.connectedAccountId },
+		);
 		return {
 			externalRefundId: refund.id,
 			// `pending` is real: bank rails can take days. Reporting it as settled

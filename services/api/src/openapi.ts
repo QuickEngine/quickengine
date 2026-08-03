@@ -584,6 +584,26 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			// ── Checkout: the merchant's own website selling ─────────────────────
+			"/v1/checkout": {
+				post: {
+					operationId: "createCheckout",
+					summary: "Place and pay for an order from a merchant storefront",
+					description:
+						"The only write reachable with a credential that ships in page source. The caller names catalog items and quantities; the server resolves every price from its own catalog, applies the workspace's tax rate, creates the order, and opens a charge on the merchant's connected account. No price, tax, currency or client id is accepted from the request. Send an idempotency key so a double-tapped buy button cannot become two orders. A workspace with no connected payment account still records the order and answers with a reason instead of a payment.",
+					responses: {
+						"201": {
+							description:
+								"The order, and a payment client secret when the business can be paid online.",
+						},
+						"400": {
+							description:
+								"An item is unavailable, not directly purchasable, or the basket mixes currencies.",
+						},
+						"403": { description: "The key lacks checkout access." },
+					},
+				},
+			},
 			"/v1/orders": {
 				get: {
 					operationId: "listOrders",

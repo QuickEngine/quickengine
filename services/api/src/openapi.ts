@@ -541,6 +541,49 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			// ── Connect: a business's OWN payment account ────────────────────────
+			// Distinct from QuickEngine's billing. These let a workspace get paid by
+			// ITS customers; billing is how QuickEngine charges the workspace.
+			"/v1/payments/connect": {
+				get: {
+					operationId: "getPaymentConnectAccount",
+					summary: "The workspace's connected payment account",
+					description:
+						"Our stored view, with no call to the provider. Safe to poll. Answers a not-connected shape rather than 404 when nothing has been set up, so a dashboard has something to render.",
+					responses: {
+						"200": {
+							description:
+								"Provider, whether it is connected, and whether charges and payouts are enabled.",
+						},
+					},
+				},
+			},
+			"/v1/payments/connect/refresh": {
+				post: {
+					operationId: "refreshPaymentConnectAccount",
+					summary: "Re-read the account from the provider",
+					description:
+						"Onboarding finishes asynchronously — the operator returns long before the provider has finished its checks — so the stored state goes stale immediately. Makes one outbound call, and is rate limited as a write for that reason.",
+					responses: {
+						"200": { description: "The refreshed account state." },
+					},
+				},
+			},
+			"/v1/payments/connect/onboard": {
+				post: {
+					operationId: "startPaymentOnboarding",
+					summary: "Begin connecting the business's payment account",
+					description:
+						"Returns a provider-hosted URL to send the operator to. Resumable: returning after abandoning onboarding re-issues a link for the same account, because provider account links are single use and short lived. `returnUrl` and `refreshUrl` must be QuickDash origins — an attacker-chosen redirect here would be a phishing page reached from a payment provider's domain.",
+					responses: {
+						"200": { description: "An onboarding URL and the account state." },
+						"400": {
+							description:
+								"Missing or non-QuickDash redirect URLs, or a provider with no integration.",
+						},
+					},
+				},
+			},
 			"/v1/orders": {
 				get: {
 					operationId: "listOrders",

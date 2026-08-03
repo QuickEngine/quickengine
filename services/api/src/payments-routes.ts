@@ -6,9 +6,14 @@ import {
 	getPaymentDto,
 	listPaymentsPage,
 	PAYMENT_STATUSES,
+	paymentOnboardingInputSchema,
+	readPaymentAccount,
 	recordPaymentCommand,
+	refreshPaymentAccount,
 	refundPaymentCommand,
 	setPaymentStatusCommand,
+	startPaymentOnboarding,
+	UnsupportedPaymentProviderError,
 } from "@quickengine/mod-payments";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
@@ -22,6 +27,35 @@ import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
 const statusSchema = z.object({ status: z.enum(PAYMENT_STATUSES) });
+
+/**
+ * Is this URL one of our own surfaces?
+ *
+ * Compared by ORIGIN, never by `startsWith`. A prefix check passes
+ * `https://quickdash.xyz.evil.com` and `https://quickdash.xyz@evil.com`, both of
+ * which are the attack this guard exists to stop.
+ *
+ * Localhost is accepted only outside production, so a development convenience
+ * cannot become a live redirect target.
+ */
+export function isOwnOrigin(candidate: string): boolean {
+	let url: URL;
+	try {
+		url = new URL(candidate);
+	} catch {
+		return false;
+	}
+	if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+
+	const host = url.hostname.toLowerCase();
+	if (host === "quickdash.xyz" || host.endsWith(".quickdash.xyz")) {
+		return url.protocol === "https:";
+	}
+	if (process.env.NODE_ENV !== "production") {
+		return host === "localhost" || host === "127.0.0.1";
+	}
+	return false;
+}
 
 export function registerPaymentsRoutes(
 	app: Hono<PlatformEnv>,
@@ -111,6 +145,92 @@ export function registerPaymentsRoutes(
 			await setPaymentStatusCommand(context, id, status, options.uow),
 		);
 	});
+	// ── Connect: the business's OWN payment account ─────────────────────────
+	//
+	// 🔴 Until these existed, `createConnectedAccount`,
+	// `createAccountOnboardingLink`, `createDestinationPaymentIntent` and
+	// `upsertPaymentAccount` all had ZERO callers — the Connect integration was
+	// written and unreachable, so no workspace could connect an account and no
+	// customer could ever be charged. See Blocker 1 in
+	// `internal/planning/END_TO_END_AUDIT.md`.
+	//
+	// Everything below goes through the `PaymentProvider` seam, never Stripe
+	// directly, so Polar/PayPal/Square are one file each rather than a rewrite.
+
+	/** Our stored view of the account. No network call, safe to poll. */
+	app.get("/v1/payments/connect", readAccess, readLimit, async (c) =>
+		respond(c, await readPaymentAccount(c.get("authorized").workspaceId)),
+	);
+
+	/**
+	 * Re-read the provider and update our copy.
+	 *
+	 * Onboarding completes asynchronously — the operator lands back on our page
+	 * long before the provider has finished its checks — so whatever we stored
+	 * at redirect time is already stale. Rate-limited on the WRITE policy
+	 * despite being a refresh, because it makes an outbound API call per hit.
+	 */
+	app.post("/v1/payments/connect/refresh", writeAccess, writeLimit, async (c) =>
+		respond(c, await refreshPaymentAccount(c.get("authorized").workspaceId)),
+	);
+
+	/**
+	 * Start (or resume) connecting an account.
+	 *
+	 * Answers with a URL to send the operator to. Resumable by design: coming
+	 * back after abandoning onboarding re-issues a link for the SAME account,
+	 * because provider account links are single-use and short-lived.
+	 */
+	app.post(
+		"/v1/payments/connect/onboard",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			const parsed = paymentOnboardingInputSchema.safeParse(await c.req.json());
+			if (!parsed.success) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"A valid returnUrl and refreshUrl are required.",
+					400,
+					parsed.error.issues,
+				);
+			}
+
+			// 🔴 Open-redirect guard. The provider will send the operator wherever
+			// this says, on a page they reached from a payment provider's domain —
+			// the most credible phishing setup available against a business owner.
+			// Only our own surfaces are acceptable destinations.
+			for (const url of [parsed.data.returnUrl, parsed.data.refreshUrl]) {
+				if (!isOwnOrigin(url)) {
+					return respondError(
+						c,
+						"VALIDATION_ERROR",
+						"returnUrl and refreshUrl must point at a QuickDash surface.",
+						400,
+					);
+				}
+			}
+
+			try {
+				return respond(
+					c,
+					await startPaymentOnboarding({
+						workspaceId: c.get("authorized").workspaceId,
+						...parsed.data,
+					}),
+				);
+			} catch (error) {
+				// A provider we have no integration for is the caller's mistake, not a
+				// server fault — answering 500 would send them to look at our logs.
+				if (error instanceof UnsupportedPaymentProviderError) {
+					return respondError(c, "VALIDATION_ERROR", error.message, 400);
+				}
+				throw error;
+			}
+		},
+	);
+
 	app.post("/v1/payments/:id/refund", writeAccess, writeLimit, async (c) => {
 		const id = uuid.parse(c.req.param("id"));
 		const body = await c.req.json();

@@ -1,0 +1,11 @@
+{
+	"buildCommand": "pnpm turbo build --filter=@quickengine/portal...",
+	"installCommand": "pnpm install --frozen-lockfile",
+	"rewrites": [
+		{
+			"source": "/v1/:path*",
+			"destination": "https://api.quickdash.xyz/v1/:path*"
+		},
+		{ "source": "/(.*)", "destination": "/index.html" }
+	]
+}

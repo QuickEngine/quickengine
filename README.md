@@ -92,7 +92,7 @@ pnpm + Turborepo · Vercel
 ```txt
 apps/quickengine/{web,auth,account}   the frontends
 apps/quickdash/web                    the operator's workspace
-apps/quickdash/customer               the customer portal — our users' users
+apps/quickdash/portal                 the customer portal — our users' users
 services/api                          the canonical Hono boundary
 packages/
   modules/          15 isolated business capabilities
@@ -118,7 +118,7 @@ pnpm dev                # everything
 ```
 
 Individually: `pnpm web` · `pnpm auth` · `pnpm account` · `pnpm dash` ·
-`pnpm customer` · `pnpm api`
+`pnpm portal` · `pnpm api`
 
 ```sh
 pnpm check              # Biome + boundary ratchet + error-map check

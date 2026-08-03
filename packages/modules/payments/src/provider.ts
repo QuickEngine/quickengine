@@ -102,6 +102,12 @@ export interface PaymentProvider {
 	 * `applicationFeeCents` is QuickEngine's cut. It is a platform fee on
 	 * infrastructure, NOT a fee on the business outcome: it is agreed up front
 	 * per workspace, never charged per customer or per invoice.
+	 *
+	 * ⚠️ The charge belongs to the BUSINESS, not to us — the business is merchant
+	 * of record, its name is on the buyer's statement, and its account carries
+	 * the chargeback liability. See the direct-charge note in
+	 * `providers/stripe.ts`; a provider that cannot work that way needs the
+	 * decision revisited rather than a quiet fallback to platform-held funds.
 	 */
 	createCharge(params: {
 		amountCents: number;
@@ -120,6 +126,14 @@ export interface PaymentProvider {
 	 */
 	refund(params: {
 		externalPaymentId: string;
+		/**
+		 * 🔴 Required, not optional. Charges are created ON the business's account
+		 * (direct charges), so they do not exist on the platform account at all.
+		 * A refund issued without naming the account fails to find the payment —
+		 * and the failure mode is our ledger recording a refund that never
+		 * happened while the customer's money stays put.
+		 */
+		connectedAccountId: string;
 		amountCents?: number;
 		reason?: string;
 	}): Promise<ProviderRefund>;

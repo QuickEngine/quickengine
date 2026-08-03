@@ -20,7 +20,7 @@
 		"test": "vitest run --passWithNoTests",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
-		"db:push": "drizzle-kit push",
+		"db:push": "node push.mjs",
 		"db:studio": "drizzle-kit studio",
 		"db:parity": "node --env-file=../../.env.local parity.mjs",
 		"db:migration-parity": "node --env-file=../../.env.local migration-parity.mjs",

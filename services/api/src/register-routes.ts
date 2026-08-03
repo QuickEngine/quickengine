@@ -11,6 +11,7 @@ import { registerBookingsRoutes } from "./bookings-routes";
 import { registerCheckoutRoutes } from "./checkout-routes";
 import { registerClientRecordRoutes } from "./client-records-routes";
 import { registerConnectWebhookRoutes } from "./connect-webhook-routes";
+import { registerContentRoutes } from "./content-routes";
 import { registerContractsRoutes } from "./contracts-routes";
 import { registerCreditRoutes } from "./credit-routes";
 import { customerAuthDependencies } from "./customer-auth-dependencies";
@@ -83,6 +84,7 @@ export function registerAllRoutes(
 	// The customer surface. Registered last among the /v1 families so its
 	// namespace is unmistakably separate from the operator routes above.
 	registerCheckoutRoutes(app, dependencies);
+	registerContentRoutes(app, dependencies);
 	registerCustomerRoutes(app, {
 		...dependencies,
 		auth: customerAuthDependencies,

@@ -9,6 +9,11 @@ import {
 	clientRecordInputSchema,
 	clientRecordPatchSchema,
 } from "@quickengine/mod-client-records";
+import {
+	contentEntryInputSchema,
+	contentManifestInputSchema,
+	contentPublishInputSchema,
+} from "@quickengine/mod-content";
 import { contractInputSchema } from "@quickengine/mod-contracts-esign";
 import { documentInputSchema, folderInputSchema } from "@quickengine/mod-files";
 import { createFulfillmentInputSchema } from "@quickengine/mod-fulfillment";
@@ -207,6 +212,9 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	setWorkspaceModuleEnabled: workspaceModuleSchema,
 	startPaymentOnboarding: paymentOnboardingInputSchema,
 	createCheckout: checkoutInputSchema,
+	upsertContentEntry: contentEntryInputSchema,
+	registerContentManifest: contentManifestInputSchema,
+	setContentPublished: contentPublishInputSchema,
 	createRole: roleInputSchema,
 	updateRole: rolePatchSchema,
 };

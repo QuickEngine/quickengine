@@ -3,6 +3,7 @@ export * from "./api-platform";
 export * from "./bookings";
 export * from "./catalog-items";
 export * from "./client-records";
+export * from "./content";
 export * from "./contracts-esign";
 export * from "./customers";
 export * from "./files";

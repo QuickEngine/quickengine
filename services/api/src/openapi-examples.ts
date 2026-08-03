@@ -297,6 +297,31 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	renameWorkspace: { name: "Northwind Trading Co." },
 	setWorkspaceArchived: { archived: true },
 	setWorkspaceModuleEnabled: { enabled: true },
+	registerContentManifest: {
+		slots: [
+			{
+				key: "about.heading",
+				type: "text",
+				label: "About — heading",
+				group: "About",
+			},
+			{
+				key: "about.body",
+				type: "richtext",
+				label: "About — body",
+				group: "About",
+			},
+		],
+	},
+	setContentPublished: { keys: ["about.body"], published: true },
+	upsertContentEntry: {
+		key: "about.body",
+		type: "richtext",
+		value: "We have been sourcing gemstones from Alberta since 2019.",
+		label: "About — body text",
+		group: "About",
+		published: true,
+	},
 	createCheckout: {
 		items: [
 			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },

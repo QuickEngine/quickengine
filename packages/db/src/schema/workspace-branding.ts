@@ -71,6 +71,17 @@ export const workspaceBranding = pgTable(
 		supportEmail: text("support_email"),
 		/** Absolute URL. Mail clients cannot resolve a relative path. */
 		logoUrl: text("logo_url"),
+		/**
+		 * The browser-tab icon for the hosted portal.
+		 *
+		 * ⚠️ Swapped at RUNTIME by rewriting the `<link rel="icon">` href once
+		 * bootstrap resolves, because one deployment serves every workspace and a
+		 * static `index.html` can only ship one. Expect a frame of the default
+		 * icon first; there is no way around that without a build per customer.
+		 *
+		 * Portal only. Email has no favicon.
+		 */
+		faviconUrl: text("favicon_url"),
 		tagline: text("tagline"),
 		/**
 		 * ⚠️ Solid hex only (`#7c3aed`). Mail clients discard `oklch()` and custom
@@ -79,6 +90,22 @@ export const workspaceBranding = pgTable(
 		 */
 		accentColor: text("accent_color"),
 		websiteUrl: text("website_url"),
+
+		/**
+		 * ⚠️ UNUSED. Nothing reads this and no surface renders attribution.
+		 *
+		 * A "powered by QuickDash" footer, removable by paying, was considered and
+		 * **dropped** on 2026-08-03 — see `internal/planning/DECISIONS.md`. The
+		 * column survives only because it had already been applied to both
+		 * databases when the idea was withdrawn; declaring it here keeps the schema
+		 * honest so `db:generate` does not emit a surprise `DROP COLUMN`.
+		 *
+		 * Safe to remove in a deliberate migration. Do not start reading it without
+		 * revisiting the decision first: Hard rule 4 forbids advertising inside the
+		 * product, and the published changelog promises customers we are not
+		 * mentioned in their mail.
+		 */
+		hideAttribution: boolean("hide_attribution").notNull().default(false),
 
 		/**
 		 * The portal's publishable key, IN PLAINTEXT.

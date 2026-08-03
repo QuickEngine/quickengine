@@ -1,43 +1,115 @@
 /**
  * The Customer API client.
  *
- * One deployment serves every workspace, so which workspace a visitor is in is
- * resolved per request rather than baked at build time.
+ * One deployment serves every workspace. Which workspace a visitor is in comes
+ * from the URL, and everything else — the publishable key, the business's name,
+ * its logo — is fetched at runtime from `/v1/customer/bootstrap/:slug`.
+ *
+ * 🔴 There is no build-time key. `VITE_CUSTOMER_PUBLISHABLE_KEY` used to pin the
+ * entire deployment to a single workspace, because one build cannot embed a
+ * hundred customers' keys.
  */
 
-const SESSION_KEY = "quickdash-customer-session";
+export type PortalBrand = {
+	name: string;
+	supportEmail: string;
+	logoUrl: string | null;
+	faviconUrl: string | null;
+	tagline: string | null;
+	accentColor: string | null;
+	websiteUrl: string | null;
+};
+
+export type PortalBootstrap = {
+	workspaceId: string;
+	publishableKey: string | null;
+	brand: PortalBrand;
+};
 
 /**
- * Which workspace this visit belongs to.
+ * The resolved portal for this page load.
  *
- * Production resolves it from the HOST — `account.gemsutopia.com` is one
- * workspace, another domain is another. Locally there are no custom domains, so
- * a `?workspace=` parameter stands in and is remembered for the session.
- *
- * ⚠️ The publishable key is fetched per workspace rather than embedded, because
- * a single build cannot carry a hundred clients' keys. Until that endpoint
- * exists it comes from an env var, which works for one workspace and is the
- * known gap before this serves more than one.
+ * Module-level because `call()` needs the key synchronously on every request,
+ * and threading it through would put a credential in a dozen component
+ * signatures. Set once by the route loader, before anything renders.
  */
-export function resolveWorkspace(): string | null {
-	const fromQuery = new URLSearchParams(window.location.search).get(
-		"workspace",
-	);
-	if (fromQuery) {
-		sessionStorage.setItem("quickdash-workspace", fromQuery);
-		return fromQuery;
-	}
-	return sessionStorage.getItem("quickdash-workspace");
+let current: (PortalBootstrap & { slug: string }) | null = null;
+
+export function currentPortal() {
+	return current;
 }
 
-export function publishableKey(): string {
-	return import.meta.env.VITE_CUSTOMER_PUBLISHABLE_KEY ?? "";
+/**
+ * Resolve a portal from its URL slug.
+ *
+ * The one call carrying no publishable key, because it is the call that fetches
+ * one. A 404 means no portal is published at this address.
+ */
+export async function bootstrapPortal(slug: string): Promise<PortalBootstrap> {
+	const response = await fetch(
+		`/v1/customer/bootstrap/${encodeURIComponent(slug)}`,
+	);
+	const payload = await response.json().catch(() => null);
+
+	if (!response.ok) {
+		throw new CustomerApiError(
+			payload?.error?.code ?? "PORTAL_NOT_FOUND",
+			payload?.error?.message ?? "No portal is published at this address.",
+			response.status,
+		);
+	}
+
+	current = { ...(payload.data as PortalBootstrap), slug };
+	applyBranding(current.brand);
+	return current;
+}
+
+/**
+ * Put the business's identity on the page itself.
+ *
+ * ⚠️ Done at RUNTIME because a static `index.html` ships one title and one icon,
+ * and this deployment serves every workspace. A visitor sees the default for one
+ * frame before this runs; there is no avoiding that short of a build per
+ * customer or server-side rendering.
+ */
+function applyBranding(brand: PortalBrand) {
+	document.title = brand.name;
+
+	if (brand.faviconUrl) {
+		// Reuse the existing element. Appending a second leaves the browser to
+		// choose, and they do not all choose the last one.
+		const existing =
+			document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
+		const link = existing ?? document.createElement("link");
+		link.rel = "icon";
+		link.href = brand.faviconUrl;
+		if (!existing) document.head.appendChild(link);
+	}
+
+	if (brand.accentColor) {
+		document.documentElement.style.setProperty(
+			"--portal-accent",
+			brand.accentColor,
+		);
+	}
+}
+
+/**
+ * Where this browser keeps its session for THIS portal.
+ *
+ * 🔴 Scoped by slug. One shared key means a person visiting two businesses'
+ * portals in the same browser sends the first one's session to the second. The
+ * API refuses it with `SESSION_WORKSPACE_MISMATCH`, correctly — but the visitor
+ * just sees a portal that will not let them in.
+ */
+function sessionKey() {
+	return `quickdash-customer-session:${current?.slug ?? "unknown"}`;
 }
 
 export const session = {
-	get: () => localStorage.getItem(SESSION_KEY),
-	set: (token: string) => localStorage.setItem(SESSION_KEY, token),
-	clear: () => localStorage.removeItem(SESSION_KEY),
+	get: () => localStorage.getItem(sessionKey()),
+	set: (token: string) => localStorage.setItem(sessionKey(), token),
+	clear: () => localStorage.removeItem(sessionKey()),
 };
 
 export class CustomerApiError extends Error {
@@ -55,7 +127,7 @@ async function call<T>(
 	init: RequestInit & { signOutOnExpiry?: boolean } = {},
 ): Promise<T> {
 	const headers = new Headers(init.headers);
-	headers.set("QuickEngine-Publishable-Key", publishableKey());
+	headers.set("QuickEngine-Publishable-Key", current?.publishableKey ?? "");
 	if (init.body) headers.set("Content-Type", "application/json");
 
 	// The session travels in a header, not a cookie. The portal is on our domain

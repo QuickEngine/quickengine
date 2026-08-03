@@ -131,6 +131,7 @@ export function registerCustomerRoutes(
 				name: bootstrap.name,
 				supportEmail: bootstrap.supportEmail,
 				logoUrl: bootstrap.logoUrl ?? null,
+				faviconUrl: bootstrap.faviconUrl ?? null,
 				tagline: bootstrap.tagline ?? null,
 				accentColor: bootstrap.accentColor ?? null,
 				websiteUrl: bootstrap.websiteUrl ?? null,

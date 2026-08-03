@@ -53,6 +53,12 @@ beforeEach(async () => {
 	// than on anything to do with this handler.
 	//
 	// DB_RULES rule 3: every NOT NULL column is supplied here.
+	//
+	// ⚠️ NO `onConflictDoNothing` on these fixtures. The suite truncates before
+	// every test, so a conflict cannot legitimately happen — and swallowing one
+	// means a fixture that failed to insert produces a baffling failure three
+	// assertions later instead of an obvious one at the insert. That is exactly
+	// how this file first appeared flaky.
 	const sql = testDbClient();
 	await sql`
 		insert into quickengine_users (id, name, email, email_verified)
@@ -76,38 +82,35 @@ beforeEach(async () => {
 		totalCents: 10_398,
 	};
 
-	await db
-		.insert(orders)
-		.values([
-			// Snapshot AND link — the snapshot should win.
-			{
-				...base,
-				id: ORDER_WITH_CLIENT,
-				sequence: 9001,
-				number: "GEM-9001",
-				clientId: CLIENT,
-				clientEmail: "snapshot@example.test",
-			},
-			// A guest purchase: no client record at all, address on the order.
-			{
-				...base,
-				id: ORDER_GUEST,
-				sequence: 9002,
-				number: "GEM-9002",
-				clientId: null,
-				clientEmail: "guest@example.test",
-			},
-			// Neither. Nobody to write to.
-			{
-				...base,
-				id: ORDER_ANONYMOUS,
-				sequence: 9003,
-				number: "GEM-9003",
-				clientId: null,
-				clientEmail: null,
-			},
-		])
-		.onConflictDoNothing();
+	await db.insert(orders).values([
+		// Snapshot AND link — the snapshot should win.
+		{
+			...base,
+			id: ORDER_WITH_CLIENT,
+			sequence: 9001,
+			number: "GEM-9001",
+			clientId: CLIENT,
+			clientEmail: "snapshot@example.test",
+		},
+		// A guest purchase: no client record at all, address on the order.
+		{
+			...base,
+			id: ORDER_GUEST,
+			sequence: 9002,
+			number: "GEM-9002",
+			clientId: null,
+			clientEmail: "guest@example.test",
+		},
+		// Neither. Nobody to write to.
+		{
+			...base,
+			id: ORDER_ANONYMOUS,
+			sequence: 9003,
+			number: "GEM-9003",
+			clientId: null,
+			clientEmail: null,
+		},
+	]);
 });
 
 describe("customer notifications", () => {

@@ -9,15 +9,20 @@ import {
 	quickengineWorkspaces,
 	shipments,
 } from "@quickengine/db";
+// 🔴 The TEMPLATES subpath, not the package root.
+//
+// The root exports the Resend client, so importing it here dragged a mail SDK
+// into the module graph of everything that touches event-dispatch — which
+// includes four files in the API, and made its route-table test time out in CI.
+// Templates are pure string builders and cost nothing; the provider is loaded
+// only when something is actually sent.
+import type { EmailBrand, RenderedEmail } from "@quickengine/email/templates";
 import {
 	bookingConfirmationEmail,
-	type EmailBrand,
-	getEmailProvider,
 	orderConfirmationEmail,
 	paymentReceiptEmail,
-	type RenderedEmail,
 	shippingNoticeEmail,
-} from "@quickengine/email";
+} from "@quickengine/email/templates";
 import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
 
 /**
@@ -47,6 +52,23 @@ import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
  */
 
 type Notification = { to: string; email: RenderedEmail };
+
+/**
+ * The only events that produce mail.
+ *
+ * 🔴 Checked FIRST, before any I/O. Every mutation in the platform raises an
+ * event — `task.updated`, `project.archived`, hundreds per test run — and
+ * without this gate the handler loaded the workspace from the database for all
+ * of them just to discover it had no template. That is a query per event on the
+ * hot path of the outbox drain, and it made the integration suite measurably
+ * slower before anyone noticed.
+ */
+const NOTIFIED_EVENTS = new Set([
+	"order.created",
+	"payment.recorded",
+	"shipment.created",
+	"booking.created",
+]);
 
 /**
  * How the business appears in mail to its own customers.
@@ -207,9 +229,24 @@ async function buildNotification(
 	}
 }
 
+/** Loaded on first send, never at import. See the note on the imports above. */
+async function defaultSend(input: {
+	to: string;
+	subject: string;
+	html: string;
+	text: string;
+}) {
+	const { getEmailProvider } = await import("@quickengine/email");
+	return getEmailProvider().send(input);
+}
+
 export function customerNotificationHandler(
-	send = (input: { to: string; subject: string; html: string; text: string }) =>
-		getEmailProvider().send(input),
+	send: (input: {
+		to: string;
+		subject: string;
+		html: string;
+		text: string;
+	}) => Promise<unknown> = defaultSend,
 	log: (message: string, detail: Record<string, unknown>) => void = (
 		message,
 		detail,
@@ -218,6 +255,9 @@ export function customerNotificationHandler(
 	return {
 		name: "customer-notifications",
 		async handle(event: OutboxEvent) {
+			// Cheapest possible rejection: a string lookup, no database, no imports.
+			if (!NOTIFIED_EVENTS.has(event.eventName)) return;
+
 			try {
 				const brand = await brandFor(event.workspaceId);
 				if (!brand) return;

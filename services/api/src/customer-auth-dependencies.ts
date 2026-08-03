@@ -6,8 +6,6 @@ import {
 	findOrCreateIdentity,
 	revokeCustomerSession,
 } from "@quickengine/db";
-import { getEmailProvider, signInLinkEmail } from "@quickengine/email";
-import { serverEnv } from "@quickengine/env/server";
 import type { CustomerAuthDependencies } from "./customer-routes";
 
 /**
@@ -38,6 +36,18 @@ export const customerAuthDependencies: CustomerAuthDependencies = {
 	revokeCustomerSession,
 
 	async sendSignInLink(input) {
+		// 🔴 Imported here, not at module top level.
+		//
+		// `registerAllRoutes` pulls this file in, so a top-level import dragged the
+		// mail SDK into the module graph of every route registration — including
+		// the OpenAPI route-table test, which then timed out in CI, and every cold
+		// start in production. Nothing about defining a route needs a mail client.
+		//
+		// Same reasoning as the lazy billing import in `index.ts`.
+		const { getEmailProvider } = await import("@quickengine/email");
+		const { signInLinkEmail } = await import("@quickengine/email/templates");
+		const { serverEnv } = await import("@quickengine/env/server");
+
 		const url = new URL("/verify", portalBaseUrl());
 		url.searchParams.set("token", input.token);
 		// The workspace travels in the link because the portal is multi-tenant and

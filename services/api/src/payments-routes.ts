@@ -10,6 +10,7 @@ import {
 	readPaymentAccount,
 	recordPaymentCommand,
 	refreshPaymentAccount,
+	refundAtProvider,
 	refundPaymentCommand,
 	setPaymentStatusCommand,
 	startPaymentOnboarding,
@@ -234,10 +235,39 @@ export function registerPaymentsRoutes(
 	app.post("/v1/payments/:id/refund", writeAccess, writeLimit, async (c) => {
 		const id = uuid.parse(c.req.param("id"));
 		const body = await c.req.json();
+		const { workspaceId } = c.get("authorized");
+
+		// 🔴 Send the money back BEFORE recording it. Until 2026-08-03 this route
+		// wrote the ledger and called no provider at all, so an operator could
+		// "refund" a customer who never got their money — a record that lies is
+		// worse than a missing feature, because nobody goes looking.
+		//
+		// A payment taken in cash has no provider to call; that is a normal outcome
+		// and the ledger entry is the whole job.
+		const atProvider = await refundAtProvider({
+			workspaceId,
+			paymentId: id,
+			amountCents:
+				typeof body?.amountCents === "number" ? body.amountCents : undefined,
+			reason: typeof body?.reason === "string" ? body.reason : undefined,
+		});
+
 		const context = await mutationContext(c, "payments.refund", { body, id });
 		return respondMutation(
 			c,
-			await refundPaymentCommand(context, id, body, options.uow),
+			await refundPaymentCommand(
+				context,
+				id,
+				{
+					...body,
+					// The provider's own id, so a redelivered `charge.refunded` matches
+					// this row instead of creating a second one.
+					externalRefundId: atProvider.refunded
+						? atProvider.externalRefundId
+						: (body?.externalRefundId ?? null),
+				},
+				options.uow,
+			),
 		);
 	});
 }

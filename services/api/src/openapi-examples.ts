@@ -314,6 +314,16 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		],
 	},
 	setContentPublished: { keys: ["about.body"], published: true },
+	createCategory: {
+		kind: "category",
+		name: "Rings",
+		slug: "rings",
+		sortOrder: 10,
+	},
+	updateCategory: { name: "Signet rings", sortOrder: 20 },
+	setItemCategories: {
+		categoryIds: ["3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90"],
+	},
 	upsertContentEntry: {
 		key: "about.body",
 		type: "richtext",

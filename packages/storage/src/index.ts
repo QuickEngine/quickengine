@@ -27,6 +27,40 @@ export type DownloadAccess = {
 	expiresAt: Date;
 };
 
+/**
+ * The storage seam.
+ *
+ * Three methods. Two implementations today (local, Vercel Blob) and only three
+ * files in the whole repository import this package, so swapping providers is a
+ * genuinely small job rather than a nominal one.
+ *
+ * ── Adding S3 (or R2, or GCS) ──────────────────────────────────────────────
+ *
+ * One new file implementing these three methods, plus a line wherever the
+ * provider is chosen. Nothing in `mod-files`, `event-dispatch` or the API
+ * changes. Concretely:
+ *
+ * 1. `put` → `PutObjectCommand`. Keep returning the sha256 this module already
+ *    computes; do not trust the provider's ETag, which is not a content hash for
+ *    multipart uploads.
+ * 2. `delete` → `DeleteObjectCommand`. Must stay safe to repeat: cleanup jobs
+ *    retry after an interrupted run, and S3 already answers 204 for a key that is
+ *    not there.
+ * 3. `createDownloadAccess` → `getSignedUrl`. Same short-lived-signed-URL model
+ *    this interface already assumes, so there is no architectural mismatch.
+ *
+ * 🔴 `StorageObjectLocator` carries `provider`, and `assertLocator` refuses a
+ * locator from a different one. That is what makes a migration GRADUAL: objects
+ * written to Vercel Blob keep resolving through the Vercel provider while new
+ * ones go to S3. No big-bang copy, no downtime, and no rewriting historical rows.
+ *
+ * The real work is operational, not code: bucket policy, IAM, CORS for browser
+ * uploads, and a lifecycle rule if cold storage is wanted.
+ *
+ * ⚠️ Deliberately NOT written until something needs it. An unreachable provider
+ * is the exact failure the 2026-08-03 audit spent a night cataloguing — code that
+ * reads as finished and is called by nothing.
+ */
 export type StorageProvider = {
 	readonly name: string;
 	put(input: PutObjectInput): Promise<StoredObject>;

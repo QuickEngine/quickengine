@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Group your catalog into categories and collections.** Arrange what you sell into a
+  browsable structure — nested if you want one — and put the same item in more than one place.
+  A collection can be hidden while you prepare it and brought back later without losing what
+  you put in it.
+
 - **Edit the words on your own website.** A new Content module lets you change your About
   section, a headline, or your legal pages without touching code or asking a developer. Your
   site declares which parts are editable; you fill them in. Nothing you write appears until you

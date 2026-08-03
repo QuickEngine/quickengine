@@ -31,6 +31,9 @@ import {
 import {
 	catalogItemInputSchema,
 	catalogItemPatchSchema,
+	categoryInputSchema,
+	categoryPatchSchema,
+	itemCategoriesInputSchema,
 	productVariantInputSchema,
 	productVariantPatchSchema,
 } from "@quickengine/mod-products-services";
@@ -213,6 +216,9 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	startPaymentOnboarding: paymentOnboardingInputSchema,
 	createCheckout: checkoutInputSchema,
 	upsertContentEntry: contentEntryInputSchema,
+	createCategory: categoryInputSchema,
+	updateCategory: categoryPatchSchema,
+	setItemCategories: itemCategoriesInputSchema,
 	registerContentManifest: contentManifestInputSchema,
 	setContentPublished: contentPublishInputSchema,
 	createRole: roleInputSchema,

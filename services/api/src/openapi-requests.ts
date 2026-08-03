@@ -36,6 +36,8 @@ import {
 	itemCategoriesInputSchema,
 	productVariantInputSchema,
 	productVariantPatchSchema,
+	wishlistItemInputSchema,
+	wishlistMergeInputSchema,
 } from "@quickengine/mod-products-services";
 import {
 	milestoneDetailsInputSchema,
@@ -217,6 +219,8 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createCheckout: checkoutInputSchema,
 	upsertContentEntry: contentEntryInputSchema,
 	createCategory: categoryInputSchema,
+	addToWishlist: wishlistItemInputSchema,
+	mergeWishlist: wishlistMergeInputSchema,
 	updateCategory: categoryPatchSchema,
 	setItemCategories: itemCategoriesInputSchema,
 	registerContentManifest: contentManifestInputSchema,

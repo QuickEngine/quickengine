@@ -4,6 +4,15 @@ import { portalBootstrap } from "@quickengine/db";
 import { listBookingsPage } from "@quickengine/mod-bookings";
 import { listInvoicesPage } from "@quickengine/mod-invoicing";
 import { listOrdersPage } from "@quickengine/mod-orders";
+import {
+	addToWishlist,
+	listWishlist,
+	mergeWishlist,
+	removeFromWishlist,
+	WishlistError,
+	wishlistItemInputSchema,
+	wishlistMergeInputSchema,
+} from "@quickengine/mod-products-services";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeCustomer, customerScope } from "./customer-authorize";
@@ -377,6 +386,150 @@ export function registerCustomerRoutes(
 			const raw = c.req.header(API_HEADERS.customerSession)?.trim();
 			if (raw) await auth.revokeCustomerSession(raw);
 			return respond(c, { signedOut: true });
+		},
+	);
+	// ── Wishlist — things this shopper wants to come back to ────────────────
+	//
+	// 🔴 Requires a session on every route. A wishlist belongs to a PERSON, and
+	// the membership id it keys off only exists once somebody has signed in. A
+	// guest's list lives in their own browser and arrives through `merge` below —
+	// storing one server-side would mean minting an anonymous identity for every
+	// visitor who taps a heart, which is a tracking cookie wearing a different
+	// name.
+
+	app.get(
+		"/v1/customer/wishlist",
+		readLimit,
+		authorizeCustomer(dependencies, {
+			requireSession: true,
+			module: "products-services",
+		}),
+		async (c) => {
+			const { workspaceCustomerId } = customerScope(c);
+			if (!workspaceCustomerId) return respond(c, { items: [] });
+			return respond(c, { items: await listWishlist(workspaceCustomerId) });
+		},
+	);
+
+	app.post(
+		"/v1/customer/wishlist",
+		writeLimit,
+		authorizeCustomer(dependencies, {
+			requireSession: true,
+			module: "products-services",
+		}),
+		async (c) => {
+			const parsed = wishlistItemInputSchema.safeParse(
+				await c.req.json().catch(() => ({})),
+			);
+			if (!parsed.success) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"Send a catalog item to save.",
+					400,
+					parsed.error.issues,
+				);
+			}
+			const { workspaceId, workspaceCustomerId } = customerScope(c);
+			if (!workspaceCustomerId) {
+				return respondError(
+					c,
+					"AUTHENTICATION_REQUIRED",
+					"Sign in first.",
+					401,
+				);
+			}
+			try {
+				await addToWishlist({
+					workspaceId,
+					workspaceCustomerId,
+					item: parsed.data,
+				});
+			} catch (error) {
+				if (error instanceof WishlistError) {
+					// One message whether the item is missing, archived, or belongs to
+					// another shop — a saved-items endpoint should not confirm what
+					// exists in somebody else's catalog.
+					return respondError(c, "NOT_FOUND", error.message, 404);
+				}
+				throw error;
+			}
+			return respond(c, { saved: true }, 201);
+		},
+	);
+
+	app.delete(
+		"/v1/customer/wishlist/:catalogItemId",
+		writeLimit,
+		authorizeCustomer(dependencies, {
+			requireSession: true,
+			module: "products-services",
+		}),
+		async (c) => {
+			const { workspaceCustomerId } = customerScope(c);
+			if (!workspaceCustomerId) {
+				return respondError(
+					c,
+					"AUTHENTICATION_REQUIRED",
+					"Sign in first.",
+					401,
+				);
+			}
+			// Removing something absent is success. A double-tapped heart must not
+			// produce an error the shopper has to understand.
+			await removeFromWishlist({
+				workspaceCustomerId,
+				catalogItemId: c.req.param("catalogItemId"),
+			});
+			return respond(c, { removed: true });
+		},
+	);
+
+	/**
+	 * Fold a guest's browser-held list into their account.
+	 *
+	 * Called once, right after sign-in. Additive: somebody who saved three things
+	 * signed out and already had five ends with eight, because replacing the list
+	 * would throw away what they saved on another device.
+	 */
+	app.post(
+		"/v1/customer/wishlist/merge",
+		writeLimit,
+		authorizeCustomer(dependencies, {
+			requireSession: true,
+			module: "products-services",
+		}),
+		async (c) => {
+			const parsed = wishlistMergeInputSchema.safeParse(
+				await c.req.json().catch(() => ({})),
+			);
+			if (!parsed.success) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"Send the saved items to merge.",
+					400,
+					parsed.error.issues,
+				);
+			}
+			const { workspaceId, workspaceCustomerId } = customerScope(c);
+			if (!workspaceCustomerId) {
+				return respondError(
+					c,
+					"AUTHENTICATION_REQUIRED",
+					"Sign in first.",
+					401,
+				);
+			}
+			return respond(
+				c,
+				await mergeWishlist({
+					workspaceId,
+					workspaceCustomerId,
+					items: parsed.data.items,
+				}),
+			);
 		},
 	);
 }

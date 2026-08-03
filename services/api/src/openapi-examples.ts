@@ -314,6 +314,10 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		],
 	},
 	setContentPublished: { keys: ["about.body"], published: true },
+	addToWishlist: { catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90" },
+	mergeWishlist: {
+		items: [{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90" }],
+	},
 	createCategory: {
 		kind: "category",
 		name: "Rings",

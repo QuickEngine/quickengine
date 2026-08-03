@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Your customers can save things for later.** A shopper signed in to your portal can keep a
+  wishlist, including which option they wanted. Anything they saved before signing in comes
+  with them, added to what they already had rather than replacing it. An item you withdraw
+  stays on their list marked as unavailable, so nothing disappears without explanation.
+
 - **Group your catalog into categories and collections.** Arrange what you sell into a
   browsable structure — nested if you want one — and put the same item in more than one place.
   A collection can be hidden while you prepare it and brought back later without losing what

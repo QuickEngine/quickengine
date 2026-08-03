@@ -2889,6 +2889,63 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/customer/wishlist": {
+				get: {
+					operationId: "listWishlist",
+					summary: "The items this shopper saved",
+					description:
+						"Requires a customer session. Returns enough of each item to render a card — a wishlist page would otherwise be one request per saved item, from a browser. Withdrawn items are kept and labelled rather than hidden, so a shopper sees that something is gone instead of finding their list quietly shorter.",
+					responses: {
+						"200": { description: "Saved items, newest first." },
+						"401": { description: "Sign in to view a wishlist." },
+					},
+				},
+				post: {
+					operationId: "addToWishlist",
+					summary: "Save an item",
+					description:
+						"Idempotent — tapping a heart twice is one entry. Saving the same item with a different option updates the option rather than being ignored.",
+					responses: {
+						"201": { description: "Saved." },
+						"404": {
+							description:
+								"The item is unavailable. Answered identically whether it is missing, withdrawn, or another shop's, so this cannot be used to probe a competitor's catalog.",
+						},
+					},
+				},
+			},
+			"/v1/customer/wishlist/merge": {
+				post: {
+					operationId: "mergeWishlist",
+					summary: "Fold a guest's saved items into their account",
+					description:
+						"Called once after sign-in. Additive, never replacing: somebody with five items saved on another device who saved three while signed out ends with eight. Unknown or withdrawn items are skipped rather than failing the whole merge, because a list carried in a browser for months will always contain one dead id.",
+					responses: {
+						"200": { description: "How many merged and how many skipped." },
+						"401": { description: "Sign in first." },
+					},
+				},
+			},
+			"/v1/customer/wishlist/{catalogItemId}": {
+				parameters: [
+					{
+						in: "path",
+						name: "catalogItemId",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				delete: {
+					operationId: "removeFromWishlist",
+					summary: "Remove a saved item",
+					description:
+						"Removing something absent is success. A double-tapped heart must not produce an error a shopper has to understand.",
+					responses: {
+						"200": { description: "Removed." },
+						"401": { description: "Sign in first." },
+					},
+				},
+			},
 			"/v1/customer/auth/request-link": {
 				post: {
 					operationId: "requestCustomerSignInLink",

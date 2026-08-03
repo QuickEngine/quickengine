@@ -586,6 +586,102 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			// ── Catalog browsing: categories and collections ─────────────────────
+			// One shape for both. A category is where a thing belongs; a collection
+			// is a curated grouping. They differ in meaning and nothing else.
+			"/v1/categories": {
+				get: {
+					operationId: "listCategories",
+					summary: "The browsable category tree",
+					description:
+						"Readable with a storefront credential — navigation is public by definition. Hidden categories are excluded unless `includeHidden=true`, which defaults that way deliberately: the common caller is a storefront, and defaulting to showing everything would put a shop's unpublished seasonal collection on its live site the first time somebody forgot a parameter. Item counts come from one grouped query rather than one per category.",
+					responses: {
+						"200": { description: "Nested categories with item counts." },
+					},
+				},
+				post: {
+					operationId: "createCategory",
+					summary: "Create a category or collection",
+					responses: {
+						"201": { description: "The created category." },
+						"400": {
+							description:
+								"Invalid input, a slug already used in this workspace, or a parent that would create a cycle.",
+						},
+					},
+				},
+			},
+			"/v1/categories/{slug}/items": {
+				parameters: [
+					{
+						in: "path",
+						name: "slug",
+						required: true,
+						schema: { type: "string" },
+					},
+				],
+				get: {
+					operationId: "listCategoryItems",
+					summary: "The catalog item ids in a category",
+					responses: {
+						"200": { description: "Item ids in merchandising order." },
+					},
+				},
+			},
+			"/v1/categories/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "updateCategory",
+					summary: "Rename, move or reorder a category",
+					description:
+						"Moving a category under one of its own descendants is refused — a cycle makes a tree walk that never terminates, and the first symptom would be a storefront navigation render that hangs.",
+					responses: {
+						"200": { description: "The updated category." },
+						"400": {
+							description: "A taken slug, or a parent that would cycle.",
+						},
+						"404": { description: "No such category." },
+					},
+				},
+				delete: {
+					operationId: "deleteCategory",
+					summary: "Delete a category, lifting its children",
+					description:
+						"Children are re-parented to the deleted category's own parent rather than orphaned to the top level, so reorganising a shop does not flatten its nesting.",
+					responses: {
+						"200": { description: "Deleted." },
+						"404": { description: "No such category." },
+					},
+				},
+			},
+			"/v1/catalog/{id}/categories": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				put: {
+					operationId: "setItemCategories",
+					summary: "Replace which categories a catalog item belongs to",
+					description:
+						"Many-to-many: an item belongs in Rings AND in Under 500 AND in Summer picks. Every category is verified against the workspace before linking, so an item cannot be filed under another shop's collection.",
+					responses: {
+						"200": { description: "How many categories the item now has." },
+						"400": { description: "Invalid ids." },
+						"404": { description: "No such item or category." },
+					},
+				},
+			},
 			// ── Content: the words on a workspace's own website ─────────────────
 			// Named slots, not pages. A developer declares which parts of a site are
 			// editable; the operator fills them. Nothing here models layout.

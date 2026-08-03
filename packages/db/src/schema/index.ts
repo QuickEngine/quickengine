@@ -1,6 +1,7 @@
 export * from "./activity";
 export * from "./api-platform";
 export * from "./bookings";
+export * from "./catalog-categories";
 export * from "./catalog-items";
 export * from "./client-records";
 export * from "./content";

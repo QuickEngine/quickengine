@@ -5,6 +5,7 @@ export * from "./client";
 export * from "./control-plane-audit";
 export * from "./credits";
 export * from "./cursor-page";
+export * from "./customers";
 export * from "./drizzle";
 export * from "./first-action-state";
 export * from "./first-action-state-policy";

@@ -86,3 +86,16 @@ export const emailEvents = {
 	passwordReset: "email/password-reset",
 	emailVerification: "email/verification",
 } as const;
+
+export type {
+	EmailBrand,
+	OrderLine,
+	RenderedEmail,
+} from "./templates";
+export {
+	bookingConfirmationEmail,
+	orderConfirmationEmail,
+	paymentReceiptEmail,
+	shippingNoticeEmail,
+	signInLinkEmail,
+} from "./templates";

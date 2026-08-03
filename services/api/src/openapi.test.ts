@@ -38,6 +38,9 @@ const operations = Object.values(
  * an undocumented body, which is what the coverage test below catches.
  */
 const BODYLESS = new Set([
+	// The session being revoked is the one presented in the header. A body would
+	// only offer a caller somewhere to name a different token.
+	"signOutCustomer",
 	// The token is the whole request — it is in the path, and a body would only
 	// give a caller somewhere to put a second, conflicting one.
 	"acceptInvitation",

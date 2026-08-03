@@ -1,7 +1,7 @@
 import { verifyApiKey } from "@quickengine/auth/api-keys";
 import { resolveWorkspaceAccess } from "@quickengine/auth/rbac";
 import { getSession } from "@quickengine/auth/server";
-import { and, db, eq, isNull } from "@quickengine/db";
+import { and, db, eq, isNull, resolveCustomerSession } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import { getWorkspaceModules } from "@quickengine/module-registry";
 import type {
@@ -84,5 +84,9 @@ export const defaultPlatformDependencies: PlatformDependencies = {
 			},
 		} satisfies WorkspaceResolution;
 	},
+	// The customer boundary's session lookup. Hashes what was presented, joins
+	// the membership, and refuses expired or revoked — see
+	// `packages/db/src/customers.ts`.
+	resolveCustomerSession,
 	verifyApiKey,
 };

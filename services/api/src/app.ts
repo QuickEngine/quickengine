@@ -55,6 +55,7 @@ export function createApp(
 				"Content-Type",
 				API_HEADERS.idempotencyKey,
 				API_HEADERS.publishableKey,
+				API_HEADERS.customerSession,
 				API_HEADERS.requestId,
 				API_HEADERS.workspace,
 			],

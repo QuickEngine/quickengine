@@ -22,6 +22,8 @@
 		"@quickengine/billing": "workspace:*",
 		"@quickengine/cache": "workspace:*",
 		"@quickengine/db": "workspace:*",
+		"@quickengine/email": "workspace:*",
+		"@quickengine/env": "workspace:*",
 		"@quickengine/event-dispatch": "workspace:*",
 		"@quickengine/jobs": "workspace:*",
 		"@quickengine/mod-bookings": "workspace:*",

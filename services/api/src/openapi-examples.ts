@@ -236,6 +236,12 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		pinned: true,
 	},
 	pinSavedView: { pinned: true },
+	requestCustomerSignInLink: {
+		email: "ash@example.com",
+	},
+	verifyCustomerSignInLink: {
+		token: "0xQnJvd3NlcnMgc2VuZCB0aGlzIGJhY2sgdmVyYmF0aW0",
+	},
 	recordProductEvent: {
 		name: "signup.viewed",
 		surface: "web",

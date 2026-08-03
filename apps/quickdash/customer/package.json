@@ -1,0 +1,42 @@
+{
+	"name": "@quickengine/customer",
+	"version": "0.1.0",
+	"license": "UNLICENSED",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite --port 3012",
+		"build": "tsc --noEmit && vite build",
+		"preview": "vite preview --port 3012",
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@phosphor-icons/react": "^2.1.10",
+		"@quickengine/env": "workspace:*",
+		"@quickengine/ui": "workspace:*",
+		"@sentry/react": "^10.65.0",
+		"@tanstack/react-query": "^5.62.0",
+		"@tanstack/react-router": "^1.95.0",
+		"clsx": "^2.1.1",
+		"react": "19.2.8",
+		"react-dom": "19.2.8",
+		"tailwind-merge": "^3.4.0",
+		"tw-animate-css": "^1.4.0"
+	},
+	"devDependencies": {
+		"@quickengine/config": "workspace:*",
+		"@tailwindcss/vite": "^4.3.2",
+		"@tanstack/router-plugin": "^1.95.0",
+		"@types/node": "^22.15.3",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"@vitejs/plugin-react": "^4.3.4",
+		"tailwindcss": "^4",
+		"typescript": "^5",
+		"vite": "^6.0.0",
+		"vitest": "^3.2.6"
+	}
+}

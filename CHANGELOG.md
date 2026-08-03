@@ -28,6 +28,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   colour. QuickEngine is not mentioned.
 - **A Bypass plan for internal use.** Unlimited on everything we pay for ourselves; AI stays
   capped, because that allowance is bought up-front and shared with every customer.
+- **Set how your business appears to your customers.** Your display name, support address, logo,
+  tagline, accent colour and website now belong to your workspace, and every receipt,
+  confirmation and portal page uses them. Until now the support address on your customers'
+  emails was ours.
+- **Your portal has its own address.** Each workspace gets a slug at
+  `portal.quickdash.xyz/<your-business>`, and the page resolves your name and branding from it
+  before anyone signs in. Portals stay switched off until you turn one on, and a business you
+  have not published cannot be found by guessing.
 
 ### Changed
 

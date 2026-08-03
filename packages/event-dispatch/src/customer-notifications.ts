@@ -5,7 +5,7 @@ import {
 	eq,
 	orders,
 	payments,
-	quickengineWorkspaces,
+	resolveBrand,
 	shipments,
 } from "@quickengine/db";
 // 🔴 The TEMPLATES subpath, not the package root.
@@ -72,21 +72,21 @@ const NOTIFIED_EVENTS = new Set([
 /**
  * How the business appears in mail to its own customers.
  *
- * ⚠️ `supportEmail` falls back to the workspace name at a placeholder domain
- * because there is no `workspace_branding` table yet. That is the one remaining
- * place the platform shows through, and it is tracked — nothing else in these
- * emails mentions QuickEngine.
+ * Every fallback lives in `resolveBrand`, not here, so a receipt and the portal
+ * cannot disagree about a business's name or colour. A workspace that has never
+ * opened Connect still gets mail — its own name, and the platform support
+ * address as a last resort.
  */
 async function brandFor(workspaceId: string): Promise<EmailBrand | null> {
-	const [workspace] = await db
-		.select({ name: quickengineWorkspaces.name })
-		.from(quickengineWorkspaces)
-		.where(eq(quickengineWorkspaces.id, workspaceId))
-		.limit(1);
-	if (!workspace) return null;
+	const brand = await resolveBrand(workspaceId);
+	if (!brand) return null;
 	return {
-		name: workspace.name,
-		supportEmail: process.env.CUSTOMER_SUPPORT_EMAIL ?? "support@quickdash.xyz",
+		name: brand.name,
+		supportEmail: brand.supportEmail,
+		logoUrl: brand.logoUrl,
+		tagline: brand.tagline,
+		accentColor: brand.accentColor,
+		websiteUrl: brand.websiteUrl,
 	};
 }
 

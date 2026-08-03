@@ -1,5 +1,6 @@
 import { API_HEADERS } from "@quickengine/api-contracts/headers";
 import type { CacheProvider } from "@quickengine/cache";
+import { portalBootstrap } from "@quickengine/db";
 import { listBookingsPage } from "@quickengine/mod-bookings";
 import { listInvoicesPage } from "@quickengine/mod-invoicing";
 import { listOrdersPage } from "@quickengine/mod-orders";
@@ -93,6 +94,50 @@ export function registerCustomerRoutes(
 		policy: RATE_LIMIT_POLICIES.write,
 		scope: "customer.write",
 	});
+	/**
+	 * Boot the hosted portal from a URL slug alone.
+	 *
+	 * 🔴 The ONLY customer route with no publishable key, because it is what
+	 * hands the key over. A visitor arriving at `portal.quickdash.xyz/gemsutopia`
+	 * has no credential of any kind — this answers "whose shop is this?" so the
+	 * page can render a name and a logo before anyone signs in.
+	 *
+	 * It replaces `VITE_CUSTOMER_PUBLISHABLE_KEY`, a build-time variable that
+	 * pinned one deployment to one workspace. One build cannot embed a hundred
+	 * customers' keys.
+	 *
+	 * ⚠️ Returning a key from an open endpoint is safe ONLY because a publishable
+	 * key is public by construction: `issueApiKey` clamps it to the read-only
+	 * capability allowlist, it cannot move money, and it is printed in page
+	 * source wherever it is used. A secret key here would be a breach.
+	 *
+	 * An unknown slug and a disabled portal both answer 404, so this cannot be
+	 * walked to inventory which businesses exist.
+	 */
+	app.get("/v1/customer/bootstrap/:slug", readLimit, async (c) => {
+		const bootstrap = await portalBootstrap(c.req.param("slug"));
+		if (!bootstrap) {
+			return respondError(
+				c,
+				"PORTAL_NOT_FOUND",
+				"No portal is published at this address.",
+				404,
+			);
+		}
+		return respond(c, {
+			workspaceId: bootstrap.workspaceId,
+			publishableKey: bootstrap.publishableKey,
+			brand: {
+				name: bootstrap.name,
+				supportEmail: bootstrap.supportEmail,
+				logoUrl: bootstrap.logoUrl ?? null,
+				tagline: bootstrap.tagline ?? null,
+				accentColor: bootstrap.accentColor ?? null,
+				websiteUrl: bootstrap.websiteUrl ?? null,
+			},
+		});
+	});
+
 	/**
 	 * The workspace a publishable key belongs to, and what it has enabled.
 	 *

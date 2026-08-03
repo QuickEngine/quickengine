@@ -228,10 +228,25 @@ async function resolveCustomer(
 export function customerScope(c: Context<PlatformEnv>): {
 	workspaceId: string;
 	clientRecordId: string | null;
+	/**
+	 * The MEMBERSHIP id — this person at this business.
+	 *
+	 * Distinct from `clientRecordId`, and the distinction matters. A client record
+	 * is the business's record OF somebody and may not exist yet; the membership
+	 * is the signed-in relationship and always does once a session resolves.
+	 *
+	 * Anything a customer owns directly — a wishlist, later a saved address —
+	 * keys off this. Anything the BUSINESS owns about them — orders, invoices —
+	 * keys off `clientRecordId`.
+	 *
+	 * Null when nobody is signed in.
+	 */
+	workspaceCustomerId: string | null;
 } {
 	const context = c.get("customer");
 	return {
 		workspaceId: context.workspaceId,
 		clientRecordId: context.customer?.clientRecordId ?? null,
+		workspaceCustomerId: context.customer?.workspaceCustomerId ?? null,
 	};
 }

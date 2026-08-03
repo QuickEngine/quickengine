@@ -6,6 +6,7 @@ export * from "./catalog-items";
 export * from "./client-records";
 export * from "./content";
 export * from "./contracts-esign";
+export * from "./customer-wishlist";
 export * from "./customers";
 export * from "./files";
 export * from "./fulfillments";

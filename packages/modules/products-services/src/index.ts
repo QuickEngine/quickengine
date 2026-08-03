@@ -5,3 +5,4 @@ export * from "./item";
 export * from "./module";
 export * from "./variant";
 export * from "./variants";
+export * from "./wishlist";

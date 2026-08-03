@@ -29,6 +29,32 @@ if (!LIVE) {
 	process.exit(2);
 }
 
+// 🔴 Validate the shape BEFORE handing it to the driver.
+//
+// `postgres()` throws a bare `TypeError: Invalid URL` with a stack trace and an
+// `input:` field that CI masks to `***` — which says nothing at all about what
+// is wrong. That happened on 2026-08-03: the GitHub secret was set but not a
+// parseable URL, and the log gave no way to tell that from a missing secret, a
+// dead host, or a broken script.
+//
+// Nothing here prints the value. The parts reported are the shape, not the
+// contents: whether it has a scheme, a host and a database name.
+try {
+	const parsed = new URL(LIVE);
+	if (!/^postgres(ql)?:$/.test(parsed.protocol)) {
+		throw new Error(`scheme is "${parsed.protocol}", expected postgres:`);
+	}
+	if (!parsed.hostname) throw new Error("no host");
+} catch (error) {
+	console.error(
+		`NEON_DATABASE_URL is set but unusable: ${error.message}\n` +
+			"\nIt is present — this is not a missing secret. Check for surrounding\n" +
+			'quotes, a "psql " prefix, or a line break pasted in with the value.\n' +
+			"The value itself is never printed here.",
+	);
+	process.exit(2);
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 const drizzleDir = join(here, "drizzle");
 

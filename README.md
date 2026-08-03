@@ -121,6 +121,9 @@ pnpm dev                # everything
 Individually: `pnpm web` · `pnpm auth` · `pnpm account` · `pnpm dash` ·
 `pnpm portal` · `pnpm api`
 
+A customer portal is not reachable until it is published — `pnpm portal:enable [workspaceId]`
+assigns its address and mints its publishable key.
+
 ```sh
 pnpm check              # Biome + boundary ratchet + error-map check
 pnpm typecheck

@@ -36,6 +36,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   `portal.quickdash.xyz/<your-business>`, and the page resolves your name and branding from it
   before anyone signs in. Portals stay switched off until you turn one on, and a business you
   have not published cannot be found by guessing.
+- **Your logo and your favicon on the portal.** The browser tab shows your icon and your
+  business's name, not ours.
+- **One portal now serves every business.** Previously a single deployment could only ever
+  answer for one workspace. Each business gets its own address, its own branding and its own
+  sign-in, from the same place.
 
 ### Changed
 

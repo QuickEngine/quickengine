@@ -37,12 +37,18 @@ export const RESERVED_PORTAL_SLUGS = new Set([
 	"w",
 ]);
 
-/** The brand as every customer-facing surface consumes it. */
+/**
+ * The brand as every customer-facing surface consumes it.
+ *
+ * ⚠️ `faviconUrl` is a PORTAL concern and is deliberately absent from
+ * `EmailBrand`. Mail has no tab icon.
+ */
 export type ResolvedBrand = {
 	workspaceId: string;
 	name: string;
 	supportEmail: string;
 	logoUrl?: string;
+	faviconUrl?: string;
 	tagline?: string;
 	accentColor?: string;
 	websiteUrl?: string;
@@ -74,6 +80,7 @@ export async function resolveBrand(
 			displayName: workspaceBranding.displayName,
 			supportEmail: workspaceBranding.supportEmail,
 			logoUrl: workspaceBranding.logoUrl,
+			faviconUrl: workspaceBranding.faviconUrl,
 			tagline: workspaceBranding.tagline,
 			accentColor: workspaceBranding.accentColor,
 			websiteUrl: workspaceBranding.websiteUrl,
@@ -96,6 +103,7 @@ export async function resolveBrand(
 		name: row.displayName?.trim() || row.workspaceName,
 		supportEmail: row.supportEmail?.trim() || PLATFORM_FALLBACK_SUPPORT_EMAIL,
 		logoUrl: row.logoUrl ?? undefined,
+		faviconUrl: row.faviconUrl ?? undefined,
 		tagline: row.tagline ?? undefined,
 		accentColor: row.accentColor ?? undefined,
 		websiteUrl: row.websiteUrl ?? undefined,

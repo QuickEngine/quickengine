@@ -3,8 +3,12 @@ import {
 	consumeLoginToken,
 	createCustomerSession,
 	createLoginToken,
+	db,
+	eq,
 	findOrCreateIdentity,
+	resolveBrand,
 	revokeCustomerSession,
+	workspaceBranding,
 } from "@quickengine/db";
 import type { CustomerAuthDependencies } from "./customer-routes";
 
@@ -48,22 +52,45 @@ export const customerAuthDependencies: CustomerAuthDependencies = {
 		const { signInLinkEmail } = await import("@quickengine/email/templates");
 		const { serverEnv } = await import("@quickengine/env/server");
 
-		const url = new URL("/verify", portalBaseUrl());
+		// 🔴 The workspace travels in the PATH, not a query parameter.
+		//
+		// The portal resolves which business a page belongs to from its first path
+		// segment, and it needs that before it can fetch the publishable key that
+		// `verify` requires. A link to a bare `/verify` lands on a page that cannot
+		// tell whose token it is holding.
+		const [published] = await db
+			.select({ portalSlug: workspaceBranding.portalSlug })
+			.from(workspaceBranding)
+			.where(eq(workspaceBranding.workspaceId, input.workspaceId))
+			.limit(1);
+
+		// No published portal means no address the link could point at. Thrown
+		// rather than guessed: `request-link` catches this, logs
+		// `customer.sign_in_link_failed`, and still answers 202, so the enumeration
+		// guarantee holds and the token remains available for a later retry.
+		if (!published?.portalSlug) {
+			throw new Error(
+				`Workspace ${input.workspaceId} has no published portal, so a sign-in link has nowhere to land.`,
+			);
+		}
+
+		const url = new URL(`/${published.portalSlug}/verify`, portalBaseUrl());
 		url.searchParams.set("token", input.token);
-		// The workspace travels in the link because the portal is multi-tenant and
-		// a bare token would not tell it which publishable key to verify against.
-		url.searchParams.set("workspace", input.workspaceId);
 
 		// 🔴 Branded as the WORKSPACE, never as QuickEngine. The recipient bought
 		// from a gem shop; a "QuickEngine" email about an account they did not
 		// knowingly create reads as phishing, and is the fastest way to have a
 		// customer's sign-in link reported as spam.
 		//
-		// ⚠️ `supportEmail` currently falls back to the platform address because
-		// workspaces have no branding fields yet. That is the one place this leaks,
-		// and it is tracked — a `workspace_branding` table replaces it.
+		// The workspace's own branding, with `resolveBrand` applying every fallback
+		// — the same resolution the receipts use, so a sign-in link and an order
+		// confirmation cannot disagree about who sent them.
+		const brand = await resolveBrand(input.workspaceId);
+
 		const rendered = signInLinkEmail({
-			brand: {
+			brand: brand ?? {
+				// Unreachable in practice: a token was just minted for this workspace.
+				// Kept so a deleted-mid-flight workspace cannot crash the send.
 				name: input.workspaceName,
 				supportEmail:
 					serverEnv.EMAIL_FROM?.match(/<(.+)>/)?.[1] ?? "support@quickdash.xyz",

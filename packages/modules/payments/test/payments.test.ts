@@ -350,3 +350,86 @@ describe("Duplicate provider deliveries", () => {
 		expect(await listPayments(workspaceId)).toHaveLength(2);
 	});
 });
+
+/**
+ * 🔴 A payment recorded against an order is the path a storefront running its
+ * OWN payment provider takes — Gemsutopia with PayPal. The order is created via
+ * checkout, the site takes the money, and this attaches the two.
+ *
+ * Without a tenancy check here, one workspace could attach its payments to
+ * another workspace's orders, which is both a data leak and a way to mark
+ * somebody else's order paid.
+ */
+describe("payments recorded against an order", () => {
+	async function anOrder(inWorkspace: string) {
+		const sql = testDbClient();
+		const id = crypto.randomUUID();
+		// Every NOT NULL column with no default, or the insert fails on a
+		// constraint rather than testing what it means to test. client_name is
+		// snapshotted on the order, which is how a guest purchase keeps a name.
+		await sql`
+			insert into orders (id, workspace_id, client_id, client_name, client_email, sequence, number, currency, subtotal_cents, tax_cents, total_cents, status)
+			values (
+				${id}, ${inWorkspace},
+				${inWorkspace === workspaceId ? clientId : null},
+				'Grace Client', 'grace@example.com',
+				${Math.floor(Math.random() * 1_000_000)}, ${`ORD-${id.slice(0, 8)}`},
+				'USD', 5000, 0, 5000, 'draft'
+			)
+		`;
+		return id;
+	}
+
+	it("links the money to the goods", async () => {
+		const orderId = await anOrder(workspaceId);
+		const payment = await recordPayment(workspaceId, {
+			orderId,
+			amountCents: 5_000,
+			currency: "USD",
+			provider: "paypal",
+			externalPaymentId: `pp_${crypto.randomUUID()}`,
+			status: "succeeded",
+		});
+		expect(payment.orderId).toBe(orderId);
+		// Inherited from the order, so a guest checkout still gets a receipt.
+		expect(payment.clientId).toBe(clientId);
+	});
+
+	it("refuses an order belonging to another workspace", async () => {
+		const foreign = await anOrder(otherWorkspaceId);
+		await expect(
+			recordPayment(workspaceId, {
+				orderId: foreign,
+				amountCents: 5_000,
+				provider: "paypal",
+				externalPaymentId: `pp_${crypto.randomUUID()}`,
+			}),
+			// The raw domain code. The friendly wording is applied by
+			// recordPaymentCommand, which is a layer above this one.
+		).rejects.toThrow("ORDER_NOT_FOUND");
+	});
+
+	it("refuses a currency that disagrees with the order", async () => {
+		const orderId = await anOrder(workspaceId);
+		await expect(
+			recordPayment(workspaceId, {
+				orderId,
+				amountCents: 5_000,
+				currency: "CAD",
+				provider: "paypal",
+				externalPaymentId: `pp_${crypto.randomUUID()}`,
+			}),
+		).rejects.toThrow();
+	});
+
+	it("still records a payment with no order at all", async () => {
+		// Cash, an invoice payment, a manual entry — orderId is optional.
+		const payment = await recordPayment(workspaceId, {
+			clientId,
+			amountCents: 1_200,
+			provider: "manual",
+			externalPaymentId: `cash_${crypto.randomUUID()}`,
+		});
+		expect(payment.orderId).toBeNull();
+	});
+});

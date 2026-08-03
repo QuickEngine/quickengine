@@ -4,6 +4,7 @@ import {
 	db,
 	eq,
 	invoices,
+	orders,
 	paymentAccounts,
 	paymentRefunds,
 	payments,
@@ -22,6 +23,19 @@ const currencySchema = z
 
 export const recordPaymentInputSchema = z.object({
 	invoiceId: z.string().uuid().nullable().optional(),
+	/**
+	 * The order this payment settles.
+	 *
+	 * 🔴 The whole point of this field: a storefront that runs its own payment
+	 * provider — PayPal on Gemsutopia, say — creates the order through
+	 * `/v1/checkout`, takes the money itself, then records it here. Without
+	 * `orderId` the money and the goods sit in two unlinked rows and nothing can
+	 * mark the order paid.
+	 *
+	 * Verified against the workspace before use. A caller naming somebody else's
+	 * order gets ORDER_NOT_FOUND, exactly as with `invoiceId`.
+	 */
+	orderId: z.string().uuid().nullable().optional(),
 	clientId: z.string().uuid().nullable().optional(),
 	amountCents: z.number().int().min(1).max(MAX_MONEY_CENTS),
 	currency: currencySchema.optional(),
@@ -269,6 +283,29 @@ export async function recordPaymentInTx(
 		);
 		if (replayed) return replayed;
 
+		// Scoped by workspace, and locked, for the same reason the invoice is:
+		// two providers confirming the same order concurrently must serialise
+		// rather than both deciding it is unpaid.
+		let order: typeof orders.$inferSelect | undefined;
+		if (values.orderId) {
+			[order] = await tx
+				.select()
+				.from(orders)
+				.where(
+					and(
+						eq(orders.workspaceId, workspaceId),
+						eq(orders.id, values.orderId),
+					),
+				)
+				.limit(1)
+				.for("update");
+			if (!order) throw new Error("ORDER_NOT_FOUND");
+			if (order.status === "cancelled") throw new Error("ORDER_NOT_PAYABLE");
+			if (values.currency && values.currency !== order.currency) {
+				throw new Error("PAYMENT_CURRENCY_MISMATCH");
+			}
+		}
+
 		let invoice: typeof invoices.$inferSelect | undefined;
 		if (values.invoiceId) {
 			[invoice] = await tx
@@ -300,7 +337,8 @@ export async function recordPaymentInTx(
 			}
 		}
 
-		const clientId = values.clientId ?? invoice?.clientId ?? null;
+		const clientId =
+			values.clientId ?? invoice?.clientId ?? order?.clientId ?? null;
 		if (
 			invoice?.clientId &&
 			values.clientId &&
@@ -331,13 +369,19 @@ export async function recordPaymentInTx(
 			.values({
 				workspaceId,
 				invoiceId: values.invoiceId ?? null,
+				orderId: values.orderId ?? null,
 				clientId,
-				clientName: client?.name ?? invoice?.clientName ?? null,
-				clientEmail: client?.email ?? invoice?.clientEmail ?? null,
+				clientName:
+					client?.name ?? invoice?.clientName ?? order?.clientName ?? null,
+				// The email matters most: it is what a receipt is sent to, and a guest
+				// checkout has one on the order but no client record behind it.
+				clientEmail:
+					client?.email ?? invoice?.clientEmail ?? order?.clientEmail ?? null,
 				clientCompany: client?.company ?? invoice?.clientCompany ?? null,
 				amountCents: values.amountCents,
 				applicationFeeCents: values.applicationFeeCents ?? 0,
-				currency: values.currency ?? invoice?.currency ?? "USD",
+				currency:
+					values.currency ?? invoice?.currency ?? order?.currency ?? "USD",
 				status: initialStatus,
 				provider: values.provider ?? "stripe",
 				paymentMethod: values.paymentMethod ?? "card",

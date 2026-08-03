@@ -1,9 +1,24 @@
-import { constructStripeEvent, getStripe } from "@quickengine/billing";
 import type {
 	PaymentProvider,
 	ProviderAccount,
 	VerifiedProviderEvent,
 } from "../provider";
+
+/**
+ * 🔴 Loaded on FIRST USE, never at import time.
+ *
+ * `@quickengine/billing` pulls in the Stripe SDK, and this file is reachable
+ * from `registerAllRoutes` via the checkout route — so a top-level import drags
+ * a payment SDK into the module graph of every route registration, including a
+ * cold start and the OpenAPI route-table test, which then timed out in CI at
+ * 5000ms.
+ *
+ * Same failure and same fix as the mail provider in `customer-auth-dependencies.ts`.
+ * Nothing about DEFINING a payment provider needs the SDK; only calling one does.
+ */
+async function billing() {
+	return import("@quickengine/billing");
+}
 
 /**
  * Stripe, behind the seam.
@@ -39,7 +54,7 @@ export const stripePaymentProvider: PaymentProvider = {
 	id: "stripe",
 
 	async startOnboarding(params) {
-		const account = await getStripe().accounts.create({
+		const account = await (await billing()).getStripe().accounts.create({
 			// Express: Stripe hosts onboarding and owns the compliance burden. A
 			// business that has outgrown it can be migrated; starting with Standard
 			// would put KYC, disputes and tax forms on us from day one.
@@ -48,7 +63,7 @@ export const stripePaymentProvider: PaymentProvider = {
 			country: params.country,
 		});
 
-		const link = await getStripe().accountLinks.create({
+		const link = await (await billing()).getStripe().accountLinks.create({
 			account: account.id,
 			refresh_url: params.refreshUrl,
 			return_url: params.returnUrl,
@@ -59,11 +74,13 @@ export const stripePaymentProvider: PaymentProvider = {
 	},
 
 	async getAccount(externalAccountId) {
-		return toAccount(await getStripe().accounts.retrieve(externalAccountId));
+		return toAccount(
+			await (await billing()).getStripe().accounts.retrieve(externalAccountId),
+		);
 	},
 
 	async createCharge(params) {
-		const intent = await getStripe().paymentIntents.create(
+		const intent = await (await billing()).getStripe().paymentIntents.create(
 			{
 				amount: params.amountCents,
 				currency: params.currency.toLowerCase(),
@@ -103,7 +120,7 @@ export const stripePaymentProvider: PaymentProvider = {
 	},
 
 	async refund(params) {
-		const refund = await getStripe().refunds.create(
+		const refund = await (await billing()).getStripe().refunds.create(
 			{
 				payment_intent: params.externalPaymentId,
 				// Absent means "all of it" to Stripe, which matches the seam's contract.
@@ -133,6 +150,7 @@ export const stripePaymentProvider: PaymentProvider = {
 		signature,
 	): Promise<VerifiedProviderEvent | null> {
 		try {
+			const { constructStripeEvent } = await billing();
 			const event = constructStripeEvent(rawBody, signature);
 			const object = event.data.object as { id?: string; object?: string };
 

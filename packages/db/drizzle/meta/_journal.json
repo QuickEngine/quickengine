@@ -386,6 +386,13 @@
 			"when": 1785739277380,
 			"tag": "0054_abnormal_the_hunter",
 			"breakpoints": true
+		},
+		{
+			"idx": 55,
+			"version": "7",
+			"when": 1785743480853,
+			"tag": "0055_clear_black_queen",
+			"breakpoints": true
 		}
 	]
 }

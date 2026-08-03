@@ -67,6 +67,22 @@ export const orders = pgTable(
 			.default("draft"),
 		currency: text("currency").notNull().default("USD"),
 		subtotalCents: integer("subtotal_cents").notNull(),
+		/**
+		 * Tax on this order, in minor units.
+		 *
+		 * 🔴 Added 2026-08-03. `orders` was the ONLY money table without it —
+		 * `invoices` and `quote_estimates` both had `tax_cents` from the start — so
+		 * the one record an e-commerce checkout writes could not represent tax at
+		 * all. Selling a physical good to a Canadian or US buyer was not
+		 * expressible. See Blocker 3 in `internal/planning/END_TO_END_AUDIT.md`.
+		 *
+		 * Defaults to 0 so every existing row stays arithmetically valid:
+		 * `total = subtotal + 0` was already true of them.
+		 *
+		 * ⚠️ This column STORES tax. It does not decide it — see
+		 * `modules/orders/src/tax.ts` for who computes the number.
+		 */
+		taxCents: integer("tax_cents").notNull().default(0),
 		totalCents: integer("total_cents").notNull(),
 		notes: text("notes"),
 		metadata: jsonb("metadata")

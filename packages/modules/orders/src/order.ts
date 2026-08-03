@@ -36,6 +36,19 @@ export const orderInputSchema = z
 			.regex(/^[A-Z]{3}$/)
 			.default("USD"),
 		notes: z.string().trim().max(10_000).nullable().default(null),
+		/**
+		 * Tax on the order, in minor units.
+		 *
+		 * Supplied by the caller, exactly as `invoices` does it. That is safe here
+		 * because creating an order requires OPERATOR credentials — a storefront
+		 * cannot reach this route.
+		 *
+		 * ⚠️ When the storefront checkout lands, it must NOT pass this through from
+		 * the browser. The server computes it with a `TaxCalculator` (`./tax.ts`),
+		 * for the same reason it computes the price: a client that can name its own
+		 * tax can name zero.
+		 */
+		taxCents: z.number().int().min(0).max(POSTGRES_INTEGER_MAX).default(0),
 		lines: z.array(orderLineInputSchema).min(1).max(500),
 		metadata: z.record(z.string(), z.unknown()).default({}),
 	})
@@ -44,7 +57,9 @@ export const orderInputSchema = z
 			order.lines.reduce(
 				(total, line) => total + line.quantity * line.unitPriceCents,
 				0,
-			) <= POSTGRES_INTEGER_MAX,
+			) +
+				(order.taxCents ?? 0) <=
+			POSTGRES_INTEGER_MAX,
 		{ message: "Order total exceeds the supported amount", path: ["lines"] },
 	);
 

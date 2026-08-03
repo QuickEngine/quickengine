@@ -117,7 +117,21 @@ describe("order totals", () => {
 				{ quantity: 3, unitPriceCents: 2_500 },
 				{ quantity: 2, unitPriceCents: 125 },
 			]),
-		).toEqual({ subtotalCents: 7_750, totalCents: 7_750 });
+		).toEqual({ subtotalCents: 7_750, taxCents: 0, totalCents: 7_750 });
+	});
+
+	it("adds supplied tax to the total without touching the subtotal", () => {
+		expect(
+			computeOrderTotals([{ quantity: 1, unitPriceCents: 10_000 }], 500),
+		).toEqual({ subtotalCents: 10_000, taxCents: 500, totalCents: 10_500 });
+	});
+
+	it("refuses a negative tax rather than letting it discount the total", () => {
+		// A negative tax is a discount wearing the wrong name, and it would
+		// understate what the business owes on remittance.
+		expect(
+			computeOrderTotals([{ quantity: 1, unitPriceCents: 10_000 }], -500),
+		).toEqual({ subtotalCents: 10_000, taxCents: 0, totalCents: 10_000 });
 	});
 
 	it("formats stable human order numbers", () => {
@@ -172,6 +186,9 @@ describe("Orders module", () => {
 			numberPrefix: "ORD",
 			defaultCurrency: "USD",
 			autoConfirm: false,
+			// No tax until an operator sets a rate. Guessing one would put a wrong
+			// number on a real invoice.
+			taxRateBasisPoints: 0,
 		});
 	});
 });

@@ -472,6 +472,8 @@ function declaredDocument(config: ApiConfig) {
 				post: {
 					operationId: "recordPayment",
 					summary: "Record a payment",
+					description:
+						"Records money that has already moved. Pass `orderId` when a storefront ran its own payment provider — the order is created through /v1/checkout, the site takes the payment, and this attaches the two. Pass `invoiceId` for an invoice payment. Both are verified against the workspace before use.",
 					parameters: [
 						{
 							in: "header",
@@ -581,6 +583,104 @@ function declaredDocument(config: ApiConfig) {
 							description:
 								"Missing or non-QuickDash redirect URLs, or a provider with no integration.",
 						},
+					},
+				},
+			},
+			// ── Content: the words on a workspace's own website ─────────────────
+			// Named slots, not pages. A developer declares which parts of a site are
+			// editable; the operator fills them. Nothing here models layout.
+			"/v1/content": {
+				get: {
+					operationId: "listPublishedContent",
+					summary: "Every published content slot, as a map",
+					description:
+						"Readable with a storefront credential, because this is copy meant for a public web page. Keyed by slot name so a template can index it directly. Unpublished drafts are excluded in SQL — a draft is something the business has deliberately not said yet.",
+					responses: {
+						"200": { description: "A map of slot key to value." },
+					},
+				},
+			},
+			"/v1/content/{key}": {
+				parameters: [
+					{
+						in: "path",
+						name: "key",
+						required: true,
+						schema: { type: "string" },
+					},
+				],
+				get: {
+					operationId: "getPublishedContent",
+					summary: "One published content slot",
+					responses: {
+						"200": { description: "The slot's value." },
+						"404": {
+							description:
+								"No slot at that key, or it is not published. Answered identically so a public caller cannot detect an unpublished draft.",
+						},
+					},
+				},
+			},
+			"/v1/content/manage/all": {
+				get: {
+					operationId: "listAllContent",
+					summary: "Every slot including drafts, for the editing form",
+					description:
+						"Operator only. The single route that exposes unpublished content, kept separate from the public read rather than sharing a handler with a flag.",
+					responses: {
+						"200": { description: "Slots with labels, groups and drafts." },
+					},
+				},
+			},
+			"/v1/content/manage/manifest": {
+				post: {
+					operationId: "registerContentManifest",
+					summary: "Declare a site's editable slots in one call",
+					description:
+						"The agency path: a developer registers every editable slot when building a client's site, so the operator's form arrives populated with labels and groups. Existing values survive, because a redeploy must never wipe the words their owner wrote.",
+					responses: {
+						"200": { description: "How many slots were registered." },
+						"400": { description: "The manifest could not be read." },
+					},
+				},
+			},
+			"/v1/content/manage/publish": {
+				post: {
+					operationId: "setContentPublished",
+					summary: "Publish or unpublish slots without changing the words",
+					responses: {
+						"200": { description: "How many slots changed." },
+						"400": { description: "Missing keys or published flag." },
+					},
+				},
+			},
+			"/v1/content/manage/{key}": {
+				parameters: [
+					{
+						in: "path",
+						name: "key",
+						required: true,
+						schema: { type: "string" },
+					},
+				],
+				put: {
+					operationId: "upsertContentEntry",
+					summary: "Create or update one content slot",
+					description:
+						"The path key is authoritative; a body naming a different key is ignored. Fields left out are left alone, so saving a label does not blank the copy.",
+					responses: {
+						"200": { description: "The stored slot." },
+						"400": { description: "The entry could not be read." },
+					},
+				},
+				delete: {
+					operationId: "deleteContentEntry",
+					summary: "Remove a content slot entirely",
+					description:
+						"Deletes the definition, not just the value. A site that stops using a slot should not leave a field in the operator's form that changes nothing.",
+					responses: {
+						"200": { description: "Deleted." },
+						"404": { description: "No slot at that key." },
 					},
 				},
 			},

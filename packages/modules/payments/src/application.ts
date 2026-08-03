@@ -62,7 +62,10 @@ const FRIENDLY: Record<string, string> = {
 	CLIENT_NOT_FOUND: "The client on this payment was not found.",
 	INVOICE_NOT_PAYABLE:
 		"That invoice can't take a payment in its current status.",
-	PAYMENT_CURRENCY_MISMATCH: "The payment currency must match the invoice.",
+	ORDER_NOT_FOUND: "The order on this payment was not found.",
+	ORDER_NOT_PAYABLE: "That order was cancelled and can't take a payment.",
+	PAYMENT_CURRENCY_MISMATCH:
+		"The payment currency must match the invoice or order.",
 	PAYMENT_EXCEEDS_INVOICE_BALANCE:
 		"That payment is more than the invoice's remaining balance.",
 	PAYMENT_CLIENT_MISMATCH:

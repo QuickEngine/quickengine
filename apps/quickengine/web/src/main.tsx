@@ -28,3 +28,8 @@ createRoot(rootElement).render(
 		<RouterProvider router={router} />
 	</StrictMode>,
 );
+
+// The boot fallback in index.html covers the cases where this file never runs:
+// scripting off, a browser too old to parse the bundle, a script that never
+// arrived. Reaching this line proves none of those happened, so it goes.
+document.getElementById("boot-fallback")?.remove();

@@ -7,40 +7,68 @@
    are generated. */
 @source "../../../../packages/ui/src";
 
-/* Locked-in page gutter — the single source of truth for horizontal margins.
-   Every page section uses `.page-gutter` so we don't refight this per component.
-   Web-only (marketing layout). Mobile stays at 1.5rem so content isn't cramped.
-   Desktop was 4rem, matching the header height (h-16) for symmetrical framing;
-   widened to 9.5rem on request. Provisional — revisit in the design pass. */
+/* ── Layout tokens ─────────────────────────────────────────────────────────
+   Two values, and every page reads them. Both are provisional until the front
+   page is designed, but they live here rather than in each component so a
+   change is one edit instead of a search.
+
+   The gutter grows with the viewport and then stops: past ~1600px the content
+   stays put and the margins take the extra, because a line of body copy 1800px
+   wide is unreadable no matter how much room there is. */
 .page-gutter {
-	padding-inline: 1.5rem;
+	margin-inline: auto;
+	max-width: 100rem;
+	padding-inline: 2rem;
 }
-@media (min-width: 640px) {
+@media (min-width: 768px) {
 	.page-gutter {
-		padding-inline: 9.5rem;
+		padding-inline: 5rem;
+	}
+}
+@media (min-width: 1280px) {
+	.page-gutter {
+		padding-inline: 9rem;
 	}
 }
 
-/* The header is `fixed`, so it no longer reserves its own height and the content
-   below must offset by exactly as much. Both read this one value, so changing the
-   header height cannot leave the page overlapping or gapped. */
+/* The header is fixed, so it reserves no height of its own and content below
+   must offset by exactly this much. Both read the one value, so changing the
+   header height cannot leave the page overlapped or gapped. */
 :root {
 	--header-h: 4rem;
 }
 
-/* ── The mesh ─────────────────────────────────────────────────────────────
-   Three soft blobs, static. They drifted on staggered periods until 2026-07-31;
-   the animation was removed because opaque page content covers this entirely and
-   it is only ever glimpsed at the overscroll edge — real GPU cost for something
-   nobody sees. */
-.mesh-blob {
-	position: absolute;
-	border-radius: 9999px;
-	filter: blur(90px);
-	will-change: transform;
+/* ── Buttons ───────────────────────────────────────────────────────────────
+   Flat. No gradient, no edge highlights, no contact shadow — one colour per
+   state, and the only feedback is a change of tint.
+
+   Both surfaces are expressed against `--foreground`, so they invert with the
+   theme on their own: white-on-black in dark, black-on-white in light, with no
+   second set of rules to keep in step. */
+
+.btn {
+	transition:
+		background-color 120ms ease,
+		color 120ms ease;
 }
-@media (min-width: 768px) {
-	.mesh-blob {
-		filter: blur(130px);
+
+.btn-solid {
+	background-color: var(--foreground);
+	color: var(--background);
+}
+.btn-solid:hover {
+	background-color: color-mix(in oklch, var(--foreground) 88%, transparent);
+}
+
+.btn-muted {
+	background-color: color-mix(in oklch, var(--foreground) 8%, transparent);
+}
+.btn-muted:hover {
+	background-color: color-mix(in oklch, var(--foreground) 14%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.btn {
+		transition: none;
 	}
 }

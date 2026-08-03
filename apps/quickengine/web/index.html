@@ -3,12 +3,205 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<link rel="icon" href="/logo.svg" type="image/svg+xml" />
-		<title>QuickEngine — Build more. Switch less.</title>
+
+		<!-- ── Static SEO surface ────────────────────────────────────────────────
+		     This block is the ONLY metadata crawlers and link unfurlers ever see.
+		     Slack, Discord, X, LinkedIn, iMessage, GPTBot, ClaudeBot and
+		     PerplexityBot do not execute JavaScript, so anything injected at
+		     runtime by the router is invisible to every one of them.
+
+		     Consequence: these are site-wide defaults, identical on every route.
+		     PER-PAGE titles, descriptions and share cards require build-time
+		     prerendering — they cannot be done from React. Until that lands, the
+		     router only manages the browser tab title (see routes/__root.tsx).
+
+		     🔴 No <link rel="canonical"> here on purpose. A single static canonical
+		     would declare every route to be the homepage, which is worse than
+		     having none. It goes in per-route once prerendering exists. -->
+
+		<title>Home / QuickEngine</title>
 		<meta
 			name="description"
-			content="A modular business operating system. Enable only the modules your business needs."
+			content="QuickEngine is the headless backend your whole business runs on — one platform, configured per workspace, so you build more and switch less."
 		/>
+
+		<link rel="icon" href="/logo.svg" type="image/svg+xml" />
+		<meta name="theme-color" content="#000000" />
+
+		<!-- Open Graph — Facebook, LinkedIn, Slack, Discord, iMessage, WhatsApp.
+		     Absolute URLs are required; relative paths are silently ignored. -->
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="QuickEngine" />
+		<meta property="og:url" content="https://quickengine.xyz/" />
+		<meta
+			property="og:title"
+			content="QuickEngine / Build more. Switch less."
+		/>
+		<meta
+			property="og:description"
+			content="QuickEngine is the headless backend your whole business runs on — one platform, configured per workspace, so you build more and switch less."
+		/>
+		<meta property="og:image" content="https://quickengine.xyz/og/default.png" />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta
+			property="og:image:alt"
+			content="QuickEngine — building the operating system for modern businesses."
+		/>
+		<meta property="og:locale" content="en_US" />
+
+		<!-- X. Falls back to og:image when twitter:image is absent; the separate
+		     1200x675 asset exists so the 16:9 crop is composed rather than cropped. -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@QuickEngineSW" />
+		<meta
+			name="twitter:title"
+			content="QuickEngine / Build more. Switch less."
+		/>
+		<meta
+			name="twitter:description"
+			content="QuickEngine is the headless backend your whole business runs on — one platform, configured per workspace, so you build more and switch less."
+		/>
+		<meta
+			name="twitter:image"
+			content="https://quickengine.xyz/og/default-x.png"
+		/>
+		<meta
+			name="twitter:image:alt"
+			content="QuickEngine — building the operating system for modern businesses."
+		/>
+
+		<!-- Organization + WebSite, so search engines can attach the brand to its
+		     social presence. Static for the same reason as everything above.
+		     `sameAs` must stay in step with SOCIAL_LINKS in src/lib/seo.ts. -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@graph": [
+					{
+						"@type": "Organization",
+						"@id": "https://quickengine.xyz/#organization",
+						"name": "QuickEngine",
+						"legalName": "QuickEngine Software",
+						"url": "https://quickengine.xyz/",
+						"logo": "https://quickengine.xyz/logo.svg",
+						"description": "QuickEngine is the headless backend your whole business runs on — one platform, configured per workspace, so you build more and switch less.",
+						"sameAs": [
+							"https://x.com/QuickEngineSW",
+							"https://youtube.com/@QuickEngineSoftware",
+							"https://www.linkedin.com/in/quickengine-software-a98a3741b/",
+							"https://github.com/QuickEngine",
+							"https://www.instagram.com/quickengine",
+							"https://www.tiktok.com/@quickenginesoftware",
+							"https://www.producthunt.com/@quickengine",
+							"https://discord.gg/quickengine"
+						]
+					},
+					{
+						"@type": "WebSite",
+						"@id": "https://quickengine.xyz/#website",
+						"name": "QuickEngine",
+						"url": "https://quickengine.xyz/",
+						"publisher": { "@id": "https://quickengine.xyz/#organization" }
+					}
+				]
+			}
+		</script>
+		<!-- ── Boot fallback ────────────────────────────────────────────────
+		     Everything below is inline on purpose. It has to survive the exact
+		     situations where the app does not: JavaScript disabled, a browser too
+		     old to parse the bundle (Vite targets es2022, so Safari under 16.4
+		     throws a SyntaxError and renders nothing), or the script simply never
+		     arriving. All three produce the same blank white page otherwise.
+
+		     No classes, no webfont, no external stylesheet — a fallback that
+		     depends on another request is not a fallback. -->
+		<style>
+			/* Mirrors the error pages: same gutter, same display face for the
+			   heading, same muted tone for body copy. `.page-gutter` lives in the
+			   bundled stylesheet, which is exactly what may not have loaded, so the
+			   three breakpoints are restated here rather than referenced. */
+			.boot {
+				position: fixed;
+				inset: 0;
+				z-index: 100;
+				display: grid;
+				align-content: center;
+				background: #000;
+				color: #f7fbff;
+				font-family:
+					"General Sans", ui-sans-serif, system-ui, -apple-system,
+					"Segoe UI", sans-serif;
+			}
+			.boot-inner {
+				width: 100%;
+				max-width: 100rem;
+				margin-inline: auto;
+				padding-inline: 2rem;
+			}
+			@media (min-width: 768px) { .boot-inner { padding-inline: 5rem; } }
+			@media (min-width: 1280px) { .boot-inner { padding-inline: 9rem; } }
+
+			.boot-mark {
+				width: 24px;
+				height: 24px;
+				margin-bottom: 3.5rem;
+			}
+			.boot h1 {
+				margin: 0;
+				max-width: 20ch;
+				font-family: "Clash Grotesk", "General Sans", sans-serif;
+				font-size: clamp(2.25rem, 5vw, 3rem);
+				font-weight: 400;
+				line-height: 1.1;
+				letter-spacing: -0.02em;
+			}
+			.boot p {
+				margin: 1.25rem 0 0;
+				max-width: 32rem;
+				font-size: 0.9375rem;
+				line-height: 1.65;
+				color: rgba(247, 251, 255, 0.62);
+			}
+			.boot ul {
+				margin: 1.5rem 0 0;
+				padding: 0;
+				list-style: none;
+				font-size: 0.875rem;
+				color: rgba(247, 251, 255, 0.62);
+			}
+			/* A rule per row rather than bullets — closer to the rest of the site,
+			   which uses dividers, and it survives without the list marker font. */
+			.boot li {
+				padding: 0.6rem 0;
+				border-top: 1px solid rgba(247, 251, 255, 0.1);
+				max-width: 32rem;
+			}
+			.boot li:last-child { border-bottom: 1px solid rgba(247, 251, 255, 0.1); }
+			.boot a { color: #f7fbff; text-underline-offset: 3px; }
+
+			/* The delay is the whole trick. On a healthy load React mounts and
+			   removes this long before the timer fires, so it is never seen — it
+			   only appears when nothing else has.
+
+			   Six seconds, not three: a cold reload or a slow connection can
+			   legitimately take longer than three, and flashing "this page didn't
+			   load" at someone whose page is about to load is worse than being slow
+			   to tell someone whose page never will. */
+			#boot-fallback {
+				opacity: 0;
+				animation: boot-appear 0s linear 6s forwards;
+			}
+			@keyframes boot-appear { to { opacity: 1; } }
+
+			@media (prefers-color-scheme: light) {
+				.boot { background: #fcfcfc; color: #171717; }
+				.boot p, .boot ul { color: rgba(23, 23, 23, 0.65); }
+				.boot li { border-color: rgba(23, 23, 23, 0.12); }
+				.boot a { color: #171717; }
+			}
+		</style>
 	</head>
 	<body>
 		<script>
@@ -24,6 +217,54 @@
 				document.documentElement.classList.toggle("light", !dark);
 			})();
 		</script>
+		<!-- Shown only when scripting is off. Hides the timed fallback, which
+		     would otherwise appear underneath it saying something less accurate. -->
+		<noscript>
+			<style>#boot-fallback { display: none; }</style>
+			<div class="boot">
+				<div class="boot-inner">
+					<svg class="boot-mark" viewBox="0 0 500 500" fill="currentColor" aria-hidden="true">
+						<path d="M308.804 0C391.594 0 458.709 67.1573 458.709 150V229.494L458.504 229.29L344.032 343.835V164.75C344.032 137.136 321.66 114.75 294.063 114.75H114.677V294.25C114.677 321.864 137.049 344.25 164.645 344.25H344.032V344.036L458.504 458.582L458.709 458.377V459H149.905C67.1147 459 2.56001e-06 391.843 0 309V229.195L114.469 114.653L0 0.110352V0H308.804Z" />
+						<path d="M500 500H337.468L262.833 425.317L344.099 344L500 500Z" />
+					</svg>
+					<h1>JavaScript is required</h1>
+					<p>
+						quickengine.xyz is a JavaScript application, and it cannot render
+						without it. Enable JavaScript for this site and reload.
+					</p>
+					<p>
+						If you would rather not, the API is documented at
+						<a href="https://docs.quickdash.xyz">docs.quickdash.xyz</a> and
+						reachable directly at
+						<a href="https://api.quickdash.xyz">api.quickdash.xyz</a>.
+					</p>
+				</div>
+			</div>
+		</noscript>
+
+		<!-- Removed by main.tsx the moment React mounts. If it is still here after
+		     three seconds, something stopped the app from starting. -->
+		<div id="boot-fallback" class="boot">
+			<div class="boot-inner">
+				<svg class="boot-mark" viewBox="0 0 500 500" fill="currentColor" aria-hidden="true">
+					<path d="M308.804 0C391.594 0 458.709 67.1573 458.709 150V229.494L458.504 229.29L344.032 343.835V164.75C344.032 137.136 321.66 114.75 294.063 114.75H114.677V294.25C114.677 321.864 137.049 344.25 164.645 344.25H344.032V344.036L458.504 458.582L458.709 458.377V459H149.905C67.1147 459 2.56001e-06 391.843 0 309V229.195L114.469 114.653L0 0.110352V0H308.804Z" />
+					<path d="M500 500H337.468L262.833 425.317L344.099 344L500 500Z" />
+				</svg>
+				<h1>This page didn&rsquo;t load</h1>
+				<p>The site failed to start. That is usually one of three things:</p>
+				<ul>
+					<li>The connection dropped part-way through loading</li>
+					<li>The browser is too old to run this site</li>
+					<li>An extension blocked one of the scripts</li>
+				</ul>
+				<p>
+					Reloading fixes the first. If it keeps happening, try a different
+					browser, or reach us at
+					<a href="mailto:hello@quickengine.xyz">hello@quickengine.xyz</a>.
+				</p>
+			</div>
+		</div>
+
 		<div id="root"></div>
 		<script type="module" src="/src/main.tsx"></script>
 	</body>

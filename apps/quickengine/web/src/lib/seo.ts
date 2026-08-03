@@ -1,8 +1,19 @@
 import { env } from "./env";
 
-// Single source of truth for site-wide SEO. The OG image lives in /public and is
-// shared by every page via metadata inheritance — set it once here, never per
-// page, so it can't drift. Per-page files only pass title/description/path.
+/**
+ * Site-wide constants used by the app itself — the footer, the tab title, and
+ * whatever else needs the brand strings in one place.
+ *
+ * **This file no longer produces metadata.** It used to export `buildMetadata()`,
+ * which returned a Next.js `Metadata` object (`alternates.canonical`,
+ * `openGraph`, `twitter`). That shape is only ever read by Next's
+ * `export const metadata`, so after the Vite migration nothing consumed it and
+ * the site shipped with no Open Graph tags at all — every link shared anywhere
+ * rendered with no image and a generic title.
+ *
+ * The real tags are static in `index.html`, because crawlers and link unfurlers
+ * do not run JavaScript. Read the comment there before adding metadata here.
+ */
 
 export const SITE_NAME = "QuickEngine";
 export const SITE_URL = env.VITE_WEB_URL;
@@ -10,25 +21,31 @@ export const SITE_TAGLINE = "Build more. Switch less.";
 export const SITE_DESCRIPTION =
 	"QuickEngine is the headless backend your whole business runs on — one platform, configured per workspace, so you build more and switch less.";
 
-// One 1200x630 image (public/og-image.png) for every share card, no drift.
-export const OG_IMAGE = {
-	url: "/og-image.png",
-	width: 1200,
-	height: 630,
-	alt: `${SITE_NAME} — ${SITE_TAGLINE}`,
-};
+/**
+ * Share cards, named once with their sizes recorded beside them. `index.html`
+ * references them by absolute URL; these entries are what the prerenderer reads
+ * when per-page cards land.
+ *
+ * The `-x` variants are composed for X's 16:9 large card rather than letting the
+ * 1.91:1 asset be cropped.
+ */
+export const OG_IMAGES = {
+	default: { url: "/og/default.png", width: 1200, height: 630 },
+	defaultX: { url: "/og/default-x.png", width: 1200, height: 675 },
+	quickdash: { url: "/og/quickdash.png", width: 1200, height: 630 },
+	quickdashX: { url: "/og/quickdash-x.png", width: 1200, height: 675 },
+} as const;
 
-// X/Twitter's large card uses a 16:9 crop, so it gets its own 1200x675 image.
-// Still one file for the whole site — set here, inherited everywhere.
-export const TWITTER_IMAGE = {
-	url: "/twitter-image.png",
-	width: 1200,
-	height: 675,
-	alt: `${SITE_NAME} — ${SITE_TAGLINE}`,
-};
+export const OG_IMAGE_ALT =
+	"QuickEngine — building the operating system for modern businesses.";
 
-// Public profiles, mirrored from the footer. Feeds the Organization schema's
-// `sameAs`, which helps search engines link the brand to its social presence.
+/**
+ * Public profiles, mirrored in the footer.
+ *
+ * ⚠️ Also hardcoded as `sameAs` in the JSON-LD block in `index.html` — static
+ * HTML cannot import from here. Change one, change both. Prerendering removes
+ * the duplication.
+ */
 export const SOCIAL_LINKS = [
 	"https://x.com/QuickEngineSW",
 	"https://youtube.com/@QuickEngineSoftware",
@@ -38,74 +55,18 @@ export const SOCIAL_LINKS = [
 	"https://www.tiktok.com/@quickenginesoftware",
 	"https://www.producthunt.com/@quickengine",
 	"https://discord.gg/quickengine",
-];
-
-// JSON-LD structured data for the whole site (rendered once in the root layout).
-// The @graph lets us ship the Organization and WebSite nodes in one script tag.
-export function siteJsonLd() {
-	const absolute = (path: string) => new URL(path, SITE_URL).toString();
-	return {
-		"@context": "https://schema.org",
-		"@graph": [
-			{
-				"@type": "Organization",
-				"@id": `${SITE_URL}#organization`,
-				name: SITE_NAME,
-				legalName: "QuickEngine Software",
-				url: SITE_URL,
-				logo: absolute("/logo.svg"),
-				description: SITE_DESCRIPTION,
-				sameAs: SOCIAL_LINKS,
-			},
-			{
-				"@type": "WebSite",
-				"@id": `${SITE_URL}#website`,
-				name: SITE_NAME,
-				url: SITE_URL,
-				publisher: { "@id": `${SITE_URL}#organization` },
-			},
-		],
-	};
-}
-
-type BuildMetadataArgs = {
-	/** Page title; the layout template appends " | QuickEngine". */
-	title?: string;
-	/** Meta + OG description. Falls back to the site description. */
-	description?: string;
-	/** Canonical path, e.g. "/pricing". Resolves against metadataBase. */
-	path?: string;
-};
+] as const;
 
 /**
- * Builds a page's Metadata with a matching canonical, Open Graph, and Twitter
- * card. The shared OG image is always attached. Use in any page:
- *   export const metadata = buildMetadata({ title: "Pricing", path: "/pricing" });
+ * The browser tab title for a route — `Pricing / QuickEngine`. This is the one
+ * piece of head content that genuinely belongs at runtime: it changes on
+ * client-side navigation, and no crawler depends on it.
+ *
+ *   head: () => ({ meta: [{ title: pageTitle("Pricing") }] })
+ *
+ * The bare brand is the fallback for a route that sets no title, so a tab can
+ * never read `undefined / QuickEngine`.
  */
-export function buildMetadata({
-	title,
-	description,
-	path = "/",
-}: BuildMetadataArgs = {}) {
-	const desc = description ?? SITE_DESCRIPTION;
-	return {
-		title,
-		description: desc,
-		alternates: { canonical: path },
-		openGraph: {
-			...(title ? { title } : {}),
-			description: desc,
-			url: path,
-			siteName: SITE_NAME,
-			type: "website",
-			locale: "en_US",
-			images: [OG_IMAGE],
-		},
-		twitter: {
-			...(title ? { title } : {}),
-			description: desc,
-			card: "summary_large_image",
-			images: [TWITTER_IMAGE.url],
-		},
-	};
+export function pageTitle(title?: string) {
+	return title ? `${title} / ${SITE_NAME}` : SITE_NAME;
 }

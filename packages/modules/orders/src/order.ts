@@ -49,6 +49,15 @@ export const orderInputSchema = z
 		 * tax can name zero.
 		 */
 		taxCents: z.number().int().min(0).max(POSTGRES_INTEGER_MAX).default(0),
+		/**
+		 * What a discount took off. Supplied by the caller for the same reason
+		 * `taxCents` is: creating an order requires OPERATOR credentials.
+		 *
+		 * ⚠️ The storefront checkout does NOT pass this through from the browser —
+		 * it evaluates a CODE server-side and computes the amount itself.
+		 */
+		discountCents: z.number().int().min(0).max(POSTGRES_INTEGER_MAX).default(0),
+		discountCode: z.string().trim().max(40).nullable().default(null),
 		lines: z.array(orderLineInputSchema).min(1).max(500),
 		metadata: z.record(z.string(), z.unknown()).default({}),
 	})

@@ -336,6 +336,20 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		group: "About",
 		published: true,
 	},
+	createDiscount: {
+		name: "Summer sale",
+		code: "SUMMER10",
+		valueType: "percentage",
+		value: 1000,
+		minimumSubtotalCents: 5_000,
+	},
+	updateDiscount: { active: false },
+	previewDiscount: {
+		code: "SUMMER10",
+		items: [
+			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },
+		],
+	},
 	createCheckout: {
 		items: [
 			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },

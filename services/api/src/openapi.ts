@@ -780,6 +780,74 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			// ── Discounts ────────────────────────────────────────────────────────
+			"/v1/discounts/preview": {
+				post: {
+					operationId: "previewDiscount",
+					summary: "What a code would take off this basket",
+					description:
+						"Takes the CART, never a subtotal. A subtotal from the browser lets anyone claim a large order to clear a minimum-spend threshold, or compute a percentage against a number they invented — so the server prices the same items it would price at checkout, and the preview cannot disagree with the real thing. Answers 200 whether or not the code is usable: an expired code is a normal answer to a normal question.",
+					responses: {
+						"200": {
+							description:
+								"Either the discount and the resulting total, or why the code cannot be used.",
+						},
+						"400": { description: "Missing code, or an unavailable item." },
+					},
+				},
+			},
+			"/v1/discounts": {
+				get: {
+					operationId: "listDiscounts",
+					summary: "Every discount code in the workspace",
+					responses: { "200": { description: "Codes with their usage." } },
+				},
+				post: {
+					operationId: "createDiscount",
+					summary: "Create a discount code",
+					description:
+						"Percentages are basis points (1000 is 10%); fixed amounts are minor units. Both are integers — a float here is how a 10% code takes 4.999999 off a 50 order.",
+					responses: {
+						"201": { description: "The created code." },
+						"400": {
+							description:
+								"Invalid input, or a window that ends before it starts.",
+						},
+						"409": {
+							description: "That code already exists in this workspace.",
+						},
+					},
+				},
+			},
+			"/v1/discounts/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "updateDiscount",
+					summary: "Change a discount code",
+					responses: {
+						"200": { description: "The updated code." },
+						"404": { description: "No such discount." },
+						"409": { description: "That code already exists." },
+					},
+				},
+				delete: {
+					operationId: "deleteDiscount",
+					summary: "Delete a discount code",
+					description:
+						"Removes its redemption history with it. A code that has been used should be deactivated instead, which keeps the record of what it cost.",
+					responses: {
+						"200": { description: "Deleted." },
+						"404": { description: "No such discount." },
+					},
+				},
+			},
 			// ── Checkout: the merchant's own website selling ─────────────────────
 			"/v1/checkout": {
 				post: {

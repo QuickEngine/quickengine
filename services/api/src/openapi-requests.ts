@@ -22,7 +22,13 @@ import {
 	inventoryItemInputSchema,
 } from "@quickengine/mod-inventory";
 import { createInvoiceInputSchema } from "@quickengine/mod-invoicing";
-import { checkoutInputSchema, orderInputSchema } from "@quickengine/mod-orders";
+import {
+	checkoutInputSchema,
+	discountInputSchema,
+	discountPatchSchema,
+	discountPreviewInputSchema,
+	orderInputSchema,
+} from "@quickengine/mod-orders";
 import {
 	paymentOnboardingInputSchema,
 	recordPaymentInputSchema,
@@ -217,6 +223,9 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	setWorkspaceModuleEnabled: workspaceModuleSchema,
 	startPaymentOnboarding: paymentOnboardingInputSchema,
 	createCheckout: checkoutInputSchema,
+	createDiscount: discountInputSchema,
+	updateDiscount: discountPatchSchema,
+	previewDiscount: discountPreviewInputSchema,
 	upsertContentEntry: contentEntryInputSchema,
 	createCategory: categoryInputSchema,
 	addToWishlist: wishlistItemInputSchema,

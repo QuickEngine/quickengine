@@ -8,6 +8,7 @@ export * from "./content";
 export * from "./contracts-esign";
 export * from "./customer-wishlist";
 export * from "./customers";
+export * from "./discounts";
 export * from "./files";
 export * from "./fulfillments";
 export * from "./idempotency";

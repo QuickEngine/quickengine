@@ -127,7 +127,11 @@ export async function createOrderInTx(
 	input: CreateOrderInput,
 ) {
 	const parsed = orderInputSchema.parse(input);
-	const totals = computeOrderTotals(parsed.lines, parsed.taxCents);
+	const totals = computeOrderTotals(
+		parsed.lines,
+		parsed.taxCents,
+		parsed.discountCents,
+	);
 	{
 		const [workspace] = await tx
 			.select({ id: quickengineWorkspaces.id })
@@ -157,6 +161,8 @@ export async function createOrderInTx(
 				number,
 				currency: parsed.currency,
 				subtotalCents: totals.subtotalCents,
+				discountCents: totals.discountCents,
+				discountCode: parsed.discountCode,
 				taxCents: totals.taxCents,
 				totalCents: totals.totalCents,
 				notes: parsed.notes,
@@ -225,7 +231,11 @@ export async function updateDraftOrderInTx(
 	input: OrderInput,
 ) {
 	const parsed = orderInputSchema.parse(input);
-	const totals = computeOrderTotals(parsed.lines, parsed.taxCents);
+	const totals = computeOrderTotals(
+		parsed.lines,
+		parsed.taxCents,
+		parsed.discountCents,
+	);
 	{
 		const [current] = await tx
 			.select({ status: orders.status })
@@ -252,6 +262,8 @@ export async function updateDraftOrderInTx(
 				clientEmail: client.email,
 				currency: parsed.currency,
 				subtotalCents: totals.subtotalCents,
+				discountCents: totals.discountCents,
+				discountCode: parsed.discountCode,
 				taxCents: totals.taxCents,
 				totalCents: totals.totalCents,
 				notes: parsed.notes,

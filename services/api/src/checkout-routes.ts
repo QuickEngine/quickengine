@@ -6,8 +6,10 @@ import {
 	CheckoutError,
 	checkoutInputSchema,
 	createOrderCommand,
+	evaluateDiscount,
 	priceCheckout,
 	readOrdersSettings,
+	redeemDiscount,
 	resolveCheckoutClient,
 	taxCalculatorFor,
 } from "@quickengine/mod-orders";
@@ -99,11 +101,32 @@ export function registerCheckoutRoutes(
 			throw error;
 		}
 
+		// ── Discount ───────────────────────────────────────────────────────────
+		// Evaluated against the subtotal WE priced, never one the caller sent.
+		let discount: Awaited<ReturnType<typeof evaluateDiscount>> | null = null;
+		if (parsed.data.discountCode) {
+			discount = await evaluateDiscount({
+				workspaceId,
+				code: parsed.data.discountCode,
+				subtotalCents: priced.subtotalCents,
+			});
+			if (!discount.ok) {
+				// 400 with the shopper-facing reason. A bad code is expected traffic on
+				// a public storefront, not a server fault.
+				return respondError(c, "VALIDATION_ERROR", discount.message, 400);
+			}
+		}
+
 		// Tax from the workspace's own settings, never from the request. Whoever
 		// computes it, the caller does not.
 		const settings = await readOrdersSettings(workspaceId);
+		// 🔴 Tax is computed on the DISCOUNTED subtotal. Taxing the full amount and
+		// then discounting would charge tax on money the customer never paid, which
+		// is both wrong and, on a remittance, somebody else's money.
+		const discountCents = discount?.ok ? discount.amountCents : 0;
+		const taxableCents = Math.max(0, priced.subtotalCents - discountCents);
 		const taxCents = await taxCalculatorFor(settings).calculate({
-			subtotalCents: priced.subtotalCents,
+			subtotalCents: taxableCents,
 			currency: priced.currency,
 		});
 
@@ -131,6 +154,8 @@ export function registerCheckoutRoutes(
 			{
 				clientId: client.id,
 				currency: priced.currency,
+				discountCents,
+				discountCode: discount?.ok ? discount.code : null,
 				taxCents,
 				notes: parsed.data.notes ?? null,
 				lines: priced.lines.map((line) => ({
@@ -154,6 +179,35 @@ export function registerCheckoutRoutes(
 			return respondMutation(c, result);
 		}
 		const order = result.result;
+
+		// 🔴 Spend the redemption AFTER the order exists, and only then.
+		//
+		// ⚠️ This is outside the order's transaction, which is a known compromise:
+		// `createOrderCommand` owns that transaction and does not accept extra
+		// work. The consequence is a narrow window where an order carries a
+		// discount whose redemption was not recorded — which UNDER-counts usage
+		// (a code could be used once more than its cap) rather than over-counting,
+		// and never charges anybody wrongly. The reverse order would burn a
+		// redemption on an order that failed to write, which is worse.
+		//
+		// Tracked in TECH_DEBT: the real fix is threading the redemption into the
+		// unit of work.
+		if (discount?.ok) {
+			const spent = await redeemDiscount({
+				workspaceId,
+				discountId: discount.discountId,
+				clientRecordId: client.id,
+				orderId: order.id,
+				amountCents: discount.amountCents,
+			});
+			if (!spent) {
+				options.logger.warn("checkout.discount_exhausted_after_order", {
+					orderId: order.id,
+					code: discount.code,
+					requestId: c.get("requestId"),
+				});
+			}
+		}
 
 		// ── Payment ───────────────────────────────────────────────────────────
 		// A workspace that has not connected an account can still take the order;

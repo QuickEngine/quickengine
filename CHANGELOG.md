@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Discount codes.** Create a code that takes off a percentage or a fixed amount, with an
+  optional minimum spend, a limit on how many times it can be used in total or by one customer,
+  and a date window. Your website can check a code before checkout and show the customer what
+  it saves them. Tax is worked out after the discount, so nobody is charged tax on money they
+  did not pay.
+
 - **Your customers can save things for later.** A shopper signed in to your portal can keep a
   wishlist, including which option they wanted. Anything they saved before signing in comes
   with them, added to what they already had rather than replacing it. An item you withdraw

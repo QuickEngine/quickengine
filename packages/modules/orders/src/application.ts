@@ -69,6 +69,7 @@ export const orderListQuerySchema = z.object({
 
 const FRIENDLY: Record<string, string> = {
 	WORKSPACE_NOT_FOUND: "The workspace was not found.",
+	DISCOUNT_WINDOW_INVALID: "That discount ends before it starts.",
 	CLIENT_NOT_FOUND: "The client on this order was not found.",
 	CLIENT_WORKSPACE_MISMATCH: "That client belongs to another workspace.",
 	CATALOG_ITEM_NOT_FOUND: "A catalog item on this order was not found.",
@@ -104,7 +105,7 @@ function mapOrderError(error: unknown): never {
 		if (error.message.endsWith("NOT_FOUND")) {
 			throw new DomainError("NOT_FOUND", message);
 		}
-		if (/MISMATCH/.test(error.message)) {
+		if (/MISMATCH|DISCOUNT_WINDOW_INVALID/.test(error.message)) {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (

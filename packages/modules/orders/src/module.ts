@@ -9,6 +9,18 @@ export const ordersSettingsSchema = z.object({
 		.regex(/^[A-Z]{3}$/)
 		.default("USD"),
 	autoConfirm: z.boolean().default(false),
+	/**
+	 * Sales tax as BASIS POINTS — 500 is 5%, 1300 is 13%.
+	 *
+	 * Not a percentage float: 5% must be exactly 500, and money arithmetic stays
+	 * in integers end to end. Capped at 100% because anything above it is a typo
+	 * that would otherwise double a customer's bill.
+	 *
+	 * ⚠️ A single flat rate is correct for a business selling inside one
+	 * jurisdiction and wrong for one selling across several. It is the starting
+	 * implementation behind `TaxCalculator` (`./tax.ts`), not the final answer.
+	 */
+	taxRateBasisPoints: z.number().int().min(0).max(10_000).default(0),
 });
 
 export type OrdersSettings = z.infer<typeof ordersSettingsSchema>;

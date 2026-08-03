@@ -313,7 +313,11 @@ export function registerAccountRoutes(
 						"x-api-key": process.env.ANTHROPIC_API_KEY as string,
 					},
 					body: JSON.stringify({
-						model: process.env.ANTHROPIC_MODEL ?? "claude-3-5-haiku-latest",
+						// Pinned to a dated model, not a `-latest` alias: an alias moves
+						// under you and silently changes what this prompt returns, on a
+						// route whose output picks somebody's modules for them.
+						// Overridable per environment via ANTHROPIC_MODEL.
+						model: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001",
 						max_tokens: 180,
 						messages: [
 							{

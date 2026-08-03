@@ -17,7 +17,7 @@ import {
 	inventoryItemInputSchema,
 } from "@quickengine/mod-inventory";
 import { createInvoiceInputSchema } from "@quickengine/mod-invoicing";
-import { orderInputSchema } from "@quickengine/mod-orders";
+import { checkoutInputSchema, orderInputSchema } from "@quickengine/mod-orders";
 import {
 	paymentOnboardingInputSchema,
 	recordPaymentInputSchema,
@@ -206,6 +206,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	setWorkspaceArchived: archiveWorkspaceSchema,
 	setWorkspaceModuleEnabled: workspaceModuleSchema,
 	startPaymentOnboarding: paymentOnboardingInputSchema,
+	createCheckout: checkoutInputSchema,
 	createRole: roleInputSchema,
 	updateRole: rolePatchSchema,
 };

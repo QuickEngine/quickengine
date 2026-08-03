@@ -8,7 +8,9 @@ import { registerAccountWorkspaceRoutes } from "./account-workspace-routes";
 import { registerAuthRoutes } from "./auth-routes";
 import { registerBillingInfoRoutes } from "./billing-info-routes";
 import { registerBookingsRoutes } from "./bookings-routes";
+import { registerCheckoutRoutes } from "./checkout-routes";
 import { registerClientRecordRoutes } from "./client-records-routes";
+import { registerConnectWebhookRoutes } from "./connect-webhook-routes";
 import { registerContractsRoutes } from "./contracts-routes";
 import { registerCreditRoutes } from "./credit-routes";
 import { customerAuthDependencies } from "./customer-auth-dependencies";
@@ -80,6 +82,7 @@ export function registerAllRoutes(
 	registerProductEventRoutes(app, dependencies);
 	// The customer surface. Registered last among the /v1 families so its
 	// namespace is unmistakably separate from the operator routes above.
+	registerCheckoutRoutes(app, dependencies);
 	registerCustomerRoutes(app, {
 		...dependencies,
 		auth: customerAuthDependencies,
@@ -96,5 +99,6 @@ export function registerAllRoutes(
 	registerAccountReadRoutes(app, { platform: dependencies.platform });
 	registerQuickDashRoutes(app, { platform: dependencies.platform });
 	registerInngestRoutes(app);
+	registerConnectWebhookRoutes(app, { logger });
 	registerStripeWebhookRoutes(app, { logger });
 }

@@ -297,6 +297,13 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	renameWorkspace: { name: "Northwind Trading Co." },
 	setWorkspaceArchived: { archived: true },
 	setWorkspaceModuleEnabled: { enabled: true },
+	createCheckout: {
+		items: [
+			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },
+		],
+		email: "buyer@example.com",
+		name: "Sam Rivera",
+	},
 	startPaymentOnboarding: {
 		returnUrl: "https://account.quickdash.xyz/payments?connected=1",
 		refreshUrl: "https://account.quickdash.xyz/payments",

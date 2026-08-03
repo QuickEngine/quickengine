@@ -1,4 +1,5 @@
 export * from "./application";
+export * from "./checkout";
 export * from "./inventory-bridge";
 export * from "./module";
 export * from "./order";

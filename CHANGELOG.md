@@ -8,6 +8,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Your website can now take orders and payments.** A shopper on your own site can check out
+  without leaving it. You send what they picked; we price it from your catalog, add your tax
+  rate, record the order and take the payment into your account. Nothing about the amount comes
+  from the browser.
+- **Money reaches you, not us.** Card payments are made to your own connected account, so your
+  business name is what appears on your customer's statement.
+- **Refunds actually refund.** Issuing a refund now returns the money through the payment
+  provider. Previously it only recorded that one had happened.
+
 - **A key your own website can sell with.** Storefront keys sit alongside publishable ones:
   browser-safe, and allowed to take an order. Your site sends what the shopper picked and how
   many; we price it from your catalog. A key that cannot name an amount cannot be used to buy

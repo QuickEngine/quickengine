@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+	type AnyPgColumn,
 	boolean,
 	index,
 	integer,
@@ -11,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { clientRecords } from "./client-records";
 import { invoices } from "./invoices";
+import { orders } from "./orders";
 import { quickengineWorkspaces } from "./quickengine";
 
 // Payments module — collecting money from a workspace's clients via Stripe Connect.
@@ -60,6 +62,24 @@ export const payments = pgTable(
 			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
 		// The invoice this pays, if any. `set null`: deleting an invoice must not erase
 		// the money record.
+		/**
+		 * The order this payment settles, when it came from a checkout.
+		 *
+		 * 🔴 Added 2026-08-03 with the storefront checkout. Payments could only
+		 * point at an invoice, so a shopper paying for an order left nothing
+		 * connecting the money to the goods — and the settlement webhook had no way
+		 * to find which order a provider event had just paid for.
+		 *
+		 * Nullable: an invoice payment has no order, and a recorded cash payment
+		 * may have neither.
+		 */
+		// ⚠️ `AnyPgColumn` on the callback breaks a circular type inference:
+		// `orders` reaches `fulfillments`, which reaches back here, and without an
+		// explicit annotation TypeScript gives up and types all three as `any`.
+		// Same pattern as `contracts-esign.ts` and `files.ts`.
+		orderId: uuid("order_id").references((): AnyPgColumn => orders.id, {
+			onDelete: "set null",
+		}),
 		invoiceId: uuid("invoice_id").references(() => invoices.id, {
 			onDelete: "set null",
 		}),

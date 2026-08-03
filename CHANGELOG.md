@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A key your own website can sell with.** Storefront keys sit alongside publishable ones:
+  browser-safe, and allowed to take an order. Your site sends what the shopper picked and how
+  many; we price it from your catalog. A key that cannot name an amount cannot be used to buy
+  anything cheaply.
+
 - **Your customers can now sign in and see their own records.** Somebody who buys from you,
   books with you, or is invoiced by you can sign in with their email — no password — and see
   their orders, bookings and invoices. Nothing else. Until now there was no way for the people

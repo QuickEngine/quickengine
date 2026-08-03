@@ -57,7 +57,7 @@ export const createApiKeySchema = z.object({
 	workspaceId: z.string().uuid(),
 	name: z.string().trim().min(1).max(120),
 	/** Matches `QuickEngineApiKeyType`. Publishable keys are safe in a browser. */
-	type: z.enum(["publishable", "secret", "scoped"]),
+	type: z.enum(["publishable", "storefront", "secret", "scoped"]),
 	capabilities: z.array(z.string()).default([]),
 	expiresAt: z.string().datetime().optional(),
 });

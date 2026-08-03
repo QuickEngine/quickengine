@@ -82,16 +82,23 @@ export function authorizeCustomer(
 			);
 		}
 
-		// 🔴 Publishable ONLY. A secret key carries an operator's full authority,
-		// and honouring one here would let anybody who leaked a server key read
-		// every customer's records through a public endpoint. A secret key sent to
-		// this boundary is a mistake worth refusing loudly rather than silently
-		// accepting because it is "more" privileged.
-		if (key.type !== "publishable") {
+		// 🔴 BROWSER keys only — publishable or storefront.
+		//
+		// A secret or scoped key carries an operator's full authority, and
+		// honouring one here would let anybody who leaked a server key read every
+		// customer's records through a public endpoint. That is a mistake worth
+		// refusing loudly rather than accepting because it is "more" privileged.
+		//
+		// `storefront` is admitted deliberately: a merchant putting sign-in on
+		// their own site holds a storefront key, not a publishable one, and
+		// refusing it would force them to carry two credentials for one page.
+		// Admitting it is safe because these routes scope to a CUSTOMER SESSION,
+		// never to the key — the key only answers "which workspace".
+		if (key.type !== "publishable" && key.type !== "storefront") {
 			return respondError(
 				c,
 				"CREDENTIAL_CHANNEL_MISMATCH",
-				"This endpoint accepts a publishable key only.",
+				"This endpoint accepts a publishable or storefront key only.",
 				401,
 			);
 		}

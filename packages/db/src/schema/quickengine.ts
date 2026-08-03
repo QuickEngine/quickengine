@@ -49,7 +49,22 @@ export type QuickEngineOrgRole = "owner" | "admin" | "member";
 
 // Public API credential categories, fixed by the Quick.js SDK's QuickCredential
 // union. Publishable is website-safe and read-only; secret/scoped are server-only.
-export type QuickEngineApiKeyType = "publishable" | "secret" | "scoped";
+/**
+ * The four credential classes, in ascending order of what they can do.
+ *
+ * · `publishable` — names a workspace. Ships in page source. Reads the catalog
+ *   and reports telemetry, nothing more.
+ * · `storefront` — a merchant's own website. Ships in page source too, but may
+ *   CHECK OUT: create an order and a charge. Safe only because the server prices
+ *   everything from its own catalog; see `STOREFRONT_CAPABILITIES`.
+ * · `scoped` — a trusted backend, holding whatever capabilities were granted.
+ * · `secret` — full workspace access. Server only, never a browser.
+ */
+export type QuickEngineApiKeyType =
+	| "publishable"
+	| "storefront"
+	| "secret"
+	| "scoped";
 
 // Lifecycle of an org invitation: created → accepted, or revoked/expired without use.
 export type QuickEngineInvitationStatus =

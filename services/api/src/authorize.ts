@@ -47,10 +47,18 @@ async function resolveKey(
 		);
 	}
 
+	// 🔴 Which types are BROWSER credentials, stated as a set rather than as
+	// `!== "publishable"`.
+	//
+	// The negation was correct while publishable was the only browser type. Adding
+	// `storefront` silently broke it in the dangerous direction: a storefront key
+	// would have been refused on the browser header and ACCEPTED as a bearer
+	// token, i.e. handled as a trusted server credential. Anything that ships in
+	// page source belongs on this list.
+	const browserTypes = new Set(["publishable", "storefront"]);
+	const isBrowserKey = browserTypes.has(key.type);
 	const channelMatches =
-		channel === "publishable"
-			? key.type === "publishable"
-			: key.type !== "publishable";
+		channel === "publishable" ? isBrowserKey : !isBrowserKey;
 	if (!channelMatches) {
 		return respondError(
 			c,

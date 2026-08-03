@@ -1,5 +1,6 @@
 export type CredentialPurpose =
 	| "public-storefront"
+	| "selling-storefront"
 	| "trusted-backend"
 	| "reporting"
 	| "webhook-worker"
@@ -8,7 +9,7 @@ export type CredentialPurpose =
 export type CredentialPreset = {
 	label: string;
 	description: string;
-	type: "publishable" | "secret" | "scoped";
+	type: "publishable" | "storefront" | "secret" | "scoped";
 	selectCapabilities: (available: readonly string[]) => string[];
 };
 
@@ -20,6 +21,16 @@ export const credentialPresets: Record<CredentialPurpose, CredentialPreset> = {
 		type: "publishable",
 		selectCapabilities: (available) =>
 			["catalog:read", "events:write"].filter((item) =>
+				available.includes(item),
+			),
+	},
+	"selling-storefront": {
+		label: "Storefront that sells",
+		description:
+			"Everything a public storefront can do, plus checkout. Safe in a browser because the server prices every order from your catalog — the site sends items and quantities, never amounts.",
+		type: "storefront",
+		selectCapabilities: (available) =>
+			["catalog:read", "events:write", "checkout:write"].filter((item) =>
 				available.includes(item),
 			),
 	},

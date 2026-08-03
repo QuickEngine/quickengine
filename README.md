@@ -32,11 +32,11 @@ Android) is planned from the same project.
 
 ---
 
-## The 15 modules
+## The 16 modules
 
 Client Records · Products & Services · Quotes & Estimates · Invoicing · Payments · Orders ·
 Fulfillment · Inventory · Shipping · Projects & Tasks · Time Tracking · Bookings ·
-Contracts & E-sign · Files & Documents · Reporting & Analytics
+Contracts & E-sign · Files & Documents · Reporting & Analytics · Content
 
 Each owns a manifest, a configuration contract, its own schema and a service boundary. Workspace
 registry rows decide what QuickDash loads, and dependency resolution prevents broken
@@ -96,7 +96,7 @@ apps/quickdash/web                    the operator's workspace
 apps/quickdash/portal                 the customer portal — our users' users
 services/api                          the canonical Hono boundary
 packages/
-  modules/          15 isolated business capabilities
+  modules/          16 isolated business capabilities
   module-registry/  catalog, manifests, dependency resolver
   auth/ db/ ui/     shared foundations
   billing/          Stripe, plans, metering, credits

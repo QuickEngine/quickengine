@@ -156,7 +156,7 @@ export async function priceCheckout(
 		const catalogItem = byItem.get(item.catalogItemId);
 		// One message for missing, archived, draft and wrong-workspace. Telling a
 		// caller which of those it was lets them map a competitor's catalog.
-		if (!catalogItem || catalogItem.status !== "active") {
+		if (catalogItem?.status !== "active") {
 			throw new CheckoutError(
 				"ITEM_NOT_AVAILABLE",
 				"One of the items is not available.",
@@ -173,8 +173,7 @@ export async function priceCheckout(
 			// The variant must belong to the item the caller named. Without this a
 			// caller could pair a cheap variant with an expensive item.
 			if (
-				!variant ||
-				variant.status !== "active" ||
+				variant?.status !== "active" ||
 				variant.catalogItemId !== catalogItem.id
 			) {
 				throw new CheckoutError(

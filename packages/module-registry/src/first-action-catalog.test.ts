@@ -7,7 +7,9 @@ import { resolveModules } from "./resolver";
 describe("first-action catalog", () => {
 	it("makes every built module state an explicit product decision", () => {
 		const modules = listModules();
-		expect(modules).toHaveLength(15);
+		// 16 since Content landed on 2026-08-03. This count is deliberate: adding a
+		// module should be a conscious decision, not something that slips in.
+		expect(modules).toHaveLength(16);
 		for (const module of modules) {
 			expect(Object.hasOwn(module, "firstActions"), module.id).toBe(true);
 		}
@@ -29,7 +31,7 @@ describe("first-action catalog", () => {
 				ids.add(action.id);
 			}
 		}
-		expect(ids.size).toBe(14);
+		expect(ids.size).toBe(15);
 	});
 
 	it("gives every business goal ordered, unique, module-owned substeps", () => {
@@ -52,7 +54,7 @@ describe("first-action catalog", () => {
 				}
 			}
 		}
-		expect(stepIds.size).toBe(23);
+		expect(stepIds.size).toBe(26);
 	});
 
 	it("references only actions available through structural module dependencies", () => {

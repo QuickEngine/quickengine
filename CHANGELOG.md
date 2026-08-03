@@ -8,6 +8,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Edit the words on your own website.** A new Content module lets you change your About
+  section, a headline, or your legal pages without touching code or asking a developer. Your
+  site declares which parts are editable; you fill them in. Nothing you write appears until you
+  publish it, so a half-finished sentence never reaches a visitor.
+- **Payments can be attached to an order.** A shop running its own payment provider can now
+  record the payment against the order it belongs to, so the money and the goods are linked
+  rather than sitting in two unconnected records.
+
 - **Your website can now take orders and payments.** A shopper on your own site can check out
   without leaving it. You send what they picked; we price it from your catalog, add your tax
   rate, record the order and take the payment into your account. Nothing about the amount comes

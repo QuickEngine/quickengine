@@ -1016,6 +1016,9 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../modules/client-records
+      '@quickengine/mod-content':
+        specifier: workspace:*
+        version: link:../modules/content
       '@quickengine/mod-contracts-esign':
         specifier: workspace:*
         version: link:../modules/contracts-esign
@@ -1095,6 +1098,28 @@ importers:
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
 
   packages/modules/client-records:
+    dependencies:
+      '@quickengine/api-contracts':
+        specifier: workspace:*
+        version: link:../../api-contracts
+      '@quickengine/db':
+        specifier: workspace:*
+        version: link:../../db
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@quickengine/config':
+        specifier: workspace:*
+        version: link:../../config
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.20.1)(typescript@5.9.3))(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
+
+  packages/modules/content:
     dependencies:
       '@quickengine/api-contracts':
         specifier: workspace:*
@@ -1787,6 +1812,9 @@ importers:
       '@quickengine/mod-client-records':
         specifier: workspace:*
         version: link:../../packages/modules/client-records
+      '@quickengine/mod-content':
+        specifier: workspace:*
+        version: link:../../packages/modules/content
       '@quickengine/mod-contracts-esign':
         specifier: workspace:*
         version: link:../../packages/modules/contracts-esign

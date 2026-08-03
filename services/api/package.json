@@ -53,7 +53,8 @@
 		"inngest": "^4.13.0",
 		"postgres": "^3.4.9",
 		"redis": "^6.1.0",
-		"zod": "^4.3.6"
+		"zod": "^4.3.6",
+		"@quickengine/mod-content": "workspace:*"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",

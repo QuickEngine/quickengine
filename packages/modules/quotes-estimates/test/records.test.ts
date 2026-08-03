@@ -14,7 +14,7 @@ import {
 	convertQuoteEstimateToOrderCommand,
 	createQuoteEstimateCommand,
 	getQuoteEstimate,
-	reviseQuoteEstimate,
+	reviseQuoteEstimateInTx,
 	sendQuoteEstimateCommand,
 } from "../src";
 
@@ -138,7 +138,12 @@ describe("Quotes & Estimates persistence", () => {
 		).toBeUndefined();
 
 		// Revision has no durable command yet: it stays a UI-only lifecycle operation.
-		const revision = await reviseQuoteEstimate(workspaceId, original.id);
+		// Through a transaction, which is how production reaches it. The convenience
+		// wrapper that opened its own was deleted: it bypassed the unit of work, so
+		// anything calling it mutated a quote with no idempotency, audit or outbox.
+		const revision = await db.transaction((tx) =>
+			reviseQuoteEstimateInTx(tx, workspaceId, original.id),
+		);
 		expect(revision).toMatchObject({
 			number: "QTE-0001-R2",
 			revision: 2,

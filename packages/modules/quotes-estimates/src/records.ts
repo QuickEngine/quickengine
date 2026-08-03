@@ -530,29 +530,6 @@ export async function setSimpleQuoteStatusInTx(
 	}
 }
 
-function setSimpleQuoteStatus(
-	workspaceId: string,
-	id: string,
-	status: "declined" | "expired" | "voided",
-	options: { now?: Date; today?: string } = {},
-) {
-	return db.transaction((tx) =>
-		setSimpleQuoteStatusInTx(tx, workspaceId, id, status, options),
-	);
-}
-
-export function expireQuoteEstimate(
-	workspaceId: string,
-	id: string,
-	options: { now?: Date; today?: string } = {},
-) {
-	return setSimpleQuoteStatus(workspaceId, id, "expired", options);
-}
-
-export function voidQuoteEstimate(workspaceId: string, id: string) {
-	return setSimpleQuoteStatus(workspaceId, id, "voided");
-}
-
 export async function reviseQuoteEstimateInTx(
 	tx: QuoteTransaction,
 	workspaceId: string,
@@ -635,10 +612,6 @@ export async function reviseQuoteEstimateInTx(
 		})),
 	);
 	return created;
-}
-
-export function reviseQuoteEstimate(workspaceId: string, id: string) {
-	return db.transaction((tx) => reviseQuoteEstimateInTx(tx, workspaceId, id));
 }
 
 export async function deleteDraftQuoteEstimateInTx(

@@ -130,11 +130,6 @@ pnpm typecheck
 pnpm test
 ```
 
-⚠️ `.env.local`'s `DATABASE_URL` may point at production. Point it at Docker before running
-`db:push`.
-
----
-
 ## Plans
 
 | | Free | Launch | Grow | Scale | Expand | Custom |

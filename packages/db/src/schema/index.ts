@@ -24,4 +24,5 @@ export * from "./saved-views";
 export * from "./shipments";
 export * from "./time-entries";
 export * from "./webhooks";
+export * from "./workspace-branding";
 export * from "./workspace-modules";

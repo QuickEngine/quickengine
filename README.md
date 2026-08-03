@@ -22,6 +22,7 @@ module recipes rather than forked into separate applications.
 | `account.quickdash.xyz` | Console — organizations, workspaces, team, billing, usage |
 | `auth.quickdash.xyz` | Identity — signup, login, passkeys, TOTP, sessions |
 | `api.quickdash.xyz` | The public API |
+| `portal.quickdash.xyz` | **The customer portal — our users' users.** Their orders, bookings and invoices, and nothing else |
 | `quickdash.statuspage.io` | **Status — live.** Incidents and uptime |
 | `docs.` · `help.` | Documentation and support — planned |
 

@@ -24,5 +24,6 @@ export * from "./saved-views";
 export * from "./schema";
 export * from "./slug";
 export * from "./support-bundle";
+export * from "./workspace-branding";
 export * from "./workspace-input";
 export * from "./workspaces";

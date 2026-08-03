@@ -2596,6 +2596,29 @@ function declaredDocument(config: ApiConfig) {
 			// Our USERS' USERS: a shopper, a massage client, a student. Authenticated
 			// by a publishable key (which workspace) plus a customer session (which
 			// person). A customer session can never satisfy an operator route.
+			"/v1/customer/bootstrap/{slug}": {
+				get: {
+					operationId: "bootstrapCustomerPortal",
+					summary: "Resolve a hosted portal from its URL slug",
+					description:
+						"The one customer route needing no publishable key, because it is what hands the key over: a visitor arriving at a portal address holds no credential yet. Returns the workspace's public identity, its branding, and its publishable key, which is public by construction. An unknown slug and a portal that is switched off answer identically, so the namespace cannot be walked to inventory which businesses exist.",
+					parameters: [
+						{
+							name: "slug",
+							in: "path",
+							required: true,
+							schema: { type: "string" },
+							description: "The portal's URL segment.",
+						},
+					],
+					responses: {
+						"200": {
+							description: "Workspace id, branding and the publishable key.",
+						},
+						"404": { description: "No portal is published at this address." },
+					},
+				},
+			},
 			"/v1/customer/context": {
 				get: {
 					operationId: "getCustomerContext",

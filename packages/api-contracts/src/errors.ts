@@ -8,6 +8,7 @@ export const API_ERROR_CODES = [
 	"PUBLISHABLE_KEY_REQUIRED",
 	"SESSION_EXPIRED",
 	"SESSION_WORKSPACE_MISMATCH",
+	"PORTAL_NOT_FOUND",
 	"WORKSPACE_REQUIRED",
 	"WORKSPACE_MISMATCH",
 	"WORKSPACE_NOT_FOUND",
@@ -44,6 +45,10 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
 	// just for somebody else's storefront. Answering 401 would send a client into
 	// a re-authentication loop it can never win.
 	SESSION_WORKSPACE_MISMATCH: 403,
+	// 404 for an unknown slug AND for a portal that exists but is switched off.
+	// Distinguishing them would let anyone walk the namespace to inventory which
+	// businesses are on the platform.
+	PORTAL_NOT_FOUND: 404,
 	WORKSPACE_REQUIRED: 400,
 	WORKSPACE_MISMATCH: 403,
 	WORKSPACE_NOT_FOUND: 404,

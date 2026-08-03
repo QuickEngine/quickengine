@@ -52,7 +52,7 @@ export class CustomerApiError extends Error {
 
 async function call<T>(
 	path: string,
-	init: RequestInit & { auth?: boolean } = {},
+	init: RequestInit & { signOutOnExpiry?: boolean } = {},
 ): Promise<T> {
 	const headers = new Headers(init.headers);
 	headers.set("QuickEngine-Publishable-Key", publishableKey());
@@ -72,7 +72,16 @@ async function call<T>(
 		// A dead session is cleared here rather than by every caller. Leaving it in
 		// storage means every subsequent request fails the same way and the portal
 		// looks broken instead of signed out.
-		if (code === "SESSION_EXPIRED") session.clear();
+		//
+		// 🔴 NOT on `verify`. That endpoint answers SESSION_EXPIRED for a spent
+		// SIGN-IN LINK, which is a different thing entirely from a dead session —
+		// and clearing on it wiped the session the same request had just created.
+		// With StrictMode double-invoking effects in development, the second
+		// attempt at a single-use link deleted the credential the first attempt
+		// stored, producing an endless sign-in loop.
+		if (code === "SESSION_EXPIRED" && init.signOutOnExpiry !== false) {
+			session.clear();
+		}
 		throw new CustomerApiError(
 			code,
 			payload?.error?.message ?? "Something went wrong.",
@@ -100,6 +109,7 @@ export const customerApi = {
 		call<{ token: string; expiresAt: string }>("/v1/customer/auth/verify", {
 			method: "POST",
 			body: JSON.stringify({ token }),
+			signOutOnExpiry: false,
 		}),
 	me: () =>
 		call<{ customerId: string; hasRecords: boolean }>("/v1/customer/auth/me"),

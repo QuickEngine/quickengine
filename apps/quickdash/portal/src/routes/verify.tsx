@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { customerApi, session } from "@/lib/api";
 
 /**
@@ -13,8 +13,15 @@ import { customerApi, session } from "@/lib/api";
 function Verify() {
 	const navigate = useNavigate();
 	const [error, setError] = useState<string | null>(null);
+	// 🔴 The link is SINGLE USE, and StrictMode runs effects twice in
+	// development. Without this guard the second run redeems an already-spent
+	// token, fails, and reports a working sign-in as broken.
+	const redeemed = useRef(false);
 
 	useEffect(() => {
+		if (redeemed.current) return;
+		redeemed.current = true;
+
 		const params = new URLSearchParams(window.location.search);
 		const token = params.get("token");
 		const workspace = params.get("workspace");

@@ -57,9 +57,9 @@ function WorkspacePage() {
 	});
 	const [error, setError] = useState<string | null>(null);
 	const [plaintextKey, setPlaintextKey] = useState<string | null>(null);
-	const [keyType, setKeyType] = useState<"publishable" | "secret" | "scoped">(
-		"publishable",
-	);
+	const [keyType, setKeyType] = useState<
+		"publishable" | "storefront" | "secret" | "scoped"
+	>("publishable");
 	const [credentialPurpose, setCredentialPurpose] =
 		useState<CredentialPurpose>("public-storefront");
 	const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>(
@@ -120,7 +120,7 @@ function WorkspacePage() {
 	const createKey = useMutation({
 		mutationFn: (input: {
 			name: string;
-			type: "publishable" | "secret" | "scoped";
+			type: "publishable" | "storefront" | "secret" | "scoped";
 			capabilities: string[];
 			expiresAt?: string;
 		}) =>
@@ -316,7 +316,11 @@ function WorkspacePage() {
 								value={keyType}
 								onChange={(event) =>
 									setKeyType(
-										event.target.value as "publishable" | "secret" | "scoped",
+										event.target.value as
+											| "publishable"
+											| "storefront"
+											| "secret"
+											| "scoped",
 									)
 								}
 								className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"

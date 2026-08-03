@@ -47,6 +47,13 @@ export const API_CAPABILITIES = [
 	"quotes:write",
 	"shipping:read",
 	"shipping:write",
+	// Place an order and pay for it, from a merchant's own website.
+	//
+	// 🔴 Deliberately NOT `orders:write`. That capability can create an order for
+	// any client in the workspace with any prices the caller names. This one
+	// enters through checkout, where the server resolves every price from the
+	// catalog and the buyer can only be the person checking out.
+	"checkout:write",
 ] as const;
 export type ApiCapability = (typeof API_CAPABILITIES)[number];
 
@@ -60,8 +67,36 @@ export const PUBLISHABLE_CAPABILITIES: readonly ApiCapability[] = [
 	"events:write",
 ];
 
+/**
+ * What a STOREFRONT key may carry.
+ *
+ * A merchant's own website — Gemsutopia calling QuickDash. Like a publishable
+ * key it ends up in page source, so it is assumed public. Unlike one, it may
+ * complete a purchase.
+ *
+ * 🔴 `checkout:write` is safe in a browser for exactly one reason: **the client
+ * never sends a price.** It sends catalog item ids and quantities, and the
+ * server resolves every amount from its own catalog. A key that cannot name an
+ * amount cannot buy a gem for one cent.
+ *
+ * 🔴 `orders:read` is deliberately ABSENT, and this is the subtle one. It reads
+ * every order in the workspace, so granting it to a public key would publish the
+ * merchant's entire order book — names, addresses, totals. A shopper sees their
+ * own orders through a CUSTOMER SESSION (`/v1/customer/orders`), which is scoped
+ * to one person by `workspace_customers`. Two different questions, two different
+ * credentials.
+ */
+export const STOREFRONT_CAPABILITIES: readonly ApiCapability[] = [
+	"catalog:read",
+	"events:write",
+	"checkout:write",
+];
+
 const KEY_PREFIX: Record<QuickEngineApiKeyType, string> = {
 	publishable: "qpk",
+	// A distinct prefix so a leaked key is identifiable on sight — in a support
+	// ticket, a log, or a public repository — without anyone having to look it up.
+	storefront: "qsf",
 	secret: "qsk",
 	scoped: "qsc",
 };
@@ -78,8 +113,17 @@ function normalizeCapabilities(
 	type: QuickEngineApiKeyType,
 	requested: readonly string[],
 ): ApiCapability[] {
+	// 🔴 The clamp is per TYPE and happens here, once. A caller asking a
+	// browser-safe key for `payments:write` gets it silently dropped rather than
+	// an error, because the request is almost always a misconfigured integration
+	// rather than an attack — and a key that quietly holds less is safe, while a
+	// key that quietly holds more is not.
 	const allowed =
-		type === "publishable" ? PUBLISHABLE_CAPABILITIES : API_CAPABILITIES;
+		type === "publishable"
+			? PUBLISHABLE_CAPABILITIES
+			: type === "storefront"
+				? STOREFRONT_CAPABILITIES
+				: API_CAPABILITIES;
 	const set = new Set<ApiCapability>();
 	for (const value of requested) {
 		if (isApiCapability(value) && allowed.includes(value)) {

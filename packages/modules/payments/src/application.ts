@@ -59,6 +59,9 @@ const FRIENDLY: Record<string, string> = {
 	WORKSPACE_NOT_FOUND: "The workspace was not found.",
 	INVOICE_NOT_FOUND: "The invoice on this payment was not found.",
 	PAYMENT_NOT_FOUND: "The payment was not found.",
+	PAYMENT_ACCOUNT_NOT_FOUND: "That payment provider is not connected.",
+	PAYMENT_ACCOUNT_ALREADY_CONNECTED:
+		"That payment provider is already connected.",
 	CLIENT_NOT_FOUND: "The client on this payment was not found.",
 	INVOICE_NOT_PAYABLE:
 		"That invoice can't take a payment in its current status.",
@@ -85,7 +88,7 @@ function mapPaymentError(error: unknown): never {
 			throw new DomainError("NOT_FOUND", message);
 		}
 		if (
-			/(NOT_PAYABLE|MISMATCH|EXCEEDS|FEE_INVALID|UNCHANGED|ILLEGAL_TRANSITION|NOT_REFUNDABLE)/.test(
+			/(NOT_PAYABLE|MISMATCH|EXCEEDS|FEE_INVALID|UNCHANGED|ILLEGAL_TRANSITION|NOT_REFUNDABLE|ALREADY_CONNECTED)/.test(
 				error.message,
 			)
 		) {

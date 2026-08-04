@@ -7,10 +7,13 @@ import {
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	getPayment,
+	getPaymentAccount,
 	listPayments,
 	recordPayment,
 	refundPayment,
+	setDefaultPaymentProvider,
 	setPaymentStatus,
+	upsertPaymentAccount,
 } from "../src";
 
 const ownerId = "payments-owner";
@@ -36,6 +39,50 @@ async function issuedInvoice() {
 	await setInvoiceStatus(workspaceId, invoice.id, "sent");
 	return invoice;
 }
+
+describe("Connected payment providers", () => {
+	it("keeps one account per provider and switches the default without deleting either", async () => {
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_stripe_1",
+			chargesEnabled: true,
+			payoutsEnabled: true,
+		});
+		await setDefaultPaymentProvider(workspaceId, "stripe");
+		await upsertPaymentAccount(workspaceId, "paypal", {
+			externalAccountId: "merchant:paypal_1",
+			chargesEnabled: true,
+			payoutsEnabled: true,
+		});
+		await setDefaultPaymentProvider(workspaceId, "paypal");
+
+		expect(await getPaymentAccount(workspaceId)).toMatchObject({
+			provider: "paypal",
+			externalAccountId: "merchant:paypal_1",
+			isDefault: true,
+		});
+		expect(await getPaymentAccount(workspaceId, "stripe")).toMatchObject({
+			provider: "stripe",
+			externalAccountId: "acct_stripe_1",
+			isDefault: false,
+		});
+	});
+
+	it("updates a provider connection instead of creating a duplicate", async () => {
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_old",
+		});
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_new",
+		});
+		const sql = testDbClient();
+		const rows = await sql`
+			select external_account_id
+			from payment_accounts
+			where workspace_id = ${workspaceId} and provider = 'stripe'
+		`;
+		expect(rows).toEqual([{ external_account_id: "acct_new" }]);
+	});
+});
 
 describe("Payments persistence", () => {
 	it("snapshots identity and keeps a partial invoice outstanding", async () => {

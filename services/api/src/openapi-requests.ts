@@ -31,6 +31,7 @@ import {
 } from "@quickengine/mod-orders";
 import {
 	paymentOnboardingInputSchema,
+	paymentProviderInputSchema,
 	recordPaymentInputSchema,
 	refundPaymentInputSchema,
 } from "@quickengine/mod-payments";
@@ -248,6 +249,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	setWorkspaceArchived: archiveWorkspaceSchema,
 	setWorkspaceModuleEnabled: workspaceModuleSchema,
 	startPaymentOnboarding: paymentOnboardingInputSchema,
+	setDefaultPaymentProvider: paymentProviderInputSchema,
 	createCheckout: checkoutInputSchema,
 	createDiscount: discountInputSchema,
 	updateDiscount: discountPatchSchema,

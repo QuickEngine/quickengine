@@ -49,7 +49,7 @@ async function workspaceForAccount(
 	const [row] = await db
 		.select({ workspaceId: paymentAccounts.workspaceId })
 		.from(paymentAccounts)
-		.where(eq(paymentAccounts.stripeAccountId, externalAccountId))
+		.where(eq(paymentAccounts.externalAccountId, externalAccountId))
 		.limit(1);
 	return row?.workspaceId ?? null;
 }
@@ -97,7 +97,7 @@ export async function applyCheckoutSettlement(
 		.where(
 			and(
 				eq(payments.workspaceId, workspaceId),
-				eq(payments.stripePaymentIntentId, event.externalPaymentId),
+				eq(payments.externalPaymentId, event.externalPaymentId),
 			),
 		)
 		.limit(1);
@@ -178,15 +178,14 @@ export async function recordPendingCheckoutPayment(input: {
 			clientId: input.clientId,
 			clientEmail: input.clientEmail,
 			provider: input.provider,
-			stripePaymentIntentId: input.externalPaymentId,
 			externalPaymentId: input.externalPaymentId,
 			amountCents: input.amountCents,
 			currency: input.currency,
 			status: "pending",
 		})
-		// A retried checkout with the same intent must not create a second payment.
-		// The partial unique index on (workspace_id, stripe_payment_intent_id) is
-		// what makes this safe; this simply avoids the error.
+		// A retried checkout with the same provider payment id must not create a
+		// second payment. The unique provider/external id index makes this safe;
+		// this simply avoids surfacing the expected duplicate error.
 		.onConflictDoNothing();
 }
 
@@ -222,7 +221,7 @@ export async function captureCheckoutPayment(input: {
 	const [connected] = await db
 		.select({
 			provider: paymentAccounts.provider,
-			externalAccountId: paymentAccounts.stripeAccountId,
+			externalAccountId: paymentAccounts.externalAccountId,
 		})
 		.from(paymentAccounts)
 		.where(eq(paymentAccounts.workspaceId, input.workspaceId))

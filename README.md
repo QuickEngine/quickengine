@@ -47,6 +47,11 @@ order-value bands and free-shipping thresholds. Storefronts choose a quoted rate
 re-prices catalog values, item weights and the selected rate before it records or charges the
 order.
 
+Payments supports multiple connected merchant processors per workspace. Stripe and PayPal can
+remain connected together, one is selected as the checkout default, and each historical payment
+retains its processor so settlement and refunds never depend on whichever provider is active
+today.
+
 ---
 
 ## Two audiences, two surfaces

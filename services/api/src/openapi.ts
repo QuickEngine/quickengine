@@ -549,9 +549,16 @@ function declaredDocument(config: ApiConfig) {
 			"/v1/payments/connect": {
 				get: {
 					operationId: "getPaymentConnectAccount",
-					summary: "The workspace's connected payment account",
+					summary: "A workspace payment account",
 					description:
-						"Our stored view, with no call to the provider. Safe to poll. Answers a not-connected shape rather than 404 when nothing has been set up, so a dashboard has something to render.",
+						"Our stored view, with no call to the provider. Omit `provider` for the checkout default or name one connected provider. Answers a not-connected shape rather than 404.",
+					parameters: [
+						{
+							in: "query",
+							name: "provider",
+							schema: { type: "string", enum: ["stripe", "paypal"] },
+						},
+					],
 					responses: {
 						"200": {
 							description:
@@ -565,9 +572,28 @@ function declaredDocument(config: ApiConfig) {
 					operationId: "refreshPaymentConnectAccount",
 					summary: "Re-read the account from the provider",
 					description:
-						"Onboarding finishes asynchronously — the operator returns long before the provider has finished its checks — so the stored state goes stale immediately. Makes one outbound call, and is rate limited as a write for that reason.",
+						"Onboarding finishes asynchronously, so the stored state goes stale immediately. Omit `provider` to refresh the default or name a connected provider. Makes one outbound call and is rate limited as a write.",
+					parameters: [
+						{
+							in: "query",
+							name: "provider",
+							schema: { type: "string", enum: ["stripe", "paypal"] },
+						},
+					],
 					responses: {
 						"200": { description: "The refreshed account state." },
+					},
+				},
+			},
+			"/v1/payments/connect/default": {
+				put: {
+					operationId: "setDefaultPaymentProvider",
+					summary: "Choose which connected provider checkout uses",
+					description:
+						"Changes the provider used for new checkout attempts. Existing payments retain their own provider and merchant account for settlement and refunds.",
+					responses: {
+						"200": { description: "The selected connected account." },
+						"404": { description: "That provider is not connected." },
 					},
 				},
 			},
@@ -576,7 +602,7 @@ function declaredDocument(config: ApiConfig) {
 					operationId: "startPaymentOnboarding",
 					summary: "Begin connecting the business's payment account",
 					description:
-						"Returns a provider-hosted URL to send the operator to. Resumable: returning after abandoning onboarding re-issues a link for the same account, because provider account links are single use and short lived. `returnUrl` and `refreshUrl` must be QuickDash origins — an attacker-chosen redirect here would be a phishing page reached from a payment provider's domain.",
+						"Returns a provider-hosted URL to send the operator to. Active providers cannot be connected twice; pending onboarding may be restarted when a hosted link expires. `returnUrl` and `refreshUrl` must be QuickDash origins — an attacker-chosen redirect here would be a phishing page reached from a payment provider's domain.",
 					responses: {
 						"200": { description: "An onboarding URL and the account state." },
 						"400": {

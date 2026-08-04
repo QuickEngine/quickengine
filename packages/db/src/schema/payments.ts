@@ -15,13 +15,13 @@ import { invoices } from "./invoices";
 import { orders } from "./orders";
 import { quickengineWorkspaces } from "./quickengine";
 
-// Payments module — collecting money from a workspace's clients via Stripe Connect.
+// Payments module — collecting money from a workspace's clients through connected providers.
 // This is NOT the QuickEngine house-billing (that charges users for their plan). Here
-// each workspace connects its OWN Stripe account and money flows to THEM; QuickEngine
+// each workspace connects its OWN merchant account and money flows to THEM; QuickEngine
 // only takes an optional, plan-set application fee (default 0 — you don't pay us to
 // receive your own money). The module owns these tables.
 
-// The workspace's connected Stripe account. One per workspace.
+// A workspace's connected merchant account. One row per provider.
 export const paymentAccounts = pgTable(
 	"payment_accounts",
 	{
@@ -30,8 +30,11 @@ export const paymentAccounts = pgTable(
 			.notNull()
 			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
 		provider: text("provider").notNull().default("stripe"),
-		// Stripe Connect account id (acct_…). Null until onboarding starts.
-		stripeAccountId: text("stripe_account_id"),
+		// Provider account identity. Null until hosted onboarding starts.
+		externalAccountId: text("external_account_id"),
+		// Exactly one connected provider supplies checkout by default. Historical
+		// payments still resolve their own provider row for refunds.
+		isDefault: boolean("is_default").notNull().default(false),
 		status: text("status", {
 			enum: ["pending", "active", "restricted", "disabled"],
 		})
@@ -48,7 +51,13 @@ export const paymentAccounts = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("payment_accounts_workspace_idx").on(table.workspaceId),
+		uniqueIndex("payment_accounts_workspace_provider_idx").on(
+			table.workspaceId,
+			table.provider,
+		),
+		uniqueIndex("payment_accounts_workspace_default_idx")
+			.on(table.workspaceId)
+			.where(sql`${table.isDefault} = true`),
 	],
 );
 

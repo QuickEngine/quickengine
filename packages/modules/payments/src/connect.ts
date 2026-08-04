@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { getPaymentAccount, upsertPaymentAccount } from "./payments";
+import {
+	getPaymentAccount,
+	setDefaultPaymentProvider,
+	upsertPaymentAccount,
+} from "./payments";
 import { getPaymentProvider } from "./providers";
 
 /**
@@ -27,6 +31,10 @@ export const paymentOnboardingInputSchema = z.object({
 		.optional(),
 });
 
+export const paymentProviderInputSchema = z.object({
+	provider: z.enum(["stripe", "paypal"]),
+});
+
 /**
  * Connecting a business's own payment account, and reading its state.
  *
@@ -34,11 +42,9 @@ export const paymentOnboardingInputSchema = z.object({
  * it does not know about Stripe. Everything provider-specific is behind
  * `getPaymentProvider`.
  *
- * ⚠️ `payment_accounts.stripe_account_id` is a provider-specific column on a
- * provider-agnostic table — noted in `internal/planning/END_TO_END_AUDIT.md`.
- * The table has never been written to (its accessors had no callers until now),
- * so renaming it to `external_account_id` later is free. Left alone for now
- * rather than widening this slice.
+ * A workspace may connect more than one provider. Exactly one connected account
+ * is the default used for new checkout attempts; each payment retains its own
+ * provider so settlement and refunds continue through the original processor.
  */
 
 export type ConnectStatus = {
@@ -49,24 +55,13 @@ export type ConnectStatus = {
 	status: "pending" | "active" | "restricted" | "disabled";
 };
 
-export class PaymentProviderConflictError extends Error {
-	constructor(
-		readonly connectedProvider: string,
-		readonly requestedProvider: string,
-	) {
-		super(
-			`This workspace is already connected to ${connectedProvider}. Disconnecting or switching payment providers is not available yet.`,
-		);
-	}
-}
-
-const NOT_CONNECTED: ConnectStatus = {
-	provider: "stripe",
+const notConnected = (provider = "stripe"): ConnectStatus => ({
+	provider,
 	connected: false,
 	chargesEnabled: false,
 	payoutsEnabled: false,
 	status: "pending",
-};
+});
 
 /**
  * Begin connecting an account, returning where to send the operator.
@@ -92,21 +87,10 @@ export async function startPaymentOnboarding(input: {
 }): Promise<{ onboardingUrl: string; status: ConnectStatus }> {
 	const providerId = input.provider ?? "stripe";
 	const provider = getPaymentProvider(providerId);
-	const existing = await getPaymentAccount(input.workspaceId);
-	if (existing && existing.provider !== providerId) {
-		throw new PaymentProviderConflictError(existing.provider, providerId);
-	}
+	const existing = await getPaymentAccount(input.workspaceId, providerId);
 
-	if (existing?.stripeAccountId) {
-		const account = await provider.getAccount(existing.stripeAccountId);
-		const { onboardingUrl } = await provider.startOnboarding({
-			email: input.email,
-			country: input.country,
-			returnUrl: input.returnUrl,
-			refreshUrl: input.refreshUrl,
-		});
-		const status = await persist(input.workspaceId, providerId, account);
-		return { onboardingUrl, status };
+	if (existing?.chargesEnabled) {
+		throw new Error("PAYMENT_ACCOUNT_ALREADY_CONNECTED");
 	}
 
 	const { account, onboardingUrl } = await provider.startOnboarding({
@@ -129,13 +113,14 @@ export async function startPaymentOnboarding(input: {
  */
 export async function refreshPaymentAccount(
 	workspaceId: string,
+	provider?: string,
 ): Promise<ConnectStatus> {
-	const existing = await getPaymentAccount(workspaceId);
-	if (!existing?.stripeAccountId) return NOT_CONNECTED;
+	const existing = await getPaymentAccount(workspaceId, provider);
+	if (!existing?.externalAccountId) return notConnected(provider);
 
 	const providerId = existing.provider ?? "stripe";
 	const account = await getPaymentProvider(providerId).getAccount(
-		existing.stripeAccountId,
+		existing.externalAccountId,
 	);
 	return persist(workspaceId, providerId, account);
 }
@@ -143,9 +128,10 @@ export async function refreshPaymentAccount(
 /** Our stored view, with no network call. */
 export async function readPaymentAccount(
 	workspaceId: string,
+	provider?: string,
 ): Promise<ConnectStatus> {
-	const existing = await getPaymentAccount(workspaceId);
-	if (!existing?.stripeAccountId) return NOT_CONNECTED;
+	const existing = await getPaymentAccount(workspaceId, provider);
+	if (!existing?.externalAccountId) return notConnected(provider);
 	return {
 		provider: existing.provider ?? "stripe",
 		connected: true,
@@ -169,13 +155,14 @@ async function persist(
 	// sale, so it does not downgrade the account to restricted.
 	const status = account.chargesEnabled ? "active" : "pending";
 
-	await upsertPaymentAccount(workspaceId, {
-		provider,
-		stripeAccountId: account.externalAccountId,
+	await upsertPaymentAccount(workspaceId, provider, {
+		externalAccountId: account.externalAccountId,
+		isDefault: false,
 		status,
 		chargesEnabled: account.chargesEnabled,
 		payoutsEnabled: account.payoutsEnabled,
 	});
+	await setDefaultPaymentProvider(workspaceId, provider);
 
 	return {
 		provider,

@@ -32,6 +32,9 @@ const itemInput = (form: FormData) => {
 			: cents(form.get("price")),
 		currency: String(form.get("currency") ?? "USD"),
 		unitLabel: String(form.get("unitLabel") ?? "") || null,
+		weightGrams: form.get("weightGrams")
+			? Number(form.get("weightGrams"))
+			: null,
 	};
 };
 
@@ -45,6 +48,9 @@ const variantInput = (form: FormData) => ({
 		}),
 	sku: String(form.get("sku") ?? "") || null,
 	priceCentsOverride: cents(form.get("priceOverride")),
+	weightGramsOverride: form.get("weightGramsOverride")
+		? Number(form.get("weightGramsOverride"))
+		: null,
 });
 
 export function saveCatalogItemAction(

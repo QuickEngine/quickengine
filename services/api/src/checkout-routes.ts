@@ -21,7 +21,14 @@ import {
 	readPaymentAccount,
 	recordPendingCheckoutPayment,
 } from "@quickengine/mod-payments";
+import {
+	priceChosenRate,
+	quoteShipping,
+	ShippingQuoteError,
+	shippingDestinationSchema,
+} from "@quickengine/mod-shipping";
 import type { Context, Hono } from "hono";
+import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
 import type { ApiLogger } from "./logger";
 import { buildMutationContext } from "./mutation-policy";
@@ -76,6 +83,72 @@ export function registerCheckoutRoutes(
 		scope: "checkout.write",
 	});
 
+	const quoteInputSchema = z.object({
+		items: checkoutInputSchema.shape.items,
+		destination: shippingDestinationSchema,
+		discountCode: checkoutInputSchema.shape.discountCode,
+	});
+
+	app.post("/v1/shipping/quote", access, limit, async (c) => {
+		const parsed = quoteInputSchema.safeParse(await c.req.json());
+		if (!parsed.success) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"The delivery quote could not be read.",
+				400,
+				parsed.error.issues,
+			);
+		}
+		const { workspaceId } = c.get("authorized");
+		try {
+			const priced = await priceCheckout(workspaceId, parsed.data.items);
+			let discountCents = 0;
+			if (parsed.data.discountCode) {
+				const discount = await evaluateDiscount({
+					workspaceId,
+					code: parsed.data.discountCode,
+					subtotalCents: priced.subtotalCents,
+				});
+				if (!discount.ok)
+					return respondError(c, "VALIDATION_ERROR", discount.message, 400);
+				discountCents = discount.amountCents;
+			}
+			return respond(
+				c,
+				await quoteShipping({
+					workspaceId,
+					discountedSubtotalCents: Math.max(
+						0,
+						priced.subtotalCents - discountCents,
+					),
+					quote: {
+						destination: parsed.data.destination,
+						lines: parsed.data.items.map((item) => ({
+							catalogItemId: item.catalogItemId,
+							catalogItemVariantId: item.variantId ?? null,
+							quantity: item.quantity,
+						})),
+					},
+				}),
+			);
+		} catch (error) {
+			if (
+				error instanceof CheckoutError ||
+				error instanceof ShippingQuoteError
+			) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					error.message,
+					400,
+					error instanceof ShippingQuoteError ? error.detail : undefined,
+				);
+			}
+			throw error;
+		}
+	});
+
 	app.post("/v1/checkout", access, limit, async (c: Context<PlatformEnv>) => {
 		const parsed = checkoutInputSchema.safeParse(await c.req.json());
 		if (!parsed.success) {
@@ -126,7 +199,67 @@ export function registerCheckoutRoutes(
 		// then discounting would charge tax on money the customer never paid, which
 		// is both wrong and, on a remittance, somebody else's money.
 		const discountCents = discount?.ok ? discount.amountCents : 0;
-		const taxableCents = Math.max(0, priced.subtotalCents - discountCents);
+		const physical = priced.lines.some((line) => line.type === "physical");
+		if (
+			physical &&
+			(!parsed.data.shippingAddress || !parsed.data.shippingRateId)
+		) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"A delivery address and delivery option are required for physical items.",
+				400,
+			);
+		}
+		if (
+			!physical &&
+			(parsed.data.shippingAddress || parsed.data.shippingRateId)
+		) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"Delivery may only be selected for an order containing physical items.",
+				400,
+			);
+		}
+		let shipping: Awaited<ReturnType<typeof priceChosenRate>> | null = null;
+		if (physical && parsed.data.shippingAddress && parsed.data.shippingRateId) {
+			try {
+				shipping = await priceChosenRate({
+					workspaceId,
+					rateId: parsed.data.shippingRateId,
+					discountedSubtotalCents: Math.max(
+						0,
+						priced.subtotalCents - discountCents,
+					),
+					quote: {
+						destination: {
+							countryCode: parsed.data.shippingAddress.countryCode,
+							regionCode: parsed.data.shippingAddress.region,
+							postalCode: parsed.data.shippingAddress.postalCode,
+						},
+						lines: parsed.data.items.map((item) => ({
+							catalogItemId: item.catalogItemId,
+							catalogItemVariantId: item.variantId ?? null,
+							quantity: item.quantity,
+						})),
+					},
+				});
+			} catch (error) {
+				if (error instanceof ShippingQuoteError)
+					return respondError(
+						c,
+						"VALIDATION_ERROR",
+						error.message,
+						400,
+						error.detail,
+					);
+				throw error;
+			}
+		}
+		const taxableCents =
+			Math.max(0, priced.subtotalCents - discountCents) +
+			(shipping?.amountCents ?? 0);
 		const taxCents = await taxCalculatorFor(settings).calculate({
 			subtotalCents: taxableCents,
 			currency: priced.currency,
@@ -159,6 +292,16 @@ export function registerCheckoutRoutes(
 				discountCents,
 				discountCode: discount?.ok ? discount.code : null,
 				taxCents,
+				shippingCents: shipping?.amountCents ?? 0,
+				shippingRateId: shipping?.rateId ?? null,
+				shippingRateName: shipping?.name ?? null,
+				shipToName: parsed.data.shippingAddress?.name ?? null,
+				shipToLine1: parsed.data.shippingAddress?.line1 ?? null,
+				shipToLine2: parsed.data.shippingAddress?.line2 ?? null,
+				shipToCity: parsed.data.shippingAddress?.city ?? null,
+				shipToRegion: parsed.data.shippingAddress?.region ?? null,
+				shipToPostalCode: parsed.data.shippingAddress?.postalCode ?? null,
+				shipToCountryCode: parsed.data.shippingAddress?.countryCode ?? null,
 				notes: parsed.data.notes ?? null,
 				lines: priced.lines.map((line) => ({
 					catalogItemId: line.catalogItemId,

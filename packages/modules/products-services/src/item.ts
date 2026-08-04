@@ -36,6 +36,7 @@ const catalogItemFieldsSchema = z.object({
 		.regex(/^[A-Z]{3}$/)
 		.default("USD"),
 	unitLabel: z.string().trim().min(1).max(40).nullable().default(null),
+	weightGrams: z.number().int().positive().nullable().default(null),
 	metadata: z.record(z.string(), z.unknown()).default({}),
 });
 
@@ -82,6 +83,7 @@ export const catalogItemPatchSchema = z
 			.regex(/^[A-Z]{3}$/)
 			.optional(),
 		unitLabel: z.string().trim().min(1).max(40).nullable().optional(),
+		weightGrams: z.number().int().positive().nullable().optional(),
 		metadata: z.record(z.string(), z.unknown()).optional(),
 	})
 	.strict()

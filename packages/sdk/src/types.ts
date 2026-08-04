@@ -187,6 +187,7 @@ export type QuickCatalogItem = {
 	priceCents: number | null;
 	currency: string;
 	unitLabel: string | null;
+	weightGrams: number | null;
 	metadata: Record<string, unknown>;
 	createdAt: string;
 	updatedAt: string;
@@ -202,6 +203,7 @@ export type QuickCatalogVariant = {
 	status: QuickCatalogStatus;
 	sku: string | null;
 	priceCentsOverride: number | null;
+	weightGramsOverride: number | null;
 	metadata: Record<string, unknown>;
 	createdAt: string;
 	updatedAt: string;
@@ -218,6 +220,7 @@ export type QuickCatalogItemInput = {
 	priceCents?: number | null;
 	currency?: string;
 	unitLabel?: string | null;
+	weightGrams?: number | null;
 	metadata?: Record<string, unknown>;
 };
 
@@ -227,6 +230,7 @@ export type QuickCatalogVariantInput = {
 	status?: QuickCatalogStatus;
 	sku?: string | null;
 	priceCentsOverride?: number | null;
+	weightGramsOverride?: number | null;
 	metadata?: Record<string, unknown>;
 };
 
@@ -667,6 +671,68 @@ export type QuickShipment = {
 	lines?: Array<{ orderLineItemId: string; quantity: number }>;
 	parcels?: Array<{ weightGrams: number; [field: string]: unknown }>;
 	[field: string]: unknown;
+};
+
+export type QuickShippingDestination = {
+	countryCode: string;
+	regionCode?: string | null;
+	postalCode?: string | null;
+};
+
+export type QuickShippingRateInput = {
+	zoneId: string;
+	name: string;
+	description?: string | null;
+	minWeightGrams?: number | null;
+	maxWeightGrams?: number | null;
+	minOrderCents?: number | null;
+	maxOrderCents?: number | null;
+	baseCents?: number;
+	perKgCents?: number | null;
+	freeOverCents?: number | null;
+	estimatedDaysMin?: number | null;
+	estimatedDaysMax?: number | null;
+	active?: boolean;
+};
+
+export type QuickShippingRate = Required<
+	Pick<QuickShippingRateInput, "zoneId" | "name">
+> &
+	QuickShippingRateInput & {
+		id: string;
+		workspaceId: string;
+		createdAt: string;
+		updatedAt: string;
+	};
+
+export type QuickShippingZoneInput = {
+	name: string;
+	countryCodes?: string[];
+	regionCodes?: string[];
+	priority?: number;
+	active?: boolean;
+};
+
+export type QuickShippingZone = QuickShippingZoneInput & {
+	id: string;
+	workspaceId: string;
+	rates: QuickShippingRate[];
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type QuickShippingQuote = {
+	zone: { id: string; name: string };
+	billableWeightGrams: number;
+	options: Array<{
+		rateId: string;
+		name: string;
+		description: string | null;
+		amountCents: number;
+		free: boolean;
+		estimatedDaysMin: number | null;
+		estimatedDaysMax: number | null;
+	}>;
 };
 
 export type QuickProjectStatus =

@@ -35,6 +35,16 @@ export const checkoutItemSchema = z.object({
 	quantity: z.number().int().min(1).max(1_000),
 });
 
+export const checkoutShippingAddressSchema = z.object({
+	name: z.string().trim().min(1).max(200),
+	line1: z.string().trim().min(1).max(300),
+	line2: z.string().trim().max(300).nullable().optional(),
+	city: z.string().trim().min(1).max(160),
+	region: z.string().trim().min(1).max(160),
+	postalCode: z.string().trim().min(1).max(20),
+	countryCode: z.string().trim().toUpperCase().length(2),
+});
+
 export const checkoutInputSchema = z.object({
 	items: z.array(checkoutItemSchema).min(1).max(100),
 	/**
@@ -62,6 +72,9 @@ export const checkoutInputSchema = z.object({
 	 * which is why they are two fields rather than one "code".
 	 */
 	referralCode: z.string().trim().min(4).max(40).optional(),
+	/** The browser chooses an offered rate; the server recomputes its amount. */
+	shippingRateId: z.uuid().optional(),
+	shippingAddress: checkoutShippingAddressSchema.optional(),
 	// ⚠️ NOT accepted, deliberately, and each one is a way to steal:
 	// · any price, subtotal, total, tax or discount field
 	// · clientId — a caller naming somebody else's client record attaches a

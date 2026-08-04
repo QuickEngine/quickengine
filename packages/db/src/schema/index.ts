@@ -28,6 +28,7 @@ export * from "./reporting-analytics";
 export * from "./reviews";
 export * from "./saved-views";
 export * from "./shipments";
+export * from "./shipping-rates";
 export * from "./time-entries";
 export * from "./webhooks";
 export * from "./workspace-branding";

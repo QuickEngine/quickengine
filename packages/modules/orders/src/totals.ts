@@ -19,6 +19,7 @@ export function computeOrderTotals(
 	lines: readonly OrderLineAmount[],
 	taxCents = 0,
 	discountCents = 0,
+	shippingCents = 0,
 ) {
 	const subtotalCents = lines.reduce(
 		(sum, line) => sum + orderLineTotalCents(line),
@@ -34,11 +35,13 @@ export function computeOrderTotals(
 		Math.max(0, Math.trunc(discountCents)),
 		subtotalCents,
 	);
+	const shipping = Math.max(0, Math.trunc(shippingCents));
 	return {
 		subtotalCents,
 		discountCents: discount,
+		shippingCents: shipping,
 		taxCents: tax,
-		totalCents: subtotalCents - discount + tax,
+		totalCents: subtotalCents - discount + shipping + tax,
 	};
 }
 

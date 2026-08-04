@@ -37,6 +37,19 @@ export const catalogItems = pgTable(
 		priceCents: integer("price_cents"),
 		currency: text("currency").notNull().default("USD"),
 		unitLabel: text("unit_label"),
+		/**
+		 * Shipping weight in grams. Null means unknown, NOT weightless.
+		 *
+		 * 🔴 The distinction is the whole point. A weight-based shipping rate that
+		 * treats unknown as zero undercharges the merchant on exactly the orders
+		 * where shipping costs most, so a quote refuses rather than guesses — see
+		 * `MISSING_ITEM_WEIGHT` in the shipping module.
+		 *
+		 * Grams because integers do not drift, and because every carrier the world
+		 * over will accept a metric weight. A service has no weight and never needs
+		 * one, which is why this is nullable rather than defaulted.
+		 */
+		weightGrams: integer("weight_grams"),
 		metadata: jsonb("metadata")
 			.$type<Record<string, unknown>>()
 			.notNull()
@@ -79,6 +92,15 @@ export const catalogItemVariants = pgTable(
 			.default("draft"),
 		sku: text("sku"),
 		priceCentsOverride: integer("price_cents_override"),
+		/**
+		 * Overrides the item's weight for this variant. Null falls back to the item.
+		 *
+		 * ⚠️ Null means "same as the item", not "weightless" — a 2XL hoodie really
+		 * does weigh more than a small, and a variant that fell back to zero would
+		 * be the silent-undercharge bug one level down. Mirrors how
+		 * `priceCentsOverride` already behaves, so there is one rule to remember.
+		 */
+		weightGramsOverride: integer("weight_grams_override"),
 		metadata: jsonb("metadata")
 			.$type<Record<string, unknown>>()
 			.notNull()

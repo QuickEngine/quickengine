@@ -58,6 +58,22 @@ export const orderInputSchema = z
 		 */
 		discountCents: z.number().int().min(0).max(POSTGRES_INTEGER_MAX).default(0),
 		discountCode: z.string().trim().max(40).nullable().default(null),
+		shippingCents: z.number().int().min(0).max(POSTGRES_INTEGER_MAX).default(0),
+		shippingRateId: z.uuid().nullable().default(null),
+		shippingRateName: z.string().trim().max(160).nullable().default(null),
+		shipToName: z.string().trim().max(200).nullable().default(null),
+		shipToLine1: z.string().trim().max(300).nullable().default(null),
+		shipToLine2: z.string().trim().max(300).nullable().default(null),
+		shipToCity: z.string().trim().max(160).nullable().default(null),
+		shipToRegion: z.string().trim().max(160).nullable().default(null),
+		shipToPostalCode: z.string().trim().max(20).nullable().default(null),
+		shipToCountryCode: z
+			.string()
+			.trim()
+			.toUpperCase()
+			.length(2)
+			.nullable()
+			.default(null),
 		lines: z.array(orderLineInputSchema).min(1).max(500),
 		metadata: z.record(z.string(), z.unknown()).default({}),
 	})
@@ -67,7 +83,8 @@ export const orderInputSchema = z
 				(total, line) => total + line.quantity * line.unitPriceCents,
 				0,
 			) +
-				(order.taxCents ?? 0) <=
+				(order.taxCents ?? 0) +
+				(order.shippingCents ?? 0) <=
 			POSTGRES_INTEGER_MAX,
 		{ message: "Order total exceeds the supported amount", path: ["lines"] },
 	);

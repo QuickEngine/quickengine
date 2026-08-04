@@ -4,14 +4,24 @@ import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
 import {
 	createShipmentCommand,
+	createShippingRate,
+	createShippingZone,
 	deleteShipmentCommand,
+	deleteShippingRate,
+	deleteShippingZone,
 	getShipmentDto,
 	listShipmentsPage,
+	listShippingZones,
 	SHIPMENT_STATUSES,
+	ShippingRateConfigError,
 	setShipmentStatusCommand,
+	shippingRateInputSchema,
 	shippingSettingsSchema,
+	shippingZoneInputSchema,
 	updateDraftShipmentCommand,
 	updateShipmentTrackingCommand,
+	updateShippingRate,
+	updateShippingZone,
 } from "@quickengine/mod-shipping";
 import { getWorkspaceModules } from "@quickengine/module-registry";
 import type { Context, Hono } from "hono";
@@ -83,6 +93,106 @@ export function registerShippingRoutes(
 			requestId: c.get("requestId"),
 		});
 
+	const configError = (c: Context<PlatformEnv>, error: unknown) => {
+		if (!(error instanceof ShippingRateConfigError)) throw error;
+		const notFound = /NOT_FOUND/.test(error.code);
+		return respondError(
+			c,
+			notFound ? "NOT_FOUND" : "CONFLICT",
+			error.message,
+			notFound ? 404 : 409,
+		);
+	};
+
+	/* Zones, rates, and storefront quotes */
+
+	app.get("/v1/shipping/zones", readAccess, readLimit, async (c) =>
+		respond(c, {
+			items: await listShippingZones(c.get("authorized").workspaceId),
+		}),
+	);
+	app.post("/v1/shipping/zones", writeAccess, writeLimit, async (c) => {
+		try {
+			return respond(
+				c,
+				await createShippingZone(
+					c.get("authorized").workspaceId,
+					shippingZoneInputSchema.parse(await c.req.json()),
+				),
+				201,
+			);
+		} catch (error) {
+			return configError(c, error);
+		}
+	});
+	app.patch("/v1/shipping/zones/:id", writeAccess, writeLimit, async (c) => {
+		try {
+			return respond(
+				c,
+				await updateShippingZone(
+					c.get("authorized").workspaceId,
+					uuid.parse(c.req.param("id")),
+					shippingZoneInputSchema.partial().parse(await c.req.json()),
+				),
+			);
+		} catch (error) {
+			return configError(c, error);
+		}
+	});
+	app.delete("/v1/shipping/zones/:id", writeAccess, writeLimit, async (c) => {
+		try {
+			return respond(
+				c,
+				await deleteShippingZone(
+					c.get("authorized").workspaceId,
+					uuid.parse(c.req.param("id")),
+				),
+			);
+		} catch (error) {
+			return configError(c, error);
+		}
+	});
+	app.post("/v1/shipping/rates", writeAccess, writeLimit, async (c) => {
+		try {
+			return respond(
+				c,
+				await createShippingRate(
+					c.get("authorized").workspaceId,
+					shippingRateInputSchema.parse(await c.req.json()),
+				),
+				201,
+			);
+		} catch (error) {
+			return configError(c, error);
+		}
+	});
+	app.patch("/v1/shipping/rates/:id", writeAccess, writeLimit, async (c) => {
+		try {
+			return respond(
+				c,
+				await updateShippingRate(
+					c.get("authorized").workspaceId,
+					uuid.parse(c.req.param("id")),
+					shippingRateInputSchema.partial().parse(await c.req.json()),
+				),
+			);
+		} catch (error) {
+			return configError(c, error);
+		}
+	});
+	app.delete("/v1/shipping/rates/:id", writeAccess, writeLimit, async (c) => {
+		try {
+			return respond(
+				c,
+				await deleteShippingRate(
+					c.get("authorized").workspaceId,
+					uuid.parse(c.req.param("id")),
+				),
+			);
+		} catch (error) {
+			return configError(c, error);
+		}
+	});
 	app.get("/v1/shipments", readAccess, readLimit, async (c) =>
 		respond(
 			c,

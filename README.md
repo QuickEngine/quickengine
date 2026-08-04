@@ -53,7 +53,8 @@ enabled, everything in the workspace.
 publishable key and a session of their own. They see their own orders, bookings and invoices and
 nothing else, and they are a separate kind of identity: no seat, no team membership, no route
 into anybody's dashboard. One hosted portal serves every workspace, showing each business's name
-and only the sections it runs.
+and only the sections it runs — on its own domain if the business points one at us, so its
+customers never see ours.
 
 The two are separate namespaces with no foreign key between them, resolved by different
 middleware from different headers. A customer session cannot satisfy an operator route.

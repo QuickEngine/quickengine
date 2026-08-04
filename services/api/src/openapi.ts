@@ -3041,6 +3041,42 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			// ── The portal's own domain ──────────────────────────────────────────
+			"/v1/portal/domain": {
+				get: {
+					operationId: "readPortalDomain",
+					summary: "The domain this workspace's customer portal answers on",
+					responses: { "200": { description: "The custom domain, or null." } },
+				},
+				put: {
+					operationId: "setPortalDomain",
+					summary: "Put the customer portal on your own domain",
+					description:
+						"White-labelling: a business pointing account.theirshop.com at us gets its portal there, and its customers never see a QuickDash address. Send null to remove it and fall back to the path-based address. The response includes the CNAME target, because a domain that resolves nowhere is the most likely support question this creates. Setting a domain proves nothing about owning it — DNS does, since only the zone's controller can point a CNAME.",
+					responses: {
+						"200": {
+							description: "The stored domain and the CNAME to create.",
+						},
+						"400": { description: "That is not a valid domain." },
+						"404": {
+							description: "Publish the portal before giving it a domain.",
+						},
+						"409": { description: "Already connected to another workspace." },
+					},
+				},
+			},
+			"/v1/customer/bootstrap-by-host": {
+				get: {
+					operationId: "bootstrapPortalByHost",
+					summary: "Resolve a portal from the host the visitor typed",
+					description:
+						"The white-label counterpart to bootstrap-by-slug. Reads the Origin header rather than Host: a reverse proxy rewrites Host to its own upstream, so trusting it would resolve every custom-domain visit to whatever the proxy calls itself. An unknown host and a switched-off portal answer identically, so this cannot be walked to inventory customers.",
+					responses: {
+						"200": { description: "Workspace, branding and publishable key." },
+						"404": { description: "No portal is published at this address." },
+					},
+				},
+			},
 			"/v1/customer/referral-code": {
 				get: {
 					operationId: "getReferralCode",

@@ -28,6 +28,7 @@ import type { ApiLogger } from "./logger";
 import { registerOrdersRoutes } from "./orders-routes";
 import { registerPaymentsRoutes } from "./payments-routes";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
+import { registerPortalDomainRoutes } from "./portal-domain-routes";
 import { registerProductEventRoutes } from "./product-event-routes";
 import { registerProductsServicesRoutes } from "./products-services-routes";
 import { registerProjectsRoutes } from "./projects-routes";
@@ -84,6 +85,7 @@ export function registerAllRoutes(
 	registerIntegrationHealthRoutes(app, dependencies);
 	registerReviewRoutes(app, dependencies);
 	registerSavedViewRoutes(app, dependencies);
+	registerPortalDomainRoutes(app, dependencies);
 	registerProductEventRoutes(app, dependencies);
 	// The customer surface. Registered last among the /v1 families so its
 	// namespace is unmistakably separate from the operator routes above.

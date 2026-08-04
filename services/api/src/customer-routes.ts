@@ -1,6 +1,6 @@
 import { API_HEADERS } from "@quickengine/api-contracts/headers";
 import type { CacheProvider } from "@quickengine/cache";
-import { portalBootstrap } from "@quickengine/db";
+import { portalBootstrap, portalBootstrapByHost } from "@quickengine/db";
 import { listBookingsPage } from "@quickengine/mod-bookings";
 import { listInvoicesPage } from "@quickengine/mod-invoicing";
 import {
@@ -131,6 +131,46 @@ export function registerCustomerRoutes(
 	 * An unknown slug and a disabled portal both answer 404, so this cannot be
 	 * walked to inventory which businesses exist.
 	 */
+	/**
+	 * Resolve a portal from the HOST the visitor typed.
+	 *
+	 * 🔴 The white-label path. A business pointing `account.gemsutopia.ca` at us
+	 * gets its own portal there, and its customers never see a QuickDash address.
+	 *
+	 * ⚠️ Reads the ORIGIN header, not `Host`. A reverse proxy rewrites `Host` to
+	 * its own upstream, so trusting it would resolve every custom-domain visit to
+	 * whatever the proxy calls itself. `Origin` is set by the browser and survives
+	 * the hop. Falls back to `Host` only for a direct request with no `Origin`,
+	 * which is what a server-side render sends.
+	 */
+	app.get("/v1/customer/bootstrap-by-host", readLimit, async (c) => {
+		const origin = c.req.header("origin");
+		const host = origin ?? c.req.header("host") ?? "";
+		const bootstrap = await portalBootstrapByHost(host);
+		if (!bootstrap) {
+			return respondError(
+				c,
+				"PORTAL_NOT_FOUND",
+				"No portal is published at this address.",
+				404,
+			);
+		}
+		return respond(c, {
+			workspaceId: bootstrap.workspaceId,
+			portalSlug: bootstrap.portalSlug,
+			publishableKey: bootstrap.publishableKey,
+			brand: {
+				name: bootstrap.name,
+				supportEmail: bootstrap.supportEmail,
+				logoUrl: bootstrap.logoUrl ?? null,
+				faviconUrl: bootstrap.faviconUrl ?? null,
+				tagline: bootstrap.tagline ?? null,
+				accentColor: bootstrap.accentColor ?? null,
+				websiteUrl: bootstrap.websiteUrl ?? null,
+			},
+		});
+	});
+
 	app.get("/v1/customer/bootstrap/:slug", readLimit, async (c) => {
 		const bootstrap = await portalBootstrap(c.req.param("slug"));
 		if (!bootstrap) {

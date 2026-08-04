@@ -85,6 +85,7 @@ import {
 	renameWorkspaceSchema,
 	workspaceModuleSchema,
 } from "./account-workspace-routes";
+import { portalDomainInputSchema } from "./portal-domain-routes";
 import { roleInputSchema, rolePatchSchema } from "./roles-routes";
 
 /**
@@ -231,6 +232,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	previewDiscount: discountPreviewInputSchema,
 	upsertContentEntry: contentEntryInputSchema,
 	createCategory: categoryInputSchema,
+	setPortalDomain: portalDomainInputSchema,
 	createReview: reviewInputSchema,
 	moderateReview: reviewModerationSchema,
 	reviewSummary: reviewSummaryInputSchema,

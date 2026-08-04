@@ -328,6 +328,7 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	reviewSummary: {
 		catalogItemIds: ["3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90"],
 	},
+	setPortalDomain: { domain: "account.gemsutopia.ca" },
 	createCategory: {
 		kind: "category",
 		name: "Rings",

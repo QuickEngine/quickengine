@@ -18,6 +18,7 @@ export * from "./organization-revenue";
 export * from "./orgs";
 export * from "./orientation-state";
 export * from "./orientation-state-policy";
+export * from "./portal-host";
 export * from "./rbac";
 export * from "./request-lookup";
 export * from "./saved-views";

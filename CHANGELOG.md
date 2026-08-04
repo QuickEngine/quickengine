@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Prove a connected storefront with realistic navigation and copy.** The guarded Gemsutopia
+  fixture now includes categories, item memberships and published content alongside its catalog
+  and inventory, so a custom frontend can exercise complete browsing behavior against Docker
+  without touching a live workspace.
+
 - **Show real stock on any connected website.** QuickConnect can now read authoritative
   availability for catalog items and variants, including reservations, untracked products and
   businesses that deliberately allow backorders. Browser storefront keys are also forced to see

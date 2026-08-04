@@ -14,7 +14,10 @@ import {
 	STOREFRONT_CAPABILITIES,
 } from "@quickengine/auth/api-keys";
 import {
+	catalogCategories,
+	catalogItemCategories,
 	catalogItems,
+	contentEntries,
 	db,
 	eq,
 	inventoryItems,
@@ -39,6 +42,10 @@ const INVENTORY_IDS = {
 	amethyst: "00000000-0000-4000-8000-00000000a301",
 	labradorite: "00000000-0000-4000-8000-00000000a302",
 	quartz: "00000000-0000-4000-8000-00000000a303",
+} as const;
+const CATEGORY_IDS = {
+	crystals: "00000000-0000-4000-8000-00000000a401",
+	collector: "00000000-0000-4000-8000-00000000a402",
 } as const;
 const MARKER =
 	"# QuickConnect synthetic proof. Safe to replace by rerunning the seed.\n";
@@ -193,6 +200,77 @@ for (const product of products) {
 		});
 }
 
+const categories = [
+	{
+		id: CATEGORY_IDS.crystals,
+		name: "Crystals and Minerals",
+		slug: "crystals-minerals",
+		description: "Natural crystals, mineral specimens and polished stones.",
+		sortOrder: 0,
+	},
+	{
+		id: CATEGORY_IDS.collector,
+		name: "Collector Pieces",
+		slug: "collector-pieces",
+		description: "Distinctive specimens selected for collectors.",
+		sortOrder: 1,
+	},
+] as const;
+for (const category of categories) {
+	await db
+		.insert(catalogCategories)
+		.values({
+			...category,
+			workspaceId: WORKSPACE_ID,
+			kind: "category",
+			visible: true,
+		})
+		.onConflictDoUpdate({
+			target: catalogCategories.id,
+			set: {
+				name: category.name,
+				description: category.description,
+				visible: true,
+				sortOrder: category.sortOrder,
+				updatedAt: new Date(),
+			},
+		});
+}
+await db
+	.insert(catalogItemCategories)
+	.values([
+		{ catalogItemId: ITEM_IDS.amethyst, categoryId: CATEGORY_IDS.collector },
+		{ catalogItemId: ITEM_IDS.labradorite, categoryId: CATEGORY_IDS.crystals },
+		{ catalogItemId: ITEM_IDS.quartz, categoryId: CATEGORY_IDS.crystals },
+	])
+	.onConflictDoNothing();
+
+const publishedContent = {
+	"site.name": "Gemsutopia",
+	"site.tagline": "Natural gems and minerals for curious collectors",
+	"site.description": "A synthetic QuickConnect storefront proof.",
+	"commerce.currency": "CAD",
+	"commerce.currency_symbol": "$",
+} as const;
+for (const [contentKey, value] of Object.entries(publishedContent)) {
+	await db
+		.insert(contentEntries)
+		.values({
+			workspaceId: WORKSPACE_ID,
+			key: contentKey,
+			type: "text",
+			kind: "single",
+			value,
+			published: true,
+			label: contentKey,
+			group: "Synthetic proof",
+		})
+		.onConflictDoUpdate({
+			target: [contentEntries.workspaceId, contentEntries.key],
+			set: { value, published: true, updatedAt: new Date() },
+		});
+}
+
 const stock = [
 	{ id: INVENTORY_IDS.amethyst, catalogItemId: ITEM_IDS.amethyst, onHand: 8 },
 	{
@@ -240,6 +318,19 @@ const [verification] = await db
 			eq(catalogItems.status, "active"),
 		),
 	);
+const [categoryVerification] = await db
+	.select({ categories: count() })
+	.from(catalogCategories)
+	.where(eq(catalogCategories.workspaceId, WORKSPACE_ID));
+const [contentVerification] = await db
+	.select({ content: count() })
+	.from(contentEntries)
+	.where(
+		and(
+			eq(contentEntries.workspaceId, WORKSPACE_ID),
+			eq(contentEntries.published, true),
+		),
+	);
 const [verifiedKey] = await db
 	.select({ allowedOrigins: quickengineApiKeys.allowedOrigins })
 	.from(quickengineApiKeys)
@@ -247,6 +338,8 @@ const [verifiedKey] = await db
 	.limit(1);
 if (
 	verification?.products !== products.length ||
+	categoryVerification?.categories !== categories.length ||
+	contentVerification?.content !== Object.keys(publishedContent).length ||
 	!verifiedKey?.allowedOrigins.includes("http://localhost:3000")
 ) {
 	throw new Error("Synthetic QuickConnect fixture verification failed.");
@@ -255,6 +348,9 @@ if (
 console.log(`Seeded Gemsutopia synthetic workspace ${WORKSPACE_ID}.`);
 console.log(
 	`Verified ${verification.products} active synthetic catalog items.`,
+);
+console.log(
+	`Verified ${categoryVerification.categories} categories and ${contentVerification.content} published content slots.`,
 );
 console.log(`Wrote the browser-safe QuickConnect contract to ${envFile}.`);
 console.log(`Issued key prefix ${key.prefix}; the full value was not printed.`);

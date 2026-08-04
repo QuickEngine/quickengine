@@ -470,6 +470,13 @@
 			"when": 1785817487986,
 			"tag": "0066_handy_felicia_hardy",
 			"breakpoints": true
+		},
+		{
+			"idx": 67,
+			"version": "7",
+			"when": 1785830943972,
+			"tag": "0067_milky_enchantress",
+			"breakpoints": true
 		}
 	]
 }

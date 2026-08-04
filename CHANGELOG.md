@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Keep Stripe and PayPal connected at the same time.** A workspace can now retain one
+  merchant account per payment provider, choose which one new checkouts use by default, and
+  still send settlement and refunds through the provider that handled the original payment.
+  Existing Stripe connections remain the default during the migration.
+
 - **Connect PayPal and complete a sale through the same checkout as Stripe.** A business can
   select PayPal during payment onboarding, send its seller through PayPal's hosted approval,
   return an approved order for server-side capture, receive verified settlement webhooks, and

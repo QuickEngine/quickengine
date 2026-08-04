@@ -414,6 +414,7 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		refreshUrl: "https://account.quickdash.xyz/payments",
 		country: "CA",
 	},
+	setDefaultPaymentProvider: { provider: "paypal" },
 	createRole: {
 		name: "Bookkeeper",
 		description: "Keeps the books, cannot change the team",

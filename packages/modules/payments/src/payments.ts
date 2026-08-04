@@ -67,18 +67,31 @@ export type RefundPaymentInput = z.input<typeof refundPaymentInputSchema>;
 type PaymentTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** The workspace's connected payment account (or undefined). */
-export async function getPaymentAccount(workspaceId: string) {
+export async function getPaymentAccount(
+	workspaceId: string,
+	provider?: string,
+) {
 	const [account] = await db
 		.select()
 		.from(paymentAccounts)
-		.where(eq(paymentAccounts.workspaceId, workspaceId))
+		.where(
+			provider
+				? and(
+						eq(paymentAccounts.workspaceId, workspaceId),
+						eq(paymentAccounts.provider, provider),
+					)
+				: and(
+						eq(paymentAccounts.workspaceId, workspaceId),
+						eq(paymentAccounts.isDefault, true),
+					),
+		)
 		.limit(1);
 	return account;
 }
 
 export type PaymentAccountPatch = {
-	provider?: string;
-	stripeAccountId?: string | null;
+	externalAccountId?: string | null;
+	isDefault?: boolean;
 	status?: "pending" | "active" | "restricted" | "disabled";
 	chargesEnabled?: boolean;
 	payoutsEnabled?: boolean;
@@ -86,22 +99,52 @@ export type PaymentAccountPatch = {
 
 export async function upsertPaymentAccount(
 	workspaceId: string,
+	provider: string,
 	patch: PaymentAccountPatch,
 ) {
-	const existing = await getPaymentAccount(workspaceId);
+	const existing = await getPaymentAccount(workspaceId, provider);
 	if (existing) {
 		const [updated] = await db
 			.update(paymentAccounts)
 			.set({ ...patch, updatedAt: new Date() })
-			.where(eq(paymentAccounts.workspaceId, workspaceId))
+			.where(
+				and(
+					eq(paymentAccounts.workspaceId, workspaceId),
+					eq(paymentAccounts.provider, provider),
+				),
+			)
 			.returning();
 		return updated;
 	}
 	const [created] = await db
 		.insert(paymentAccounts)
-		.values({ workspaceId, ...patch })
+		.values({ workspaceId, provider, ...patch })
 		.returning();
 	return created;
+}
+
+export async function setDefaultPaymentProvider(
+	workspaceId: string,
+	provider: string,
+) {
+	return db.transaction(async (tx) => {
+		await tx
+			.update(paymentAccounts)
+			.set({ isDefault: false, updatedAt: new Date() })
+			.where(eq(paymentAccounts.workspaceId, workspaceId));
+		const [selected] = await tx
+			.update(paymentAccounts)
+			.set({ isDefault: true, updatedAt: new Date() })
+			.where(
+				and(
+					eq(paymentAccounts.workspaceId, workspaceId),
+					eq(paymentAccounts.provider, provider),
+				),
+			)
+			.returning();
+		if (!selected) throw new Error("PAYMENT_ACCOUNT_NOT_FOUND");
+		return selected;
+	});
 }
 
 /**

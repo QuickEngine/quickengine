@@ -6,13 +6,14 @@ import {
 	getPaymentDto,
 	listPaymentsPage,
 	PAYMENT_STATUSES,
-	PaymentProviderConflictError,
 	paymentOnboardingInputSchema,
+	paymentProviderInputSchema,
 	readPaymentAccount,
 	recordPaymentCommand,
 	refreshPaymentAccount,
 	refundAtProvider,
 	refundPaymentCommand,
+	setDefaultPaymentProvider,
 	setPaymentStatusCommand,
 	startPaymentOnboarding,
 	UnsupportedPaymentProviderError,
@@ -161,7 +162,13 @@ export function registerPaymentsRoutes(
 
 	/** Our stored view of the account. No network call, safe to poll. */
 	app.get("/v1/payments/connect", readAccess, readLimit, async (c) =>
-		respond(c, await readPaymentAccount(c.get("authorized").workspaceId)),
+		respond(
+			c,
+			await readPaymentAccount(
+				c.get("authorized").workspaceId,
+				c.req.query("provider"),
+			),
+		),
 	);
 
 	/**
@@ -173,15 +180,58 @@ export function registerPaymentsRoutes(
 	 * despite being a refresh, because it makes an outbound API call per hit.
 	 */
 	app.post("/v1/payments/connect/refresh", writeAccess, writeLimit, async (c) =>
-		respond(c, await refreshPaymentAccount(c.get("authorized").workspaceId)),
+		respond(
+			c,
+			await refreshPaymentAccount(
+				c.get("authorized").workspaceId,
+				c.req.query("provider"),
+			),
+		),
+	);
+
+	app.put(
+		"/v1/payments/connect/default",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			const parsed = paymentProviderInputSchema.safeParse(await c.req.json());
+			if (!parsed.success) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"Choose a supported payment provider.",
+					400,
+					parsed.error.issues,
+				);
+			}
+			try {
+				return respond(
+					c,
+					await setDefaultPaymentProvider(
+						c.get("authorized").workspaceId,
+						parsed.data.provider,
+					),
+				);
+			} catch (error) {
+				if (/PAYMENT_ACCOUNT_NOT_FOUND/.test(String(error))) {
+					return respondError(
+						c,
+						"NOT_FOUND",
+						"That payment provider is not connected.",
+						404,
+					);
+				}
+				throw error;
+			}
+		},
 	);
 
 	/**
-	 * Start (or resume) connecting an account.
+	 * Start connecting an account.
 	 *
-	 * Answers with a URL to send the operator to. Resumable by design: coming
-	 * back after abandoning onboarding re-issues a link for the SAME account,
-	 * because provider account links are single-use and short-lived.
+	 * Answers with a URL to send the operator to. A provider that is already
+	 * active cannot be connected again; pending provider onboarding may be
+	 * restarted when its hosted link expires.
 	 */
 	app.post(
 		"/v1/payments/connect/onboard",
@@ -223,8 +273,13 @@ export function registerPaymentsRoutes(
 					}),
 				);
 			} catch (error) {
-				if (error instanceof PaymentProviderConflictError) {
-					return respondError(c, "CONFLICT", error.message, 409);
+				if (/PAYMENT_ACCOUNT_ALREADY_CONNECTED/.test(String(error))) {
+					return respondError(
+						c,
+						"CONFLICT",
+						"That payment provider is already connected.",
+						409,
+					);
 				}
 				// A provider we have no integration for is the caller's mistake, not a
 				// server fault — answering 500 would send them to look at our logs.

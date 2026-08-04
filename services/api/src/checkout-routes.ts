@@ -446,7 +446,7 @@ export function registerCheckoutRoutes(
 		}
 
 		const stored = await getPaymentAccount(workspaceId);
-		const externalAccountId = stored?.stripeAccountId ?? null;
+		const externalAccountId = stored?.externalAccountId ?? null;
 		if (!externalAccountId) {
 			return respond(
 				c,

@@ -44,7 +44,7 @@ export async function refundAtProvider(input: {
 	const [payment] = await db
 		.select({
 			provider: payments.provider,
-			externalPaymentId: payments.stripePaymentIntentId,
+			externalPaymentId: payments.externalPaymentId,
 			status: payments.status,
 		})
 		.from(payments)
@@ -77,8 +77,8 @@ export async function refundAtProvider(input: {
 	// 🔴 Direct charges live on the MERCHANT's account, so the refund must be
 	// issued there. Without the account id the provider reports "no such payment"
 	// — and the tempting fix, recording it anyway, is the bug this replaced.
-	const account = await getPaymentAccount(input.workspaceId);
-	if (!account?.stripeAccountId) {
+	const account = await getPaymentAccount(input.workspaceId, payment.provider);
+	if (!account?.externalAccountId) {
 		return {
 			refunded: false,
 			reason: "The workspace has no connected payment account.",
@@ -87,7 +87,7 @@ export async function refundAtProvider(input: {
 
 	const result = await getPaymentProvider(payment.provider).refund({
 		externalPaymentId: payment.externalPaymentId,
-		connectedAccountId: account.stripeAccountId,
+		connectedAccountId: account.externalAccountId,
 		amountCents: input.amountCents,
 		reason: input.reason,
 	});

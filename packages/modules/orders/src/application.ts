@@ -70,6 +70,8 @@ export const orderListQuerySchema = z.object({
 const FRIENDLY: Record<string, string> = {
 	WORKSPACE_NOT_FOUND: "The workspace was not found.",
 	DISCOUNT_WINDOW_INVALID: "That discount ends before it starts.",
+	REFERRAL_CODE_GENERATION_FAILED:
+		"We couldn't create a referral code just now. Try again.",
 	CLIENT_NOT_FOUND: "The client on this order was not found.",
 	CLIENT_WORKSPACE_MISMATCH: "That client belongs to another workspace.",
 	CATALOG_ITEM_NOT_FOUND: "A catalog item on this order was not found.",
@@ -109,7 +111,7 @@ function mapOrderError(error: unknown): never {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (
-			/(NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|CONCURRENT_UPDATE|NOT_READY_FOR_FULFILLMENT|FULFILLMENT_NOT_COMPLETE|FULFILLMENT_ALREADY_COMPLETE|FULFILLMENT_LINK_FAILED)/.test(
+			/(NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|CONCURRENT_UPDATE|NOT_READY_FOR_FULFILLMENT|FULFILLMENT_NOT_COMPLETE|FULFILLMENT_ALREADY_COMPLETE|FULFILLMENT_LINK_FAILED|REFERRAL_CODE_GENERATION_FAILED)/.test(
 				error.message,
 			)
 		) {

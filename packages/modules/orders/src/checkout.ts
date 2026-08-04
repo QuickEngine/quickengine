@@ -54,6 +54,14 @@ export const checkoutInputSchema = z.object({
 	 * the subtotal it priced itself.
 	 */
 	discountCode: z.string().trim().min(3).max(40).optional(),
+	/**
+	 * A referral code the shopper was given by an existing customer.
+	 *
+	 * ⚠️ Does NOT change what this order costs. It records who brought this
+	 * customer and what the referrer earns — a separate concern from a discount,
+	 * which is why they are two fields rather than one "code".
+	 */
+	referralCode: z.string().trim().min(4).max(40).optional(),
 	// ⚠️ NOT accepted, deliberately, and each one is a way to steal:
 	// · any price, subtotal, total, tax or discount field
 	// · clientId — a caller naming somebody else's client record attaches a
@@ -298,9 +306,14 @@ export async function resolveCheckoutClient(input: {
  * Returns defaults for a workspace that has never configured the module, so a
  * checkout never fails for want of a settings row.
  */
-export async function readOrdersSettings(
-	workspaceId: string,
-): Promise<{ taxRateBasisPoints: number }> {
+export async function readOrdersSettings(workspaceId: string): Promise<{
+	taxRateBasisPoints: number;
+	referrals: {
+		enabled: boolean;
+		rewardType: "fixed" | "percentage";
+		rewardValue: number;
+	};
+}> {
 	const [row] = await db
 		.select({ settings: workspaceModules.settings })
 		.from(workspaceModules)
@@ -312,13 +325,30 @@ export async function readOrdersSettings(
 		)
 		.limit(1);
 
-	const settings = (row?.settings ?? {}) as { taxRateBasisPoints?: unknown };
+	const settings = (row?.settings ?? {}) as {
+		taxRateBasisPoints?: unknown;
+		referrals?: unknown;
+	};
 	const rate = Number(settings.taxRateBasisPoints ?? 0);
+	// Same defensive parse as the tax rate: a corrupt settings blob falls back to
+	// "off" rather than paying out an arbitrary reward.
+	const ref = (settings.referrals ?? {}) as Record<string, unknown>;
+	const rewardValue = Number(ref.rewardValue ?? 0);
 	// A corrupt or out-of-range value falls back to no tax rather than charging
 	// something arbitrary. Wrong-but-zero is recoverable; wrong-but-large is a
 	// customer dispute.
 	return {
 		taxRateBasisPoints:
 			Number.isInteger(rate) && rate >= 0 && rate <= 10_000 ? rate : 0,
+		referrals: {
+			enabled: ref.enabled === true,
+			rewardType: ref.rewardType === "percentage" ? "percentage" : "fixed",
+			rewardValue:
+				Number.isInteger(rewardValue) &&
+				rewardValue >= 0 &&
+				rewardValue <= 1_000_000
+					? rewardValue
+					: 0,
+		},
 	};
 }

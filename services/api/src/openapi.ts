@@ -2957,6 +2957,30 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/customer/referral-code": {
+				get: {
+					operationId: "getReferralCode",
+					summary: "This shopper's referral code and what it has earned",
+					description:
+						"Null until they have one. Totals move only when a referred order is PAID, not when it is placed.",
+					responses: {
+						"200": { description: "The code with its totals, or null." },
+						"401": { description: "Sign in first." },
+					},
+				},
+				post: {
+					operationId: "issueReferralCode",
+					summary: "Create this shopper's referral code",
+					description:
+						"Idempotent — asking twice returns the same code, because a second one would break every link already shared. Random rather than derived from a name: a predictable code lets anyone attribute referrals to a stranger, and a name-based one leaks who the customer is to whoever receives the link. Requires a client record, so a customer who has never ordered gets a 404 explaining why.",
+					responses: {
+						"200": { description: "The code and its totals." },
+						"404": {
+							description: "No client record yet — place an order first.",
+						},
+					},
+				},
+			},
 			"/v1/customer/wishlist": {
 				get: {
 					operationId: "listWishlist",

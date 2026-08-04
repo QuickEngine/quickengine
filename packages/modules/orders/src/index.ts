@@ -5,6 +5,7 @@ export * from "./inventory-bridge";
 export * from "./module";
 export * from "./order";
 export * from "./orders";
+export * from "./referrals";
 export * from "./status";
 export * from "./tax";
 export * from "./totals";

@@ -3,6 +3,11 @@ import type { MutationUnitOfWork } from "@quickengine/api-contracts/mutations";
 import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
 import {
+	catalogAvailabilityInputSchema,
+	inventorySettingsSchema,
+	listCatalogAvailability,
+} from "@quickengine/mod-inventory";
+import {
 	CATALOG_ITEM_STATUSES,
 	createCatalogItemCommand,
 	createProductVariantCommand,
@@ -18,6 +23,7 @@ import {
 	updateProductVariantCommand,
 	VARIANT_STATUSES,
 } from "@quickengine/mod-products-services";
+import { getWorkspaceModules } from "@quickengine/module-registry";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
@@ -35,10 +41,15 @@ const variantStatusSchema = z.object({ status: z.enum(VARIANT_STATUSES) });
 // Publishable keys ship in public storefronts (any framework, via connected sites), so their
 // catalog reads are clamped to active/published items and variants. Secret keys and sessions
 // are the admin surface and may read every status.
+export const browserCatalogStatus = (
+	type: "publishable" | "storefront" | "secret" | "scoped" | undefined,
+): "active" | undefined =>
+	type === "publishable" || type === "storefront" ? "active" : undefined;
+
 const activeOnlyFor = (c: Context<PlatformEnv>): "active" | undefined => {
 	const { principal } = c.get("authorized");
-	return principal.kind === "key" && principal.type === "publishable"
-		? "active"
+	return principal.kind === "key"
+		? browserCatalogStatus(principal.type)
 		: undefined;
 };
 
@@ -107,6 +118,34 @@ export function registerProductsServicesRoutes(
 		return respondMutation(
 			c,
 			await createCatalogItemCommand(context, body, options.uow),
+		);
+	});
+	app.post("/v1/catalog/availability", readAccess, readLimit, async (c) => {
+		const parsed = catalogAvailabilityInputSchema.safeParse(
+			await c.req.json().catch(() => ({})),
+		);
+		if (!parsed.success) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"Send between one and 100 catalog item IDs.",
+				400,
+				parsed.error.issues,
+			);
+		}
+		const workspaceId = c.get("authorized").workspaceId;
+		const inventoryModule = (await getWorkspaceModules(workspaceId)).find(
+			(module) => module.id === "inventory" && module.enabled,
+		);
+		const inventorySettings = inventorySettingsSchema.parse(
+			inventoryModule?.settings ?? {},
+		);
+		return respond(
+			c,
+			await listCatalogAvailability(workspaceId, parsed.data.catalogItemIds, {
+				allowNegativeStock:
+					Boolean(inventoryModule) && inventorySettings.allowNegativeStock,
+			}),
 		);
 	});
 	app.get("/v1/catalog/:id", readAccess, readLimit, async (c) => {

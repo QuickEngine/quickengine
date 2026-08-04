@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Show real stock on any connected website.** QuickConnect can now read authoritative
+  availability for catalog items and variants, including reservations, untracked products and
+  businesses that deliberately allow backorders. Browser storefront keys are also forced to see
+  active products only, so a draft or archived listing cannot leak onto a public site.
+
 - **Connect any custom website or app to QuickDash.** QuickConnect provides one browser-safe,
   framework-independent client for catalog browsing, discounts, delivery quotes, checkout,
   customer sign-in, orders, shipment tracking, wishlists, reviews, referrals and private

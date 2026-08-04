@@ -169,6 +169,18 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/catalog/availability": {
+				post: {
+					operationId: "getCatalogAvailability",
+					summary: "Get browser-safe stock availability",
+					description:
+						"Returns authoritative available quantities for up to 100 catalog items. Untracked items remain purchasable; tracked archived or exhausted items do not, unless the workspace explicitly allows backorders.",
+					responses: {
+						"200": { description: "Availability by item and variant." },
+						"400": { description: "Invalid catalog item IDs." },
+					},
+				},
+			},
 			"/v1/catalog/{id}": {
 				parameters: [
 					{

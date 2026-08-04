@@ -3,6 +3,9 @@ import {
 	clientRecords,
 	db,
 	eq,
+	invoiceLineItems,
+	invoices,
+	orderLineItems,
 	orders,
 	payments,
 	resolveBrand,
@@ -18,6 +21,7 @@ import {
 import type { EmailBrand, RenderedEmail } from "@quickengine/email/templates";
 import {
 	bookingConfirmationEmail,
+	invoiceSentEmail,
 	orderConfirmationEmail,
 	paymentReceiptEmail,
 	shippingNoticeEmail,
@@ -67,6 +71,11 @@ const NOTIFIED_EVENTS = new Set([
 	"payment.recorded",
 	"shipment.created",
 	"booking.created",
+	// 🔴 Not `invoice.created`. An invoice is drafted, edited and often corrected
+	// before anybody means a customer to see it — mailing on creation sends
+	// somebody a bill the business had not finished writing. SENDING is the
+	// deliberate act, and it arrives as a status change.
+	"invoice.status-changed",
 ]);
 
 /**
@@ -132,10 +141,18 @@ async function buildNotification(
 					brand,
 					orderNumber: order.number,
 					customerName: order.clientName || undefined,
-					// ⚠️ Line items are a separate table and are not loaded here yet, so
-					// the mail shows totals only. Correct, but thin — worth filling in
-					// before anyone sells with it.
-					lines: [],
+					// Loaded in `position` order, which is the order the customer built
+					// the basket in. Sorting by name or price would rearrange somebody's
+					// own order in front of them for no reason.
+					lines: await db
+						.select({
+							name: orderLineItems.name,
+							quantity: orderLineItems.quantity,
+							unitAmount: orderLineItems.unitPriceCents,
+						})
+						.from(orderLineItems)
+						.where(eq(orderLineItems.orderId, order.id))
+						.orderBy(orderLineItems.position),
 					subtotal: order.subtotalCents ?? 0,
 					total: order.totalCents ?? 0,
 					currency: order.currency ?? "CAD",
@@ -195,6 +212,48 @@ async function buildNotification(
 					carrier: shipment.carrier ?? undefined,
 					trackingNumber: shipment.trackingNumber ?? undefined,
 					trackingUrl: shipment.trackingUrl ?? undefined,
+				}),
+			};
+		}
+
+		case "invoice.status-changed": {
+			// Only the draft → sent transition. Every other status change on this
+			// event — paid, void — is either the business's own bookkeeping or
+			// already covered by the payment receipt.
+			const status = (event.payload as { status?: string } | null)?.status;
+			if (status !== "sent") return null;
+
+			const [invoice] = await db
+				.select()
+				.from(invoices)
+				.where(eq(invoices.id, event.aggregateId))
+				.limit(1);
+			if (!invoice) return null;
+			const to = await recipientFor(invoice.clientEmail, invoice.clientId);
+			if (!to) return null;
+
+			const lines = await db
+				.select({
+					name: invoiceLineItems.description,
+					quantity: invoiceLineItems.quantity,
+					unitAmount: invoiceLineItems.unitPriceCents,
+				})
+				.from(invoiceLineItems)
+				.where(eq(invoiceLineItems.invoiceId, invoice.id))
+				.orderBy(invoiceLineItems.position);
+
+			return {
+				to,
+				email: invoiceSentEmail({
+					brand,
+					invoiceNumber: invoice.number,
+					customerName: invoice.clientName || undefined,
+					lines,
+					subtotal: invoice.subtotalCents ?? 0,
+					tax: invoice.taxCents ?? 0,
+					total: invoice.totalCents ?? 0,
+					currency: invoice.currency ?? "CAD",
+					dueDate: invoice.dueAt,
 				}),
 			};
 		}

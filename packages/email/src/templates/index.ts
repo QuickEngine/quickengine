@@ -248,3 +248,74 @@ export function paymentReceiptEmail(input: {
 		text: `Payment received\n\nReference ${input.reference}\n${formatMoney(input.amount, input.currency)} on ${formatDate(input.paidAt)}${input.viewUrl ? `\n\n${input.viewUrl}` : ""}`,
 	};
 }
+
+/**
+ * Sent when an invoice moves from draft to SENT.
+ *
+ * 🔴 Deliberately not sent on `invoice.created`. An invoice is drafted, edited,
+ * and often corrected before anybody means a customer to see it — emailing on
+ * creation would send someone a bill their business had not finished writing.
+ * Sending is a separate, deliberate act, and this is the mail for it.
+ */
+export function invoiceSentEmail(input: {
+	brand: EmailBrand;
+	invoiceNumber: string;
+	customerName?: string;
+	lines: readonly OrderLine[];
+	subtotal: number;
+	tax?: number;
+	total: number;
+	currency: string;
+	dueDate?: Date | string | null;
+	payUrl?: string;
+}): RenderedEmail {
+	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const lines = input.lines.map((line) => ({
+		label: `${line.name} × ${line.quantity}`,
+		value: formatMoney(line.unitAmount * line.quantity, input.currency),
+	}));
+
+	const body = [
+		heading(`Invoice ${input.invoiceNumber}`),
+		paragraph(
+			input.customerName
+				? `Hi ${escapeHtml(input.customerName)}, here is your invoice from ${escapeHtml(input.brand.name)}.`
+				: `Here is your invoice from ${escapeHtml(input.brand.name)}.`,
+		),
+		detailRows([
+			...lines,
+			{ label: "Subtotal", value: formatMoney(input.subtotal, input.currency) },
+			// Omitted when zero. A "$0.00 tax" row on an invoice that never had tax
+			// reads as a mistake rather than as information.
+			...(input.tax
+				? [{ label: "Tax", value: formatMoney(input.tax, input.currency) }]
+				: []),
+			{
+				label: "Amount due",
+				value: formatMoney(input.total, input.currency),
+				strong: true,
+			},
+			...(input.dueDate
+				? [{ label: "Due", value: formatDate(input.dueDate) }]
+				: []),
+		]),
+		input.payUrl ? button("Pay this invoice", input.payUrl, accent) : "",
+	].join("\n");
+
+	return {
+		subject: `Invoice ${input.invoiceNumber} from ${input.brand.name}`,
+		html: renderEmail({
+			brand: input.brand,
+			preheader: `${formatMoney(input.total, input.currency)} due${input.dueDate ? ` by ${formatDate(input.dueDate)}` : ""}.`,
+			body,
+		}),
+		text: `Invoice ${input.invoiceNumber} from ${input.brand.name}\n\n${input.lines
+			.map(
+				(line) =>
+					`${line.name} x${line.quantity}  ${formatMoney(line.unitAmount * line.quantity, input.currency)}`,
+			)
+			.join("\n")}\n\nAmount due: ${formatMoney(input.total, input.currency)}${
+			input.dueDate ? `\nDue: ${formatDate(input.dueDate)}` : ""
+		}${input.payUrl ? `\n\nPay: ${input.payUrl}` : ""}`,
+	};
+}

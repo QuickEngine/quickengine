@@ -10,9 +10,13 @@ import {
 } from "@quickengine/mod-orders";
 import {
 	addToWishlist,
+	createReview,
+	listOwnReviews,
 	listWishlist,
 	mergeWishlist,
+	ReviewError,
 	removeFromWishlist,
+	reviewInputSchema,
 	WishlistError,
 	wishlistItemInputSchema,
 	wishlistMergeInputSchema,
@@ -589,6 +593,87 @@ export function registerCustomerRoutes(
 							totalEarnedCents: summary.totalEarnedCents,
 						}
 					: null,
+			});
+		},
+	);
+	// ── Reviews — written by a customer, published by the operator ───────────
+
+	/**
+	 * Leave a review.
+	 *
+	 * 🔴 Always created `pending`. There is no path here that publishes, which is
+	 * the whole point of the moderation queue.
+	 */
+	app.post(
+		"/v1/customer/reviews",
+		writeLimit,
+		authorizeCustomer(dependencies, {
+			requireSession: true,
+			module: "products-services",
+		}),
+		async (c) => {
+			const parsed = reviewInputSchema.safeParse(
+				await c.req.json().catch(() => ({})),
+			);
+			if (!parsed.success) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"A review needs an item and a rating from 1 to 5.",
+					400,
+					parsed.error.issues,
+				);
+			}
+			const { workspaceId, clientRecordId } = customerScope(c);
+			if (!clientRecordId) {
+				return respondError(
+					c,
+					"NOT_FOUND",
+					"You can review something once you've ordered from this business.",
+					404,
+				);
+			}
+			try {
+				const created = await createReview({
+					workspaceId,
+					clientRecordId,
+					review: parsed.data,
+				});
+				// 201 with the status, so a storefront can say "thanks, it's awaiting
+				// approval" rather than implying it is already live.
+				return respond(c, created, 201);
+			} catch (error) {
+				if (error instanceof ReviewError) {
+					return respondError(
+						c,
+						error.code === "ALREADY_REVIEWED" ? "CONFLICT" : "NOT_FOUND",
+						error.message,
+						error.code === "ALREADY_REVIEWED" ? 409 : 404,
+					);
+				}
+				throw error;
+			}
+		},
+	);
+
+	/**
+	 * This customer's own reviews, including ones still awaiting a decision.
+	 *
+	 * ⚠️ Shows `status`. Somebody who left a review and cannot find it deserves
+	 * to know it is pending rather than assuming it was thrown away.
+	 */
+	app.get(
+		"/v1/customer/reviews",
+		readLimit,
+		authorizeCustomer(dependencies, {
+			requireSession: true,
+			module: "products-services",
+		}),
+		async (c) => {
+			const { workspaceId, clientRecordId } = customerScope(c);
+			if (!clientRecordId) return respond(c, { items: [] });
+			return respond(c, {
+				items: await listOwnReviews(workspaceId, clientRecordId),
 			});
 		},
 	);

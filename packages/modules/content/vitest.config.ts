@@ -1,7 +1,7 @@
 import { resolveTestDatabaseUrl } from "@quickengine/db/testing";
 import { defineConfig } from "vitest/config";
 
-process.env.TEST_DB_NAME = "quickengine_test_payments";
+process.env.TEST_DB_NAME = "quickengine_test_content";
 const testDatabaseUrl = resolveTestDatabaseUrl();
 process.env.NODE_ENV = "test";
 process.env.DATABASE_URL = testDatabaseUrl;
@@ -30,7 +30,7 @@ export default defineConfig({
 		setupFiles: ["./test/setup.ts"],
 		include: ["src/**/*.test.ts", "test/**/*.test.ts"],
 		env: {
-			TEST_DB_NAME: "quickengine_test_payments",
+			TEST_DB_NAME: "quickengine_test_content",
 			NODE_ENV: "test",
 			DATABASE_URL: testDatabaseUrl,
 			BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,

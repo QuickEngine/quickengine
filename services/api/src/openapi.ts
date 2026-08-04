@@ -780,6 +780,90 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			// ── Reviews and the moderation queue ─────────────────────────────────
+			// Nothing a customer writes is public until an operator publishes it.
+			"/v1/catalog/{id}/reviews": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "listPublishedReviews",
+					summary: "Published reviews for a product",
+					description:
+						"Readable with a storefront credential. Pending and rejected reviews are excluded in SQL rather than filtered after — a moderation queue that leaks its contents is not a queue. Reviewers are credited as a first name and last initial, because a review page showing a full email publishes a customer's address to the internet.",
+					responses: {
+						"200": { description: "Published reviews, newest first." },
+					},
+				},
+			},
+			"/v1/reviews/summary": {
+				post: {
+					operationId: "reviewSummary",
+					summary: "Rating averages for a set of products",
+					description:
+						"Batched, because a shop page showing 24 products would otherwise make 24 requests from a browser to render 24 star ratings. Averages PUBLISHED reviews only.",
+					responses: {
+						"200": { description: "Average and count per catalog item." },
+						"400": { description: "Send the catalog item ids." },
+					},
+				},
+			},
+			"/v1/reviews/moderation": {
+				get: {
+					operationId: "listReviewsForModeration",
+					summary: "The moderation queue",
+					description:
+						"Operator only, and the only place an unpublished review is visible. Oldest first: a queue worked newest-first leaves the oldest complaint sitting longest.",
+					responses: { "200": { description: "Reviews awaiting a decision." } },
+				},
+			},
+			"/v1/reviews/{id}/moderate": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				post: {
+					operationId: "moderateReview",
+					summary: "Publish or reject a review",
+					description:
+						"Records who decided and when. A shop curating its own reviews should leave a trail — for its own disputes as much as anyone else's. The rejection note is internal and never shown to the customer.",
+					responses: {
+						"200": { description: "The new status." },
+						"404": { description: "No such review." },
+					},
+				},
+			},
+			"/v1/customer/reviews": {
+				get: {
+					operationId: "listOwnReviews",
+					summary: "This customer's own reviews, including pending ones",
+					description:
+						"Shows status, so somebody who cannot find their review knows it is awaiting approval rather than assuming it was thrown away.",
+					responses: { "200": { description: "Their reviews." } },
+				},
+				post: {
+					operationId: "createReview",
+					summary: "Leave a review",
+					description:
+						"Always created pending — there is no path that publishes on write. `verifiedPurchase` is derived from whether the customer has a non-cancelled order containing the item, and stored, so a later refund cannot silently strip a badge the review earned.",
+					responses: {
+						"201": { description: "The review, awaiting moderation." },
+						"404": {
+							description: "No client record, or the item is unavailable.",
+						},
+						"409": { description: "Already reviewed this item." },
+					},
+				},
+			},
 			// ── Discounts ────────────────────────────────────────────────────────
 			"/v1/discounts/preview": {
 				post: {

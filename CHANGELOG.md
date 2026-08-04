@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Reviews, and you decide which ones go live.** Customers can rate and review what they
+  bought. Nothing appears on your site until you approve it, and you can reject one with a
+  private note explaining why. Reviews from someone who actually ordered the item are marked as
+  verified. Reviewers are shown as a first name and last initial, never an email address.
+
 - **Referrals.** Your customers get a code to share, and earn a reward when someone new orders
   with it. Nobody can refer themselves, and a customer can only be referred once — the reward
   is for bringing someone, and someone is only brought once. Rewards are credited when the

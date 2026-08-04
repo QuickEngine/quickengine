@@ -36,6 +36,7 @@ import { registerQuotesRoutes } from "./quotes-routes";
 import { registerRealtimeRoutes } from "./realtime-routes";
 import { registerReportingRoutes } from "./reporting-routes";
 import { registerResendWebhookRoutes } from "./resend-webhook-routes";
+import { registerReviewRoutes } from "./review-routes";
 import { registerRolesRoutes } from "./roles-routes";
 import { registerSavedViewRoutes } from "./saved-view-routes";
 import { registerShippingRoutes } from "./shipping-routes";
@@ -81,6 +82,7 @@ export function registerAllRoutes(
 	registerReportingRoutes(app, dependencies);
 	registerWebhookRoutes(app, dependencies);
 	registerIntegrationHealthRoutes(app, dependencies);
+	registerReviewRoutes(app, dependencies);
 	registerSavedViewRoutes(app, dependencies);
 	registerProductEventRoutes(app, dependencies);
 	// The customer surface. Registered last among the /v1 families so its

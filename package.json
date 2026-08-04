@@ -37,7 +37,7 @@
 		"build": "turbo build",
 		"lint": "biome lint .",
 		"format": "biome format . --write",
-		"check": "biome check . && pnpm check:no-next && pnpm check:error-maps",
+		"check": "biome check . && pnpm check:no-next && pnpm check:error-maps && pnpm check:test-db-names",
 		"check:error-maps": "node .github/ci/check-error-maps.mjs",
 		"brand:sync": "node packages/ui/sync-brand.mjs && biome check --write packages/ui/src/components",
 		"typecheck": "turbo typecheck",
@@ -68,7 +68,8 @@
 		"portal:enable": "pnpm --filter @quickengine/api exec tsx scripts/enable-portal.mts",
 		"check:no-next": "node .github/ci/check-no-next.mjs",
 		"db:migration-parity": "pnpm --filter @quickengine/db db:migration-parity",
-		"db:tenant-recovery": "pnpm --filter @quickengine/db db:tenant-recovery"
+		"db:tenant-recovery": "pnpm --filter @quickengine/db db:tenant-recovery",
+		"check:test-db-names": "node .github/ci/check-test-db-names.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",

@@ -3,7 +3,11 @@ import type { CacheProvider } from "@quickengine/cache";
 import { portalBootstrap } from "@quickengine/db";
 import { listBookingsPage } from "@quickengine/mod-bookings";
 import { listInvoicesPage } from "@quickengine/mod-invoicing";
-import { listOrdersPage } from "@quickengine/mod-orders";
+import {
+	getReferralSummary,
+	issueReferralCode,
+	listOrdersPage,
+} from "@quickengine/mod-orders";
 import {
 	addToWishlist,
 	listWishlist,
@@ -530,6 +534,62 @@ export function registerCustomerRoutes(
 					items: parsed.data.items,
 				}),
 			);
+		},
+	);
+	// ── Referrals — a customer bringing another customer ─────────────────────
+
+	/**
+	 * This shopper's own referral code, created on first ask.
+	 *
+	 * ⚠️ Requires a session AND a client record. A customer who has signed in but
+	 * never ordered has no client record yet, and a referral code has to belong to
+	 * something an order can point at.
+	 */
+	app.post(
+		"/v1/customer/referral-code",
+		writeLimit,
+		authorizeCustomer(dependencies, {
+			requireSession: true,
+			module: "orders",
+		}),
+		async (c) => {
+			const { workspaceId, clientRecordId } = customerScope(c);
+			if (!clientRecordId) {
+				return respondError(
+					c,
+					"NOT_FOUND",
+					"You'll have a referral code once you've placed an order.",
+					404,
+				);
+			}
+			return respond(
+				c,
+				await issueReferralCode({ workspaceId, clientRecordId }),
+			);
+		},
+	);
+
+	/** What this shopper's code has earned. Null before they have one. */
+	app.get(
+		"/v1/customer/referral-code",
+		readLimit,
+		authorizeCustomer(dependencies, {
+			requireSession: true,
+			module: "orders",
+		}),
+		async (c) => {
+			const { workspaceId, clientRecordId } = customerScope(c);
+			if (!clientRecordId) return respond(c, { referral: null });
+			const summary = await getReferralSummary({ workspaceId, clientRecordId });
+			return respond(c, {
+				referral: summary
+					? {
+							code: summary.code,
+							totalReferrals: summary.totalReferrals,
+							totalEarnedCents: summary.totalEarnedCents,
+						}
+					: null,
+			});
 		},
 	);
 }

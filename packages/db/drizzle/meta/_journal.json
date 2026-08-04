@@ -442,6 +442,13 @@
 			"when": 1785800851776,
 			"tag": "0062_lethal_mysterio",
 			"breakpoints": true
+		},
+		{
+			"idx": 63,
+			"version": "7",
+			"when": 1785801701627,
+			"tag": "0063_purple_inertia",
+			"breakpoints": true
 		}
 	]
 }

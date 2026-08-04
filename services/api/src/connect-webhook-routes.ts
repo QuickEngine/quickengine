@@ -1,3 +1,4 @@
+import { completeReferralsForOrder } from "@quickengine/mod-orders";
 import {
 	applyCheckoutSettlement,
 	getPaymentProvider,
@@ -63,6 +64,29 @@ export function registerConnectWebhookRoutes(
 					eventType: event.type,
 					requestId: c.get("requestId"),
 				});
+
+				// 🔴 A referral pays out only once the order is actually PAID.
+				// Crediting the referrer at checkout would turn an abandoned payment
+				// into free money, which is how referral programmes get farmed.
+				//
+				// Lives here rather than inside `applyCheckoutSettlement` because
+				// that belongs to the payments module, and reaching into orders from
+				// it would couple two modules that are deliberately independent.
+				try {
+					await completeReferralsForOrder({
+						workspaceId: outcome.workspaceId,
+						orderId: outcome.orderId,
+					});
+				} catch (error) {
+					// The order is paid either way. Refusing the webhook would make the
+					// provider retry a settlement that already succeeded; a referral
+					// that failed to settle is recoverable by replaying the event.
+					options.logger.error("connect.webhook.referral_settle_failed", {
+						error,
+						orderId: outcome.orderId,
+						requestId: c.get("requestId"),
+					});
+				}
 			}
 			// 200 either way. "Not ours to act on" is a successful outcome, and
 			// answering non-2xx would have the provider redeliver it indefinitely.

@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Referrals.** Your customers get a code to share, and earn a reward when someone new orders
+  with it. Nobody can refer themselves, and a customer can only be referred once — the reward
+  is for bringing someone, and someone is only brought once. Rewards are credited when the
+  order is actually paid, not when it is placed, and are reversed if it is cancelled.
+
 - **Discount codes.** Create a code that takes off a percentage or a fixed amount, with an
   optional minimum spend, a limit on how many times it can be used in total or by one customer,
   and a date window. Your website can check a code before checkout and show the customer what

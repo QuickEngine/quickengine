@@ -54,7 +54,10 @@ async function workspaceForAccount(
 }
 
 export type SettlementOutcome =
-	| { applied: true; orderId: string; status: string }
+	// `workspaceId` is returned so the CALLER can do workspace-scoped follow-up
+	// work — settling a referral, for one — without re-deriving it from the
+	// connected account.
+	| { applied: true; orderId: string; workspaceId: string; status: string }
 	| { applied: false; reason: string };
 
 /**
@@ -118,8 +121,18 @@ export async function applyCheckoutSettlement(
 			)
 			.returning({ id: orders.id, status: orders.status });
 
+		// ⚠️ Anything that must happen when an order becomes PAID — settling a
+		// referral, for instance — belongs to the CALLER, not here. This module
+		// owns payments; reaching into orders from it would couple two modules
+		// that are deliberately independent, and `applied: true` is the signal the
+		// caller needs.
 		return updated
-			? { applied: true, orderId: updated.id, status: updated.status }
+			? {
+					applied: true,
+					orderId: updated.id,
+					workspaceId,
+					status: updated.status,
+				}
 			: { applied: false, reason: "order was not awaiting payment" };
 	}
 

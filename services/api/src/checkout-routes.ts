@@ -7,8 +7,10 @@ import {
 	checkoutInputSchema,
 	createOrderCommand,
 	evaluateDiscount,
+	evaluateReferral,
 	priceCheckout,
 	readOrdersSettings,
+	recordReferral,
 	redeemDiscount,
 	resolveCheckoutClient,
 	taxCalculatorFor,
@@ -179,6 +181,47 @@ export function registerCheckoutRoutes(
 			return respondMutation(c, result);
 		}
 		const order = result.result;
+
+		// A referral records WHO BROUGHT this customer. It does not change what the
+		// order costs — the reward accrues to the referrer, and only once this order
+		// settles. Failure here must never fail the sale, so it is best-effort and
+		// logged.
+		if (parsed.data.referralCode) {
+			try {
+				const referral = await evaluateReferral({
+					workspaceId,
+					code: parsed.data.referralCode,
+					referredClientRecordId: client.id,
+					settings: settings.referrals,
+					orderSubtotalCents: priced.subtotalCents,
+				});
+				if (referral.ok) {
+					await recordReferral({
+						workspaceId,
+						referralCodeId: referral.referralCodeId,
+						referrerClientRecordId: referral.referrerClientRecordId,
+						referredClientRecordId: client.id,
+						orderId: order.id,
+						rewardType: referral.rewardType,
+						rewardAmountCents: referral.rewardAmountCents,
+					});
+				} else {
+					options.logger.info("checkout.referral_rejected", {
+						reason: referral.reason,
+						orderId: order.id,
+						requestId: c.get("requestId"),
+					});
+				}
+			} catch (error) {
+				// 🔴 Swallowed deliberately. A referral programme misfiring must not
+				// lose the shop a sale that has already been priced and charged.
+				options.logger.error("checkout.referral_failed", {
+					error,
+					orderId: order.id,
+					requestId: c.get("requestId"),
+				});
+			}
+		}
 
 		// 🔴 Spend the redemption AFTER the order exists, and only then.
 		//

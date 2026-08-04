@@ -660,6 +660,36 @@ export async function getPayment(workspaceId: string, id: string) {
 	return { ...payment, refunds };
 }
 
+/** Browser-safe payment state for the customer who owns an order. */
+export async function getOrderPaymentSummary(
+	workspaceId: string,
+	orderId: string,
+) {
+	const [payment] = await db
+		.select({
+			id: payments.id,
+			amountCents: payments.amountCents,
+			currency: payments.currency,
+			provider: payments.provider,
+			status: payments.status,
+			createdAt: payments.createdAt,
+			updatedAt: payments.updatedAt,
+		})
+		.from(payments)
+		.where(
+			and(eq(payments.workspaceId, workspaceId), eq(payments.orderId, orderId)),
+		)
+		.orderBy(sql`${payments.createdAt} desc`, sql`${payments.id} desc`)
+		.limit(1);
+	return payment
+		? {
+				...payment,
+				createdAt: payment.createdAt.toISOString(),
+				updatedAt: payment.updatedAt.toISOString(),
+			}
+		: null;
+}
+
 export async function listPayments(workspaceId: string) {
 	return db
 		.select()

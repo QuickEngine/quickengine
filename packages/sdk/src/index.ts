@@ -2,6 +2,7 @@ import { QuickClient } from "./client";
 import type {
 	QuickBrowserCredential,
 	QuickClientOptions,
+	QuickConnectCredential,
 	QuickCredential,
 	QuickPublishableCredential,
 	QuickServerCredential,
@@ -34,6 +35,9 @@ export function createQuickBrowser(
 	options: QuickClientOptions<QuickPublishableCredential>,
 ): QuickClient;
 export function createQuickBrowser(
+	options: QuickClientOptions<QuickConnectCredential>,
+): QuickClient;
+export function createQuickBrowser(
 	options: QuickClientOptions<QuickBrowserCredential>,
 ): QuickClient;
 export function createQuickBrowser(
@@ -46,4 +50,9 @@ export function createQuickBrowser(
 
 export const createQuickServer = (
 	options: QuickClientOptions<QuickServerCredential>,
+) => new QuickClient(options);
+
+/** QuickConnect: the browser-safe bridge from any custom frontend to QuickDash. */
+export const createQuickConnect = (
+	options: QuickClientOptions<QuickConnectCredential>,
 ) => new QuickClient(options);

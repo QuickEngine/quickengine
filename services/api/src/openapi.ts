@@ -3335,6 +3335,27 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/customer/orders/{id}": {
+				get: {
+					operationId: "getCustomerOrder",
+					summary: "One order owned by the signed-in customer",
+					description:
+						"Returns line items, totals, delivery address, payment state and shipment tracking. An order owned by another customer is indistinguishable from a missing order.",
+					parameters: [
+						{
+							in: "path",
+							name: "id",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					responses: {
+						"200": { description: "The caller's complete order detail." },
+						"401": { description: "No valid customer session." },
+						"404": { description: "The order was not found." },
+					},
+				},
+			},
 			"/v1/customer/bookings": {
 				get: {
 					operationId: "listCustomerBookings",

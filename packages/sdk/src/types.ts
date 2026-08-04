@@ -13,6 +13,13 @@ export type QuickPublishableCredential = {
 	key: string;
 };
 
+/** Browser-safe checkout key, optionally paired with one customer's session. */
+export type QuickConnectCredential = {
+	type: "site";
+	key: string;
+	customerSession?: string;
+};
+
 export type QuickSessionCredential = {
 	type: "session";
 };
@@ -35,6 +42,7 @@ export type QuickCredential =
 	| QuickSecretCredential
 	| QuickScopedCredential
 	| QuickPublishableCredential
+	| QuickConnectCredential
 	| QuickSessionCredential
 	| QuickBearerCredential;
 
@@ -44,6 +52,7 @@ export type QuickServerCredential =
 
 export type QuickBrowserCredential =
 	| QuickPublishableCredential
+	| QuickConnectCredential
 	| QuickSessionCredential
 	| QuickBearerCredential;
 
@@ -96,6 +105,89 @@ export type QuickRequestOptions = Omit<RequestInit, "body" | "method"> & {
 export type QuickResponse<TData> = {
 	data: TData;
 	requestId: string | null;
+};
+
+export type QuickConnectContext = {
+	workspace: { name: string; slug: string };
+	modules: string[];
+	signedIn: boolean;
+};
+
+export type QuickCheckoutItem = {
+	catalogItemId: string;
+	variantId?: string;
+	quantity: number;
+};
+
+export type QuickCheckoutAddress = {
+	name: string;
+	line1: string;
+	line2?: string | null;
+	city: string;
+	region: string;
+	postalCode: string;
+	countryCode: string;
+};
+
+export type QuickCheckoutInput = {
+	items: QuickCheckoutItem[];
+	email: string;
+	name?: string;
+	notes?: string;
+	discountCode?: string;
+	referralCode?: string;
+	shippingRateId?: string;
+	shippingAddress?: QuickCheckoutAddress;
+};
+
+export type QuickCheckoutNextAction =
+	| { type: "client_secret"; clientSecret: string }
+	| { type: "approval"; approvalUrl: string }
+	| { type: "redirect"; redirectUrl: string }
+	| { type: "none" };
+
+export type QuickCheckoutResult = {
+	order: QuickOrder;
+	payment: {
+		provider: string;
+		externalPaymentId: string;
+		nextAction: QuickCheckoutNextAction;
+	} | null;
+	paymentUnavailableReason?: string;
+};
+
+export type QuickCustomerOrderDetail = QuickOrder & {
+	lineItems: QuickOrderLine[];
+	payment: {
+		id: string;
+		amountCents: number;
+		currency: string;
+		provider: string;
+		status: QuickPaymentStatus;
+		createdAt: string;
+		updatedAt: string;
+	} | null;
+	shipments: Array<{
+		id: string;
+		status: string;
+		carrier: string | null;
+		serviceLevel: string | null;
+		trackingNumber: string | null;
+		trackingUrl: string | null;
+		shippedAt: string | null;
+		inTransitAt: string | null;
+		deliveredAt: string | null;
+	}>;
+};
+
+export type QuickWishlistItem = {
+	catalogItemId: string;
+	catalogItemVariantId: string | null;
+	name: string;
+	priceCents: number | null;
+	currency: string;
+	status: QuickCatalogStatus;
+	addedAt: string;
 };
 
 export type QuickClientRecord = {

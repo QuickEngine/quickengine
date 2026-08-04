@@ -8,8 +8,9 @@ product: one deployment serving many isolated workspaces, each enabling only the
 business actually needs.
 
 A workspace can be run through QuickDash directly, or driven entirely by your own frontend
-through the public API and the Quick.js SDK. New business types are assembled from reusable
-module recipes rather than forked into separate applications.
+through the public API and **QuickConnect**, the framework-independent browser surface in the
+Quick.js SDK. New business types are assembled from reusable module recipes rather than forked
+into separate applications.
 
 ---
 
@@ -166,8 +167,8 @@ allowance draws on prepaid credits. Outbound webhook deliveries are counted but 
 
 ## Status
 
-The backend feature line is complete: production shipping rates and private customer portal
-conversations are ready for review. A final completion audit remains before the full UI/UX pass.
+The backend feature line is complete. QuickConnect is the final integration slice before an
+isolated Gemsutopia proof and the full backend completion audit, followed by the UI/UX pass.
 The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and workflow
 orchestration stay deliberately out of the current delivery path — the goal is one complete,
 truthful business workflow before the ecosystem widens.

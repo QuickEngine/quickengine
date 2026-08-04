@@ -251,6 +251,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	startPaymentOnboarding: paymentOnboardingInputSchema,
 	setDefaultPaymentProvider: paymentProviderInputSchema,
 	createCheckout: checkoutInputSchema,
+	// getCustomerOrder is a GET whose UUID lives in the path; it deliberately has no body.
 	createDiscount: discountInputSchema,
 	updateDiscount: discountPatchSchema,
 	previewDiscount: discountPreviewInputSchema,

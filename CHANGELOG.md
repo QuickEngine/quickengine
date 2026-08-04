@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Connect any custom website or app to QuickDash.** QuickConnect provides one browser-safe,
+  framework-independent client for catalog browsing, discounts, delivery quotes, checkout,
+  customer sign-in, orders, shipment tracking, wishlists, reviews, referrals and private
+  messages. A customer can see a complete order without seeing another customer's payment or
+  shipment state, and the frontend remains free to use any framework, design or hosting.
+
 - **Keep Stripe and PayPal connected at the same time.** A workspace can now retain one
   merchant account per payment provider, choose which one new checkouts use by default, and
   still send settlement and refunds through the provider that handled the original payment.

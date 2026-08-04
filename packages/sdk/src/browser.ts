@@ -4,6 +4,7 @@ import type {
 	QuickBrowserCredential,
 	QuickClientConstructorOptions,
 	QuickClientOptions,
+	QuickConnectCredential,
 	QuickPublishableCredential,
 	QuickSessionCredential,
 } from "./types";
@@ -39,10 +40,20 @@ export function createQuickBrowser(
 	options: QuickClientOptions<QuickPublishableCredential>,
 ): QuickClient;
 export function createQuickBrowser(
+	options: QuickClientOptions<QuickConnectCredential>,
+): QuickClient;
+export function createQuickBrowser(
 	options: QuickClientOptions<QuickBrowserCredential>,
 ): QuickClient;
 // The permissive shape, so this signature does not have to be extended every
 // time an overload is. The overloads above are what callers are typed against.
 export function createQuickBrowser(options: QuickClientConstructorOptions) {
+	return new QuickClient(options);
+}
+
+/** QuickConnect: the browser-safe bridge from any custom frontend to QuickDash. */
+export function createQuickConnect(
+	options: QuickClientOptions<QuickConnectCredential>,
+) {
 	return new QuickClient(options);
 }

@@ -16,6 +16,7 @@ import { ProjectsResource } from "./resources/projects";
 import { QuotesResource } from "./resources/quotes";
 import { ReportsResource } from "./resources/reports";
 import { ShipmentsResource } from "./resources/shipments";
+import { CustomerResource, SiteResource } from "./resources/site";
 import { TimeResource } from "./resources/time";
 import { WebhooksResource } from "./resources/webhooks";
 import type {
@@ -61,8 +62,17 @@ const credentialHeaders = (credential: QuickCredential): HeadersInit => {
 				Authorization: `Bearer ${cleanSegment(credential.token, "token")}`,
 			};
 		case "publishable":
+		case "site":
 			return {
 				"QuickEngine-Publishable-Key": cleanSegment(credential.key, "key"),
+				...(credential.type === "site" && credential.customerSession
+					? {
+							"QuickEngine-Customer-Session": cleanSegment(
+								credential.customerSession,
+								"customerSession",
+							),
+						}
+					: {}),
 			};
 		case "session":
 			return {};
@@ -98,6 +108,10 @@ export class QuickClient {
 	readonly activity: ActivityResource;
 	readonly reports: ReportsResource;
 	readonly webhooks: WebhooksResource;
+	/** Public catalog, checkout, content, and navigation for a custom site. */
+	readonly site: SiteResource;
+	/** The signed-in end customer's own records and portal actions. */
+	readonly customer: CustomerResource;
 	private readonly credential: QuickCredential;
 	private readonly fetcher: typeof fetch;
 
@@ -138,6 +152,8 @@ export class QuickClient {
 		this.activity = new ActivityResource(this);
 		this.reports = new ReportsResource(this);
 		this.webhooks = new WebhooksResource(this);
+		this.site = new SiteResource(this);
+		this.customer = new CustomerResource(this);
 	}
 
 	/**

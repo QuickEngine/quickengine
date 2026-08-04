@@ -409,6 +409,7 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		email: "buyer@example.com",
 		name: "Sam Rivera",
 	},
+	// getCustomerOrder takes only the documented order UUID path parameter.
 	startPaymentOnboarding: {
 		returnUrl: "https://account.quickdash.xyz/payments?connected=1",
 		refreshUrl: "https://account.quickdash.xyz/payments",

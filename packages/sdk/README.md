@@ -4,8 +4,9 @@ The TypeScript developer surface for building custom storefronts, sites, apps, a
 trusted servers on top of a QuickDash workspace. One business backend, many frontends.
 
 > **Status:** unpublished, evolving. It only exposes endpoints that actually exist on the
-> QuickDash API — no speculative methods. Today that means **reading a workspace's published
-> catalog**. More resources land as their routes ship (see `internal/product/QUICK_JS.md`).
+> QuickDash API, with no speculative methods. QuickConnect is the browser-safe bridge from a
+> custom frontend to its workspace; trusted operator integrations use the same client with a
+> server credential.
 
 ## Install
 
@@ -19,27 +20,33 @@ Inside this monorepo it's a workspace package:
 (A public `npm` release comes only after the contract has compatibility and release
 policies — see the build sequence in `internal/product/QUICK_JS.md`.)
 
-## Quick start — a storefront reading its catalog
+## Quick start — connect any custom frontend
 
-A public website has no logged-in QuickEngine user, so it authenticates with a
-**publishable key** (safe to ship in browser code — it's read-only and scoped to one
-workspace). Create one in **Account → your workspace → API keys**.
+A custom website or app authenticates with a browser-safe site key scoped to one workspace.
+The frontend controls its framework, routes, components, state and hosting; QuickConnect owns
+the typed boundary to QuickDash.
 
 ```ts
-import { createQuickBrowser } from "@quickengine/quick";
+import { createQuickConnect } from "@quickengine/quick/browser";
 
-const quick = createQuickBrowser({
-  // Your QuickDash API origin, ending in /api. The SDK appends /v1/…
-  baseUrl: "https://dash.quickengine.xyz/api",
+const quick = createQuickConnect({
+  baseUrl: "https://api.quickdash.xyz",
   workspaceId: "00000000-0000-4000-8000-000000000000", // your workspace id
-  credential: { type: "publishable", key: process.env.QUICKENGINE_PUBLISHABLE_KEY! },
+  credential: { type: "site", key: import.meta.env.VITE_QUICK_SITE_KEY },
 });
 
-// Product listing page: every active catalog item.
+// Render these however your framework and design system choose.
 const { data: items } = await quick.catalog.list();
-
-// Product detail page: one active item with its active variants.
 const { data: product } = await quick.catalog.get(items[0].id);
+
+// QuickDash calculates catalog prices, discounts, shipping and payment itself.
+const { data: checkout } = await quick.site.checkout(
+  {
+    email: "customer@example.com",
+    items: [{ catalogItemId: product.id, quantity: 1 }],
+  },
+  crypto.randomUUID(),
+);
 ```
 
 Every response is `{ data, requestId }`. `requestId` correlates the call with QuickDash's
@@ -52,14 +59,16 @@ but the server is always the real security boundary.
 
 | Factory | Credential | Use it for |
 |---|---|---|
+| `createQuickConnect` | `{ type: "site", key, customerSession? }` | Any custom website or app: public catalog, checkout and one customer's private records. |
 | `createQuickBrowser` | `{ type: "publishable", key }` | Public websites. Read-only, workspace-scoped, safe to ship in browser JS. |
 | `createQuickBrowser` | `{ type: "session" }` | Requests made as a signed-in QuickEngine/QuickDash user (cookies included). |
 | `createQuickServer` | `{ type: "secret", token }` | Trusted servers. **Never** ship in browser/mobile/public code, logs, or repos. |
 | `createQuickServer` | `{ type: "scoped", token }` | A least-privilege server credential for one integration. |
 
-A publishable key is **website-safe**: it can read, and it can send privacy-minimal
+A site or publishable key is **website-safe**: it can read, and it can send privacy-minimal
 telemetry (traffic events a site reports about itself), but the server clamps it so it can
-never carry a business-data write or admin capability — no orders, records, or money.
+never carry operator or administrative authority. Checkout accepts item identifiers and
+quantities; QuickDash calculates every amount and chooses the workspace's connected provider.
 
 ## Errors
 
@@ -99,10 +108,18 @@ await quick.events.record({
 });
 ```
 
-## What exists today
+## QuickConnect today
 
-- `quick.catalog.list()` → active catalog items.
-- `quick.catalog.get(id)` → one active item with its active variants.
-- `quick.events.record({ … })` → record one privacy-minimal traffic event (publishable-safe).
+- Catalog, categories, collections and workspace-managed site content.
+- Discount previews and server-priced shipping quotes.
+- Idempotent checkout with provider-specific next actions and capture.
+- Customer passwordless sign-in and sign-out.
+- The signed-in customer's orders, payment summary, shipment tracking, bookings and invoices.
+- Wishlists, reviews and referrals.
+- Private customer conversations with the business.
+- Privacy-minimal site telemetry.
 
-That's the honest surface. Orders and other resources arrive with their routes.
+QuickConnect is not a generated storefront and imposes no frontend structure. A React shop, a
+Svelte booking site, an Astro marketing site, a native shell or plain JavaScript can all map
+their own interface to the same workspace contract. Non-TypeScript clients may call the
+documented REST API directly.

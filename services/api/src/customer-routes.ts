@@ -4,10 +4,12 @@ import { portalBootstrap, portalBootstrapByHost } from "@quickengine/db";
 import { listBookingsPage } from "@quickengine/mod-bookings";
 import { listInvoicesPage } from "@quickengine/mod-invoicing";
 import {
+	getOrderDto,
 	getReferralSummary,
 	issueReferralCode,
 	listOrdersPage,
 } from "@quickengine/mod-orders";
+import { getOrderPaymentSummary } from "@quickengine/mod-payments";
 import {
 	addToWishlist,
 	createReview,
@@ -21,6 +23,7 @@ import {
 	wishlistItemInputSchema,
 	wishlistMergeInputSchema,
 } from "@quickengine/mod-products-services";
+import { listShipments } from "@quickengine/mod-shipping";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeCustomer, customerScope } from "./customer-authorize";
@@ -83,6 +86,53 @@ export type CustomerAuthDependencies = {
 
 const requestLinkSchema = z.object({ email: z.email().max(320) });
 const verifySchema = z.object({ token: z.string().min(16).max(512) });
+
+type CustomerOrderLoaders = {
+	getOrder: typeof getOrderDto;
+	getPayment: typeof getOrderPaymentSummary;
+	getShipments: typeof listShipments;
+};
+
+const customerOrderLoaders: CustomerOrderLoaders = {
+	getOrder: getOrderDto,
+	getPayment: getOrderPaymentSummary,
+	getShipments: listShipments,
+};
+
+/**
+ * Load one customer's order without ever accepting a client id from the request.
+ *
+ * Kept as a separately testable boundary because loading payment or shipment state
+ * before ownership is established would turn an ordinary 404 into a cross-customer
+ * data leak.
+ */
+export async function loadCustomerOrderDetail(
+	input: { workspaceId: string; clientRecordId: string; orderId: string },
+	loaders: CustomerOrderLoaders = customerOrderLoaders,
+) {
+	const order = await loaders.getOrder(input.workspaceId, input.orderId);
+	if (!order || order.clientId !== input.clientRecordId) return null;
+
+	const [payment, shipments] = await Promise.all([
+		loaders.getPayment(input.workspaceId, input.orderId),
+		loaders.getShipments(input.workspaceId, input.orderId),
+	]);
+	return {
+		...order,
+		payment,
+		shipments: shipments.map((shipment) => ({
+			id: shipment.id,
+			status: shipment.status,
+			carrier: shipment.carrier,
+			serviceLevel: shipment.serviceLevel,
+			trackingNumber: shipment.trackingNumber,
+			trackingUrl: shipment.trackingUrl,
+			shippedAt: shipment.shippedAt?.toISOString() ?? null,
+			inTransitAt: shipment.inTransitAt?.toISOString() ?? null,
+			deliveredAt: shipment.deliveredAt?.toISOString() ?? null,
+		})),
+	};
+}
 
 export function registerCustomerRoutes(
 	app: Hono<PlatformEnv>,
@@ -403,6 +453,35 @@ export function registerCustomerRoutes(
 		readLimit,
 		authorizeCustomer(dependencies, { requireSession: true, module: "orders" }),
 		customerList(listOrdersPage),
+	);
+
+	/**
+	 * One complete order owned by the signed-in customer.
+	 *
+	 * The client id is never accepted from the request. We load inside the
+	 * workspace, then compare with the client record fixed by the customer
+	 * session before reading payment or shipment state.
+	 */
+	app.get(
+		"/v1/customer/orders/:id",
+		readLimit,
+		authorizeCustomer(dependencies, { requireSession: true, module: "orders" }),
+		async (c) => {
+			const { workspaceId, clientRecordId } = customerScope(c);
+			if (!clientRecordId) {
+				return respondError(c, "NOT_FOUND", "The order was not found.", 404);
+			}
+			const orderId = z.uuid().parse(c.req.param("id"));
+			const order = await loadCustomerOrderDetail({
+				workspaceId,
+				clientRecordId,
+				orderId,
+			});
+			if (!order) {
+				return respondError(c, "NOT_FOUND", "The order was not found.", 404);
+			}
+			return respond(c, order);
+		},
 	);
 
 	app.get(

@@ -66,7 +66,9 @@ import {
 	shipmentTrackingPatchSchema,
 	shippingDestinationSchema,
 	shippingRateInputSchema,
+	shippingRatePatchSchema,
 	shippingZoneInputSchema,
+	shippingZonePatchSchema,
 } from "@quickengine/mod-shipping";
 import {
 	manualTimeEntryInputSchema,
@@ -194,9 +196,9 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	updateDraftShipment: shipmentInputSchema,
 	updateShipmentTracking: shipmentTrackingPatchSchema,
 	createShippingZone: shippingZoneInputSchema,
-	updateShippingZone: shippingZoneInputSchema.partial(),
+	updateShippingZone: shippingZonePatchSchema,
 	createShippingRate: shippingRateInputSchema,
-	updateShippingRate: shippingRateInputSchema.partial(),
+	updateShippingRate: shippingRatePatchSchema,
 	quoteShipping: z.object({
 		items: checkoutInputSchema.shape.items,
 		destination: shippingDestinationSchema,

@@ -16,8 +16,10 @@ import {
 	ShippingRateConfigError,
 	setShipmentStatusCommand,
 	shippingRateInputSchema,
+	shippingRatePatchSchema,
 	shippingSettingsSchema,
 	shippingZoneInputSchema,
+	shippingZonePatchSchema,
 	updateDraftShipmentCommand,
 	updateShipmentTrackingCommand,
 	updateShippingRate,
@@ -132,7 +134,7 @@ export function registerShippingRoutes(
 				await updateShippingZone(
 					c.get("authorized").workspaceId,
 					uuid.parse(c.req.param("id")),
-					shippingZoneInputSchema.partial().parse(await c.req.json()),
+					shippingZonePatchSchema.parse(await c.req.json()),
 				),
 			);
 		} catch (error) {
@@ -173,7 +175,7 @@ export function registerShippingRoutes(
 				await updateShippingRate(
 					c.get("authorized").workspaceId,
 					uuid.parse(c.req.param("id")),
-					shippingRateInputSchema.partial().parse(await c.req.json()),
+					shippingRatePatchSchema.parse(await c.req.json()),
 				),
 			);
 		} catch (error) {

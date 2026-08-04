@@ -361,6 +361,34 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },
 		],
 	},
+	createShippingZone: {
+		name: "Canada",
+		countryCodes: ["CA"],
+		regionCodes: [],
+		priority: 0,
+		active: true,
+	},
+	updateShippingZone: { priority: 10 },
+	createShippingRate: {
+		zoneId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90",
+		name: "Standard",
+		baseCents: 1_200,
+		freeOverCents: 10_000,
+		estimatedDaysMin: 3,
+		estimatedDaysMax: 5,
+		active: true,
+	},
+	updateShippingRate: { baseCents: 1_500 },
+	quoteShipping: {
+		items: [
+			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },
+		],
+		destination: {
+			countryCode: "CA",
+			regionCode: "CA-AB",
+			postalCode: "T5J 0N3",
+		},
+	},
 	createCheckout: {
 		items: [
 			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },

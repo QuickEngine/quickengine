@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Charge the delivery price you intended.** Set shipping zones by country or region, add flat,
+  weight-based, order-value and free-shipping rates, and show eligible choices at checkout.
+  QuickDash prices the basket and its weight itself, rechecks the chosen rate before charging,
+  includes delivery in tax and the order total, and keeps the agreed rate and address on the
+  order even if your settings change later.
+
 - **Put your customer portal on your own domain.** Instead of sending your customers to a
   QuickDash address, point your own — `account.yourshop.com` — at your portal, and that is the
   only name they ever see. Add it in one place, point a CNAME at us, and it works. Remove it

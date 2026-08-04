@@ -121,15 +121,15 @@ const regionCodesSchema = z
 	.default([])
 	.transform((values) => [...new Set(values)].sort());
 
-export const shippingZoneInputSchema = z
-	.object({
-		name: z.string().trim().min(1).max(160),
-		countryCodes: countryCodesSchema,
-		regionCodes: regionCodesSchema,
-		priority: z.number().int().min(-10_000).max(10_000).default(0),
-		active: z.boolean().default(true),
-	})
-	.superRefine((value, context) => {
+const shippingZoneFieldsSchema = z.object({
+	name: z.string().trim().min(1).max(160),
+	countryCodes: countryCodesSchema,
+	regionCodes: regionCodesSchema,
+	priority: z.number().int().min(-10_000).max(10_000).default(0),
+	active: z.boolean().default(true),
+});
+export const shippingZoneInputSchema = shippingZoneFieldsSchema.superRefine(
+	(value, context) => {
 		for (const region of value.regionCodes) {
 			const regionCountry = region.split("-")[0];
 			if (
@@ -144,25 +144,26 @@ export const shippingZoneInputSchema = z
 				});
 			}
 		}
-	});
+	},
+);
 
-export const shippingRateInputSchema = z
-	.object({
-		zoneId: z.uuid(),
-		name: z.string().trim().min(1).max(160),
-		description: z.string().trim().max(2_000).nullable().optional(),
-		minWeightGrams: z.number().int().min(0).nullable().optional(),
-		maxWeightGrams: z.number().int().positive().nullable().optional(),
-		minOrderCents: z.number().int().min(0).nullable().optional(),
-		maxOrderCents: z.number().int().positive().nullable().optional(),
-		baseCents: z.number().int().min(0).default(0),
-		perKgCents: z.number().int().min(0).nullable().optional(),
-		freeOverCents: z.number().int().min(0).nullable().optional(),
-		estimatedDaysMin: z.number().int().min(0).nullable().optional(),
-		estimatedDaysMax: z.number().int().min(0).nullable().optional(),
-		active: z.boolean().default(true),
-	})
-	.superRefine((value, context) => {
+const shippingRateFieldsSchema = z.object({
+	zoneId: z.uuid(),
+	name: z.string().trim().min(1).max(160),
+	description: z.string().trim().max(2_000).nullable().optional(),
+	minWeightGrams: z.number().int().min(0).nullable().optional(),
+	maxWeightGrams: z.number().int().positive().nullable().optional(),
+	minOrderCents: z.number().int().min(0).nullable().optional(),
+	maxOrderCents: z.number().int().positive().nullable().optional(),
+	baseCents: z.number().int().min(0).default(0),
+	perKgCents: z.number().int().min(0).nullable().optional(),
+	freeOverCents: z.number().int().min(0).nullable().optional(),
+	estimatedDaysMin: z.number().int().min(0).nullable().optional(),
+	estimatedDaysMax: z.number().int().min(0).nullable().optional(),
+	active: z.boolean().default(true),
+});
+export const shippingRateInputSchema = shippingRateFieldsSchema.superRefine(
+	(value, context) => {
 		for (const [min, max, path] of [
 			[value.minWeightGrams, value.maxWeightGrams, "maxWeightGrams"],
 			[value.minOrderCents, value.maxOrderCents, "maxOrderCents"],
@@ -176,10 +177,21 @@ export const shippingRateInputSchema = z
 				});
 			}
 		}
-	});
+	},
+);
 
 export type ShippingZoneInput = z.infer<typeof shippingZoneInputSchema>;
 export type ShippingRateInput = z.infer<typeof shippingRateInputSchema>;
+export const shippingZonePatchSchema = shippingZoneFieldsSchema
+	.partial()
+	.refine((value) => Object.keys(value).length > 0, {
+		message: "At least one shipping-zone field is required.",
+	});
+export const shippingRatePatchSchema = shippingRateFieldsSchema
+	.partial()
+	.refine((value) => Object.keys(value).length > 0, {
+		message: "At least one shipping-rate field is required.",
+	});
 
 export class ShippingRateConfigError extends Error {
 	constructor(
@@ -247,7 +259,21 @@ export async function updateShippingZone(
 	id: string,
 	input: Partial<ShippingZoneInput>,
 ) {
-	const parsed = shippingZoneInputSchema.partial().parse(input);
+	const patch = shippingZonePatchSchema.parse(input);
+	const [current] = await db
+		.select()
+		.from(shippingZones)
+		.where(
+			and(eq(shippingZones.workspaceId, workspaceId), eq(shippingZones.id, id)),
+		)
+		.limit(1);
+	if (!current) {
+		throw new ShippingRateConfigError(
+			"SHIPPING_ZONE_NOT_FOUND",
+			"The shipping zone was not found.",
+		);
+	}
+	const parsed = shippingZoneInputSchema.parse({ ...current, ...patch });
 	try {
 		const [row] = await db
 			.update(shippingZones)
@@ -353,7 +379,21 @@ export async function updateShippingRate(
 	id: string,
 	input: Partial<ShippingRateInput>,
 ) {
-	const parsed = shippingRateInputSchema.partial().parse(input);
+	const patch = shippingRatePatchSchema.parse(input);
+	const [current] = await db
+		.select()
+		.from(shippingRates)
+		.where(
+			and(eq(shippingRates.workspaceId, workspaceId), eq(shippingRates.id, id)),
+		)
+		.limit(1);
+	if (!current) {
+		throw new ShippingRateConfigError(
+			"SHIPPING_RATE_NOT_FOUND",
+			"The shipping rate was not found.",
+		);
+	}
+	const parsed = shippingRateInputSchema.parse({ ...current, ...patch });
 	if (parsed.zoneId) await assertZone(workspaceId, parsed.zoneId);
 	try {
 		const [row] = await db

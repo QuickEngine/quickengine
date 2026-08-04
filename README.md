@@ -42,6 +42,11 @@ Each owns a manifest, a configuration contract, its own schema and a service bou
 registry rows decide what QuickDash loads, and dependency resolution prevents broken
 configurations — enabling Shipping brings Orders and its prerequisites with it.
 
+Shipping supports deterministic country and region zones, flat and weight-based delivery,
+order-value bands and free-shipping thresholds. Storefronts choose a quoted rate; QuickDash
+re-prices catalog values, item weights and the selected rate before it records or charges the
+order.
+
 ---
 
 ## Two audiences, two surfaces
@@ -156,9 +161,10 @@ allowance draws on prepaid credits. Outbound webhook deliveries are counted but 
 
 ## Status
 
-Backend complete and deployed. The frontends run on Vite and TanStack; **Next.js is gone
-entirely**. A full UI/UX pass is the next major body of work. Automation and workflow
-orchestration stay deliberately out of the current delivery path — the goal is one complete,
-truthful business workflow before the ecosystem widens.
+The backend foundation is deployed, and production shipping rates are ready for review. One
+final customer-to-business messaging slice and a completion audit remain before the full UI/UX
+pass. The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and
+workflow orchestration stay deliberately out of the current delivery path — the goal is one
+complete, truthful business workflow before the ecosystem widens.
 
 Not open source. All rights reserved.

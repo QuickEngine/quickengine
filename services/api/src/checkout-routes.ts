@@ -5,6 +5,7 @@ import type { DatabaseTransaction } from "@quickengine/db";
 import {
 	CheckoutError,
 	checkoutInputSchema,
+	completeReferralsForOrder,
 	createOrderCommand,
 	evaluateDiscount,
 	evaluateReferral,
@@ -16,6 +17,7 @@ import {
 	taxCalculatorFor,
 } from "@quickengine/mod-orders";
 import {
+	captureCheckoutPayment,
 	getPaymentAccount,
 	getPaymentProvider,
 	readPaymentAccount,
@@ -88,6 +90,32 @@ export function registerCheckoutRoutes(
 		destination: shippingDestinationSchema,
 		discountCode: checkoutInputSchema.shape.discountCode,
 	});
+	const providerPaymentIdSchema = z.string().trim().min(1).max(255);
+
+	app.post(
+		"/v1/checkout/:externalPaymentId/capture",
+		access,
+		limit,
+		async (c) => {
+			const externalPaymentId = providerPaymentIdSchema.parse(
+				c.req.param("externalPaymentId"),
+			);
+			const result = await captureCheckoutPayment({
+				workspaceId: c.get("authorized").workspaceId,
+				externalPaymentId,
+			});
+			if (!result.captured) {
+				return respondError(c, "NOT_FOUND", result.reason, 404);
+			}
+			if (result.settlement.applied) {
+				await completeReferralsForOrder({
+					workspaceId: result.settlement.workspaceId,
+					orderId: result.settlement.orderId,
+				});
+			}
+			return respond(c, result);
+		},
+	);
 
 	app.post("/v1/shipping/quote", access, limit, async (c) => {
 		const parsed = quoteInputSchema.safeParse(await c.req.json());

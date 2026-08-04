@@ -102,6 +102,12 @@ export const serverEnvSchema = clientEnvSchema.extend({
 	LIVEKIT_API_SECRET: emptyStringAsUndefined(z.string()),
 	STRIPE_SECRET_KEY: emptyStringAsUndefined(z.string()),
 	STRIPE_WEBHOOK_SECRET: emptyStringAsUndefined(z.string()),
+	PAYPAL_CLIENT_ID: emptyStringAsUndefined(z.string()),
+	PAYPAL_CLIENT_SECRET: emptyStringAsUndefined(z.string()),
+	PAYPAL_PARTNER_MERCHANT_ID: emptyStringAsUndefined(z.string()),
+	PAYPAL_PARTNER_ATTRIBUTION_ID: emptyStringAsUndefined(z.string()),
+	PAYPAL_WEBHOOK_ID: emptyStringAsUndefined(z.string()),
+	PAYPAL_ENVIRONMENT: emptyStringAsUndefined(z.enum(["sandbox", "live"])),
 	// Per-plan, per-cycle Stripe price IDs, matching the keys `plans.ts` derives. Declared
 	// here so a missing one shows up in the env contract instead of silently resolving to
 	// undefined at checkout. Price IDs are mode-scoped: live mode needs its own set.
@@ -176,6 +182,12 @@ export const serverEnv = serverEnvSchema.parse({
 	LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET,
 	STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
 	STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+	PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
+	PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
+	PAYPAL_PARTNER_MERCHANT_ID: process.env.PAYPAL_PARTNER_MERCHANT_ID,
+	PAYPAL_PARTNER_ATTRIBUTION_ID: process.env.PAYPAL_PARTNER_ATTRIBUTION_ID,
+	PAYPAL_WEBHOOK_ID: process.env.PAYPAL_WEBHOOK_ID,
+	PAYPAL_ENVIRONMENT: process.env.PAYPAL_ENVIRONMENT,
 	STRIPE_PRICE_LAUNCH_MONTHLY: process.env.STRIPE_PRICE_LAUNCH_MONTHLY,
 	STRIPE_PRICE_LAUNCH_ANNUAL: process.env.STRIPE_PRICE_LAUNCH_ANNUAL,
 	STRIPE_PRICE_GROW_MONTHLY: process.env.STRIPE_PRICE_GROW_MONTHLY,

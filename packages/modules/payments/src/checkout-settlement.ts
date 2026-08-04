@@ -7,6 +7,7 @@ import {
 	payments,
 } from "@quickengine/db";
 import type { VerifiedProviderEvent } from "./provider";
+import { getPaymentProvider } from "./providers";
 
 /**
  * What happens when a provider says a checkout was paid.
@@ -187,4 +188,70 @@ export async function recordPendingCheckoutPayment(input: {
 		// The partial unique index on (workspace_id, stripe_payment_intent_id) is
 		// what makes this safe; this simply avoids the error.
 		.onConflictDoNothing();
+}
+
+export type CheckoutCaptureOutcome =
+	| {
+			captured: true;
+			externalCaptureId: string;
+			settled: boolean;
+			settlement: SettlementOutcome;
+	  }
+	| { captured: false; reason: string };
+
+/**
+ * Complete a provider order after the buyer approves it in the provider UI.
+ * The workspace and stored payment choose the provider; the browser cannot.
+ */
+export async function captureCheckoutPayment(input: {
+	workspaceId: string;
+	externalPaymentId: string;
+}): Promise<CheckoutCaptureOutcome> {
+	const [payment] = await db
+		.select({ provider: payments.provider })
+		.from(payments)
+		.where(
+			and(
+				eq(payments.workspaceId, input.workspaceId),
+				eq(payments.externalPaymentId, input.externalPaymentId),
+			),
+		)
+		.limit(1);
+	if (!payment) return { captured: false, reason: "Payment not found." };
+
+	const [connected] = await db
+		.select({
+			provider: paymentAccounts.provider,
+			externalAccountId: paymentAccounts.stripeAccountId,
+		})
+		.from(paymentAccounts)
+		.where(eq(paymentAccounts.workspaceId, input.workspaceId))
+		.limit(1);
+	if (
+		!connected?.externalAccountId ||
+		connected.provider !== payment.provider
+	) {
+		return { captured: false, reason: "Payment account is not connected." };
+	}
+
+	const provider = getPaymentProvider(payment.provider);
+	if (!provider.captureCharge) {
+		return {
+			captured: false,
+			reason: "This provider does not use server-side capture.",
+		};
+	}
+	const captured = await provider.captureCharge({
+		externalPaymentId: input.externalPaymentId,
+		connectedAccountId: connected.externalAccountId,
+	});
+	return {
+		captured: true,
+		externalCaptureId: captured.externalCaptureId,
+		settled: captured.settled,
+		settlement: await applyCheckoutSettlement(
+			captured.event,
+			captured.event.externalAccountId,
+		),
+	};
 }

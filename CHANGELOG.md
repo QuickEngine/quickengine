@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Connect PayPal and complete a sale through the same checkout as Stripe.** A business can
+  select PayPal during payment onboarding, send its seller through PayPal's hosted approval,
+  return an approved order for server-side capture, receive verified settlement webhooks, and
+  issue refunds through the provider. Storefront credentials never receive QuickEngine's
+  PayPal secrets, and the stored workspace payment—not the browser—chooses which merchant gets
+  paid.
+
 - **PayPal's complete platform handshake is covered before it touches a checkout.** The
   payments layer can now create seller referrals, inspect merchant readiness, create and
   capture seller-owned orders, refund captures, and ask PayPal to verify signed webhook

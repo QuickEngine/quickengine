@@ -161,6 +161,27 @@ export async function getPayPalSellerByTrackingId(
 	};
 }
 
+export async function getPayPalSellerByMerchantId(
+	config: PayPalConfig,
+	merchantId: string,
+	fetcher: PayPalFetch = fetch,
+): Promise<PayPalSellerStatus> {
+	const response = await fetcher(
+		`${baseUrl(config.environment)}/v1/customer/partners/${encodeURIComponent(config.partnerMerchantId)}/merchant-integrations/${encodeURIComponent(merchantId)}`,
+		{ headers: await partnerHeaders(config, fetcher) },
+	);
+	const body = await json<{
+		merchant_id?: string;
+		payments_receivable?: boolean;
+		primary_email_confirmed?: boolean;
+	}>(response, "seller status");
+	return {
+		merchantId: body.merchant_id ?? merchantId,
+		paymentsReceivable: body.payments_receivable ?? false,
+		primaryEmailConfirmed: body.primary_email_confirmed ?? false,
+	};
+}
+
 export async function createPayPalOrder(
 	config: PayPalConfig,
 	input: {
@@ -242,6 +263,37 @@ export async function capturePayPalOrder(
 		captureId: capture.id,
 		settled: body.status === "COMPLETED" && capture.status === "COMPLETED",
 	};
+}
+
+export async function getPayPalOrderCapture(
+	config: PayPalConfig,
+	input: { sellerMerchantId: string; orderId: string },
+	fetcher: PayPalFetch = fetch,
+): Promise<{ captureId: string; currency: string }> {
+	const headers = await partnerHeaders(config, fetcher);
+	headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
+		config.clientId,
+		input.sellerMerchantId,
+	);
+	const response = await fetcher(
+		`${baseUrl(config.environment)}/v2/checkout/orders/${encodeURIComponent(input.orderId)}`,
+		{ headers },
+	);
+	const body = await json<{
+		purchase_units?: Array<{
+			payments?: {
+				captures?: Array<{
+					id?: string;
+					amount?: { currency_code?: string };
+				}>;
+			};
+		}>;
+	}>(response, "order lookup");
+	const capture = body.purchase_units?.[0]?.payments?.captures?.[0];
+	if (!capture?.id || !capture.amount?.currency_code) {
+		throw new PayPalApiError("order lookup", 502);
+	}
+	return { captureId: capture.id, currency: capture.amount.currency_code };
 }
 
 export async function refundPayPalCapture(

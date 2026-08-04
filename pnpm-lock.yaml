@@ -1304,6 +1304,9 @@ importers:
       '@quickengine/db':
         specifier: workspace:*
         version: link:../../db
+      '@quickengine/env':
+        specifier: workspace:*
+        version: link:../../env
       '@quickengine/mod-invoicing':
         specifier: workspace:*
         version: link:../invoicing

@@ -41,6 +41,7 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		currency: "GBP",
 		unitLabel: "hour",
 	},
+	getCatalogAvailability: { catalogItemIds: [CATALOG_ITEM] },
 	updateCatalogItem: { priceCents: 9_000 },
 	createProductVariant: { options: [{ name: "Tier", value: "Senior" }] },
 	updateProductVariant: { sku: "IMP-SENIOR" },

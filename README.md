@@ -167,8 +167,10 @@ allowance draws on prepaid credits. Outbound webhook deliveries are counted but 
 
 ## Status
 
-The backend feature line is complete. QuickConnect is the final integration slice before an
-isolated Gemsutopia proof and the full backend completion audit, followed by the UI/UX pass.
+The backend feature line is complete. The isolated Gemsutopia proof is now exercising
+QuickConnect against synthetic Docker data; its first finding, browser-safe authoritative stock
+availability, is implemented and verified through the real API. The full backend completion
+audit follows the commerce proof, then the UI/UX pass.
 The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and workflow
 orchestration stay deliberately out of the current delivery path — the goal is one complete,
 truthful business workflow before the ecosystem widens.

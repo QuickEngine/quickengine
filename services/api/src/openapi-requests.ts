@@ -18,6 +18,7 @@ import { contractInputSchema } from "@quickengine/mod-contracts-esign";
 import { documentInputSchema, folderInputSchema } from "@quickengine/mod-files";
 import { createFulfillmentInputSchema } from "@quickengine/mod-fulfillment";
 import {
+	catalogAvailabilityInputSchema,
 	inventoryAdjustmentInputSchema,
 	inventoryItemInputSchema,
 } from "@quickengine/mod-inventory";
@@ -177,6 +178,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 
 	// Catalog
 	createCatalogItem: catalogItemInputSchema,
+	getCatalogAvailability: catalogAvailabilityInputSchema,
 	updateCatalogItem: catalogItemPatchSchema,
 	createProductVariant: productVariantInputSchema,
 	updateProductVariant: productVariantPatchSchema,

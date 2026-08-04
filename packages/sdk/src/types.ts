@@ -190,6 +190,15 @@ export type QuickWishlistItem = {
 	addedAt: string;
 };
 
+export type QuickCatalogAvailability = {
+	catalogItemId: string;
+	catalogItemVariantId: string | null;
+	tracked: boolean;
+	available: boolean;
+	availableQuantity: number | null;
+	allowBackorder: boolean;
+};
+
 export type QuickClientRecord = {
 	id: string;
 	workspaceId: string;

@@ -5,6 +5,7 @@ import {
 	db,
 	desc,
 	eq,
+	inArray,
 	inventoryAdjustments,
 	inventoryItems,
 	quickengineWorkspaces,
@@ -90,6 +91,84 @@ export async function listInventoryItems(workspaceId: string) {
 		.from(inventoryItems)
 		.where(eq(inventoryItems.workspaceId, workspaceId))
 		.orderBy(desc(inventoryItems.createdAt), desc(inventoryItems.id));
+}
+
+export type CatalogAvailability = {
+	catalogItemId: string;
+	catalogItemVariantId: string | null;
+	tracked: boolean;
+	available: boolean;
+	availableQuantity: number | null;
+	allowBackorder: boolean;
+};
+
+/**
+ * Browser-safe stock state for catalog cards and product pages.
+ *
+ * Untracked items remain purchasable because orders deliberately allow businesses
+ * that do not manage stock. Tracked archived items are unavailable, and negative
+ * stock only remains purchasable when the workspace explicitly allows backorders.
+ */
+export async function listCatalogAvailability(
+	workspaceId: string,
+	catalogItemIds: readonly string[],
+	options: { allowNegativeStock?: boolean } = {},
+): Promise<CatalogAvailability[]> {
+	const uniqueIds = [...new Set(catalogItemIds)];
+	if (uniqueIds.length === 0) return [];
+
+	const rows = await db
+		.select({
+			catalogItemId: inventoryItems.catalogItemId,
+			catalogItemVariantId: inventoryItems.catalogItemVariantId,
+			status: inventoryItems.status,
+			onHand: inventoryItems.onHand,
+			reserved: inventoryItems.reserved,
+		})
+		.from(inventoryItems)
+		.where(
+			and(
+				eq(inventoryItems.workspaceId, workspaceId),
+				inArray(inventoryItems.catalogItemId, uniqueIds),
+			),
+		);
+
+	const byItem = new Map<string, typeof rows>();
+	for (const row of rows) {
+		const existing = byItem.get(row.catalogItemId) ?? [];
+		existing.push(row);
+		byItem.set(row.catalogItemId, existing);
+	}
+
+	const availability: CatalogAvailability[] = [];
+	for (const catalogItemId of uniqueIds) {
+		const tracked = byItem.get(catalogItemId);
+		if (!tracked?.length) {
+			availability.push({
+				catalogItemId,
+				catalogItemVariantId: null,
+				tracked: false,
+				available: true,
+				availableQuantity: null,
+				allowBackorder: false,
+			});
+			continue;
+		}
+		for (const row of tracked) {
+			const availableQuantity = row.onHand - row.reserved;
+			const allowBackorder = options.allowNegativeStock ?? false;
+			availability.push({
+				catalogItemId: row.catalogItemId,
+				catalogItemVariantId: row.catalogItemVariantId,
+				tracked: true,
+				available:
+					row.status === "active" && (allowBackorder || availableQuantity > 0),
+				availableQuantity,
+				allowBackorder,
+			});
+		}
+	}
+	return availability;
 }
 
 export async function getInventoryItem(workspaceId: string, id: string) {

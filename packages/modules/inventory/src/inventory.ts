@@ -20,6 +20,10 @@ export const inventoryItemInputSchema = inventoryTargetSchema.extend({
 export type InventoryItemInput = z.input<typeof inventoryItemInputSchema>;
 export type InventoryItem = z.output<typeof inventoryItemInputSchema>;
 
+export const catalogAvailabilityInputSchema = z.object({
+	catalogItemIds: z.array(z.uuid()).min(1).max(100),
+});
+
 export const INVENTORY_ADJUSTMENT_KINDS = [
 	"receive",
 	"sale",

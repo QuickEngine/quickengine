@@ -1,5 +1,6 @@
 import type { QuickClient } from "../client";
 import type {
+	QuickCatalogAvailability,
 	QuickCheckoutInput,
 	QuickCheckoutItem,
 	QuickCheckoutResult,
@@ -54,6 +55,16 @@ export class SiteResource {
 	content() {
 		return this.client.request<{ content: Record<string, unknown> }>(
 			"/content",
+		);
+	}
+
+	availability(catalogItemIds: string[]) {
+		return this.client.request<QuickCatalogAvailability[]>(
+			"/catalog/availability",
+			{
+				method: "POST",
+				body: { catalogItemIds },
+			},
 		);
 	}
 

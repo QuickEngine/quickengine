@@ -111,6 +111,7 @@ await quick.events.record({
 ## QuickConnect today
 
 - Catalog, categories, collections and workspace-managed site content.
+- Authoritative item and variant availability, including tracked stock and backorders.
 - Discount previews and server-priced shipping quotes.
 - Idempotent checkout with provider-specific next actions and capture.
 - Customer passwordless sign-in and sign-out.

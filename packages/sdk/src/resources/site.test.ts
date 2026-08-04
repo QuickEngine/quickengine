@@ -62,6 +62,25 @@ describe("QuickConnect", () => {
 		);
 	});
 
+	it("reads authoritative catalog availability without an operator key", async () => {
+		const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response([]));
+		const quick = createQuickConnect({
+			baseUrl: "https://api.quickdash.xyz",
+			workspaceId: "workspace_123",
+			credential: { type: "site", key: "qsf_public_123" },
+			fetcher,
+		});
+
+		await quick.site.availability(["item_1", "item_2"]);
+
+		const [url, init] = fetcher.mock.calls[0] ?? [];
+		expect(url).toBe("https://api.quickdash.xyz/v1/catalog/availability");
+		expect(init?.method).toBe("POST");
+		expect(init?.body).toBe(
+			JSON.stringify({ catalogItemIds: ["item_1", "item_2"] }),
+		);
+	});
+
 	it("reads only the signed-in customer's requested order", async () => {
 		const fetcher = vi
 			.fn<typeof fetch>()

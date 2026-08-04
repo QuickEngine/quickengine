@@ -66,6 +66,7 @@
 		"portal": "pnpm --filter @quickengine/portal dev",
 		"portal:key": "pnpm --filter @quickengine/api exec tsx scripts/mint-publishable-key.mts",
 		"portal:enable": "pnpm --filter @quickengine/api exec tsx scripts/enable-portal.mts",
+		"proof:gemsutopia": "pnpm --filter @quickengine/api exec tsx scripts/seed-gemsutopia-proof.mts",
 		"check:no-next": "node .github/ci/check-no-next.mjs",
 		"db:migration-parity": "pnpm --filter @quickengine/db db:migration-parity",
 		"db:tenant-recovery": "pnpm --filter @quickengine/db db:tenant-recovery",

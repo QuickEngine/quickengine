@@ -18,6 +18,7 @@ export function orderLineTotalCents(line: OrderLineAmount): number {
 export function computeOrderTotals(
 	lines: readonly OrderLineAmount[],
 	taxCents = 0,
+	discountCents = 0,
 ) {
 	const subtotalCents = lines.reduce(
 		(sum, line) => sum + orderLineTotalCents(line),
@@ -26,7 +27,19 @@ export function computeOrderTotals(
 	// Never let a negative tax reduce a total — that is a discount wearing the
 	// wrong name, and it would understate what the business owes on remittance.
 	const tax = Math.max(0, Math.trunc(taxCents));
-	return { subtotalCents, taxCents: tax, totalCents: subtotalCents + tax };
+	// ⚠️ A discount can never exceed the subtotal. Letting it turn an order into a
+	// negative total makes a sale into a refund, which is a real way to lose money
+	// to a mistyped fixed-amount code.
+	const discount = Math.min(
+		Math.max(0, Math.trunc(discountCents)),
+		subtotalCents,
+	);
+	return {
+		subtotalCents,
+		discountCents: discount,
+		taxCents: tax,
+		totalCents: subtotalCents - discount + tax,
+	};
 }
 
 export function formatOrderNumber(prefix: string, sequence: number): string {

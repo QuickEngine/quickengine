@@ -117,13 +117,23 @@ describe("order totals", () => {
 				{ quantity: 3, unitPriceCents: 2_500 },
 				{ quantity: 2, unitPriceCents: 125 },
 			]),
-		).toEqual({ subtotalCents: 7_750, taxCents: 0, totalCents: 7_750 });
+		).toEqual({
+			subtotalCents: 7_750,
+			discountCents: 0,
+			taxCents: 0,
+			totalCents: 7_750,
+		});
 	});
 
 	it("adds supplied tax to the total without touching the subtotal", () => {
 		expect(
 			computeOrderTotals([{ quantity: 1, unitPriceCents: 10_000 }], 500),
-		).toEqual({ subtotalCents: 10_000, taxCents: 500, totalCents: 10_500 });
+		).toEqual({
+			subtotalCents: 10_000,
+			discountCents: 0,
+			taxCents: 500,
+			totalCents: 10_500,
+		});
 	});
 
 	it("refuses a negative tax rather than letting it discount the total", () => {
@@ -131,7 +141,12 @@ describe("order totals", () => {
 		// understate what the business owes on remittance.
 		expect(
 			computeOrderTotals([{ quantity: 1, unitPriceCents: 10_000 }], -500),
-		).toEqual({ subtotalCents: 10_000, taxCents: 0, totalCents: 10_000 });
+		).toEqual({
+			subtotalCents: 10_000,
+			discountCents: 0,
+			taxCents: 0,
+			totalCents: 10_000,
+		});
 	});
 
 	it("formats stable human order numbers", () => {

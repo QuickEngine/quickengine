@@ -17,6 +17,7 @@ import { registerContractsRoutes } from "./contracts-routes";
 import { registerCreditRoutes } from "./credit-routes";
 import { customerAuthDependencies } from "./customer-auth-dependencies";
 import { registerCustomerRoutes } from "./customer-routes";
+import { registerDiscountRoutes } from "./discount-routes";
 import { registerFilesRoutes } from "./files-routes";
 import { registerFulfillmentRoutes } from "./fulfillment-routes";
 import { registerInngestRoutes } from "./inngest-routes";
@@ -87,6 +88,7 @@ export function registerAllRoutes(
 	registerCategoryRoutes(app, dependencies);
 	registerCheckoutRoutes(app, dependencies);
 	registerContentRoutes(app, dependencies);
+	registerDiscountRoutes(app, dependencies);
 	registerCustomerRoutes(app, {
 		...dependencies,
 		auth: customerAuthDependencies,

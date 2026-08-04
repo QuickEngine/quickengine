@@ -46,6 +46,14 @@ export const checkoutInputSchema = z.object({
 	email: z.email().max(320),
 	name: z.string().trim().max(200).optional(),
 	notes: z.string().trim().max(2_000).optional(),
+	/**
+	 * A discount code the shopper typed.
+	 *
+	 * ⚠️ The CODE is accepted; the AMOUNT never is. The server looks the code up,
+	 * checks its window, minimum, and caps, and computes what it takes off from
+	 * the subtotal it priced itself.
+	 */
+	discountCode: z.string().trim().min(3).max(40).optional(),
 	// ⚠️ NOT accepted, deliberately, and each one is a way to steal:
 	// · any price, subtotal, total, tax or discount field
 	// · clientId — a caller naming somebody else's client record attaches a

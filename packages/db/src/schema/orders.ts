@@ -82,6 +82,19 @@ export const orders = pgTable(
 		 * ⚠️ This column STORES tax. It does not decide it — see
 		 * `modules/orders/src/tax.ts` for who computes the number.
 		 */
+		/**
+		 * What a discount code took off, in minor units.
+		 *
+		 * 🔴 Stored, not derived. Recomputing it later from the code would give a
+		 * different answer the moment the code's value changes or it expires — and
+		 * an order is a record of what was agreed, not a re-evaluation of it.
+		 *
+		 * `total = subtotal - discount + tax`, and tax is computed on the
+		 * DISCOUNTED subtotal.
+		 */
+		discountCents: integer("discount_cents").notNull().default(0),
+		/** Which code was used. Kept for the order view; the amount is authoritative. */
+		discountCode: text("discount_code"),
 		taxCents: integer("tax_cents").notNull().default(0),
 		totalCents: integer("total_cents").notNull(),
 		notes: text("notes"),

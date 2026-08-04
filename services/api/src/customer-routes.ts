@@ -27,6 +27,7 @@ import { listShipments } from "@quickengine/mod-shipping";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeCustomer, customerScope } from "./customer-authorize";
+import { isAllowedCustomerCallback } from "./customer-callback";
 import type { ApiLogger } from "./logger";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
@@ -52,6 +53,7 @@ export type CustomerAuthDependencies = {
 	 * without a mail server.
 	 */
 	sendSignInLink(input: {
+		callbackUrl?: string;
 		workspaceId: string;
 		workspaceName: string;
 		email: string;
@@ -84,7 +86,10 @@ export type CustomerAuthDependencies = {
 	revokeCustomerSession(token: string): Promise<void>;
 };
 
-const requestLinkSchema = z.object({ email: z.email().max(320) });
+const requestLinkSchema = z.object({
+	email: z.email().max(320),
+	callbackUrl: z.url().max(2_048).optional(),
+});
 const verifySchema = z.object({ token: z.string().min(16).max(512) });
 
 type CustomerOrderLoaders = {
@@ -304,7 +309,18 @@ export function registerCustomerRoutes(
 				);
 			}
 
-			const { workspaceId, workspace } = c.get("customer");
+			const { allowedOrigins, workspaceId, workspace } = c.get("customer");
+			const callbackUrl = parsed.data.callbackUrl;
+			if (callbackUrl) {
+				if (!isAllowedCustomerCallback(callbackUrl, allowedOrigins)) {
+					return respondError(
+						c,
+						"VALIDATION_ERROR",
+						"The sign-in destination is not registered for this storefront key.",
+						400,
+					);
+				}
+			}
 			const { token, expiresAt } = await auth.createLoginToken({
 				workspaceId,
 				email: parsed.data.email,
@@ -322,6 +338,7 @@ export function registerCustomerRoutes(
 			// otherwise invisible until somebody complains they never got a link.
 			try {
 				await auth.sendSignInLink({
+					callbackUrl,
 					workspaceId,
 					workspaceName: workspace.workspace.name,
 					email: parsed.data.email,
@@ -411,6 +428,7 @@ export function registerCustomerRoutes(
 			// workspaces, and nothing a storefront does needs it.
 			return respond(c, {
 				customerId: customer.workspaceCustomerId,
+				email: customer.email,
 				hasRecords: customer.clientRecordId !== null,
 			});
 		},
@@ -664,9 +682,8 @@ export function registerCustomerRoutes(
 	/**
 	 * This shopper's own referral code, created on first ask.
 	 *
-	 * ⚠️ Requires a session AND a client record. A customer who has signed in but
-	 * never ordered has no client record yet, and a referral code has to belong to
-	 * something an order can point at.
+	 * Requires a session and the workspace-scoped client record created when the
+	 * customer verifies their email. A later checkout uses that same record.
 	 */
 	app.post(
 		"/v1/customer/referral-code",
@@ -681,7 +698,7 @@ export function registerCustomerRoutes(
 				return respondError(
 					c,
 					"NOT_FOUND",
-					"You'll have a referral code once you've placed an order.",
+					"Your customer profile is not ready yet. Sign in again and retry.",
 					404,
 				);
 			}
@@ -748,7 +765,7 @@ export function registerCustomerRoutes(
 				return respondError(
 					c,
 					"NOT_FOUND",
-					"You can review something once you've ordered from this business.",
+					"Your customer profile is not ready yet. Sign in again and retry.",
 					404,
 				);
 			}

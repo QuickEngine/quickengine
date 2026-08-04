@@ -120,4 +120,29 @@ describe("QuickConnect", () => {
 		expect(init?.method).toBe("POST");
 		expect(init?.body).toBe(JSON.stringify({ email: "customer@example.com" }));
 	});
+
+	it("can return a magic link to the storefront's registered callback", async () => {
+		const fetcher = vi
+			.fn<typeof fetch>()
+			.mockResolvedValue(response({ sent: true }));
+		const quick = createQuickConnect({
+			baseUrl: "https://api.quickdash.xyz",
+			workspaceId: "workspace_123",
+			credential: { type: "site", key: "qsf_public_123" },
+			fetcher,
+		});
+
+		await quick.customer.requestSignInLink(
+			"customer@example.com",
+			"https://gemsutopia.ca/auth/verify",
+		);
+
+		const [, init] = fetcher.mock.calls[0] ?? [];
+		expect(init?.body).toBe(
+			JSON.stringify({
+				email: "customer@example.com",
+				callbackUrl: "https://gemsutopia.ca/auth/verify",
+			}),
+		);
+	});
 });

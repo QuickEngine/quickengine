@@ -43,13 +43,24 @@ function deps(
 		getWorkspaceForKey: async (id) => workspaceFor(id),
 		verifyApiKey: async (raw) =>
 			raw.startsWith("pk_")
-				? { id: "key_1", type: "publishable", workspaceId: WORKSPACE_A }
+				? {
+						allowedOrigins: [],
+						id: "key_1",
+						type: "publishable",
+						workspaceId: WORKSPACE_A,
+					}
 				: raw.startsWith("sk_")
-					? { id: "key_2", type: "secret", workspaceId: WORKSPACE_A }
+					? {
+							allowedOrigins: [],
+							id: "key_2",
+							type: "secret",
+							workspaceId: WORKSPACE_A,
+						}
 					: null,
 		resolveCustomerSession: async (token) =>
 			token === "session_a"
 				? {
+						email: "alice@example.test",
 						workspaceCustomerId: "wc_1",
 						workspaceId: WORKSPACE_A,
 						identityId: "id_1",
@@ -57,6 +68,7 @@ function deps(
 					}
 				: token === "session_b"
 					? {
+							email: "bob@example.test",
 							workspaceCustomerId: "wc_2",
 							workspaceId: WORKSPACE_B,
 							identityId: "id_2",

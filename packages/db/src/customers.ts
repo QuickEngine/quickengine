@@ -51,6 +51,7 @@ const digestsMatch = (a: string, b: string) => {
 };
 
 export type CustomerSessionResolution = {
+	email: string;
 	workspaceCustomerId: string;
 	workspaceId: string;
 	identityId: string;
@@ -203,6 +204,7 @@ export async function bindMembership(input: {
 			.set({ lastSeenAt: new Date() })
 			.where(eq(workspaceCustomers.id, existing.id));
 		return {
+			email,
 			workspaceCustomerId: existing.id,
 			workspaceId: existing.workspaceId,
 			identityId: existing.identityId,
@@ -250,6 +252,7 @@ export async function bindMembership(input: {
 	if (!created) throw new Error("Membership insert returned nothing.");
 
 	return {
+		email,
 		workspaceCustomerId: created.id,
 		workspaceId: created.workspaceId,
 		identityId: created.identityId,
@@ -295,11 +298,16 @@ export async function resolveCustomerSession(
 			workspaceId: workspaceCustomers.workspaceId,
 			identityId: workspaceCustomers.identityId,
 			clientRecordId: workspaceCustomers.clientRecordId,
+			email: customerIdentities.email,
 		})
 		.from(customerSessions)
 		.innerJoin(
 			workspaceCustomers,
 			eq(customerSessions.workspaceCustomerId, workspaceCustomers.id),
+		)
+		.innerJoin(
+			customerIdentities,
+			eq(workspaceCustomers.identityId, customerIdentities.id),
 		)
 		.where(eq(customerSessions.tokenHash, tokenHash))
 		.limit(1);
@@ -310,6 +318,7 @@ export async function resolveCustomerSession(
 	if (row.expiresAt.getTime() <= Date.now()) return null;
 
 	return {
+		email: row.email,
 		workspaceCustomerId: row.workspaceCustomerId,
 		workspaceId: row.workspaceId,
 		identityId: row.identityId,

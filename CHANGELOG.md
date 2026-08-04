@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Keep a customer's storefront account private and portable.** A custom site can now send a
+  passwordless sign-in link back to its own registered origin, restore that customer's session,
+  merge a guest wishlist into the account, show published reviews, submit moderated reviews and
+  issue referral codes. Callback origins are checked against the exact browser key, customer
+  sessions remain workspace-isolated, and sign-out revokes the token.
+
 - **Prove a connected storefront with realistic navigation and copy.** The guarded Gemsutopia
   fixture now includes categories, item memberships and published content alongside its catalog
   and inventory, so a custom frontend can exercise complete browsing behavior against Docker

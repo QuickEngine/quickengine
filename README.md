@@ -169,7 +169,10 @@ allowance draws on prepaid credits. Outbound webhook deliveries are counted but 
 
 The backend feature line is complete. The isolated Gemsutopia proof now exercises QuickConnect
 against a synthetic Docker catalog with real availability, category membership and published
-site content. The first custom storefront pages are reading that data without changing their UI.
+site content. Its customer sign-in returns to the storefront safely, two synthetic customers
+retain isolated wishlists, reviews enter moderation, referral codes remain customer-owned and
+sign-out revokes the session. The first custom storefront pages are reading that data without
+changing their visual system.
 The full backend completion audit follows the commerce proof, then the UI/UX pass.
 The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and workflow
 orchestration stay deliberately out of the current delivery path — the goal is one complete,

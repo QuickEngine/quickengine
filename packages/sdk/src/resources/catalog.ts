@@ -6,6 +6,7 @@ import type {
 	QuickCatalogVariant,
 	QuickCatalogVariantInput,
 	QuickCursorPage,
+	QuickPublicReview,
 	QuickResponse,
 } from "../types";
 
@@ -38,6 +39,13 @@ export class CatalogResource {
 	get(id: string) {
 		return this.client.request<QuickCatalogItem>(
 			`/catalog/${encodeURIComponent(id)}`,
+		);
+	}
+
+	listReviews(id: string, limit = 50) {
+		const query = new URLSearchParams({ limit: String(limit) });
+		return this.client.request<{ items: QuickPublicReview[] }>(
+			`/catalog/${encodeURIComponent(id)}/reviews?${query}`,
 		);
 	}
 	create(input: QuickCatalogItemInput, idempotencyKey: string) {

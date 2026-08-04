@@ -190,6 +190,16 @@ export type QuickWishlistItem = {
 	addedAt: string;
 };
 
+export type QuickPublicReview = {
+	id: string;
+	rating: number;
+	title: string | null;
+	body: string | null;
+	verifiedPurchase: boolean;
+	createdAt: string;
+	authorName: string;
+};
+
 export type QuickCatalogAvailability = {
 	catalogItemId: string;
 	catalogItemVariantId: string | null;

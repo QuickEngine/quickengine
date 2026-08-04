@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePortalHost } from "./workspace-branding";
+import { normalizePortalHost } from "./portal-host";
 
 /**
  * 🔴 Both sides of the custom-domain lookup go through this. An operator pastes

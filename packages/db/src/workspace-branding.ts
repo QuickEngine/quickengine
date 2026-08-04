@@ -6,6 +6,7 @@
 
 import { and, eq, like, ne } from "drizzle-orm";
 import { db } from "./client";
+import { normalizePortalHost } from "./portal-host";
 import { quickengineWorkspaces } from "./schema/quickengine";
 import { workspaceBranding } from "./schema/workspace-branding";
 import { nextAvailableSlug, slugify } from "./slug";
@@ -244,44 +245,6 @@ export async function portalBootstrapByHost(host: string): Promise<
 		portalSlug: row.portalSlug,
 		publishableKey: row.publishableKey,
 	};
-}
-
-/**
- * Reduce whatever was typed to a bare hostname.
- *
- * An operator pasting a domain into a settings field types
- * `https://account.gemsutopia.ca/`, `Account.Gemsutopia.CA`, or
- * `account.gemsutopia.ca:443`. A browser sends exactly one of those forms, so
- * both sides normalise through here or the lookup silently never matches.
- *
- * Returns null for anything that is not a plausible hostname, which keeps
- * nonsense out of a UNIQUE column where it would block the real value later.
- */
-export function normalizePortalHost(value: string): string | null {
-	let host = value.trim().toLowerCase();
-	if (!host) return null;
-
-	// Tolerate a full URL.
-	if (host.includes("://")) {
-		try {
-			host = new URL(host).hostname;
-		} catch {
-			return null;
-		}
-	}
-
-	host = host.replace(/\/.*$/, "").replace(/:\d+$/, "").replace(/\.$/, "");
-
-	// At least one dot, no spaces, no wildcards. `localhost` is deliberately
-	// rejected: a custom portal domain is a public one.
-	if (
-		!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(
-			host,
-		)
-	) {
-		return null;
-	}
-	return host;
 }
 
 /** Attach or clear a workspace's custom portal domain. */

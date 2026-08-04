@@ -90,6 +90,12 @@ import {
 	renameWorkspaceSchema,
 	workspaceModuleSchema,
 } from "./account-workspace-routes";
+import {
+	conversationStatusInputSchema,
+	customerConversationInputSchema,
+	customerMessageInputSchema,
+	operatorConversationInputSchema,
+} from "./customer-message-routes";
 import { portalDomainInputSchema } from "./portal-domain-routes";
 import { roleInputSchema, rolePatchSchema } from "./roles-routes";
 
@@ -247,6 +253,11 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	upsertContentEntry: contentEntryInputSchema,
 	createCategory: categoryInputSchema,
 	setPortalDomain: portalDomainInputSchema,
+	createCustomerConversation: customerConversationInputSchema,
+	replyToCustomerConversation: customerMessageInputSchema,
+	createOperatorCustomerConversation: operatorConversationInputSchema,
+	replyToOperatorCustomerConversation: customerMessageInputSchema,
+	setCustomerConversationStatus: conversationStatusInputSchema,
 	createReview: reviewInputSchema,
 	moderateReview: reviewModerationSchema,
 	reviewSummary: reviewSummaryInputSchema,

@@ -3309,6 +3309,107 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/customer/messages": {
+				get: {
+					operationId: "listCustomerConversations",
+					summary: "The signed-in customer's portal conversations",
+					responses: {
+						"200": { description: "Conversations newest first." },
+						"401": { description: "Sign in first." },
+					},
+				},
+				post: {
+					operationId: "createCustomerConversation",
+					summary: "Start or continue a conversation with the business",
+					responses: {
+						"201": { description: "The conversation." },
+						"401": { description: "Sign in first." },
+					},
+				},
+			},
+			"/v1/customer/messages/{id}": {
+				get: {
+					operationId: "getCustomerConversation",
+					summary: "One customer-owned conversation and its messages",
+					responses: {
+						"200": { description: "The conversation." },
+						"404": { description: "Not found in this customer account." },
+					},
+				},
+			},
+			"/v1/customer/messages/{id}/replies": {
+				post: {
+					operationId: "replyToCustomerConversation",
+					summary: "Reply to the business",
+					responses: {
+						"201": { description: "The reply." },
+						"404": { description: "Conversation not found." },
+					},
+				},
+			},
+			"/v1/customer/messages/{id}/read": {
+				post: {
+					operationId: "markCustomerConversationRead",
+					summary: "Mark the business's messages read",
+					responses: {
+						"200": { description: "Marked read." },
+						"404": { description: "Conversation not found." },
+					},
+				},
+			},
+			"/v1/customer-conversations": {
+				get: {
+					operationId: "listOperatorCustomerConversations",
+					summary: "Customer conversations for this workspace",
+					responses: { "200": { description: "Conversations newest first." } },
+				},
+				post: {
+					operationId: "createOperatorCustomerConversation",
+					summary: "Message a customer with portal access",
+					responses: {
+						"201": { description: "The conversation." },
+						"404": { description: "The customer has no portal membership." },
+					},
+				},
+			},
+			"/v1/customer-conversations/{id}": {
+				get: {
+					operationId: "getOperatorCustomerConversation",
+					summary: "One workspace customer conversation",
+					responses: {
+						"200": { description: "The conversation and messages." },
+						"404": { description: "Conversation not found." },
+					},
+				},
+				patch: {
+					operationId: "setCustomerConversationStatus",
+					summary: "Open or close a customer conversation",
+					responses: {
+						"200": { description: "Updated conversation." },
+						"404": { description: "Conversation not found." },
+					},
+				},
+			},
+			"/v1/customer-conversations/{id}/messages": {
+				post: {
+					operationId: "replyToOperatorCustomerConversation",
+					summary: "Reply to a customer",
+					responses: {
+						"201": { description: "The reply." },
+						"404": { description: "Conversation not found." },
+					},
+				},
+			},
+			"/v1/customer-conversations/{id}/read": {
+				post: {
+					operationId: "markOperatorCustomerConversationRead",
+					summary: "Mark the customer's messages read",
+					responses: {
+						"200": { description: "Marked read." },
+						"404": { description: "Conversation not found." },
+					},
+				},
+			},
 
 			// ── Credits ─────────────────────────────────────────────────────────
 			"/v1/account/credits": {

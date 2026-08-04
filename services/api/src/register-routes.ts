@@ -16,6 +16,7 @@ import { registerContentRoutes } from "./content-routes";
 import { registerContractsRoutes } from "./contracts-routes";
 import { registerCreditRoutes } from "./credit-routes";
 import { customerAuthDependencies } from "./customer-auth-dependencies";
+import { registerCustomerMessageRoutes } from "./customer-message-routes";
 import { registerCustomerRoutes } from "./customer-routes";
 import { registerDiscountRoutes } from "./discount-routes";
 import { registerFilesRoutes } from "./files-routes";
@@ -97,6 +98,7 @@ export function registerAllRoutes(
 		...dependencies,
 		auth: customerAuthDependencies,
 	});
+	registerCustomerMessageRoutes(app, dependencies);
 	registerRealtimeRoutes(app, dependencies);
 	registerRolesRoutes(app, dependencies);
 	registerResendWebhookRoutes(app, { logger });

@@ -170,6 +170,19 @@ export type CustomerContext = {
 	signedIn: boolean;
 };
 
+export type PortalConversation = {
+	id: string;
+	subject: string;
+	status: "open" | "closed";
+	lastMessageAt: string;
+	messages?: Array<{
+		id: string;
+		sender: "customer" | "operator" | "system";
+		body: string;
+		createdAt: string;
+	}>;
+};
+
 export const customerApi = {
 	context: () => call<CustomerContext>("/v1/customer/context"),
 	requestLink: (email: string) =>
@@ -191,6 +204,22 @@ export const customerApi = {
 		}),
 	list: (resource: "orders" | "bookings" | "invoices") =>
 		call<{ items: Record<string, unknown>[] }>(`/v1/customer/${resource}`),
+	listMessages: () =>
+		call<{ items: PortalConversation[] }>("/v1/customer/messages"),
+	getMessage: (id: string) =>
+		call<PortalConversation>(`/v1/customer/messages/${id}`),
+	startMessage: (input: { subject: string; body: string }) =>
+		call<PortalConversation>("/v1/customer/messages", {
+			method: "POST",
+			body: JSON.stringify(input),
+		}),
+	replyToMessage: (id: string, body: string) =>
+		call(`/v1/customer/messages/${id}/replies`, {
+			method: "POST",
+			body: JSON.stringify({ body }),
+		}),
+	markMessageRead: (id: string) =>
+		call(`/v1/customer/messages/${id}/read`, { method: "POST" }),
 };
 
 /**
@@ -202,11 +231,14 @@ export const customerApi = {
  * API route would answer `MODULE_DISABLED` anyway.
  */
 export const SECTIONS = [
+	{ id: "messages", label: "Messages", module: null },
 	{ id: "orders", label: "Orders", module: "orders" },
 	{ id: "bookings", label: "Bookings", module: "bookings" },
 	{ id: "invoices", label: "Invoices", module: "invoicing" },
 ] as const;
 
 export function sectionsFor(modules: readonly string[]) {
-	return SECTIONS.filter((section) => modules.includes(section.module));
+	return SECTIONS.filter(
+		(section) => section.module === null || modules.includes(section.module),
+	);
 }

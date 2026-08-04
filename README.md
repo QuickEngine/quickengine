@@ -161,10 +161,10 @@ allowance draws on prepaid credits. Outbound webhook deliveries are counted but 
 
 ## Status
 
-The backend foundation is deployed, and production shipping rates are ready for review. One
-final customer-to-business messaging slice and a completion audit remain before the full UI/UX
-pass. The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and
-workflow orchestration stay deliberately out of the current delivery path — the goal is one
-complete, truthful business workflow before the ecosystem widens.
+The backend feature line is complete: production shipping rates and private customer portal
+conversations are ready for review. A final completion audit remains before the full UI/UX pass.
+The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and workflow
+orchestration stay deliberately out of the current delivery path — the goal is one complete,
+truthful business workflow before the ecosystem widens.
 
 Not open source. All rights reserved.

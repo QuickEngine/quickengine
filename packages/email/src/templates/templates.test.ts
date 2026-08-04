@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EmailBrand } from "./brand";
 import {
 	bookingConfirmationEmail,
+	invoiceSentEmail,
 	orderConfirmationEmail,
 	paymentReceiptEmail,
 	shippingNoticeEmail,
@@ -116,5 +117,77 @@ describe("transactional templates", () => {
 		// The sign-in button, the support mailto, and the workspace's own site.
 		expect(links.length).toBeLessThanOrEqual(3);
 		expect(email.text).toContain("15 minutes");
+	});
+});
+
+describe("order confirmation line items", () => {
+	it("lists what was actually bought, not just a total", () => {
+		// 🔴 The mail shipped with `lines: []` for weeks. A receipt showing only a
+		// total is the one a customer replies to asking what they paid for.
+		const mail = orderConfirmationEmail({
+			brand,
+			orderNumber: "ORD-0007",
+			lines: [
+				{ name: "Alberta ammolite", quantity: 2, unitAmount: 4_500 },
+				{ name: "Gift box", quantity: 1, unitAmount: 500 },
+			],
+			subtotal: 9_500,
+			total: 9_500,
+			currency: "CAD",
+		});
+		expect(mail.html).toContain("Alberta ammolite");
+		expect(mail.html).toContain("Gift box");
+		// Quantity times unit price, not the unit price.
+		expect(mail.html).toContain("$90.00");
+		expect(mail.text).toContain("Alberta ammolite x2");
+	});
+});
+
+describe("invoice sent", () => {
+	const lines = [{ name: "Consulting", quantity: 3, unitAmount: 10_000 }];
+
+	it("carries the amount due and the line items", () => {
+		const mail = invoiceSentEmail({
+			brand,
+			invoiceNumber: "INV-0012",
+			lines,
+			subtotal: 30_000,
+			tax: 1_500,
+			total: 31_500,
+			currency: "CAD",
+		});
+		expect(mail.subject).toContain("INV-0012");
+		expect(mail.html).toContain("Consulting");
+		expect(mail.html).toContain("$315.00");
+		expect(mail.html).toContain("$15.00");
+	});
+
+	it("omits a tax row when there is no tax", () => {
+		// A "$0.00 tax" line on an invoice that never had tax reads as a bug.
+		const mail = invoiceSentEmail({
+			brand,
+			invoiceNumber: "INV-0013",
+			lines,
+			subtotal: 30_000,
+			tax: 0,
+			total: 30_000,
+			currency: "CAD",
+		});
+		expect(mail.html).not.toContain("Tax");
+	});
+
+	it("still says nothing about QuickEngine", () => {
+		const mail = invoiceSentEmail({
+			brand,
+			invoiceNumber: "INV-0014",
+			lines,
+			subtotal: 30_000,
+			total: 30_000,
+			currency: "CAD",
+		});
+		for (const forbidden of ["quickengine", "quickdash", "powered by"]) {
+			expect(mail.html.toLowerCase()).not.toContain(forbidden);
+			expect(mail.text.toLowerCase()).not.toContain(forbidden);
+		}
 	});
 });

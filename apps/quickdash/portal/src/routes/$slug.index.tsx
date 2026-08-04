@@ -101,11 +101,125 @@ function Portal() {
 			}
 		>
 			{data.signedIn ? (
-				<RecordList section={current} />
+				current === "messages" ? (
+					<Messages />
+				) : (
+					<RecordList section={current} />
+				)
 			) : (
 				<SignIn businessName={data.workspace.name} />
 			)}
 		</PortalShell>
+	);
+}
+
+function Messages() {
+	const queryClient = useQueryClient();
+	const [selected, setSelected] = useState<string | null>(null);
+	const [subject, setSubject] = useState("");
+	const [body, setBody] = useState("");
+	const conversations = useQuery({
+		queryKey: ["customer-messages"],
+		queryFn: customerApi.listMessages,
+		retry: false,
+	});
+	const thread = useQuery({
+		queryKey: ["customer-message", selected],
+		queryFn: () => {
+			if (!selected) throw new Error("Choose a conversation.");
+			return customerApi.getMessage(selected);
+		},
+		enabled: Boolean(selected),
+		retry: false,
+	});
+	const send = useMutation({
+		mutationFn: () =>
+			selected
+				? customerApi.replyToMessage(selected, body)
+				: customerApi.startMessage({ subject, body }),
+		onSuccess: async (result) => {
+			if (!selected && result && typeof result === "object" && "id" in result)
+				setSelected(String(result.id));
+			setBody("");
+			setSubject("");
+			await queryClient.invalidateQueries({ queryKey: ["customer-messages"] });
+			await queryClient.invalidateQueries({ queryKey: ["customer-message"] });
+		},
+	});
+
+	return (
+		<main className="p-6">
+			<h1 className="font-medium text-lg">Messages</h1>
+			<div className="mt-4 grid gap-6 md:grid-cols-[16rem_1fr]">
+				<div className="space-y-2">
+					<button
+						type="button"
+						className="w-full rounded-md border p-2 text-left text-sm"
+						onClick={() => setSelected(null)}
+					>
+						New message
+					</button>
+					{conversations.data?.items.map((item) => (
+						<button
+							type="button"
+							key={item.id}
+							className="w-full rounded-md border p-2 text-left text-sm"
+							onClick={() => {
+								setSelected(item.id);
+								customerApi.markMessageRead(item.id).catch(() => undefined);
+							}}
+						>
+							{item.subject}
+						</button>
+					))}
+				</div>
+				<div>
+					{selected && thread.data?.messages ? (
+						<div className="mb-4 space-y-3">
+							{thread.data.messages.map((message) => (
+								<div key={message.id} className="rounded-md border p-3 text-sm">
+									<div className="mb-1 text-muted-foreground text-xs capitalize">
+										{message.sender}
+									</div>
+									{message.body}
+								</div>
+							))}
+						</div>
+					) : null}
+					<form
+						className="space-y-2"
+						onSubmit={(event) => {
+							event.preventDefault();
+							send.mutate();
+						}}
+					>
+						{!selected ? (
+							<input
+								required
+								value={subject}
+								onChange={(event) => setSubject(event.target.value)}
+								placeholder="Subject"
+								className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+							/>
+						) : null}
+						<textarea
+							required
+							value={body}
+							onChange={(event) => setBody(event.target.value)}
+							placeholder="Write a message"
+							className="min-h-28 w-full rounded-md border bg-transparent p-3 text-sm"
+						/>
+						<button
+							disabled={send.isPending}
+							type="submit"
+							className="rounded-md bg-foreground px-4 py-2 text-background text-sm"
+						>
+							{send.isPending ? "Sending…" : "Send"}
+						</button>
+					</form>
+				</div>
+			</div>
+		</main>
 	);
 }
 

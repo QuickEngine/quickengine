@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Talk to customers without losing the conversation.** Customers now have a private inbox in
+  the business's portal, where they can ask questions, read replies, and see order, payment,
+  shipment, booking, and invoice updates. Businesses can start, reply to, read, close, and
+  reopen those conversations from the workspace API, with every thread isolated to the right
+  workspace and customer.
+
 - **Charge the delivery price you intended.** Set shipping zones by country or region, add flat,
   weight-based, order-value and free-shipping rates, and show eligible choices at checkout.
   QuickDash prices the basket and its weight itself, rechecks the chosen rate before charging,

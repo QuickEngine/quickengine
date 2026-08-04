@@ -63,6 +63,8 @@ const BODYLESS = new Set([
 	// Nothing to send: which notification is in the path, and who is the session.
 	"markNotificationRead",
 	"markAllNotificationsRead",
+	"markCustomerConversationRead",
+	"markOperatorCustomerConversationRead",
 	"setCatalogItemStatus",
 	"setProductVariantStatus",
 	"sendQuote",

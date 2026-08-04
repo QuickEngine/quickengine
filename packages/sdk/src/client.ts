@@ -9,6 +9,7 @@ import { FilesResource } from "./resources/files";
 import { FulfillmentsResource } from "./resources/fulfillments";
 import { InventoryResource } from "./resources/inventory";
 import { InvoicesResource } from "./resources/invoices";
+import { MessagesResource } from "./resources/messages";
 import { OrdersResource } from "./resources/orders";
 import { PaymentsResource } from "./resources/payments";
 import { ProjectsResource } from "./resources/projects";
@@ -83,6 +84,7 @@ export class QuickClient {
 	readonly clients: ClientsResource;
 	readonly quotes: QuotesResource;
 	readonly invoices: InvoicesResource;
+	readonly messages: MessagesResource;
 	readonly payments: PaymentsResource;
 	readonly orders: OrdersResource;
 	readonly fulfillments: FulfillmentsResource;
@@ -122,6 +124,7 @@ export class QuickClient {
 		this.clients = new ClientsResource(this);
 		this.quotes = new QuotesResource(this);
 		this.invoices = new InvoicesResource(this);
+		this.messages = new MessagesResource(this);
 		this.payments = new PaymentsResource(this);
 		this.orders = new OrdersResource(this);
 		this.fulfillments = new FulfillmentsResource(this);

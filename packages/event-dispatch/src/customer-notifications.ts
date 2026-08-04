@@ -8,6 +8,7 @@ import {
 	orderLineItems,
 	orders,
 	payments,
+	recordCustomerLifecycleMessage,
 	resolveBrand,
 	shipments,
 } from "@quickengine/db";
@@ -77,6 +78,105 @@ const NOTIFIED_EVENTS = new Set([
 	// deliberate act, and it arrives as a status change.
 	"invoice.status-changed",
 ]);
+
+async function recordLifecycle(event: OutboxEvent) {
+	switch (event.eventName) {
+		case "order.created": {
+			const [order] = await db
+				.select()
+				.from(orders)
+				.where(eq(orders.id, event.aggregateId))
+				.limit(1);
+			if (!order) return;
+			await recordCustomerLifecycleMessage({
+				workspaceId: event.workspaceId,
+				clientRecordId: order.clientId,
+				topicKey: `order:${order.id}`,
+				subject: `Order ${order.number}`,
+				body: "Your order was received.",
+				eventId: event.id,
+			});
+			return;
+		}
+		case "payment.recorded": {
+			const [payment] = await db
+				.select()
+				.from(payments)
+				.where(eq(payments.id, event.aggregateId))
+				.limit(1);
+			if (!payment) return;
+			await recordCustomerLifecycleMessage({
+				workspaceId: event.workspaceId,
+				clientRecordId: payment.clientId,
+				topicKey: `payment:${payment.id}`,
+				subject: "Payment update",
+				body: "Your payment was recorded.",
+				eventId: event.id,
+			});
+			return;
+		}
+		case "shipment.created": {
+			const [shipment] = await db
+				.select()
+				.from(shipments)
+				.where(eq(shipments.id, event.aggregateId))
+				.limit(1);
+			if (!shipment?.orderId) return;
+			const [order] = await db
+				.select()
+				.from(orders)
+				.where(eq(orders.id, shipment.orderId))
+				.limit(1);
+			if (!order) return;
+			await recordCustomerLifecycleMessage({
+				workspaceId: event.workspaceId,
+				clientRecordId: order.clientId,
+				topicKey: `order:${order.id}`,
+				subject: `Order ${order.number}`,
+				body: shipment.trackingNumber
+					? `Your order shipped. Tracking: ${shipment.trackingNumber}`
+					: "Your order shipped.",
+				eventId: event.id,
+			});
+			return;
+		}
+		case "booking.created": {
+			const [booking] = await db
+				.select()
+				.from(bookings)
+				.where(eq(bookings.id, event.aggregateId))
+				.limit(1);
+			if (!booking) return;
+			await recordCustomerLifecycleMessage({
+				workspaceId: event.workspaceId,
+				clientRecordId: booking.clientId,
+				topicKey: `booking:${booking.id}`,
+				subject: booking.title || "Booking",
+				body: "Your booking was confirmed.",
+				eventId: event.id,
+			});
+			return;
+		}
+		case "invoice.status-changed": {
+			if ((event.payload as { status?: string } | null)?.status !== "sent")
+				return;
+			const [invoice] = await db
+				.select()
+				.from(invoices)
+				.where(eq(invoices.id, event.aggregateId))
+				.limit(1);
+			if (!invoice) return;
+			await recordCustomerLifecycleMessage({
+				workspaceId: event.workspaceId,
+				clientRecordId: invoice.clientId,
+				topicKey: `invoice:${invoice.id}`,
+				subject: `Invoice ${invoice.number}`,
+				body: "Your invoice is ready.",
+				eventId: event.id,
+			});
+		}
+	}
+}
 
 /**
  * How the business appears in mail to its own customers.
@@ -315,6 +415,17 @@ export function customerNotificationHandler(
 		async handle(event: OutboxEvent) {
 			// Cheapest possible rejection: a string lookup, no database, no imports.
 			if (!NOTIFIED_EVENTS.has(event.eventName)) return;
+
+			// Neither delivery channel is allowed to block the other.
+			try {
+				await recordLifecycle(event);
+			} catch (error) {
+				log("customer_portal_notification.failed", {
+					error,
+					eventId: event.id,
+					eventName: event.eventName,
+				});
+			}
 
 			try {
 				const brand = await brandFor(event.workspaceId);

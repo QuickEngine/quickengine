@@ -329,6 +329,18 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		catalogItemIds: ["3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90"],
 	},
 	setPortalDomain: { domain: "account.gemsutopia.ca" },
+	createCustomerConversation: {
+		subject: "Question about my order",
+		body: "Could you confirm when it will ship?",
+	},
+	replyToCustomerConversation: { body: "Thank you, that answers my question." },
+	createOperatorCustomerConversation: {
+		clientRecordId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90",
+		subject: "Your order is ready",
+		body: "Your order is packed and ready for collection.",
+	},
+	replyToOperatorCustomerConversation: { body: "It will be ready after 3 PM." },
+	setCustomerConversationStatus: { status: "closed" },
 	createCategory: {
 		kind: "category",
 		name: "Rings",

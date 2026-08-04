@@ -39,6 +39,16 @@ const quick = createQuickConnect({
 const { data: items } = await quick.catalog.list();
 const { data: product } = await quick.catalog.get(items[0].id);
 
+// Passwordless customer identity may return to this registered storefront origin.
+await quick.customer.requestSignInLink(
+  "customer@example.com",
+  `${window.location.origin}/auth/verify`,
+);
+
+// On /auth/verify, exchange the one-time token and rebuild the client with
+// credential: { type: "site", key, customerSession: data.token }.
+const { data: session } = await quick.customer.verifySignInLink(tokenFromUrl);
+
 // QuickDash calculates catalog prices, discounts, shipping and payment itself.
 const { data: checkout } = await quick.site.checkout(
   {

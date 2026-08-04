@@ -4,6 +4,7 @@ import type { QuickEngineApiKeyType } from "@quickengine/db/schema/quickengine";
 import type { RequestIdVariables } from "hono/request-id";
 
 export type ApiKeyIdentity = {
+	allowedOrigins: readonly string[];
 	capabilities: readonly ApiCapability[];
 	id: string;
 	type: QuickEngineApiKeyType;
@@ -55,6 +56,8 @@ export type ApiPrincipal =
  */
 export type CustomerPrincipal = {
 	kind: "customer";
+	/** Verified email for this signed-in identity; safe only on their own route. */
+	email: string;
 	/** The membership. Scoped to ONE workspace — this is what isolates tenants. */
 	workspaceCustomerId: string;
 	/** The person, who may hold memberships elsewhere. Never used for scoping. */
@@ -71,6 +74,8 @@ export type CustomerPrincipal = {
 };
 
 export type CustomerContext = {
+	/** Exact browser origins registered on the presented public key. */
+	allowedOrigins: readonly string[];
 	workspaceId: string;
 	workspace: WorkspaceResolution;
 	/**
@@ -113,6 +118,7 @@ export type PlatformEnv = {
 
 /** What a valid customer session token resolves to. */
 export type CustomerSessionResolution = {
+	email: string;
 	workspaceCustomerId: string;
 	workspaceId: string;
 	identityId: string;

@@ -82,6 +82,28 @@ describe("catalog resource", () => {
 		);
 	});
 
+	it("lists only the public reviews exposed for a catalog item", async () => {
+		const fetcher = vi
+			.fn<typeof fetch>()
+			.mockResolvedValue(
+				new Response(JSON.stringify({ data: { items: [] } }), { status: 200 }),
+			);
+		const quick = createQuickBrowser({
+			baseUrl: "https://api.quickdash.xyz",
+			workspaceId: "workspace_123",
+			credential: { type: "publishable", key: "qpk_public" },
+			fetcher,
+		});
+
+		await quick.catalog.listReviews(item.id, 12);
+
+		const [url, init] = fetcher.mock.calls[0] ?? [];
+		expect(url).toBe(
+			`https://api.quickdash.xyz/v1/catalog/${item.id}/reviews?limit=12`,
+		);
+		expect(init?.method).toBe("GET");
+	});
+
 	it("moves an item between statuses over POST /v1/catalog/:id/status", async () => {
 		const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
 			new Response(JSON.stringify({ data: { ...item, status: "archived" } }), {

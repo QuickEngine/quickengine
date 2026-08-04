@@ -227,6 +227,7 @@ export async function issueApiKey(input: {
 }
 
 export type VerifiedApiKey = {
+	allowedOrigins: string[];
 	id: string;
 	workspaceId: string;
 	type: QuickEngineApiKeyType;
@@ -245,6 +246,7 @@ export async function verifyApiKey(
 
 	const [row] = await db
 		.select({
+			allowedOrigins: quickengineApiKeys.allowedOrigins,
 			id: quickengineApiKeys.id,
 			workspaceId: quickengineApiKeys.workspaceId,
 			type: quickengineApiKeys.type,
@@ -269,6 +271,7 @@ export async function verifyApiKey(
 	}
 
 	return {
+		allowedOrigins: row.allowedOrigins ?? [],
 		id: row.id,
 		workspaceId: row.workspaceId,
 		type: row.type,

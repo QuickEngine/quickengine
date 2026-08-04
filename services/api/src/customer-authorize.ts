@@ -133,6 +133,7 @@ export function authorizeCustomer(
 		if (customer instanceof Response) return customer;
 
 		c.set("customer", {
+			allowedOrigins: key.allowedOrigins,
 			workspaceId: key.workspaceId,
 			workspace: workspace as WorkspaceResolution,
 			customer,
@@ -208,6 +209,7 @@ async function resolveCustomer(
 
 	return {
 		kind: "customer",
+		email: session.email,
 		workspaceCustomerId: session.workspaceCustomerId,
 		identityId: session.identityId,
 		clientRecordId: session.clientRecordId,

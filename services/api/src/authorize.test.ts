@@ -36,6 +36,7 @@ const workspace: WorkspaceResolution = {
 };
 
 const key: ApiKeyIdentity = {
+	allowedOrigins: [],
 	capabilities: ["catalog:read"],
 	id: "key_1",
 	type: "secret",

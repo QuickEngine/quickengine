@@ -58,23 +58,27 @@ export const customerAuthDependencies: CustomerAuthDependencies = {
 		// segment, and it needs that before it can fetch the publishable key that
 		// `verify` requires. A link to a bare `/verify` lands on a page that cannot
 		// tell whose token it is holding.
-		const [published] = await db
-			.select({ portalSlug: workspaceBranding.portalSlug })
-			.from(workspaceBranding)
-			.where(eq(workspaceBranding.workspaceId, input.workspaceId))
-			.limit(1);
+		const [published] = input.callbackUrl
+			? []
+			: await db
+					.select({ portalSlug: workspaceBranding.portalSlug })
+					.from(workspaceBranding)
+					.where(eq(workspaceBranding.workspaceId, input.workspaceId))
+					.limit(1);
 
 		// No published portal means no address the link could point at. Thrown
 		// rather than guessed: `request-link` catches this, logs
 		// `customer.sign_in_link_failed`, and still answers 202, so the enumeration
 		// guarantee holds and the token remains available for a later retry.
-		if (!published?.portalSlug) {
+		if (!input.callbackUrl && !published?.portalSlug) {
 			throw new Error(
 				`Workspace ${input.workspaceId} has no published portal, so a sign-in link has nowhere to land.`,
 			);
 		}
 
-		const url = new URL(`/${published.portalSlug}/verify`, portalBaseUrl());
+		const url = input.callbackUrl
+			? new URL(input.callbackUrl)
+			: new URL(`/${published?.portalSlug}/verify`, portalBaseUrl());
 		url.searchParams.set("token", input.token);
 
 		// 🔴 Branded as the WORKSPACE, never as QuickEngine. The recipient bought

@@ -119,10 +119,10 @@ export class SiteResource {
 export class CustomerResource {
 	constructor(private readonly client: QuickClient) {}
 
-	requestSignInLink(email: string) {
+	requestSignInLink(email: string, callbackUrl?: string) {
 		return this.client.request<{ sent: true }>("/customer/auth/request-link", {
 			method: "POST",
-			body: { email },
+			body: { email, ...(callbackUrl ? { callbackUrl } : {}) },
 		});
 	}
 
@@ -134,9 +134,11 @@ export class CustomerResource {
 	}
 
 	me() {
-		return this.client.request<{ customerId: string; hasRecords: boolean }>(
-			"/customer/auth/me",
-		);
+		return this.client.request<{
+			customerId: string;
+			email: string;
+			hasRecords: boolean;
+		}>("/customer/auth/me");
 	}
 
 	signOut() {

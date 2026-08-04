@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Put your customer portal on your own domain.** Instead of sending your customers to a
+  QuickDash address, point your own — `account.yourshop.com` — at your portal, and that is the
+  only name they ever see. Add it in one place, point a CNAME at us, and it works. Remove it
+  and your portal goes back to its original address; nothing your customers saved is affected
+  either way. A domain can only belong to one workspace, so nobody can take yours.
+
 - **Reviews, and you decide which ones go live.** Customers can rate and review what they
   bought. Nothing appears on your site until you approve it, and you can reject one with a
   private note explaining why. Reviews from someone who actually ordered the item are marked as

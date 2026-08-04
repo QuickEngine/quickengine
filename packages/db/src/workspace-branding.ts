@@ -191,3 +191,130 @@ export async function availablePortalSlug(
 
 	return nextAvailableSlug(base, taken);
 }
+
+/**
+ * Resolve a portal from the HOST a visitor typed.
+ *
+ * 🔴 This is what lets a business put the portal on its own domain —
+ * `account.gemsutopia.ca` rather than `portal.quickdash.xyz/gemsutopia`. Their
+ * customers never see our address, which is the point of a white-labelled
+ * portal.
+ *
+ * ⚠️ Matched on the STORED host only. `custom_domain` is unique across the
+ * table, so a domain belongs to exactly one workspace and cannot be claimed
+ * twice — but nothing here proves the workspace actually controls that domain.
+ * That proof is DNS: they can only point a CNAME at us for a domain they own,
+ * and until they do, claiming it achieves nothing. Verification would still be
+ * worth adding before this is self-serve.
+ *
+ * Normalised the same way on read and write, so a workspace that stored
+ * `https://Account.Gemsutopia.ca/` still matches the `account.gemsutopia.ca`
+ * a browser sends.
+ */
+export async function portalBootstrapByHost(host: string): Promise<
+	| (ResolvedBrand & {
+			portalSlug: string;
+			publishableKey: string | null;
+	  })
+	| null
+> {
+	const normalized = normalizePortalHost(host);
+	if (!normalized) return null;
+
+	const [row] = await db
+		.select({
+			workspaceId: workspaceBranding.workspaceId,
+			portalSlug: workspaceBranding.portalSlug,
+			publishableKey: workspaceBranding.portalPublishableKey,
+			enabled: workspaceBranding.portalEnabled,
+		})
+		.from(workspaceBranding)
+		.where(eq(workspaceBranding.customDomain, normalized))
+		.limit(1);
+
+	// Same silence as the slug lookup: an unknown host and a switched-off portal
+	// answer identically, so this cannot be walked to inventory customers.
+	if (!row?.enabled) return null;
+
+	const brand = await resolveBrand(row.workspaceId);
+	if (!brand) return null;
+
+	return {
+		...brand,
+		portalSlug: row.portalSlug,
+		publishableKey: row.publishableKey,
+	};
+}
+
+/**
+ * Reduce whatever was typed to a bare hostname.
+ *
+ * An operator pasting a domain into a settings field types
+ * `https://account.gemsutopia.ca/`, `Account.Gemsutopia.CA`, or
+ * `account.gemsutopia.ca:443`. A browser sends exactly one of those forms, so
+ * both sides normalise through here or the lookup silently never matches.
+ *
+ * Returns null for anything that is not a plausible hostname, which keeps
+ * nonsense out of a UNIQUE column where it would block the real value later.
+ */
+export function normalizePortalHost(value: string): string | null {
+	let host = value.trim().toLowerCase();
+	if (!host) return null;
+
+	// Tolerate a full URL.
+	if (host.includes("://")) {
+		try {
+			host = new URL(host).hostname;
+		} catch {
+			return null;
+		}
+	}
+
+	host = host.replace(/\/.*$/, "").replace(/:\d+$/, "").replace(/\.$/, "");
+
+	// At least one dot, no spaces, no wildcards. `localhost` is deliberately
+	// rejected: a custom portal domain is a public one.
+	if (
+		!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(
+			host,
+		)
+	) {
+		return null;
+	}
+	return host;
+}
+
+/** Attach or clear a workspace's custom portal domain. */
+export async function setPortalCustomDomain(
+	workspaceId: string,
+	domain: string | null,
+): Promise<{ customDomain: string | null }> {
+	const normalized = domain === null ? null : normalizePortalHost(domain);
+	if (domain !== null && normalized === null) {
+		throw new Error("PORTAL_DOMAIN_INVALID");
+	}
+
+	const [row] = await db
+		.update(workspaceBranding)
+		.set({ customDomain: normalized, updatedAt: new Date() })
+		.where(eq(workspaceBranding.workspaceId, workspaceId))
+		.returning({ customDomain: workspaceBranding.customDomain });
+
+	if (!row) throw new Error("PORTAL_NOT_CONFIGURED");
+	return row;
+}
+
+/** What domain, if any, this workspace's portal answers on. */
+export async function readPortalDomain(
+	workspaceId: string,
+): Promise<{ customDomain: string | null; portalSlug: string | null }> {
+	const [row] = await db
+		.select({
+			customDomain: workspaceBranding.customDomain,
+			portalSlug: workspaceBranding.portalSlug,
+		})
+		.from(workspaceBranding)
+		.where(eq(workspaceBranding.workspaceId, workspaceId))
+		.limit(1);
+	return row ?? { customDomain: null, portalSlug: null };
+}

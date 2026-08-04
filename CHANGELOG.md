@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **PayPal's complete platform handshake is covered before it touches a checkout.** The
+  payments layer can now create seller referrals, inspect merchant readiness, create and
+  capture seller-owned orders, refund captures, and ask PayPal to verify signed webhook
+  deliveries. Contract tests pin the exact seller identity, integer-cent amounts, permissions,
+  and transmission data that must cross the provider boundary.
+
 - **One checkout contract for every payment provider.** Storefront checkout now says exactly
   what the buyer must do next — confirm a client secret, approve a provider order, follow a
   hosted redirect, or nothing — instead of assuming every payment provider behaves like

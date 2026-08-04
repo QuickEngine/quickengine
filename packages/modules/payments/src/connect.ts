@@ -49,6 +49,17 @@ export type ConnectStatus = {
 	status: "pending" | "active" | "restricted" | "disabled";
 };
 
+export class PaymentProviderConflictError extends Error {
+	constructor(
+		readonly connectedProvider: string,
+		readonly requestedProvider: string,
+	) {
+		super(
+			`This workspace is already connected to ${connectedProvider}. Disconnecting or switching payment providers is not available yet.`,
+		);
+	}
+}
+
 const NOT_CONNECTED: ConnectStatus = {
 	provider: "stripe",
 	connected: false,
@@ -82,6 +93,9 @@ export async function startPaymentOnboarding(input: {
 	const providerId = input.provider ?? "stripe";
 	const provider = getPaymentProvider(providerId);
 	const existing = await getPaymentAccount(input.workspaceId);
+	if (existing && existing.provider !== providerId) {
+		throw new PaymentProviderConflictError(existing.provider, providerId);
+	}
 
 	if (existing?.stripeAccountId) {
 		const account = await provider.getAccount(existing.stripeAccountId);
@@ -156,6 +170,7 @@ async function persist(
 	const status = account.chargesEnabled ? "active" : "pending";
 
 	await upsertPaymentAccount(workspaceId, {
+		provider,
 		stripeAccountId: account.externalAccountId,
 		status,
 		chargesEnabled: account.chargesEnabled,

@@ -952,6 +952,28 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/checkout/{externalPaymentId}/capture": {
+				parameters: [
+					{
+						in: "path",
+						name: "externalPaymentId",
+						required: true,
+						schema: { type: "string", maxLength: 255 },
+					},
+				],
+				post: {
+					operationId: "captureCheckoutPayment",
+					summary: "Capture a browser-approved provider payment",
+					description:
+						"Completes a payment only after the buyer approved it in the provider UI. The stored workspace payment chooses the provider and merchant account; the browser cannot redirect capture to another account.",
+					responses: {
+						"200": {
+							description: "The provider capture and settlement outcome.",
+						},
+						"404": { description: "No matching capturable payment." },
+					},
+				},
+			},
 			"/v1/orders": {
 				get: {
 					operationId: "listOrders",

@@ -25,7 +25,7 @@
  * row written under the old name, so treat them as permanent identifiers rather
  * than display labels.
  */
-export type PaymentProviderId = "stripe" | "manual";
+export type PaymentProviderId = "stripe" | "paypal" | "manual";
 
 /** A connected account, in whatever shape the provider expresses it. */
 export type ProviderAccount = {
@@ -64,6 +64,12 @@ export type ProviderRefund = {
 	settled: boolean;
 };
 
+export type ProviderCapture = {
+	externalCaptureId: string;
+	settled: boolean;
+	event: VerifiedProviderEvent;
+};
+
 /**
  * A provider event that has been proven to come from the provider.
  *
@@ -76,7 +82,14 @@ export type VerifiedProviderEvent = {
 	type: string;
 	/** The provider's own payment id, when the event concerns one. */
 	externalPaymentId: string | null;
+	/** The merchant account this event belongs to, proven by the provider. */
+	externalAccountId: string | null;
 	payload: unknown;
+};
+
+export type ProviderWebhookRequest = {
+	rawBody: string;
+	headers: Record<string, string | undefined>;
 };
 
 export interface PaymentProvider {
@@ -125,6 +138,12 @@ export interface PaymentProvider {
 		metadata?: Record<string, string>;
 	}): Promise<ProviderCharge>;
 
+	/** Complete a browser-approved payment when the provider requires it. */
+	captureCharge?(params: {
+		externalPaymentId: string;
+		connectedAccountId: string;
+	}): Promise<ProviderCapture>;
+
 	/**
 	 * Send money back.
 	 *
@@ -158,7 +177,6 @@ export interface PaymentProvider {
 	 * hostile and answer 400 without doing any work.
 	 */
 	verifyWebhook(
-		rawBody: string,
-		signature: string,
+		request: ProviderWebhookRequest,
 	): Promise<VerifiedProviderEvent | null>;
 }

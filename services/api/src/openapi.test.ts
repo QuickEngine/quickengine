@@ -38,6 +38,10 @@ const operations = Object.values(
  * an undocumented body, which is what the coverage test below catches.
  */
 const BODYLESS = new Set([
+	// The provider order is in the path. Its stored payment chooses both the
+	// provider and merchant account, so accepting a body would only create an
+	// unsafe second place for the browser to name either one.
+	"captureCheckoutPayment",
 	// The session being revoked is the one presented in the header. A body would
 	// only offer a caller somewhere to name a different token.
 	"signOutCustomer",

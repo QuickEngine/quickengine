@@ -77,6 +77,7 @@ export async function getPaymentAccount(workspaceId: string) {
 }
 
 export type PaymentAccountPatch = {
+	provider?: string;
 	stripeAccountId?: string | null;
 	status?: "pending" | "active" | "restricted" | "disabled";
 	chargesEnabled?: boolean;

@@ -6,6 +6,7 @@ import {
 	getPaymentDto,
 	listPaymentsPage,
 	PAYMENT_STATUSES,
+	PaymentProviderConflictError,
 	paymentOnboardingInputSchema,
 	readPaymentAccount,
 	recordPaymentCommand,
@@ -222,6 +223,9 @@ export function registerPaymentsRoutes(
 					}),
 				);
 			} catch (error) {
+				if (error instanceof PaymentProviderConflictError) {
+					return respondError(c, "CONFLICT", error.message, 409);
+				}
 				// A provider we have no integration for is the caller's mistake, not a
 				// server fault — answering 500 would send them to look at our logs.
 				if (error instanceof UnsupportedPaymentProviderError) {

@@ -159,6 +159,8 @@ const customerVerifySchema = z.object({
 });
 
 export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
+	// `captureCheckoutPayment` is intentionally absent: the provider order id is
+	// the path parameter and the stored payment chooses provider + merchant.
 	requestCustomerSignInLink: customerSignInRequestSchema,
 	verifyCustomerSignInLink: customerVerifySchema,
 	// Client records

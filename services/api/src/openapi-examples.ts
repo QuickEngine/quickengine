@@ -17,6 +17,7 @@ const FILE_VERSION = "3f1b2c40-0000-4000-8000-00000000f101".replace("f1", "d3");
 const ORDER_LINE = "3f1b2c40-0000-4000-8000-00000000c201".replace("c2", "e4");
 
 export const REQUEST_EXAMPLES: Record<string, unknown> = {
+	// `captureCheckoutPayment` is bodyless, so it correctly has no example here.
 	createClient: {
 		name: "Ada Lovelace",
 		email: "ada@analyticalengines.example",

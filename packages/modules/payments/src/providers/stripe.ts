@@ -147,13 +147,12 @@ export const stripePaymentProvider: PaymentProvider = {
 		};
 	},
 
-	async verifyWebhook(
-		rawBody,
-		signature,
-	): Promise<VerifiedProviderEvent | null> {
+	async verifyWebhook(request): Promise<VerifiedProviderEvent | null> {
 		try {
+			const signature = request.headers["stripe-signature"];
+			if (!signature) return null;
 			const { constructStripeEvent } = await billing();
-			const event = constructStripeEvent(rawBody, signature);
+			const event = constructStripeEvent(request.rawBody, signature);
 			const object = event.data.object as { id?: string; object?: string };
 
 			// Only claim a payment id when the event is actually about one. A
@@ -166,6 +165,8 @@ export const stripePaymentProvider: PaymentProvider = {
 				id: event.id,
 				type: event.type,
 				externalPaymentId,
+				externalAccountId:
+					typeof event.account === "string" ? event.account : null,
 				payload: event,
 			};
 		} catch {

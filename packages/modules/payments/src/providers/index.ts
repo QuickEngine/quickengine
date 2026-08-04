@@ -1,4 +1,5 @@
 import type { PaymentProvider, PaymentProviderId } from "../provider";
+import { paypalPaymentProvider } from "./paypal";
 import { stripePaymentProvider } from "./stripe";
 
 /**
@@ -15,6 +16,7 @@ import { stripePaymentProvider } from "./stripe";
  * in person.
  */
 const PROVIDERS: Partial<Record<PaymentProviderId, PaymentProvider>> = {
+	paypal: paypalPaymentProvider,
 	stripe: stripePaymentProvider,
 };
 
@@ -42,4 +44,4 @@ export function isChargeableProvider(provider: string): boolean {
 	return provider in PROVIDERS;
 }
 
-export { stripePaymentProvider };
+export { paypalPaymentProvider, stripePaymentProvider };

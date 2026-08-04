@@ -3,6 +3,7 @@ export * from "./catalog-items";
 export * from "./categories";
 export * from "./item";
 export * from "./module";
+export * from "./reviews";
 export * from "./variant";
 export * from "./variants";
 export * from "./wishlist";

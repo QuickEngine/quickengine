@@ -449,6 +449,13 @@
 			"when": 1785801701627,
 			"tag": "0063_purple_inertia",
 			"breakpoints": true
+		},
+		{
+			"idx": 64,
+			"version": "7",
+			"when": 1785803085356,
+			"tag": "0064_sloppy_franklin_storm",
+			"breakpoints": true
 		}
 	]
 }

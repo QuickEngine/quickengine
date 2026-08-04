@@ -25,6 +25,7 @@ export * from "./quickengine";
 export * from "./quotes-estimates";
 export * from "./referrals";
 export * from "./reporting-analytics";
+export * from "./reviews";
 export * from "./saved-views";
 export * from "./shipments";
 export * from "./time-entries";

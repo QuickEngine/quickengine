@@ -318,6 +318,16 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	mergeWishlist: {
 		items: [{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90" }],
 	},
+	createReview: {
+		catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90",
+		rating: 5,
+		title: "Beautiful stone",
+		body: "Exactly as described, and it arrived in two days.",
+	},
+	moderateReview: { status: "published" },
+	reviewSummary: {
+		catalogItemIds: ["3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90"],
+	},
 	createCategory: {
 		kind: "category",
 		name: "Rings",

@@ -120,6 +120,7 @@ describe("order totals", () => {
 		).toEqual({
 			subtotalCents: 7_750,
 			discountCents: 0,
+			shippingCents: 0,
 			taxCents: 0,
 			totalCents: 7_750,
 		});
@@ -131,6 +132,7 @@ describe("order totals", () => {
 		).toEqual({
 			subtotalCents: 10_000,
 			discountCents: 0,
+			shippingCents: 0,
 			taxCents: 500,
 			totalCents: 10_500,
 		});
@@ -144,8 +146,26 @@ describe("order totals", () => {
 		).toEqual({
 			subtotalCents: 10_000,
 			discountCents: 0,
+			shippingCents: 0,
 			taxCents: 0,
 			totalCents: 10_000,
+		});
+	});
+
+	it("adds shipping without changing the merchandise subtotal", () => {
+		expect(
+			computeOrderTotals(
+				[{ quantity: 1, unitPriceCents: 10_000 }],
+				550,
+				1_000,
+				2_000,
+			),
+		).toEqual({
+			subtotalCents: 10_000,
+			discountCents: 1_000,
+			shippingCents: 2_000,
+			taxCents: 550,
+			totalCents: 11_550,
 		});
 	});
 

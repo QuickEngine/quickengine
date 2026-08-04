@@ -24,8 +24,9 @@ const shipment = {
 const server = (payload: unknown = shipment) => {
 	const fetcher = vi
 		.fn<typeof fetch>()
-		.mockResolvedValue(
-			new Response(JSON.stringify({ data: payload }), { status: 200 }),
+		.mockImplementation(
+			async () =>
+				new Response(JSON.stringify({ data: payload }), { status: 200 }),
 		);
 	const quick = createQuickServer({
 		baseUrl: "https://api.quickengine.test",
@@ -37,6 +38,36 @@ const server = (payload: unknown = shipment) => {
 };
 
 describe("shipments resource", () => {
+	it("requests a server-authoritative delivery quote", async () => {
+		const { quick, fetcher } = server({ options: [] });
+		await quick.shipments.quote({
+			items: [
+				{ catalogItemId: "00000000-0000-4000-8000-0000000016b1", quantity: 2 },
+			],
+			destination: { countryCode: "CA", regionCode: "CA-AB" },
+		});
+		const [url, init] = fetcher.mock.calls[0] ?? [];
+		expect(url).toBe("https://api.quickengine.test/v1/shipping/quote");
+		expect(init?.method).toBe("POST");
+		expect(JSON.parse(String(init?.body))).not.toHaveProperty("subtotalCents");
+	});
+
+	it("manages delivery zones and rates", async () => {
+		const { quick, fetcher } = server({
+			id: "00000000-0000-4000-8000-0000000016c1",
+		});
+		await quick.shipments.createZone({ name: "Canada", countryCodes: ["CA"] });
+		await quick.shipments.createRate({
+			zoneId: "00000000-0000-4000-8000-0000000016c1",
+			name: "Standard",
+			baseCents: 1200,
+		});
+		expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+			"https://api.quickengine.test/v1/shipping/zones",
+			"https://api.quickengine.test/v1/shipping/rates",
+		]);
+	});
+
 	it("filters a cursor page by order over GET /v1/shipments", async () => {
 		const { quick, fetcher } = server({
 			items: [shipment],

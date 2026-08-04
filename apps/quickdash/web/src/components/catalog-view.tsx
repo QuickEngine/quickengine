@@ -59,6 +59,7 @@ export type CatalogVariantViewModel = {
 	status: "draft" | "active" | "archived";
 	sku: string | null;
 	priceCentsOverride: number | null;
+	weightGramsOverride: number | null;
 };
 export type CatalogItemViewModel = {
 	id: string;
@@ -71,6 +72,7 @@ export type CatalogItemViewModel = {
 	priceCents: number | null;
 	currency: string;
 	unitLabel: string | null;
+	weightGrams: number | null;
 	variants: CatalogVariantViewModel[];
 };
 const INITIAL: CatalogActionState = { error: null, completionId: null };
@@ -109,6 +111,7 @@ function ItemFields({
 	defaultCurrency: string;
 }) {
 	const [pricing, setPricing] = useState(item?.pricingModel ?? "fixed");
+	const [itemType, setItemType] = useState(item?.type ?? "physical");
 	return (
 		<div className="grid max-h-[65vh] gap-4 overflow-y-auto py-2 pr-1">
 			<div className="space-y-2">
@@ -122,7 +125,13 @@ function ItemFields({
 			<div className="grid gap-4 sm:grid-cols-2">
 				<div className="space-y-2">
 					<Label>Type</Label>
-					<NativeSelect name="type" defaultValue={item?.type ?? "physical"}>
+					<NativeSelect
+						name="type"
+						value={itemType}
+						onChange={(event) =>
+							setItemType(event.target.value as typeof itemType)
+						}
+					>
 						{["physical", "digital", "service", "package", "rental"].map(
 							(type) => (
 								<option key={type} value={type}>
@@ -137,6 +146,19 @@ function ItemFields({
 					<Input name="sku" defaultValue={item?.sku ?? ""} />
 				</div>
 			</div>
+			{itemType === "physical" && (
+				<div className="space-y-2">
+					<Label>Shipping weight (grams)</Label>
+					<Input
+						name="weightGrams"
+						type="number"
+						min={1}
+						step={1}
+						defaultValue={item?.weightGrams ?? ""}
+						placeholder="Required for weight-based rates"
+					/>
+				</div>
+			)}
 			<div className="grid gap-4 sm:grid-cols-2">
 				<div className="space-y-2">
 					<Label>Pricing</Label>
@@ -372,6 +394,17 @@ function VariantDialog({
 								inputMode="decimal"
 								defaultValue={centsText(variant?.priceCentsOverride ?? null)}
 								placeholder="Inherits the parent price"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label>Shipping weight override (grams)</Label>
+							<Input
+								name="weightGramsOverride"
+								type="number"
+								min={1}
+								step={1}
+								defaultValue={variant?.weightGramsOverride ?? ""}
+								placeholder="Inherits the parent weight"
 							/>
 						</div>
 					</div>

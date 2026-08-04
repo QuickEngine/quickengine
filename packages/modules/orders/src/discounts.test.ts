@@ -51,6 +51,7 @@ describe("order totals with a discount", () => {
 		expect(totals).toEqual({
 			subtotalCents: 10_000,
 			discountCents: 1_000,
+			shippingCents: 0,
 			taxCents: 450,
 			totalCents: 9_450,
 		});
@@ -72,6 +73,7 @@ describe("order totals with a discount", () => {
 		expect(computeOrderTotals([line], 500)).toEqual({
 			subtotalCents: 10_000,
 			discountCents: 0,
+			shippingCents: 0,
 			taxCents: 500,
 			totalCents: 10_500,
 		});

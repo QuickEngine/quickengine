@@ -24,6 +24,7 @@ export const productVariantInputSchema = z
 		// Null inherits the parent catalog item's price. A concrete override remains
 		// integer cents and uses the parent's currency/pricing model.
 		priceCentsOverride: z.number().int().nonnegative().nullable().default(null),
+		weightGramsOverride: z.number().int().positive().nullable().default(null),
 		metadata: z.record(z.string(), z.unknown()).default({}),
 	})
 	.superRefine((variant, context) => {
@@ -49,6 +50,7 @@ export const productVariantPatchSchema = z
 		options: z.array(variantOptionSchema).min(1).max(10).optional(),
 		sku: z.string().trim().toUpperCase().min(1).max(100).nullable().optional(),
 		priceCentsOverride: z.number().int().nonnegative().nullable().optional(),
+		weightGramsOverride: z.number().int().positive().nullable().optional(),
 		metadata: z.record(z.string(), z.unknown()).optional(),
 	})
 	.strict()

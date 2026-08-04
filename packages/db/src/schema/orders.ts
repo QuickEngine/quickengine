@@ -15,6 +15,7 @@ import { catalogItems, catalogItemVariants } from "./catalog-items";
 import { clientRecords } from "./client-records";
 import { fulfillments } from "./fulfillments";
 import { quickengineWorkspaces } from "./quickengine";
+import { shippingRates } from "./shipping-rates";
 
 export const orderSequences = pgTable(
 	"order_sequences",
@@ -68,6 +69,61 @@ export const orders = pgTable(
 		currency: text("currency").notNull().default("USD"),
 		subtotalCents: integer("subtotal_cents").notNull(),
 		/**
+		 * What a discount code took off, in minor units.
+		 *
+		 * 🔴 Stored, not derived. Recomputing it later from the code would give a
+		 * different answer the moment the code's value changes or it expires — and
+		 * an order is a record of what was agreed, not a re-evaluation of it.
+		 *
+		 * `total = subtotal - discount + shipping + tax`, and tax is computed on
+		 * the DISCOUNTED subtotal PLUS shipping.
+		 */
+		discountCents: integer("discount_cents").notNull().default(0),
+		/** Which code was used. Kept for the order view; the amount is authoritative. */
+		discountCode: text("discount_code"),
+
+		/**
+		 * What the customer was charged to have it delivered.
+		 *
+		 * 🔴 Stored for the same reason `discountCents` is: rates change, zones get
+		 * renamed, a rate gets deleted. An order records what was agreed. Never
+		 * re-quote a placed order to find out what its shipping was.
+		 */
+		shippingCents: integer("shipping_cents").notNull().default(0),
+		/**
+		 * Which rate produced it, for support and reporting. `set null` on delete —
+		 * losing the reference must never take `shippingCents` with it, because the
+		 * amount is the part that has to survive.
+		 */
+		shippingRateId: uuid("shipping_rate_id").references(
+			() => shippingRates.id,
+			{
+				onDelete: "set null",
+			},
+		),
+		/** Human label at the time of the order — "Standard", "Express". */
+		shippingRateName: text("shipping_rate_name"),
+
+		// ── Where it ships, snapshotted ─────────────────────────────────────────
+		//
+		// 🔴 Copied onto the order, NOT a reference to `client_addresses`. A customer
+		// who moves house must not retroactively change where a past order was
+		// delivered — that record is what a dispute, a lost parcel and a tax audit
+		// all rely on. This is the same reasoning as the line items storing their
+		// own prices.
+		//
+		// Nullable as a block: plenty of orders ship nowhere at all (a service, a
+		// booking, a digital download).
+		shipToName: text("ship_to_name"),
+		shipToLine1: text("ship_to_line1"),
+		shipToLine2: text("ship_to_line2"),
+		shipToCity: text("ship_to_city"),
+		shipToRegion: text("ship_to_region"),
+		shipToPostalCode: text("ship_to_postal_code"),
+		/** ISO 3166-1 alpha-2, uppercase — the key zone matching runs on. */
+		shipToCountryCode: text("ship_to_country_code"),
+
+		/**
 		 * Tax on this order, in minor units.
 		 *
 		 * 🔴 Added 2026-08-03. `orders` was the ONLY money table without it —
@@ -82,19 +138,6 @@ export const orders = pgTable(
 		 * ⚠️ This column STORES tax. It does not decide it — see
 		 * `modules/orders/src/tax.ts` for who computes the number.
 		 */
-		/**
-		 * What a discount code took off, in minor units.
-		 *
-		 * 🔴 Stored, not derived. Recomputing it later from the code would give a
-		 * different answer the moment the code's value changes or it expires — and
-		 * an order is a record of what was agreed, not a re-evaluation of it.
-		 *
-		 * `total = subtotal - discount + tax`, and tax is computed on the
-		 * DISCOUNTED subtotal.
-		 */
-		discountCents: integer("discount_cents").notNull().default(0),
-		/** Which code was used. Kept for the order view; the amount is authoritative. */
-		discountCode: text("discount_code"),
 		taxCents: integer("tax_cents").notNull().default(0),
 		totalCents: integer("total_cents").notNull(),
 		notes: text("notes"),

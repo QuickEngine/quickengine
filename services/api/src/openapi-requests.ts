@@ -64,6 +64,11 @@ import { trafficEventInputSchema } from "@quickengine/mod-reporting-analytics";
 import {
 	shipmentInputSchema,
 	shipmentTrackingPatchSchema,
+	shippingDestinationSchema,
+	shippingRateInputSchema,
+	shippingRatePatchSchema,
+	shippingZoneInputSchema,
+	shippingZonePatchSchema,
 } from "@quickengine/mod-shipping";
 import {
 	manualTimeEntryInputSchema,
@@ -190,6 +195,15 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createShipment: shipmentInputSchema,
 	updateDraftShipment: shipmentInputSchema,
 	updateShipmentTracking: shipmentTrackingPatchSchema,
+	createShippingZone: shippingZoneInputSchema,
+	updateShippingZone: shippingZonePatchSchema,
+	createShippingRate: shippingRateInputSchema,
+	updateShippingRate: shippingRatePatchSchema,
+	quoteShipping: z.object({
+		items: checkoutInputSchema.shape.items,
+		destination: shippingDestinationSchema,
+		discountCode: checkoutInputSchema.shape.discountCode,
+	}),
 
 	// Service operations
 	createProject: projectInputSchema,

@@ -1258,6 +1258,78 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/shipping/quote": {
+				post: {
+					operationId: "quoteShipping",
+					summary:
+						"Quote eligible delivery rates from server-owned prices and weights",
+					responses: {
+						"200": { description: "Eligible delivery options." },
+						"400": {
+							description:
+								"No zone or rate covers the basket, or an item weight is missing.",
+						},
+					},
+				},
+			},
+			"/v1/shipping/zones": {
+				get: {
+					operationId: "listShippingZones",
+					summary: "List shipping zones and their rates",
+					responses: { "200": { description: "Shipping zones and rates." } },
+				},
+				post: {
+					operationId: "createShippingZone",
+					summary: "Create a shipping zone",
+					responses: { "201": { description: "Shipping zone created." } },
+				},
+			},
+			"/v1/shipping/zones/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "updateShippingZone",
+					responses: { "200": { description: "Shipping zone updated." } },
+				},
+				delete: {
+					operationId: "deleteShippingZone",
+					responses: {
+						"200": { description: "Shipping zone deleted." },
+						"409": { description: "The zone still has rates." },
+					},
+				},
+			},
+			"/v1/shipping/rates": {
+				post: {
+					operationId: "createShippingRate",
+					summary: "Create a delivery rate inside a zone",
+					responses: { "201": { description: "Shipping rate created." } },
+				},
+			},
+			"/v1/shipping/rates/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "updateShippingRate",
+					responses: { "200": { description: "Shipping rate updated." } },
+				},
+				delete: {
+					operationId: "deleteShippingRate",
+					responses: { "200": { description: "Shipping rate deleted." } },
+				},
+			},
 			"/v1/shipments/{id}": {
 				parameters: [
 					{

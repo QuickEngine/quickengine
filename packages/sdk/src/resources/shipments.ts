@@ -6,6 +6,12 @@ import type {
 	QuickShipmentInput,
 	QuickShipmentStatus,
 	QuickShipmentTrackingPatch,
+	QuickShippingDestination,
+	QuickShippingQuote,
+	QuickShippingRate,
+	QuickShippingRateInput,
+	QuickShippingZone,
+	QuickShippingZoneInput,
 } from "../types";
 
 /**
@@ -14,6 +20,63 @@ import type {
  */
 export class ShipmentsResource {
 	constructor(private readonly client: QuickClient) {}
+
+	quote(input: {
+		items: Array<{
+			catalogItemId: string;
+			variantId?: string;
+			quantity: number;
+		}>;
+		destination: QuickShippingDestination;
+		discountCode?: string;
+	}) {
+		return this.client.request<QuickShippingQuote>("/shipping/quote", {
+			method: "POST",
+			body: input,
+		});
+	}
+
+	listZones() {
+		return this.client.request<{ items: QuickShippingZone[] }>(
+			"/shipping/zones",
+		);
+	}
+	createZone(input: QuickShippingZoneInput) {
+		return this.client.request<QuickShippingZone>("/shipping/zones", {
+			method: "POST",
+			body: input,
+		});
+	}
+	updateZone(id: string, patch: Partial<QuickShippingZoneInput>) {
+		return this.client.request<QuickShippingZone>(
+			`/shipping/zones/${encodeURIComponent(id)}`,
+			{ method: "PATCH", body: patch },
+		);
+	}
+	deleteZone(id: string) {
+		return this.client.request<{ id: string }>(
+			`/shipping/zones/${encodeURIComponent(id)}`,
+			{ method: "DELETE" },
+		);
+	}
+	createRate(input: QuickShippingRateInput) {
+		return this.client.request<QuickShippingRate>("/shipping/rates", {
+			method: "POST",
+			body: input,
+		});
+	}
+	updateRate(id: string, patch: Partial<QuickShippingRateInput>) {
+		return this.client.request<QuickShippingRate>(
+			`/shipping/rates/${encodeURIComponent(id)}`,
+			{ method: "PATCH", body: patch },
+		);
+	}
+	deleteRate(id: string) {
+		return this.client.request<{ id: string }>(
+			`/shipping/rates/${encodeURIComponent(id)}`,
+			{ method: "DELETE" },
+		);
+	}
 
 	list(
 		options: {

@@ -131,6 +131,7 @@ export async function createOrderInTx(
 		parsed.lines,
 		parsed.taxCents,
 		parsed.discountCents,
+		parsed.shippingCents,
 	);
 	{
 		const [workspace] = await tx
@@ -163,6 +164,16 @@ export async function createOrderInTx(
 				subtotalCents: totals.subtotalCents,
 				discountCents: totals.discountCents,
 				discountCode: parsed.discountCode,
+				shippingCents: totals.shippingCents,
+				shippingRateId: parsed.shippingRateId,
+				shippingRateName: parsed.shippingRateName,
+				shipToName: parsed.shipToName,
+				shipToLine1: parsed.shipToLine1,
+				shipToLine2: parsed.shipToLine2,
+				shipToCity: parsed.shipToCity,
+				shipToRegion: parsed.shipToRegion,
+				shipToPostalCode: parsed.shipToPostalCode,
+				shipToCountryCode: parsed.shipToCountryCode,
 				taxCents: totals.taxCents,
 				totalCents: totals.totalCents,
 				notes: parsed.notes,
@@ -235,6 +246,7 @@ export async function updateDraftOrderInTx(
 		parsed.lines,
 		parsed.taxCents,
 		parsed.discountCents,
+		parsed.shippingCents,
 	);
 	{
 		const [current] = await tx
@@ -264,6 +276,16 @@ export async function updateDraftOrderInTx(
 				subtotalCents: totals.subtotalCents,
 				discountCents: totals.discountCents,
 				discountCode: parsed.discountCode,
+				shippingCents: totals.shippingCents,
+				shippingRateId: parsed.shippingRateId,
+				shippingRateName: parsed.shippingRateName,
+				shipToName: parsed.shipToName,
+				shipToLine1: parsed.shipToLine1,
+				shipToLine2: parsed.shipToLine2,
+				shipToCity: parsed.shipToCity,
+				shipToRegion: parsed.shipToRegion,
+				shipToPostalCode: parsed.shipToPostalCode,
+				shipToCountryCode: parsed.shipToCountryCode,
 				taxCents: totals.taxCents,
 				totalCents: totals.totalCents,
 				notes: parsed.notes,

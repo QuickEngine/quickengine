@@ -460,10 +460,12 @@ export function registerCheckoutRoutes(
 			{
 				order,
 				payment: {
+					provider: account.provider,
 					externalPaymentId: charge.externalPaymentId,
-					// Safe to hand to the browser: it authorises paying THIS intent and
-					// nothing else.
-					clientSecret: charge.clientSecret,
+					// A discriminated browser step: Stripe supplies a client secret,
+					// PayPal supplies an approval token, and a hosted provider may supply
+					// a redirect. The storefront never has to guess from nullable fields.
+					nextAction: charge.nextAction,
 				},
 			},
 			201,

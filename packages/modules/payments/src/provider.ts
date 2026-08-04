@@ -37,17 +37,25 @@ export type ProviderAccount = {
 	payoutsEnabled: boolean;
 };
 
+/**
+ * What the buyer's browser must do after the server opens a payment.
+ *
+ * This is deliberately provider-neutral. Stripe confirms a client secret in
+ * its browser SDK; PayPal approves an order token in its own SDK; another
+ * provider may send the buyer to a hosted page. Checkout callers branch on the
+ * action type, never on a guessed provider response shape.
+ */
+export type PaymentNextAction =
+	| { type: "client_secret"; clientSecret: string }
+	| { type: "approval"; token: string }
+	| { type: "redirect"; url: string }
+	| { type: "none" };
+
 export type ProviderCharge = {
 	/** The provider's id for this charge. Stored as `external_payment_id`. */
 	externalPaymentId: string;
-	/**
-	 * A token the browser needs to complete the payment, when the provider
-	 * splits it that way. Null for providers that finish server-side.
-	 *
-	 * ⚠️ Safe to send to a client — it authorises paying ONE intent and nothing
-	 * else — but it is not a secret to log or store.
-	 */
-	clientSecret: string | null;
+	/** The provider-specific browser step expressed through a stable contract. */
+	nextAction: PaymentNextAction;
 };
 
 export type ProviderRefund = {

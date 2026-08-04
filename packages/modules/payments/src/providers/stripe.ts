@@ -115,7 +115,9 @@ export const stripePaymentProvider: PaymentProvider = {
 		);
 		return {
 			externalPaymentId: intent.id,
-			clientSecret: intent.client_secret,
+			nextAction: intent.client_secret
+				? { type: "client_secret", clientSecret: intent.client_secret }
+				: { type: "none" },
 		};
 	},
 

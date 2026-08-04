@@ -942,7 +942,7 @@ function declaredDocument(config: ApiConfig) {
 					responses: {
 						"201": {
 							description:
-								"The order, and a payment client secret when the business can be paid online.",
+								"The order and a provider-neutral next action when the business can be paid online. The action is a client secret, approval token, hosted redirect, or no further browser work.",
 						},
 						"400": {
 							description:

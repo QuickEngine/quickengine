@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **One checkout contract for every payment provider.** Storefront checkout now says exactly
+  what the buyer must do next — confirm a client secret, approve a provider order, follow a
+  hosted redirect, or nothing — instead of assuming every payment provider behaves like
+  Stripe. This is the stable browser contract PayPal and future providers plug into.
+
 - **Talk to customers without losing the conversation.** Customers now have a private inbox in
   the business's portal, where they can ask questions, read replies, and see order, payment,
   shipment, booking, and invoice updates. Businesses can start, reply to, read, close, and

@@ -3331,6 +3331,32 @@ function declaredDocument(config: ApiConfig) {
 					responses: { "200": { description: "Signed out." } },
 				},
 			},
+			"/v1/customer/portal-handoff": {
+				post: {
+					operationId: "requestPortalHandoff",
+					summary: "Get a one-use ticket to the hosted portal",
+					description:
+						"Lets a storefront send a signed-in shopper to the portal without a second sign-in, WITHOUT moving the session token across origins. Returns a separate ticket that lives for seconds and works once. Never put a session token in a redirect, a shared-parent-domain cookie, or a postMessage: one credential in two places means a leak on either compromises both, and signing out of one cannot revoke the other.",
+					responses: {
+						"200": {
+							description: "A single-use handoff token and its expiry.",
+						},
+						"401": { description: "No valid session." },
+					},
+				},
+			},
+			"/v1/customer/portal-handoff/redeem": {
+				post: {
+					operationId: "redeemPortalHandoff",
+					summary: "Trade a handoff ticket for a portal session",
+					description:
+						"Called by the portal with its own publishable key and no session. The session returned is independent of the storefront's, so signing out of either leaves the other alone. The ticket's workspace must match the presented key's, otherwise a ticket minted on one business's storefront could open a session at another's portal. Expired, spent, unknown and wrong-workspace tickets are answered identically.",
+					responses: {
+						"200": { description: "A session token and its expiry." },
+						"401": { description: "The handoff is no longer valid." },
+					},
+				},
+			},
 
 			// A customer's own records. No client id is accepted on any of these —
 			// the filter comes from the session, so there is no parameter a caller

@@ -196,6 +196,24 @@ export const customerApi = {
 			body: JSON.stringify({ token }),
 			signOutOnExpiry: false,
 		}),
+	/**
+	 * Trade a storefront's handoff ticket for a portal session.
+	 *
+	 * 🔴 `signOutOnExpiry: false`, for the same reason as `verify`. A spent TICKET
+	 * answers SESSION_EXPIRED, which is a different thing from a dead session —
+	 * and clearing storage on it would wipe the session this very request just
+	 * created. StrictMode double-invokes effects in development, so the second run
+	 * would otherwise delete what the first one stored and loop forever.
+	 */
+	redeemHandoff: (token: string) =>
+		call<{ token: string; expiresAt: string }>(
+			"/v1/customer/portal-handoff/redeem",
+			{
+				method: "POST",
+				body: JSON.stringify({ token }),
+				signOutOnExpiry: false,
+			},
+		),
 	me: () =>
 		call<{ customerId: string; hasRecords: boolean }>("/v1/customer/auth/me"),
 	signOut: () =>

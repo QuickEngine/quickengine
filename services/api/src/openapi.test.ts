@@ -60,6 +60,9 @@ const BODYLESS = new Set([
 	// A referral code is minted for whoever is signed in. A body would only offer
 	// a caller somewhere to name a different customer.
 	"issueReferralCode",
+	// Same reasoning: the handoff is minted for the session presenting it. A body
+	// would only offer a caller somewhere to name somebody else to hand over as.
+	"requestPortalHandoff",
 	// A refresh takes no input: the workspace comes from the credential and the
 	// account from that workspace's stored row. A body would only offer a caller
 	// somewhere to name somebody else's connected account.

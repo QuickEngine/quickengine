@@ -19,6 +19,7 @@ import {
 	catalogItems,
 	contentEntries,
 	db,
+	discounts,
 	eq,
 	inventoryItems,
 	quickengineApiKeys,
@@ -26,6 +27,8 @@ import {
 	quickengineOrganizations,
 	quickengineUsers,
 	quickengineWorkspaces,
+	shippingRates,
+	shippingZones,
 	workspaceModules,
 } from "@quickengine/db";
 import { and, count } from "drizzle-orm";
@@ -47,6 +50,12 @@ const CATEGORY_IDS = {
 	crystals: "00000000-0000-4000-8000-00000000a401",
 	collector: "00000000-0000-4000-8000-00000000a402",
 } as const;
+const SHIPPING_IDS = {
+	zone: "00000000-0000-4000-8000-00000000a501",
+	standard: "00000000-0000-4000-8000-00000000a502",
+	express: "00000000-0000-4000-8000-00000000a503",
+} as const;
+const DISCOUNT_ID = "00000000-0000-4000-8000-00000000a601";
 const MARKER =
 	"# QuickConnect synthetic proof. Safe to replace by rerunning the seed.\n";
 
@@ -289,6 +298,104 @@ for (const item of stock) {
 			set: { onHand: item.onHand, reserved: 0, status: "active" },
 		});
 }
+
+/**
+ * Delivery, so checkout has a rate it can be asked to price.
+ *
+ * Two rates in one zone rather than one, because the storefront picks the
+ * cheapest OFFERED option and sends back its id — with a single rate that choice
+ * is unfalsifiable, and a browser naming an expensive rate while paying for a
+ * cheap one would go unnoticed.
+ *
+ * `freeOverCents` is set on standard delivery so the proof also exercises the
+ * free-shipping path as an amount of zero coming back from the server, rather
+ * than as a flag the page decides for itself.
+ */
+await db
+	.insert(shippingZones)
+	.values({
+		id: SHIPPING_IDS.zone,
+		workspaceId: WORKSPACE_ID,
+		name: "Canada",
+		countryCodes: ["CA"],
+		regionCodes: [],
+		priority: 0,
+		active: true,
+	})
+	.onConflictDoUpdate({
+		target: shippingZones.id,
+		set: { countryCodes: ["CA"], active: true, updatedAt: new Date() },
+	});
+
+const rates = [
+	{
+		id: SHIPPING_IDS.standard,
+		name: "Standard",
+		description: "Synthetic fixture rate. Free over $150.",
+		baseCents: 1_200,
+		freeOverCents: 15_000,
+		estimatedDaysMin: 4,
+		estimatedDaysMax: 7,
+	},
+	{
+		id: SHIPPING_IDS.express,
+		name: "Express",
+		description: "Synthetic fixture rate. Never free.",
+		baseCents: 2_800,
+		freeOverCents: null,
+		estimatedDaysMin: 1,
+		estimatedDaysMax: 2,
+	},
+] as const;
+
+for (const rate of rates) {
+	await db
+		.insert(shippingRates)
+		.values({
+			...rate,
+			workspaceId: WORKSPACE_ID,
+			zoneId: SHIPPING_IDS.zone,
+			active: true,
+		})
+		.onConflictDoUpdate({
+			target: shippingRates.id,
+			set: {
+				baseCents: rate.baseCents,
+				freeOverCents: rate.freeOverCents,
+				active: true,
+				updatedAt: new Date(),
+			},
+		});
+}
+
+/**
+ * One discount code, so the preview can be proven against a real rule.
+ *
+ * A minimum is set deliberately: the prototype took the subtotal from the
+ * browser, so a minimum was the easiest thing in the world to clear by lying.
+ * The proof asserts the server computes it from the basket instead.
+ */
+await db
+	.insert(discounts)
+	.values({
+		id: DISCOUNT_ID,
+		workspaceId: WORKSPACE_ID,
+		name: "Synthetic proof code",
+		code: "PROOF10",
+		valueType: "percentage",
+		value: 1_000, // basis points — 10%
+		minimumSubtotalCents: 5_000,
+		active: true,
+	})
+	.onConflictDoUpdate({
+		target: discounts.id,
+		set: {
+			value: 1_000,
+			minimumSubtotalCents: 5_000,
+			active: true,
+			updatedAt: new Date(),
+		},
+	});
 
 const key = await issueApiKey({
 	workspaceId: WORKSPACE_ID,

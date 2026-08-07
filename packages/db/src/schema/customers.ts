@@ -214,3 +214,58 @@ export const customerLoginTokens = pgTable(
 		index("customer_login_tokens_expires_idx").on(table.expiresAt),
 	],
 );
+
+/**
+ * A one-use ticket that carries a signed-in shopper from a storefront to the
+ * hosted portal without a second sign-in.
+ *
+ * 🔴 THIS EXISTS BECAUSE COPYING THE SESSION IS NOT AN OPTION. A shopper who
+ * signs in on `gemsutopia.ca` and then clicks "My account" must not have to ask
+ * for another email — but the two are different origins, and moving the
+ * storefront's session token across (query string, cookie on a shared parent
+ * domain, `postMessage`) would mean one long-lived credential living in two
+ * places. Whichever one leaks, both are compromised, and revoking becomes a
+ * guess about which surface was breached.
+ *
+ * So nothing is copied. The storefront proves it holds a valid session, gets
+ * this ticket, and the portal trades the ticket for a SEPARATE session of its
+ * own. Sign-out on either side leaves the other untouched, which is the correct
+ * behaviour and is impossible with a shared token.
+ *
+ * Three properties make the ticket safe to put in a URL, which is the only place
+ * a cross-origin redirect can carry it:
+ *
+ * · `expiresAt` — seconds, not minutes. It is redeemed by the very next request.
+ * · `consumedAt` — one redemption, by conditional UPDATE. A token in browser
+ *   history, a `Referer` header or a proxy log is already spent.
+ * · `audience` — what it may be traded for. A ticket minted for the portal
+ *   cannot be replayed against any other exchange added later.
+ *
+ * ⚠️ Keyed to the MEMBERSHIP, like `customer_sessions`, so redemption cannot
+ * cross workspaces: the portal's own key resolves a workspace, and it must match
+ * the one this membership belongs to.
+ */
+export const customerPortalHandoffs = pgTable(
+	"customer_portal_handoffs",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		workspaceCustomerId: uuid("workspace_customer_id")
+			.notNull()
+			.references(() => workspaceCustomers.id, { onDelete: "cascade" }),
+		tokenHash: text("token_hash").notNull().unique(),
+		// Free text rather than an enum: adding a second audience should not need a
+		// migration, and the check is an equality test either way.
+		audience: text("audience").notNull(),
+		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+		consumedAt: timestamp("consumed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("customer_portal_handoffs_customer_idx").on(
+			table.workspaceCustomerId,
+		),
+		index("customer_portal_handoffs_expires_idx").on(table.expiresAt),
+	],
+);

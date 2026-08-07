@@ -84,6 +84,16 @@ export type CustomerAuthDependencies = {
 	): Promise<{ token: string; expiresAt: Date }>;
 
 	revokeCustomerSession(token: string): Promise<void>;
+
+	createPortalHandoff(input: {
+		workspaceCustomerId: string;
+		audience: string;
+	}): Promise<{ token: string; expiresAt: Date }>;
+
+	consumePortalHandoff(input: {
+		token: string;
+		audience: string;
+	}): Promise<{ workspaceCustomerId: string; workspaceId: string } | null>;
 };
 
 const requestLinkSchema = z.object({
@@ -91,6 +101,15 @@ const requestLinkSchema = z.object({
 	callbackUrl: z.url().max(2_048).optional(),
 });
 const verifySchema = z.object({ token: z.string().min(16).max(512) });
+
+/**
+ * What a storefront-to-portal ticket may be traded for.
+ *
+ * A constant today because there is one exchange. It is stored on the row and
+ * matched in the WHERE clause anyway, so a second audience added later cannot
+ * accidentally accept the first one's tickets.
+ */
+const PORTAL_HANDOFF_AUDIENCE = "portal";
 
 type CustomerOrderLoaders = {
 	getOrder: typeof getOrderDto;
@@ -430,6 +449,93 @@ export function registerCustomerRoutes(
 				customerId: customer.workspaceCustomerId,
 				email: customer.email,
 				hasRecords: customer.clientRecordId !== null,
+			});
+		},
+	);
+
+	/**
+	 * Hand a signed-in shopper across to the hosted portal.
+	 *
+	 * 🔴 THE STOREFRONT'S SESSION NEVER LEAVES THE STOREFRONT. This mints a
+	 * separate, single-use, seconds-long ticket. The alternative — putting the
+	 * session token itself in the redirect, or dropping a cookie on a shared
+	 * parent domain — gives two origins one credential, so a leak on either
+	 * compromises both and signing out of one cannot revoke the other.
+	 *
+	 * The response deliberately contains no URL. Where the portal lives is the
+	 * workspace's branding, resolved by the caller, and an API that echoed back a
+	 * redirect target supplied by the page would be an open redirect with extra
+	 * steps.
+	 */
+	app.post(
+		"/v1/customer/portal-handoff",
+		writeLimit,
+		authorizeCustomer(dependencies, { requireSession: true }),
+		async (c) => {
+			const { customer } = c.get("customer");
+			if (!customer) {
+				return respondError(c, "AUTHENTICATION_REQUIRED", "Sign in.", 401);
+			}
+			const handoff = await auth.createPortalHandoff({
+				workspaceCustomerId: customer.workspaceCustomerId,
+				audience: PORTAL_HANDOFF_AUDIENCE,
+			});
+			return respond(c, {
+				token: handoff.token,
+				expiresAt: handoff.expiresAt.toISOString(),
+			});
+		},
+	);
+
+	/**
+	 * Trade a ticket for a portal session of its own.
+	 *
+	 * Called by the portal with its own publishable key and NO session — this is
+	 * how it gets one. What comes back is a full, independent session: signing out
+	 * here later revokes this one and leaves the storefront's alone.
+	 *
+	 * 🔴 The workspace is checked, not assumed. The ticket resolves to a
+	 * membership, and that membership's workspace must equal the one the presented
+	 * key belongs to. Without this, a ticket minted on one business's storefront
+	 * could be redeemed at another business's portal, which is a cross-tenant
+	 * session in one request.
+	 */
+	app.post(
+		"/v1/customer/portal-handoff/redeem",
+		writeLimit,
+		authorizeCustomer(dependencies, { requireSession: false }),
+		async (c) => {
+			const parsed = verifySchema.safeParse(
+				await c.req.json().catch(() => ({})),
+			);
+			if (!parsed.success) {
+				return respondError(c, "VALIDATION_ERROR", "A token is required.", 400);
+			}
+
+			const { workspaceId } = c.get("customer");
+			const consumed = await auth.consumePortalHandoff({
+				token: parsed.data.token,
+				audience: PORTAL_HANDOFF_AUDIENCE,
+			});
+
+			// Expired, already spent, unknown, or minted for a different workspace —
+			// one answer for all four. Telling them apart says which tickets existed.
+			if (!consumed || consumed.workspaceId !== workspaceId) {
+				return respondError(
+					c,
+					"SESSION_EXPIRED",
+					"This sign-in handoff is no longer valid. Sign in to continue.",
+					401,
+				);
+			}
+
+			const session = await auth.createCustomerSession(
+				consumed.workspaceCustomerId,
+			);
+
+			return respond(c, {
+				token: session.token,
+				expiresAt: session.expiresAt.toISOString(),
 			});
 		},
 	);

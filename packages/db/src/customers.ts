@@ -5,6 +5,7 @@ import { clientRecords } from "./schema/client-records";
 import {
 	customerIdentities,
 	customerLoginTokens,
+	customerPortalHandoffs,
 	customerSessions,
 	workspaceCustomers,
 } from "./schema/customers";
@@ -25,6 +26,14 @@ import {
 export const LOGIN_TOKEN_TTL_MINUTES = 15;
 /** How long a session lasts. Long, because re-authenticating is a magic link. */
 export const SESSION_TTL_DAYS = 60;
+/**
+ * How long a storefront-to-portal ticket stays valid.
+ *
+ * Seconds, deliberately. It is minted and redeemed inside one redirect, so the
+ * only reason it would still be alive a minute later is that somebody kept it —
+ * out of a log, a `Referer`, or browser history.
+ */
+export const PORTAL_HANDOFF_TTL_SECONDS = 60;
 
 const hash = (raw: string) => createHash("sha256").update(raw).digest("hex");
 
@@ -323,6 +332,80 @@ export async function resolveCustomerSession(
 		workspaceId: row.workspaceId,
 		identityId: row.identityId,
 		clientRecordId: row.clientRecordId,
+	};
+}
+
+/**
+ * Mint a one-use ticket for another QuickEngine surface.
+ *
+ * Returns the RAW token, its only appearance in plaintext. The caller puts it in
+ * a redirect URL and forgets it.
+ */
+export async function createPortalHandoff(input: {
+	workspaceCustomerId: string;
+	audience: string;
+}): Promise<{ token: string; expiresAt: Date }> {
+	const token = mintToken();
+	const expiresAt = new Date(Date.now() + PORTAL_HANDOFF_TTL_SECONDS * 1_000);
+
+	await db.insert(customerPortalHandoffs).values({
+		workspaceCustomerId: input.workspaceCustomerId,
+		audience: input.audience,
+		tokenHash: hash(token),
+		expiresAt,
+	});
+
+	return { token, expiresAt };
+}
+
+/**
+ * Redeem a ticket, once, and say which membership it belonged to.
+ *
+ * 🔴 A conditional UPDATE, not read-then-write. Two tabs opening the same
+ * handoff link together would both pass a read check and both be honoured; only
+ * one UPDATE can match `consumed_at IS NULL`, so the loser gets nothing.
+ *
+ * ⚠️ The audience is part of the WHERE clause, not checked afterwards. A ticket
+ * minted for one exchange cannot be spent at another even if the row is found.
+ *
+ * Returns the membership rather than a session: minting the session is the
+ * caller's job, because only it knows the workspace resolved from the presented
+ * key — and that has to match before any session exists.
+ */
+export async function consumePortalHandoff(input: {
+	token: string;
+	audience: string;
+}): Promise<{ workspaceCustomerId: string; workspaceId: string } | null> {
+	const tokenHash = hash(input.token);
+
+	const [consumed] = await db
+		.update(customerPortalHandoffs)
+		.set({ consumedAt: new Date() })
+		.where(
+			and(
+				eq(customerPortalHandoffs.tokenHash, tokenHash),
+				eq(customerPortalHandoffs.audience, input.audience),
+				isNull(customerPortalHandoffs.consumedAt),
+				sql`${customerPortalHandoffs.expiresAt} > now()`,
+			),
+		)
+		.returning({
+			workspaceCustomerId: customerPortalHandoffs.workspaceCustomerId,
+		});
+
+	if (!consumed) return null;
+
+	const [membership] = await db
+		.select({ workspaceId: workspaceCustomers.workspaceId })
+		.from(workspaceCustomers)
+		.where(eq(workspaceCustomers.id, consumed.workspaceCustomerId))
+		.limit(1);
+
+	if (!membership) return null;
+
+	return {
+		workspaceCustomerId: consumed.workspaceCustomerId,
+		workspaceId: membership.workspaceId,
 	};
 }
 

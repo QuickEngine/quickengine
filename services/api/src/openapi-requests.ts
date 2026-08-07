@@ -84,6 +84,7 @@ import {
 	createOrganizationSchema,
 	recommendationSchema,
 	startSubscriptionSchema,
+	updateApiKeyOriginsSchema,
 } from "./account-routes";
 import { inviteMemberSchema } from "./account-team-routes";
 import {
@@ -248,6 +249,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	inviteMember: inviteMemberSchema,
 	createOrganization: createOrganizationSchema,
 	createApiKey: createApiKeySchema,
+	updateApiKeyOrigins: updateApiKeyOriginsSchema,
 	startSubscription: startSubscriptionSchema,
 	confirmAccountSubscription: confirmSubscriptionSchema,
 	recommendAccountOnboarding: recommendationSchema,

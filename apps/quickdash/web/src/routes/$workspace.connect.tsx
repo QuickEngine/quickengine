@@ -14,7 +14,9 @@ function ConnectPage() {
 		<ConnectView
 			workspaceId={workspace}
 			workspaceName={context.data.workspace.name}
+			organizationId={context.data.workspace.organizationId ?? null}
 			apiUrl={clientEnv.API_URL}
+			portalUrl={clientEnv.PORTAL_URL}
 			accountUrl={`${clientEnv.ACCOUNT_URL}/workspaces/${accountTarget}`}
 		/>
 	);

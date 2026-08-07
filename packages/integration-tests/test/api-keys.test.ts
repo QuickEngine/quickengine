@@ -2,6 +2,7 @@ import {
 	issueApiKey,
 	listApiKeys,
 	revokeApiKey,
+	setApiKeyAllowedOrigins,
 	verifyApiKey,
 } from "@quickengine/auth/api-keys";
 import { testDbClient } from "@quickengine/db/testing";
@@ -144,5 +145,101 @@ describe("API key issuance + verification", () => {
 			expect(Object.hasOwn(key, "keyHash")).toBe(false);
 			expect(Object.hasOwn(key, "plaintext")).toBe(false);
 		}
+	});
+});
+
+/**
+ * Which websites may present a key.
+ *
+ * 🔴 Until this shipped there was no way to set an origin except writing to the
+ * database by hand — so a storefront key created through the product worked from
+ * nowhere, because `isRegisteredStorefrontOrigin` matches the `Origin` header
+ * against exactly this list.
+ */
+describe("a key's allowed origins", () => {
+	const storefront = () =>
+		issueApiKey({
+			workspaceId,
+			createdByUserId: ownerId,
+			name: "Storefront",
+			type: "storefront",
+			capabilities: ["catalog:read"],
+			// Deliberately messy: mixed case with a path, an unparseable value, and
+			// a second spelling of the same origin. Normalisation happens inside
+			// `issueApiKey`, so a caller cannot bypass it by forgetting.
+			allowedOrigins: [
+				"https://Gemsutopia.ca/shop/",
+				"not a url",
+				"https://gemsutopia.ca",
+			],
+		});
+
+	it("normalises what is stored, and drops what could never match", async () => {
+		const issued = await storefront();
+		const [key] = await listApiKeys(workspaceId);
+
+		// Lowercased, path and trailing slash removed, deduplicated against the
+		// second spelling of the same origin — and the unparseable entry is gone
+		// rather than sitting in the row looking configured.
+		expect(key.allowedOrigins).toEqual(["https://gemsutopia.ca"]);
+
+		const verified = await verifyApiKey(issued.plaintext);
+		expect(verified?.allowedOrigins).toEqual(["https://gemsutopia.ca"]);
+	});
+
+	it("replaces the list rather than adding to it", async () => {
+		const issued = await storefront();
+
+		// 🔴 The operation that matters: cutting off a domain you no longer
+		// control. A merge would make that impossible through the API.
+		expect(
+			await setApiKeyAllowedOrigins(workspaceId, issued.id, [
+				"https://newsite.example",
+			]),
+		).toEqual(["https://newsite.example"]);
+
+		const [key] = await listApiKeys(workspaceId);
+		expect(key.allowedOrigins).toEqual(["https://newsite.example"]);
+	});
+
+	it("🔴 refuses a key belonging to another workspace", async () => {
+		const issued = await storefront();
+		// Indistinguishable from a key that does not exist — a caller cannot use
+		// this to confirm somebody else's key id is real.
+		expect(
+			await setApiKeyAllowedOrigins(otherWorkspaceId, issued.id, [
+				"https://attacker.example",
+			]),
+		).toBeNull();
+
+		const [key] = await listApiKeys(workspaceId);
+		expect(key.allowedOrigins).toEqual(["https://gemsutopia.ca"]);
+	});
+
+	it("refuses to edit a revoked key", async () => {
+		const issued = await storefront();
+		await revokeApiKey(workspaceId, issued.id);
+
+		// Re-pointing a dead credential at a new domain would read as re-enabling
+		// it. The key stays dead.
+		expect(
+			await setApiKeyAllowedOrigins(workspaceId, issued.id, [
+				"https://newsite.example",
+			]),
+		).toBeNull();
+	});
+
+	it("defaults to no origins, which is a key no website can use", async () => {
+		// The honest default. A server key needs none; a browser key without them
+		// is refused everywhere, which is what the Connect flow exists to prevent.
+		const issued = await issueApiKey({
+			workspaceId,
+			createdByUserId: ownerId,
+			name: "Server",
+			type: "secret",
+			capabilities: ["catalog:read"],
+		});
+		const verified = await verifyApiKey(issued.plaintext);
+		expect(verified?.allowedOrigins).toEqual([]);
 	});
 });

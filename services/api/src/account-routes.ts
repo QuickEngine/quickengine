@@ -4,6 +4,7 @@ import {
 	issueApiKey,
 	listApiKeys,
 	revokeApiKey,
+	setApiKeyAllowedOrigins,
 } from "@quickengine/auth/api-keys";
 import {
 	createSubscriptionForPaymentElement,
@@ -33,6 +34,7 @@ import { z } from "zod";
 import { authorizeAccount, authorizeSession } from "./authorize-account";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { respond, respondError } from "./respond";
+import { forgetOriginCache } from "./storefront-origins";
 
 /**
  * The rest of account management: organizations, API keys, billing,
@@ -60,6 +62,25 @@ export const createApiKeySchema = z.object({
 	type: z.enum(["publishable", "storefront", "secret", "scoped"]),
 	capabilities: z.array(z.string()).default([]),
 	expiresAt: z.string().datetime().optional(),
+	/**
+	 * Browser origins this key may be used from, e.g. `https://gemsutopia.ca`.
+	 *
+	 * 🔴 Without this a browser key is useless: `isRegisteredStorefrontOrigin`
+	 * matches the `Origin` header against exactly this list, so a key with an
+	 * empty list is refused from every website. Capped because a key that may be
+	 * presented from twenty places is not a scoped credential.
+	 *
+	 * A full URL is fine — `normalizeOrigins` reduces it to scheme + host + port
+	 * and drops anything that will not parse, rather than storing a value that
+	 * could never match.
+	 */
+	allowedOrigins: z.array(z.string().trim().max(2_048)).max(10).optional(),
+});
+
+/** Replacing a key's origins. The list is REPLACED, never merged — see the route. */
+export const updateApiKeyOriginsSchema = z.object({
+	workspaceId: z.string().uuid(),
+	allowedOrigins: z.array(z.string().trim().max(2_048)).max(10),
 });
 
 export const startSubscriptionSchema = z.object({
@@ -470,6 +491,10 @@ export function registerAccountRoutes(
 		) {
 			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
 		}
+		// `issueApiKey` normalises and echoes back what it stored — a pasted
+		// "https://acme.com/shop/" becomes "https://acme.com", and anything that
+		// could never match an `Origin` header is dropped rather than saved looking
+		// configured. The audit and the response use what was actually written.
 		const issued = await issueApiKey({
 			workspaceId: input.workspaceId,
 			createdByUserId: c.get("account").userId,
@@ -477,6 +502,7 @@ export function registerAccountRoutes(
 			type: input.type,
 			capabilities: input.capabilities,
 			expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+			allowedOrigins: input.allowedOrigins,
 		});
 		await recordControlPlaneAudit({
 			organizationId: c.get("account").organizationId,
@@ -493,9 +519,65 @@ export function registerAccountRoutes(
 				type: input.type,
 				capabilities: input.capabilities.length,
 				workspaceId: input.workspaceId,
+				// The origins themselves, not a count. Which website may present a
+				// credential is exactly the kind of change an audit needs to answer
+				// later, and they are public values. Joined because audit metadata
+				// holds scalars.
+				allowedOrigins: issued.allowedOrigins.join(", "),
 			},
 		});
 		return respond(c, issued, 201);
+	});
+
+	/**
+	 * Change which websites may present a key.
+	 *
+	 * 🔴 REPLACES the list rather than adding to it. A merge would make removing
+	 * an origin impossible through this API, which is the operation that actually
+	 * matters — cutting off a domain you no longer control.
+	 *
+	 * ⚠️ The origin decision is cached for 60s in front of every CORS preflight,
+	 * so the cache is dropped here. Without that, a revoked domain keeps working
+	 * for a minute after the operator has watched the UI confirm the change, and
+	 * an added domain appears not to work at all.
+	 */
+	app.patch("/v1/account/api-keys/:id", keys, async (c) => {
+		const input = updateApiKeyOriginsSchema.parse(await c.req.json());
+		if (
+			!(await workspaceBelongsToOrganization(
+				input.workspaceId,
+				c.get("account").organizationId,
+			))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		const allowedOrigins = await setApiKeyAllowedOrigins(
+			input.workspaceId,
+			c.req.param("id"),
+			input.allowedOrigins,
+		);
+		// Scoped to the workspace in the UPDATE, so a key id from another
+		// organization is indistinguishable from one that does not exist. Null
+		// means no such key; an empty array is a real answer.
+		if (!allowedOrigins)
+			return respondError(c, "NOT_FOUND", "Key not found.", 404);
+		forgetOriginCache();
+		await recordControlPlaneAudit({
+			organizationId: c.get("account").organizationId,
+			actorId: c.get("account").userId,
+			actorType: "user",
+			action: "apikey.origins_changed",
+			resourceType: "apikey",
+			resourceId: c.req.param("id"),
+			requestId: c.get("requestId"),
+			// The new list, in full — an audit that only said "origins changed"
+			// could not answer which domain was cut off, which is the question.
+			metadata: {
+				workspaceId: input.workspaceId,
+				allowedOrigins: allowedOrigins.join(", "),
+			},
+		});
+		return respond(c, { id: c.req.param("id"), allowedOrigins });
 	});
 
 	app.delete("/v1/account/api-keys/:id", keys, async (c) => {

@@ -127,6 +127,8 @@ export const accountQueries = {
 							type: string;
 							prefix: string;
 							capabilities: string[];
+							/** Which websites may present this key. Empty means none can. */
+							allowedOrigins: string[];
 							createdAt: string;
 							lastUsedAt: string | null;
 							expiresAt: string | null;

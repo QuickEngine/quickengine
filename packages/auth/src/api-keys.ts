@@ -192,7 +192,48 @@ export type IssuedApiKey = {
 	/** The non-secret leading chars, safe to persist and display. */
 	prefix: string;
 	capabilities: ApiCapability[];
+	/** As stored — already normalised, so a caller can echo it back truthfully. */
+	allowedOrigins: string[];
 };
+
+/**
+ * Reduce a URL to scheme + host + port.
+ *
+ * Browsers send exactly this in `Origin`, but somebody configuring a key will
+ * paste a full URL with a path or a trailing slash. Normalising both sides is
+ * what makes an exact comparison usable rather than a source of support tickets.
+ */
+export function normalizeOrigin(value: string): string {
+	try {
+		const url = new URL(value.trim());
+		return url.origin.toLowerCase();
+	} catch {
+		return value.trim().toLowerCase().replace(/\/+$/, "");
+	}
+}
+
+/**
+ * The origins to store for a key.
+ *
+ * 🔴 Applied inside `issueApiKey` and `setApiKeyAllowedOrigins`, not left to the
+ * caller. A route that forgot to normalise would write a value that can never
+ * match an `Origin` header — a key that looks configured in the UI and is
+ * refused by every browser. Putting the invariant next to the write means there
+ * is no path that can skip it.
+ *
+ * Anything that will not parse to an http(s) origin is DROPPED rather than
+ * stored, for the same reason.
+ */
+export function normalizeOrigins(values: readonly string[]): string[] {
+	const seen = new Set<string>();
+	for (const value of values) {
+		const normalized = normalizeOrigin(value);
+		if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+			seen.add(normalized);
+		}
+	}
+	return [...seen];
+}
 
 export async function issueApiKey(input: {
 	workspaceId: string;
@@ -201,7 +242,19 @@ export async function issueApiKey(input: {
 	type: QuickEngineApiKeyType;
 	capabilities: readonly string[];
 	expiresAt?: Date | null;
+	/**
+	 * Browser origins this key may be presented from.
+	 *
+	 * 🔴 Required in practice for any key that runs in a browser. A storefront
+	 * lives on the customer's own domain, so the API's static CORS allowlist
+	 * cannot cover it — the origin is declared here and resolved per request by
+	 * `isRegisteredStorefrontOrigin`.
+	 *
+	 * Normalised here, not by the caller — see `normalizeOrigins`.
+	 */
+	allowedOrigins?: readonly string[];
 }): Promise<IssuedApiKey> {
+	const allowedOrigins = normalizeOrigins(input.allowedOrigins ?? []);
 	const capabilities = normalizeCapabilities(input.type, input.capabilities);
 	const typePrefix = KEY_PREFIX[input.type];
 	const secret = randomBytes(32).toString("base64url");
@@ -220,10 +273,11 @@ export async function issueApiKey(input: {
 			keyHash: hashKey(plaintext),
 			capabilities,
 			expiresAt: input.expiresAt ?? null,
+			allowedOrigins,
 		})
 		.returning({ id: quickengineApiKeys.id });
 
-	return { id: row.id, plaintext, prefix, capabilities };
+	return { id: row.id, plaintext, prefix, capabilities, allowedOrigins };
 }
 
 export type VerifiedApiKey = {
@@ -285,6 +339,7 @@ export type ApiKeySummary = {
 	type: QuickEngineApiKeyType;
 	prefix: string;
 	capabilities: ApiCapability[];
+	allowedOrigins: string[];
 	lastUsedAt: Date | null;
 	expiresAt: Date | null;
 	revokedAt: Date | null;
@@ -302,6 +357,10 @@ export async function listApiKeys(
 			type: quickengineApiKeys.type,
 			prefix: quickengineApiKeys.prefix,
 			capabilities: quickengineApiKeys.capabilities,
+			// Public by nature — the whole point is that a named website may present
+			// this key. Showing them is what lets an operator answer "why is my site
+			// getting refused?" without opening the database.
+			allowedOrigins: quickengineApiKeys.allowedOrigins,
 			lastUsedAt: quickengineApiKeys.lastUsedAt,
 			expiresAt: quickengineApiKeys.expiresAt,
 			revokedAt: quickengineApiKeys.revokedAt,
@@ -315,6 +374,40 @@ export async function listApiKeys(
 		...row,
 		capabilities: (row.capabilities ?? []).filter(isApiCapability),
 	}));
+}
+
+/**
+ * Replace which browser origins may present a key.
+ *
+ * Returns false when the key does not belong to this workspace, which is what
+ * makes a key id from another organization answer "not found" rather than
+ * confirming it exists.
+ *
+ * ⚠️ The caller must drop the origin cache afterwards (`forgetOriginCache`);
+ * this function only writes the row.
+ */
+export async function setApiKeyAllowedOrigins(
+	workspaceId: string,
+	keyId: string,
+	origins: readonly string[],
+): Promise<string[] | null> {
+	const allowedOrigins = normalizeOrigins(origins);
+	const [row] = await db
+		.update(quickengineApiKeys)
+		.set({ allowedOrigins, updatedAt: new Date() })
+		.where(
+			and(
+				eq(quickengineApiKeys.id, keyId),
+				eq(quickengineApiKeys.workspaceId, workspaceId),
+				// A revoked key is not editable. Re-pointing a dead credential at a new
+				// domain would look like it re-enabled it.
+				isNull(quickengineApiKeys.revokedAt),
+			),
+		)
+		.returning({ id: quickengineApiKeys.id });
+	// Null, not an empty array — "no such key" and "this key now allows nothing"
+	// are different answers and the route maps them to different statuses.
+	return row ? allowedOrigins : null;
 }
 
 /** Revoke a key. Returns false if it does not belong to the workspace or was already revoked. */

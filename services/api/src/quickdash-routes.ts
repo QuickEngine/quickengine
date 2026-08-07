@@ -212,7 +212,15 @@ export function registerQuickDashRoutes(
 				})),
 			orientation,
 			role: workspace.role,
-			workspace: workspace.workspace,
+			// 🔴 `organizationId` lives on the RESOLUTION, not on the workspace row,
+			// so spreading the row alone dropped it. The client has always declared
+			// it and always received undefined — invisible until Connect needed it to
+			// call an account endpoint, and the workspace switcher had been quietly
+			// falling back to a default avatar seed the whole time.
+			workspace: {
+				...workspace.workspace,
+				organizationId: workspace.organizationId,
+			},
 			workspaces,
 		});
 	});

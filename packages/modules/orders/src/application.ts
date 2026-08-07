@@ -20,6 +20,7 @@ import {
 	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
+import { redeemDiscountInTx } from "./discounts";
 import type { OrderInput } from "./order";
 import {
 	type CreateOrderInput,
@@ -70,6 +71,8 @@ export const orderListQuerySchema = z.object({
 const FRIENDLY: Record<string, string> = {
 	WORKSPACE_NOT_FOUND: "The workspace was not found.",
 	DISCOUNT_WINDOW_INVALID: "That discount ends before it starts.",
+	DISCOUNT_EXHAUSTED:
+		"That discount code was just used up. Remove it and try again.",
 	REFERRAL_CODE_GENERATION_FAILED:
 		"We couldn't create a referral code just now. Try again.",
 	CLIENT_NOT_FOUND: "The client on this order was not found.",
@@ -111,7 +114,7 @@ function mapOrderError(error: unknown): never {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (
-			/(NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|CONCURRENT_UPDATE|NOT_READY_FOR_FULFILLMENT|FULFILLMENT_NOT_COMPLETE|FULFILLMENT_ALREADY_COMPLETE|FULFILLMENT_LINK_FAILED|REFERRAL_CODE_GENERATION_FAILED)/.test(
+			/(NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|CONCURRENT_UPDATE|NOT_READY_FOR_FULFILLMENT|FULFILLMENT_NOT_COMPLETE|FULFILLMENT_ALREADY_COMPLETE|FULFILLMENT_LINK_FAILED|REFERRAL_CODE_GENERATION_FAILED|DISCOUNT_EXHAUSTED)/.test(
 				error.message,
 			)
 		) {
@@ -195,6 +198,24 @@ export function createOrderCommand(
 	context: MutationExecutionContext,
 	input: CreateOrderInput,
 	uow: OrderMutationUnitOfWork = mutationUnitOfWork,
+	/**
+	 * A discount to spend in the SAME transaction that writes the order.
+	 *
+	 * 🔴 This used to happen after the command returned, because this command
+	 * owned its transaction and had no way to accept extra work. The window that
+	 * left: an order could exist carrying a discount whose redemption row was
+	 * never written, so a code could be used one more time than its cap allowed.
+	 *
+	 * Both now commit together or neither does. If the cap is claimed by somebody
+	 * else between pricing and writing, the order is rolled back and the shopper
+	 * is told the code has just been used up — which is the honest answer, and
+	 * better than quietly handing out a discount that no longer exists.
+	 */
+	redemption?: {
+		discountId: string;
+		clientRecordId: string | null;
+		amountCents: number;
+	},
 ): Promise<MutationResult<OrderDto>> {
 	return uow
 		.execute(context, async (transaction) => {
@@ -203,6 +224,19 @@ export function createOrderCommand(
 				context.workspaceId,
 				input,
 			);
+			if (redemption) {
+				const spent = await redeemDiscountInTx(transaction.db, {
+					workspaceId: context.workspaceId,
+					discountId: redemption.discountId,
+					clientRecordId: redemption.clientRecordId,
+					orderId: row.id,
+					amountCents: redemption.amountCents,
+				});
+				// Throwing rolls the order back with it. The conditional UPDATE inside
+				// `redeemDiscountInTx` is what makes this race-safe: two shoppers
+				// spending the last use cannot both win it.
+				if (!spent) throw new Error("DISCOUNT_EXHAUSTED");
+			}
 			await transaction.audit({
 				action: "order.created",
 				resourceId: row.id,

@@ -44,7 +44,8 @@ const TARGETS: Array<{
 	/** Browser targets need an origin; a server key must never carry one. */
 	needsOrigin: boolean;
 	type: "storefront" | "publishable" | "secret";
-	capabilities: string[];
+	/** An explicit least-privilege list, or null for "everything this type allows". */
+	capabilities: string[] | null;
 }> = [
 	{
 		id: "selling-storefront",
@@ -68,10 +69,22 @@ const TARGETS: Array<{
 		id: "backend",
 		label: "A private server",
 		detail:
-			"Full workspace access for something you run yourself. Never put this key in a browser or a mobile app.",
+			"Full workspace access for something you run yourself — a contact form, an importer, a scheduled job. Never put this key in a browser or a mobile app.",
 		needsOrigin: false,
 		type: "secret",
-		capabilities: [],
+		/**
+		 * 🔴 Empty here meant a key that could do NOTHING.
+		 *
+		 * The per-type clamp is a CEILING, not a default: `normalizeCapabilities`
+		 * filters what was asked for against it. Asking for nothing got nothing, so
+		 * every "private server" key authenticated and was then refused by every
+		 * endpoint, reads included — and since this is the only key-creation screen
+		 * in the product, no working server key could be made at all.
+		 *
+		 * `null` means "everything this key type may hold", resolved from the live
+		 * capability list below so it stays correct as capabilities are added.
+		 */
+		capabilities: null,
 	},
 ];
 
@@ -103,6 +116,23 @@ export function ConnectView({
 	const [savedOrigins, setSavedOrigins] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const chosen = TARGETS.find((item) => item.id === target) ?? TARGETS[0];
+
+	/**
+	 * Every capability this workspace's plan and modules allow.
+	 *
+	 * Fetched rather than hardcoded so a "private server" key keeps meaning
+	 * "everything" as capabilities are added, instead of quietly falling behind a
+	 * list somebody has to remember to update.
+	 */
+	const capabilities = useQuery({
+		queryKey: ["quickdash", "api-capabilities"],
+		queryFn: async () =>
+			(
+				await sessionApi.request<{ items: string[] }>(
+					"/account/api-capabilities",
+				)
+			).data.items,
+	});
 
 	/**
 	 * Where this workspace's customers would sign in, if it publishes a portal.
@@ -173,7 +203,9 @@ export function ConnectView({
 						workspaceId,
 						name: suggestedKeyName(target),
 						type: chosen.type,
-						capabilities: chosen.capabilities,
+						// null means "everything this key type may hold". The server clamps
+						// it again anyway, so this can only ever narrow, never widen.
+						capabilities: chosen.capabilities ?? capabilities.data ?? [],
 						...(entered
 							? {
 									allowedOrigins: entered
@@ -410,7 +442,16 @@ export function ConnectView({
 				)}
 
 				{!issued && (
-					<Button type="submit" disabled={createKey.isPending}>
+					<Button
+						type="submit"
+						// A target with no explicit list needs the fetched one. Submitting
+						// before it arrives would ask for a key with no capabilities, which
+						// the API now refuses outright.
+						disabled={
+							createKey.isPending ||
+							(chosen.capabilities === null && !capabilities.data)
+						}
+					>
 						{createKey.isPending ? "Creating…" : "Create the key"}
 					</Button>
 				)}

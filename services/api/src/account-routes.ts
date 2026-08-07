@@ -1,10 +1,11 @@
 import { trackProductEvent } from "@quickengine/analytics";
 import {
 	API_CAPABILITIES,
+	ApiKeyCapabilityError,
 	issueApiKey,
 	listApiKeys,
 	revokeApiKey,
-	setApiKeyAllowedOrigins,
+	updateApiKey,
 } from "@quickengine/auth/api-keys";
 import {
 	createSubscriptionForPaymentElement,
@@ -77,10 +78,17 @@ export const createApiKeySchema = z.object({
 	allowedOrigins: z.array(z.string().trim().max(2_048)).max(10).optional(),
 });
 
-/** Replacing a key's origins. The list is REPLACED, never merged — see the route. */
+/**
+ * Repairing a key in place. Both lists are REPLACED, never merged — see the route.
+ *
+ * `capabilities` is here because a key issued with the wrong set could not be
+ * fixed at all: the only remedy was revoke and re-issue, which means editing
+ * every place the old key was pasted.
+ */
 export const updateApiKeyOriginsSchema = z.object({
 	workspaceId: z.string().uuid(),
-	allowedOrigins: z.array(z.string().trim().max(2_048)).max(10),
+	allowedOrigins: z.array(z.string().trim().max(2_048)).max(10).optional(),
+	capabilities: z.array(z.string()).optional(),
 });
 
 export const startSubscriptionSchema = z.object({
@@ -495,15 +503,25 @@ export function registerAccountRoutes(
 		// "https://acme.com/shop/" becomes "https://acme.com", and anything that
 		// could never match an `Origin` header is dropped rather than saved looking
 		// configured. The audit and the response use what was actually written.
-		const issued = await issueApiKey({
-			workspaceId: input.workspaceId,
-			createdByUserId: c.get("account").userId,
-			name: input.name,
-			type: input.type,
-			capabilities: input.capabilities,
-			expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-			allowedOrigins: input.allowedOrigins,
-		});
+		let issued: Awaited<ReturnType<typeof issueApiKey>>;
+		try {
+			issued = await issueApiKey({
+				workspaceId: input.workspaceId,
+				createdByUserId: c.get("account").userId,
+				name: input.name,
+				type: input.type,
+				capabilities: input.capabilities,
+				expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+				allowedOrigins: input.allowedOrigins,
+			});
+		} catch (error) {
+			// Asking for a key with no capabilities is a caller mistake with a clear
+			// remedy, so it gets the reason and a 400 rather than a 500.
+			if (error instanceof ApiKeyCapabilityError) {
+				return respondError(c, "VALIDATION_ERROR", error.message, 400);
+			}
+			throw error;
+		}
 		await recordControlPlaneAudit({
 			organizationId: c.get("account").organizationId,
 			actorId: c.get("account").userId,
@@ -530,11 +548,17 @@ export function registerAccountRoutes(
 	});
 
 	/**
-	 * Change which websites may present a key.
+	 * Repair a key: which websites may present it, and what it may do.
 	 *
-	 * 🔴 REPLACES the list rather than adding to it. A merge would make removing
+	 * 🔴 REPLACES each list rather than adding to it. A merge would make removing
 	 * an origin impossible through this API, which is the operation that actually
 	 * matters — cutting off a domain you no longer control.
+	 *
+	 * Capabilities are editable because a key issued with the wrong ones could not
+	 * be fixed at all. Every server key Connect issued before this shipped had
+	 * none, and revoke-and-reissue means editing every deployment holding the old
+	 * value. They are re-clamped to the key's own type, so this cannot widen a
+	 * browser key past its ceiling.
 	 *
 	 * ⚠️ The origin decision is cached for 60s in front of every CORS preflight,
 	 * so the cache is dropped here. Without that, a revoked domain keeps working
@@ -551,33 +575,47 @@ export function registerAccountRoutes(
 		) {
 			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
 		}
-		const allowedOrigins = await setApiKeyAllowedOrigins(
-			input.workspaceId,
-			c.req.param("id"),
-			input.allowedOrigins,
-		);
+		let updated: Awaited<ReturnType<typeof updateApiKey>>;
+		try {
+			updated = await updateApiKey(input.workspaceId, c.req.param("id"), {
+				origins: input.allowedOrigins,
+				capabilities: input.capabilities,
+			});
+		} catch (error) {
+			// "You asked for a key that can do nothing" is the caller's mistake and
+			// deserves the reason, not a 500.
+			if (error instanceof ApiKeyCapabilityError) {
+				return respondError(c, "VALIDATION_ERROR", error.message, 400);
+			}
+			throw error;
+		}
 		// Scoped to the workspace in the UPDATE, so a key id from another
-		// organization is indistinguishable from one that does not exist. Null
-		// means no such key; an empty array is a real answer.
-		if (!allowedOrigins)
-			return respondError(c, "NOT_FOUND", "Key not found.", 404);
+		// organization is indistinguishable from one that does not exist.
+		if (!updated) return respondError(c, "NOT_FOUND", "Key not found.", 404);
+		const { allowedOrigins, capabilities } = updated;
 		forgetOriginCache();
 		await recordControlPlaneAudit({
 			organizationId: c.get("account").organizationId,
 			actorId: c.get("account").userId,
 			actorType: "user",
-			action: "apikey.origins_changed",
+			action: "apikey.updated",
 			resourceType: "apikey",
 			resourceId: c.req.param("id"),
 			requestId: c.get("requestId"),
-			// The new list, in full — an audit that only said "origins changed"
-			// could not answer which domain was cut off, which is the question.
+			// Both lists in full. An audit that only said "key changed" could not
+			// answer which domain was cut off or what the key gained — which are the
+			// two questions anybody reads this to answer.
 			metadata: {
 				workspaceId: input.workspaceId,
 				allowedOrigins: allowedOrigins.join(", "),
+				capabilities: capabilities.join(", "),
 			},
 		});
-		return respond(c, { id: c.req.param("id"), allowedOrigins });
+		return respond(c, {
+			id: c.req.param("id"),
+			allowedOrigins,
+			capabilities,
+		});
 	});
 
 	app.delete("/v1/account/api-keys/:id", keys, async (c) => {

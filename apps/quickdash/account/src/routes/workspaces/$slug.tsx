@@ -143,6 +143,37 @@ function WorkspacePage() {
 		onError: (cause) =>
 			setError(cause instanceof Error ? cause.message : "Key creation failed."),
 	});
+	/**
+	 * Change which websites may present a key.
+	 *
+	 * The list is REPLACED, so clearing the box removes every origin — which is
+	 * the point. Cutting off a domain you no longer control is the operation that
+	 * matters, and a merge would make it impossible from here.
+	 */
+	const setOrigins = useMutation({
+		mutationFn: (input: { keyId: string; value: string }) =>
+			api.request(
+				`/account/api-keys/${input.keyId}?organizationId=${active?.id}`,
+				{
+					method: "PATCH",
+					body: {
+						workspaceId: workspace?.id,
+						allowedOrigins: input.value
+							.split(",")
+							.map((entry) => entry.trim())
+							.filter(Boolean),
+					},
+				},
+			),
+		onSuccess: () =>
+			queryClient.invalidateQueries({
+				queryKey: ["account", active?.id, "apiKeys", workspace?.id],
+			}),
+		onError: (cause) =>
+			setError(
+				cause instanceof Error ? cause.message : "Websites could not be saved.",
+			),
+	});
 	const revokeKey = useMutation({
 		mutationFn: (keyId: string) =>
 			api.request(
@@ -386,7 +417,7 @@ function WorkspacePage() {
 					</div>
 				)}
 				{apiKeys.data?.items.map((key) => (
-					<div key={key.id} className="flex items-center justify-between">
+					<div key={key.id} className="flex items-start justify-between gap-4">
 						<div>
 							<p className="text-sm">
 								{key.name} · {key.type} · {key.prefix}
@@ -398,15 +429,52 @@ function WorkspacePage() {
 									? new Date(key.lastUsedAt).toLocaleDateString()
 									: "never"}
 							</p>
+							{/*
+							 * Which websites may present this key.
+							 *
+							 * A browser key with no origins is refused everywhere, and that
+							 * is invisible without saying so — it reads as "the key is
+							 * broken" rather than "the key was never told where it lives".
+							 */}
+							<p className="mt-1 text-muted-foreground text-xs">
+								{key.allowedOrigins.length > 0 ? (
+									<>Allowed from {key.allowedOrigins.join(", ")}</>
+								) : key.type === "secret" || key.type === "scoped" ? (
+									<>Server key · not usable from a browser</>
+								) : (
+									<span className="text-destructive">
+										No website registered — this key is refused everywhere
+									</span>
+								)}
+							</p>
 						</div>
-						{!key.revokedAt && (
-							<Button
-								variant="outline"
-								onClick={() => revokeKey.mutate(key.id)}
-							>
-								Revoke
-							</Button>
-						)}
+						<div className="flex shrink-0 gap-2">
+							{!key.revokedAt && key.type !== "secret" && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => {
+										const next = window.prompt(
+											"Which websites may use this key? Separate several with a comma.",
+											key.allowedOrigins.join(", "),
+										);
+										if (next === null) return;
+										setOrigins.mutate({ keyId: key.id, value: next });
+									}}
+								>
+									Edit websites
+								</Button>
+							)}
+							{!key.revokedAt && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => revokeKey.mutate(key.id)}
+								>
+									Revoke
+								</Button>
+							)}
+						</div>
 					</div>
 				))}
 			</section>

@@ -41,6 +41,17 @@ export const viteClientEnvSchema = z.object({
 	VITE_AUTH_URL: origin,
 	VITE_DASH_URL: origin,
 	VITE_API_URL: origin,
+	/**
+	 * Where the hosted customer portal lives.
+	 *
+	 * Optional, and deliberately NOT in `URL_KEYS`: only Connect needs it, to
+	 * print the two handoff variables a storefront sets. Making it required would
+	 * mean every existing deployment fails to boot until it is configured, for a
+	 * value most surfaces never read. Absent simply means Connect omits those two
+	 * lines rather than guessing a hostname — the mistake that retired
+	 * `api.quickengine.xyz` and took sign-in down.
+	 */
+	VITE_PORTAL_URL: optionalUrl,
 	VITE_PUSHER_KEY: optionalString,
 	VITE_PUSHER_CLUSTER: optionalString,
 	VITE_STRIPE_PUBLISHABLE_KEY: optionalString,
@@ -58,6 +69,7 @@ function valuesFromSource(source: ViteEnvironmentSource) {
 		VITE_AUTH_URL: emptyStringAsUndefined(source.VITE_AUTH_URL),
 		VITE_DASH_URL: emptyStringAsUndefined(source.VITE_DASH_URL),
 		VITE_API_URL: emptyStringAsUndefined(source.VITE_API_URL),
+		VITE_PORTAL_URL: emptyStringAsUndefined(source.VITE_PORTAL_URL),
 		VITE_PUSHER_KEY: source.VITE_PUSHER_KEY,
 		VITE_PUSHER_CLUSTER: source.VITE_PUSHER_CLUSTER,
 		VITE_STRIPE_PUBLISHABLE_KEY: source.VITE_STRIPE_PUBLISHABLE_KEY,

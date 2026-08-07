@@ -1,3 +1,4 @@
+import { normalizeOrigin } from "@quickengine/auth/api-keys";
 import { and, db, eq, isNull, quickengineApiKeys, sql } from "@quickengine/db";
 
 /**
@@ -37,20 +38,14 @@ export function forgetOriginCache(origin?: string) {
 }
 
 /**
- * Reduce a URL to scheme + host + port.
+ * Normalisation lives with the KEY, not here.
  *
- * Browsers send exactly this in `Origin`, but callers configuring a key will
- * paste a full URL with a path or a trailing slash. Normalising both sides is
- * what makes an exact comparison usable rather than a source of support tickets.
+ * Both sides of the comparison have to agree, and the write side is the one
+ * that must not be skippable — so `issueApiKey` and `setApiKeyAllowedOrigins`
+ * apply it internally and this module reuses the same function to read.
+ * Re-exported because `app.ts` and the account routes both reach for it here.
  */
-export function normalizeOrigin(value: string): string {
-	try {
-		const url = new URL(value.trim());
-		return url.origin.toLowerCase();
-	} catch {
-		return value.trim().toLowerCase().replace(/\/+$/, "");
-	}
-}
+export { normalizeOrigin, normalizeOrigins } from "@quickengine/auth/api-keys";
 
 /**
  * Is this origin registered on any live key?
@@ -103,25 +98,6 @@ export async function isRegisteredStorefrontOrigin(
 
 	cache.set(normalized, { allowed, expiresAt: Date.now() + TTL_MS });
 	return allowed;
-}
-
-/**
- * The origins registered on one key, normalised.
- *
- * Used when issuing or editing a key so what is stored is already in the shape
- * the browser will send.
- */
-export function normalizeOrigins(values: readonly string[]): string[] {
-	const seen = new Set<string>();
-	for (const value of values) {
-		const normalized = normalizeOrigin(value);
-		// An origin that will not parse cannot be matched against `Origin`, so
-		// storing it would silently never work.
-		if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-			seen.add(normalized);
-		}
-	}
-	return [...seen];
 }
 
 export { eq };

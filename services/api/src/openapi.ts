@@ -2671,6 +2671,17 @@ function declaredDocument(config: ApiConfig) {
 				},
 			},
 			"/v1/account/api-keys/{id}": {
+				patch: {
+					operationId: "updateApiKeyOrigins",
+					summary: "Change which websites may use a key",
+					description:
+						"Replaces the allowed-origin list rather than adding to it, because removing a domain you no longer control is the operation that matters. Origins are normalised to scheme + host + port and anything that will not parse as an origin is dropped, so a stored value can always match a browser's `Origin` header. Takes effect within seconds — the CORS decision cache is cleared here. A revoked key cannot be edited.",
+					responses: {
+						"200": { description: "The stored, normalised origin list." },
+						"403": { description: "You cannot manage API keys." },
+						"404": { description: "No such key, or no such workspace." },
+					},
+				},
 				delete: {
 					operationId: "revokeApiKey",
 					summary: "Revoke an API key",

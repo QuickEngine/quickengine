@@ -13,6 +13,8 @@ const env = import.meta.env.PROD
 			VITE_AUTH_URL: import.meta.env.VITE_AUTH_URL ?? "http://localhost:3002",
 			VITE_DASH_URL: import.meta.env.VITE_DASH_URL ?? "http://localhost:3011",
 			VITE_API_URL: import.meta.env.VITE_API_URL ?? "http://localhost:3020",
+			VITE_PORTAL_URL:
+				import.meta.env.VITE_PORTAL_URL ?? "http://localhost:3012",
 		});
 
 export const clientEnv = {
@@ -20,4 +22,9 @@ export const clientEnv = {
 	ACCOUNT_URL: env.VITE_ACCOUNT_URL,
 	AUTH_URL: env.VITE_AUTH_URL,
 	API_URL: env.VITE_API_URL,
+	/**
+	 * Null when unset in production. Connect then omits the portal handoff
+	 * variables rather than printing a guessed hostname into somebody's `.env`.
+	 */
+	PORTAL_URL: env.VITE_PORTAL_URL ?? null,
 } as const;

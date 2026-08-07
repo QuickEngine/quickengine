@@ -182,7 +182,33 @@ function normalizeCapabilities(
 			set.add(value);
 		}
 	}
+
+	// 🔴 A key that can do NOTHING is always a mistake, never an intention.
+	//
+	// The clamp is a ceiling, not a default, so an empty request produced an empty
+	// result — a credential that authenticates and is then refused by every
+	// endpoint, including reads. The Connect page shipped exactly that for its
+	// "private server" option, and because it is the only key-creation screen in
+	// the product, no working server key could be made at all.
+	//
+	// Thrown rather than defaulted: silently granting the ceiling would turn a
+	// forgotten field into full workspace access, which is the wrong direction to
+	// fail in. The caller must say what the key is for.
+	if (set.size === 0) {
+		throw new ApiKeyCapabilityError(
+			"An API key needs at least one capability. A key with none is refused by every endpoint.",
+		);
+	}
 	return [...set];
+}
+
+/** Thrown when a key would be issued that cannot do anything. */
+export class ApiKeyCapabilityError extends Error {
+	readonly code = "CAPABILITY_REQUIRED";
+	constructor(message: string) {
+		super(message);
+		this.name = "ApiKeyCapabilityError";
+	}
 }
 
 export type IssuedApiKey = {
@@ -377,37 +403,68 @@ export async function listApiKeys(
 }
 
 /**
- * Replace which browser origins may present a key.
+ * Repair a key in place — its origins, its capabilities, or both.
  *
- * Returns false when the key does not belong to this workspace, which is what
+ * Returns null when the key does not belong to this workspace, which is what
  * makes a key id from another organization answer "not found" rather than
  * confirming it exists.
+ *
+ * 🔴 Capabilities are editable because a key issued with the wrong ones was
+ * otherwise unfixable. Every server key created through Connect before this
+ * shipped had NONE, and the only remedy was revoke and re-issue — which means
+ * finding every deployment the old value was pasted into.
+ *
+ * Both lists are REPLACED. Capabilities are re-clamped to the key's own type on
+ * the way in, so this can never be used to widen a browser key past its ceiling.
  *
  * ⚠️ The caller must drop the origin cache afterwards (`forgetOriginCache`);
  * this function only writes the row.
  */
-export async function setApiKeyAllowedOrigins(
+export async function updateApiKey(
 	workspaceId: string,
 	keyId: string,
-	origins: readonly string[],
-): Promise<string[] | null> {
-	const allowedOrigins = normalizeOrigins(origins);
-	const [row] = await db
-		.update(quickengineApiKeys)
-		.set({ allowedOrigins, updatedAt: new Date() })
+	patch: { origins?: readonly string[]; capabilities?: readonly string[] },
+): Promise<{ allowedOrigins: string[]; capabilities: ApiCapability[] } | null> {
+	// Read first: clamping capabilities needs the key's TYPE, and a caller cannot
+	// be trusted to supply it — sending `secret` for a publishable key would be a
+	// privilege escalation in one field.
+	const [existing] = await db
+		.select({
+			type: quickengineApiKeys.type,
+			allowedOrigins: quickengineApiKeys.allowedOrigins,
+			capabilities: quickengineApiKeys.capabilities,
+		})
+		.from(quickengineApiKeys)
 		.where(
 			and(
 				eq(quickengineApiKeys.id, keyId),
 				eq(quickengineApiKeys.workspaceId, workspaceId),
 				// A revoked key is not editable. Re-pointing a dead credential at a new
-				// domain would look like it re-enabled it.
+				// domain, or handing it new powers, would look like re-enabling it.
 				isNull(quickengineApiKeys.revokedAt),
 			),
 		)
-		.returning({ id: quickengineApiKeys.id });
-	// Null, not an empty array — "no such key" and "this key now allows nothing"
-	// are different answers and the route maps them to different statuses.
-	return row ? allowedOrigins : null;
+		.limit(1);
+	if (!existing) return null;
+
+	const allowedOrigins = patch.origins
+		? normalizeOrigins(patch.origins)
+		: (existing.allowedOrigins ?? []);
+	const capabilities = patch.capabilities
+		? normalizeCapabilities(existing.type, patch.capabilities)
+		: (existing.capabilities ?? []).filter(isApiCapability);
+
+	await db
+		.update(quickengineApiKeys)
+		.set({ allowedOrigins, capabilities, updatedAt: new Date() })
+		.where(
+			and(
+				eq(quickengineApiKeys.id, keyId),
+				eq(quickengineApiKeys.workspaceId, workspaceId),
+				isNull(quickengineApiKeys.revokedAt),
+			),
+		);
+	return { allowedOrigins, capabilities };
 }
 
 /** Revoke a key. Returns false if it does not belong to the workspace or was already revoked. */

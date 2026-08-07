@@ -23,7 +23,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsup src/index.ts src/browser.ts --format cjs,esm --dts",
+		"build": "pnpm clean && tsup src/index.ts src/browser.ts --format cjs,esm --dts",
 		"dev": "tsup src/index.ts src/browser.ts --format cjs,esm --dts --watch",
 		"clean": "rm -rf dist",
 		"lint": "biome lint .",

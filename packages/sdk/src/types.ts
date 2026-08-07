@@ -261,7 +261,24 @@ export type QuickCursorPage<T> = {
 	page: { hasMore: boolean; nextCursor: string | null };
 };
 
+/**
+ * The API's failure envelope, as it is actually sent.
+ *
+ * 🔴 The fields are NESTED under `error`. This type used to declare them at the
+ * top level, so `readApiError` read `body.code`, found nothing, and reported
+ * `quick_api_error` for every failure — making every stable code documented in
+ * the README unreachable and every consumer's `catch` branch dead code.
+ *
+ * The flat fields are kept as a fallback for any endpoint that has not adopted
+ * the envelope.
+ */
 export type QuickApiErrorBody = {
+	error?: {
+		code?: string;
+		message?: string;
+		requestId?: string;
+		details?: unknown;
+	};
 	code?: string;
 	message?: string;
 	details?: unknown;
@@ -1363,4 +1380,34 @@ export type QuickActivityPage = {
 	events: QuickActivityEvent[];
 	/** Pass to `activity.since()` to continue from here. */
 	cursor: number;
+};
+
+/** A node in the browsable tree. `itemCount` counts direct members only. */
+export type QuickCategoryNode = {
+	id: string;
+	kind: "category" | "collection";
+	name: string;
+	slug: string;
+	description: string | null;
+	parentId: string | null;
+	sortOrder: number;
+	imageUrl: string | null;
+	featured: boolean;
+	visible: boolean;
+	itemCount: number;
+	children: QuickCategoryNode[];
+};
+
+export type QuickCategoryInput = {
+	kind?: "category" | "collection";
+	name: string;
+	/** Lowercase, hyphenated. It is what appears in the storefront's URL. */
+	slug: string;
+	description?: string | null;
+	parentId?: string | null;
+	sortOrder?: number;
+	imageUrl?: string | null;
+	featured?: boolean;
+	/** Hidden categories stay out of a storefront's navigation. */
+	visible?: boolean;
 };

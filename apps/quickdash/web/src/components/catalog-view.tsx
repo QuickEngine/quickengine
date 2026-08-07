@@ -1,6 +1,7 @@
 "use client";
 
 import { Archive, Package, Plus, Trash } from "@phosphor-icons/react";
+import type { QuickCategoryNode } from "@quickengine/quick/browser";
 import { Badge } from "@quickengine/ui/components/ui/badge";
 import { Button } from "@quickengine/ui/components/ui/button";
 import {
@@ -43,8 +44,10 @@ import {
 	deleteVariantAction,
 	saveCatalogItemAction,
 	saveVariantAction,
+	setItemCategoriesAction,
 } from "../_lib/catalog-actions";
 import { useRouter } from "../compat/router-navigation";
+import { CategoryManager } from "./category-manager";
 import { ConnectedRecords } from "./connected-records";
 import {
 	buildResourceListPage,
@@ -420,13 +423,92 @@ function VariantDialog({
 	);
 }
 
+/**
+ * Which groups this product appears in.
+ *
+ * ⚠️ Submits EVERY box, checked or not, because the server REPLACES the list.
+ * A form that only sent the ticked ones could add a product to a category and
+ * never take it out again.
+ *
+ * Lives on an existing product rather than in the create form: a product has no
+ * id until it is saved, and there is nothing to attach a category to.
+ */
+function ItemCategories({
+	workspaceId,
+	item,
+	categories,
+	membership,
+}: {
+	workspaceId: string;
+	item: CatalogItemViewModel;
+	categories: QuickCategoryNode[];
+	membership: Array<{ categoryId: string; itemIds: string[] }>;
+}) {
+	const router = useRouter();
+	const [state, action] = useActionState(setItemCategoriesAction, {
+		error: null,
+		completionId: null,
+	} as CatalogActionState);
+	useEffect(() => {
+		if (state.completionId) router.refresh();
+	}, [state.completionId, router]);
+
+	const current = new Set(
+		membership
+			.filter((entry) => entry.itemIds.includes(item.id))
+			.map((entry) => entry.categoryId),
+	);
+
+	if (categories.length === 0) {
+		return (
+			<p className="text-muted-foreground text-sm">
+				No categories exist yet. Create one above and it will appear here.
+			</p>
+		);
+	}
+
+	return (
+		<form action={action} className="space-y-3">
+			<input type="hidden" name="workspaceId" value={workspaceId} />
+			<input type="hidden" name="itemId" value={item.id} />
+			<div className="grid gap-2 sm:grid-cols-2">
+				{categories.map((category) => (
+					<label
+						key={category.id}
+						className="flex items-center gap-2 rounded-lg border p-3 text-sm"
+					>
+						<input
+							type="checkbox"
+							name="categoryId"
+							value={category.id}
+							defaultChecked={current.has(category.id)}
+						/>
+						<span className="min-w-0">
+							<span className="block truncate">{category.name}</span>
+							{!category.visible && (
+								<span className="text-muted-foreground text-xs">Hidden</span>
+							)}
+						</span>
+					</label>
+				))}
+			</div>
+			{state.error && <p className="text-destructive text-sm">{state.error}</p>}
+			<Submit>Save categories</Submit>
+		</form>
+	);
+}
+
 function ItemDetails({
 	workspaceId,
 	item,
+	categories,
+	membership,
 	defaultCurrency,
 }: {
 	workspaceId: string;
 	item: CatalogItemViewModel;
+	categories: QuickCategoryNode[];
+	membership: Array<{ categoryId: string; itemIds: string[] }>;
 	defaultCurrency: string;
 }) {
 	return (
@@ -518,6 +600,20 @@ function ItemDetails({
 							]}
 						/>
 					)}
+				<div className="mt-2">
+					<h3 className="font-medium">Categories</h3>
+					<p className="mt-1 mb-3 text-muted-foreground text-sm">
+						Where this appears on your website. Unticking one removes it from
+						that group; the product itself is untouched.
+					</p>
+					<ItemCategories
+						workspaceId={workspaceId}
+						item={item}
+						categories={categories}
+						membership={membership}
+					/>
+				</div>
+
 				<div className="mt-2 flex items-center justify-between">
 					<h3 className="font-medium">Variants</h3>
 					{item.status !== "archived" && (
@@ -623,6 +719,8 @@ function ItemDetails({
 export function CatalogView({
 	workspaceId,
 	items,
+	categories,
+	membership,
 	defaultCurrency,
 	productLabel,
 	serviceLabel,
@@ -631,6 +729,9 @@ export function CatalogView({
 }: {
 	workspaceId: string;
 	items: CatalogItemViewModel[];
+	categories: QuickCategoryNode[];
+	/** Which items belong to each category, by category id. */
+	membership: Array<{ categoryId: string; itemIds: string[] }>;
 	defaultCurrency: string;
 	productLabel: string;
 	serviceLabel: string;
@@ -654,7 +755,17 @@ export function CatalogView({
 		},
 	});
 	return (
-		<section className="mt-8 space-y-4">
+		<section className="mt-8 space-y-8">
+			{/*
+			 * Categories come FIRST, deliberately.
+			 *
+			 * A storefront that lists categories rather than products shows nothing
+			 * at all until one exists — so a shop owner who adds a product and sees
+			 * an empty website concludes the connection is broken. Putting this
+			 * above the catalog makes the dependency obvious before they hit it.
+			 */}
+			<CategoryManager workspaceId={workspaceId} categories={categories} />
+
 			<div className="flex flex-wrap items-end justify-between gap-4">
 				<div>
 					<h2 className="font-semibold text-lg">Catalog</h2>
@@ -756,6 +867,8 @@ export function CatalogView({
 												<ItemDetails
 													workspaceId={workspaceId}
 													item={item}
+													categories={categories}
+													membership={membership}
 													defaultCurrency={defaultCurrency}
 												/>
 											</TableCell>

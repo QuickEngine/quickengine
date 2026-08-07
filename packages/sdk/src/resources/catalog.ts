@@ -5,6 +5,8 @@ import type {
 	QuickCatalogStatus,
 	QuickCatalogVariant,
 	QuickCatalogVariantInput,
+	QuickCategoryInput,
+	QuickCategoryNode,
 	QuickCursorPage,
 	QuickPublicReview,
 	QuickResponse,
@@ -122,6 +124,76 @@ export class CatalogResource {
 		return this.client.request<{ id: string }>(
 			`/variants/${encodeURIComponent(id)}`,
 			{ method: "DELETE", idempotencyKey },
+		);
+	}
+
+	// ── Categories and collections ──────────────────────────────────────────
+	//
+	// How a catalog is arranged for browsing. A category is where a thing
+	// belongs; a collection is a curated grouping. They differ in meaning and
+	// nothing else, which is why one shape covers both.
+	//
+	// ⚠️ These live here rather than on `site` because writing them needs an
+	// operator. `site.listCategories` is the storefront's read of the same tree.
+
+	/**
+	 * The category tree.
+	 *
+	 * ⚠️ `visibleOnly` defaults to TRUE server-side, because the usual caller is
+	 * a storefront rendering navigation. An operator managing categories wants
+	 * the hidden ones too, so pass `false`.
+	 */
+	listCategories(
+		options: { kind?: "category" | "collection"; visibleOnly?: boolean } = {},
+	) {
+		const query = new URLSearchParams();
+		if (options.kind) query.set("kind", options.kind);
+		if (options.visibleOnly === false) query.set("visibleOnly", "false");
+		return this.client.request<{ items: QuickCategoryNode[] }>(
+			`/categories${query.size ? `?${query}` : ""}`,
+		);
+	}
+
+	createCategory(input: QuickCategoryInput, idempotencyKey: string) {
+		return this.client.request<QuickCategoryNode>("/categories", {
+			method: "POST",
+			body: input,
+			idempotencyKey,
+		});
+	}
+
+	updateCategory(
+		id: string,
+		patch: Partial<QuickCategoryInput>,
+		idempotencyKey: string,
+	) {
+		return this.client.request<QuickCategoryNode>(
+			`/categories/${encodeURIComponent(id)}`,
+			{ method: "PATCH", body: patch, idempotencyKey },
+		);
+	}
+
+	deleteCategory(id: string, idempotencyKey: string) {
+		return this.client.request<{ id: string }>(
+			`/categories/${encodeURIComponent(id)}`,
+			{ method: "DELETE", idempotencyKey },
+		);
+	}
+
+	/**
+	 * REPLACE which categories an item belongs to.
+	 *
+	 * Sending `[]` removes it from every category — which is the only way to take
+	 * something out of a collection, so it must not be mistaken for a no-op.
+	 */
+	setItemCategories(
+		itemId: string,
+		categoryIds: string[],
+		idempotencyKey: string,
+	) {
+		return this.client.request<{ categories: QuickCategoryNode[] }>(
+			`/catalog/${encodeURIComponent(itemId)}/categories`,
+			{ method: "PUT", body: { categoryIds }, idempotencyKey },
 		);
 	}
 }

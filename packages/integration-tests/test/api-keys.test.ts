@@ -2,7 +2,7 @@ import {
 	issueApiKey,
 	listApiKeys,
 	revokeApiKey,
-	setApiKeyAllowedOrigins,
+	updateApiKey,
 	verifyApiKey,
 } from "@quickengine/auth/api-keys";
 import { testDbClient } from "@quickengine/db/testing";
@@ -193,9 +193,11 @@ describe("a key's allowed origins", () => {
 		// 🔴 The operation that matters: cutting off a domain you no longer
 		// control. A merge would make that impossible through the API.
 		expect(
-			await setApiKeyAllowedOrigins(workspaceId, issued.id, [
-				"https://newsite.example",
-			]),
+			(
+				await updateApiKey(workspaceId, issued.id, {
+					origins: ["https://newsite.example"],
+				})
+			)?.allowedOrigins,
 		).toEqual(["https://newsite.example"]);
 
 		const [key] = await listApiKeys(workspaceId);
@@ -207,9 +209,9 @@ describe("a key's allowed origins", () => {
 		// Indistinguishable from a key that does not exist — a caller cannot use
 		// this to confirm somebody else's key id is real.
 		expect(
-			await setApiKeyAllowedOrigins(otherWorkspaceId, issued.id, [
-				"https://attacker.example",
-			]),
+			await updateApiKey(otherWorkspaceId, issued.id, {
+				origins: ["https://attacker.example"],
+			}),
 		).toBeNull();
 
 		const [key] = await listApiKeys(workspaceId);
@@ -223,9 +225,9 @@ describe("a key's allowed origins", () => {
 		// Re-pointing a dead credential at a new domain would read as re-enabling
 		// it. The key stays dead.
 		expect(
-			await setApiKeyAllowedOrigins(workspaceId, issued.id, [
-				"https://newsite.example",
-			]),
+			await updateApiKey(workspaceId, issued.id, {
+				origins: ["https://newsite.example"],
+			}),
 		).toBeNull();
 	});
 
@@ -241,5 +243,94 @@ describe("a key's allowed origins", () => {
 		});
 		const verified = await verifyApiKey(issued.plaintext);
 		expect(verified?.allowedOrigins).toEqual([]);
+	});
+});
+
+/**
+ * A credential that can do nothing.
+ *
+ * 🔴 This is the defect that blocked the second consumer entirely. The per-type
+ * clamp is a CEILING, not a default — `normalizeCapabilities` filters the
+ * requested list against it — so asking for `[]` produced a key that
+ * authenticated and was then refused by every endpoint, reads included. The
+ * Connect page's "private server" option did exactly that, and it is the only
+ * key-creation screen in the product.
+ */
+describe("a key must be able to do something", () => {
+	it("🔴 refuses to issue a key with no capabilities", async () => {
+		await expect(
+			issueApiKey({
+				workspaceId,
+				createdByUserId: ownerId,
+				name: "Useless",
+				type: "secret",
+				capabilities: [],
+			}),
+		).rejects.toThrow(/at least one capability/i);
+	});
+
+	it("refuses when every requested capability is unknown", async () => {
+		// Filtered to nothing is the same outcome as asking for nothing, and it is
+		// the likelier real-world mistake — a typo in an integration's config.
+		await expect(
+			issueApiKey({
+				workspaceId,
+				createdByUserId: ownerId,
+				name: "Typos",
+				type: "secret",
+				capabilities: ["catalog:raed", "clients:wrote"],
+			}),
+		).rejects.toThrow(/at least one capability/i);
+	});
+
+	it("refuses when the clamp removes everything the caller asked for", async () => {
+		// Real capabilities, but none a browser key may hold. Silently issuing an
+		// empty key here is how a misconfigured integration becomes a dead one.
+		await expect(
+			issueApiKey({
+				workspaceId,
+				createdByUserId: ownerId,
+				name: "Over-reaching browser key",
+				type: "publishable",
+				capabilities: ["payments:write", "clients:write"],
+			}),
+		).rejects.toThrow(/at least one capability/i);
+	});
+
+	it("repairs a key's capabilities in place, re-clamped to its type", async () => {
+		const issued = await issueApiKey({
+			workspaceId,
+			createdByUserId: ownerId,
+			name: "Server",
+			type: "publishable",
+			capabilities: ["catalog:read"],
+		});
+
+		// 🔴 The clamp still applies on update. Otherwise this endpoint would be a
+		// one-request privilege escalation on any browser key.
+		const updated = await updateApiKey(workspaceId, issued.id, {
+			capabilities: ["catalog:read", "events:write", "payments:write"],
+		});
+		expect(updated?.capabilities).toEqual(["catalog:read", "events:write"]);
+
+		const verified = await verifyApiKey(issued.plaintext);
+		expect(verified?.capabilities).toEqual(["catalog:read", "events:write"]);
+	});
+
+	it("leaves origins alone when only capabilities are changed", async () => {
+		const issued = await issueApiKey({
+			workspaceId,
+			createdByUserId: ownerId,
+			name: "Storefront",
+			type: "storefront",
+			capabilities: ["catalog:read"],
+			allowedOrigins: ["https://gemsutopia.ca"],
+		});
+
+		const updated = await updateApiKey(workspaceId, issued.id, {
+			capabilities: ["catalog:read", "checkout:write"],
+		});
+		// A patch that touched one field must not silently clear the other.
+		expect(updated?.allowedOrigins).toEqual(["https://gemsutopia.ca"]);
 	});
 });

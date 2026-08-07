@@ -34,11 +34,24 @@ export const readApiError = async (
 		body = undefined;
 	}
 
+	// 🔴 `body.error.code` FIRST. The API nests its failure envelope, and reading
+	// only the flat field meant every error arrived as `quick_api_error` with the
+	// real message replaced by `response.statusText`. Consumers branching on the
+	// documented codes — `capability_denied`, `module_disabled`, `not_found` —
+	// silently never matched, and a 403 for a missing capability was
+	// indistinguishable from any other failure.
+	const envelope = body?.error;
 	return new QuickApiError({
-		code: body?.code ?? "quick_api_error",
-		message: body?.message ?? response.statusText ?? "Quick.js request failed",
+		code: envelope?.code ?? body?.code ?? "quick_api_error",
+		message:
+			envelope?.message ??
+			body?.message ??
+			response.statusText ??
+			"Quick.js request failed",
 		status: response.status,
-		requestId,
-		details: body?.details,
+		// The envelope carries the id the API logged this under, which is the one
+		// worth quoting in a support conversation. The header is the fallback.
+		requestId: envelope?.requestId ?? requestId,
+		details: envelope?.details ?? body?.details,
 	});
 };

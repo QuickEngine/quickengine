@@ -1,3 +1,4 @@
+import type { QuickCategoryNode } from "@quickengine/quick/browser";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { BookingsView } from "../components/bookings-view";
@@ -43,6 +44,20 @@ import { TimeTrackingView } from "../components/time-tracking-view";
 import { workspaceApi } from "../lib/api";
 import { quickDashQueries } from "../lib/quickdash-api";
 
+/**
+ * The category tree, flattened depth-first.
+ *
+ * The API returns nesting because a storefront renders it as navigation. An
+ * operator picking categories for a product wants one list, in the order they
+ * would read it — a parent immediately followed by its children.
+ */
+function flattenCategoryTree(nodes: QuickCategoryNode[]): QuickCategoryNode[] {
+	return nodes.flatMap((node) => [
+		node,
+		...flattenCategoryTree(node.children ?? []),
+	]);
+}
+
 function ModulePage() {
 	const { workspace, module } = Route.useParams();
 	const search = Route.useSearch();
@@ -75,12 +90,31 @@ function ModulePage() {
 		queryFn: async () => {
 			const api = workspaceApi(workspace);
 			const items = (await api.catalog.list({ limit: 100 })).data.items;
-			const variants = await Promise.all(
-				items.map(
-					async (item) => (await api.catalog.listVariants(item.id)).data,
+			const [variants, categoryTree] = await Promise.all([
+				Promise.all(
+					items.map(
+						async (item) => (await api.catalog.listVariants(item.id)).data,
+					),
 				),
+				// `visibleOnly: false` — an operator managing categories needs to see
+				// the hidden ones, which is exactly what a storefront must not.
+				api.catalog.listCategories({ visibleOnly: false }),
+			]);
+			// Which categories each item is in. The tree carries membership by
+			// category, and the editor needs it by item.
+			const membership = await Promise.all(
+				flattenCategoryTree(categoryTree.data.items).map(async (category) => ({
+					categoryId: category.id,
+					itemIds: (await api.site.listCategoryItems(category.slug)).data
+						.itemIds,
+				})),
 			);
-			return { items, variants };
+			return {
+				items,
+				variants,
+				categories: flattenCategoryTree(categoryTree.data.items),
+				membership,
+			};
 		},
 		enabled: module === "products-services",
 	});
@@ -461,6 +495,8 @@ function ModulePage() {
 		return (
 			<CatalogView
 				workspaceId={workspace}
+				categories={catalog.data.categories}
+				membership={catalog.data.membership}
 				listState={listState}
 				onListStateChange={onListStateChange}
 				defaultCurrency={settings?.defaultCurrency ?? "USD"}

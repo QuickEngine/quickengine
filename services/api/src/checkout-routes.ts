@@ -12,7 +12,6 @@ import {
 	priceCheckout,
 	readOrdersSettings,
 	recordReferral,
-	redeemDiscount,
 	resolveCheckoutClient,
 	taxCalculatorFor,
 } from "@quickengine/mod-orders";
@@ -343,6 +342,16 @@ export function registerCheckoutRoutes(
 				metadata: {},
 			},
 			options.uow,
+			// 🔴 Spent INSIDE the order's transaction, not after it. Both commit
+			// together or neither does, so an order can no longer exist carrying a
+			// discount whose redemption was never recorded.
+			discount?.ok
+				? {
+						discountId: discount.discountId,
+						clientRecordId: client.id,
+						amountCents: discount.amountCents,
+					}
+				: undefined,
 		);
 
 		// A replayed idempotent request returns the original order rather than
@@ -394,34 +403,10 @@ export function registerCheckoutRoutes(
 			}
 		}
 
-		// 🔴 Spend the redemption AFTER the order exists, and only then.
-		//
-		// ⚠️ This is outside the order's transaction, which is a known compromise:
-		// `createOrderCommand` owns that transaction and does not accept extra
-		// work. The consequence is a narrow window where an order carries a
-		// discount whose redemption was not recorded — which UNDER-counts usage
-		// (a code could be used once more than its cap) rather than over-counting,
-		// and never charges anybody wrongly. The reverse order would burn a
-		// redemption on an order that failed to write, which is worse.
-		//
-		// Tracked in TECH_DEBT: the real fix is threading the redemption into the
-		// unit of work.
-		if (discount?.ok) {
-			const spent = await redeemDiscount({
-				workspaceId,
-				discountId: discount.discountId,
-				clientRecordId: client.id,
-				orderId: order.id,
-				amountCents: discount.amountCents,
-			});
-			if (!spent) {
-				options.logger.warn("checkout.discount_exhausted_after_order", {
-					orderId: order.id,
-					code: discount.code,
-					requestId: c.get("requestId"),
-				});
-			}
-		}
+		// The redemption is already recorded — it committed with the order above.
+		// If its cap had been claimed in between, `createOrderCommand` rolled the
+		// whole thing back and answered CONFLICT, so reaching here means the
+		// discount on this order is genuinely spent and counted.
 
 		// ── Payment ───────────────────────────────────────────────────────────
 		// A workspace that has not connected an account can still take the order;

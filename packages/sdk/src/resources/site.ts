@@ -147,6 +147,38 @@ export class CustomerResource {
 		});
 	}
 
+	/**
+	 * Get a one-use ticket that carries this signed-in shopper to the hosted
+	 * portal without asking them to sign in again.
+	 *
+	 * 🔴 Never send the session token itself across origins — not in a query
+	 * string, not in a cookie on a shared parent domain, not by `postMessage`.
+	 * One credential in two places means a leak on either compromises both, and
+	 * signing out of one cannot revoke the other. This ticket is valid for
+	 * seconds, works once, and buys a SEPARATE portal session.
+	 *
+	 * Put the returned token in the redirect to the portal; it is redeemed there.
+	 */
+	requestPortalHandoff() {
+		return this.client.request<{ token: string; expiresAt: string }>(
+			"/customer/portal-handoff",
+			{ method: "POST" },
+		);
+	}
+
+	/**
+	 * Trade a handoff ticket for a portal session.
+	 *
+	 * Called BY the portal, with its own publishable key and no session yet. The
+	 * session it returns is independent of the storefront's.
+	 */
+	redeemPortalHandoff(token: string) {
+		return this.client.request<{ token: string; expiresAt: string }>(
+			"/customer/portal-handoff/redeem",
+			{ method: "POST", body: { token } },
+		);
+	}
+
 	listOrders(
 		options: {
 			cursor?: string;

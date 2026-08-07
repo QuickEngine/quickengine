@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugIndexRouteImport } from './routes/$slug.index'
+import { Route as SlugHandoffRouteImport } from './routes/$slug.handoff'
 import { Route as SlugVerifyRouteImport } from './routes/$slug.verify'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const SlugIndexRoute = SlugIndexRouteImport.update({
   path: '/$slug/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SlugHandoffRoute = SlugHandoffRouteImport.update({
+  id: '/$slug/handoff',
+  path: '/$slug/handoff',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SlugVerifyRoute = SlugVerifyRouteImport.update({
   id: '/$slug/verify',
   path: '/$slug/verify',
@@ -31,30 +37,34 @@ const SlugVerifyRoute = SlugVerifyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$slug/handoff': typeof SlugHandoffRoute
   '/$slug/verify': typeof SlugVerifyRoute
   '/$slug/': typeof SlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$slug/handoff': typeof SlugHandoffRoute
   '/$slug/verify': typeof SlugVerifyRoute
   '/$slug': typeof SlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$slug/handoff': typeof SlugHandoffRoute
   '/$slug/verify': typeof SlugVerifyRoute
   '/$slug/': typeof SlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$slug/verify' | '/$slug/'
+  fullPaths: '/' | '/$slug/handoff' | '/$slug/verify' | '/$slug/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$slug/verify' | '/$slug'
-  id: '__root__' | '/' | '/$slug/verify' | '/$slug/'
+  to: '/' | '/$slug/handoff' | '/$slug/verify' | '/$slug'
+  id: '__root__' | '/' | '/$slug/handoff' | '/$slug/verify' | '/$slug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SlugHandoffRoute: typeof SlugHandoffRoute
   SlugVerifyRoute: typeof SlugVerifyRoute
   SlugIndexRoute: typeof SlugIndexRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SlugIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$slug/handoff': {
+      id: '/$slug/handoff'
+      path: '/$slug/handoff'
+      fullPath: '/$slug/handoff'
+      preLoaderRoute: typeof SlugHandoffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$slug/verify': {
       id: '/$slug/verify'
       path: '/$slug/verify'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SlugHandoffRoute: SlugHandoffRoute,
   SlugVerifyRoute: SlugVerifyRoute,
   SlugIndexRoute: SlugIndexRoute,
 }

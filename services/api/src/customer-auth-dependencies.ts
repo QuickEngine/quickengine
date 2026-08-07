@@ -1,8 +1,10 @@
 import {
 	bindMembership,
 	consumeLoginToken,
+	consumePortalHandoff,
 	createCustomerSession,
 	createLoginToken,
+	createPortalHandoff,
 	db,
 	eq,
 	findOrCreateIdentity,
@@ -38,6 +40,8 @@ export const customerAuthDependencies: CustomerAuthDependencies = {
 	bindMembership,
 	createCustomerSession,
 	revokeCustomerSession,
+	createPortalHandoff,
+	consumePortalHandoff,
 
 	async sendSignInLink(input) {
 		// 🔴 Imported here, not at module top level.

@@ -165,6 +165,11 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	// the path parameter and the stored payment chooses provider + merchant.
 	requestCustomerSignInLink: customerSignInRequestSchema,
 	verifyCustomerSignInLink: customerVerifySchema,
+	// Same shape as a sign-in link: one opaque single-use token and nothing else.
+	// `requestPortalHandoff` is deliberately absent — it is declared bodyless,
+	// because who the ticket is for comes from the session, and a body would only
+	// offer a caller somewhere to name a different customer.
+	redeemPortalHandoff: customerVerifySchema,
 	// Client records
 	saveView: savedViewInputSchema,
 	pinSavedView: savedViewPinSchema,

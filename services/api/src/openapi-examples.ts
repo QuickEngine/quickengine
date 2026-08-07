@@ -244,6 +244,9 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	verifyCustomerSignInLink: {
 		token: "0xQnJvd3NlcnMgc2VuZCB0aGlzIGJhY2sgdmVyYmF0aW0",
 	},
+	redeemPortalHandoff: {
+		token: "0xVGhpcyBvbmUgbGl2ZXMgZm9yIHNpeHR5IHNlY29uZHM",
+	},
 	recordProductEvent: {
 		name: "signup.viewed",
 		surface: "web",

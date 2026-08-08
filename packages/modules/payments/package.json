@@ -24,12 +24,12 @@
 		"@quickengine/db": "workspace:*",
 		"@quickengine/env": "workspace:*",
 		"@quickengine/mod-invoicing": "workspace:*",
-		"stripe": "^19.3.1",
+		"stripe": "^22.4.0",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"typescript": "^5",
-		"vitest": "^3.2.6"
+		"typescript": "^7",
+		"vitest": "^4.1.10"
 	}
 }

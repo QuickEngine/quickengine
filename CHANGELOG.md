@@ -8,6 +8,96 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Edit your website's words in QuickDash.** The Content module had no screen at all, so the
+  one thing a portfolio, agency or brochure site needs most could only be reached through the
+  API. It now has one: every slot your developer declared, grouped as they grouped it, with the
+  label and hint they wrote, a publish switch per slot, and unsaved changes shown before you
+  leave. Slots holding a repeating list are edited as structured text for now.
+
+- **The connection kit is on npm.** `@quickengine/quick` installs the ordinary way with pnpm,
+  npm, yarn or bun, so connecting a website no longer means copying files around or pointing at
+  a folder on one machine. Until now the setup instructions named an install command that did
+  not work, and no connected site could be deployed anywhere.
+
+- **Setup instructions for a site that does not sell.** The connection guide covered shops and
+  assumed a catalog and a checkout. It now also covers a portfolio, an agency site, or any site
+  that only publishes words: reading your workspace's content, keeping the page correct while it
+  is not yet connected, and receiving an enquiry from a contact form.
+
+- **The content security policy step is written down.** A site that restricts where its browser
+  may connect has to name the QuickDash API, and leaving it out produced a failure that reads
+  exactly like the service being unavailable. It is now the first thing the guide says.
+
+### Fixed
+
+- **A key for your own server now actually works.** Choosing "a private server" on Connect
+  produced a key that signed in and was then refused by everything, including simply reading
+  data — and since Connect is the only place keys are made, there was no way to create a working
+  one at all. It now receives the access its type allows, and a key that could do nothing is
+  refused outright rather than handed over looking fine.
+
+- **You can fix a key instead of replacing it.** What a key is allowed to do can now be changed
+  after it is created, so a wrong choice no longer means issuing a new one and updating every
+  place the old one was pasted. Changes are still capped by what that kind of key may ever hold.
+
+- **Errors say what went wrong again.** Anything the API refused came back to connected sites as
+  a generic failure with the real reason stripped out, so code written to react to a specific
+  problem never matched and every fault looked identical while debugging.
+
+### Changed
+
+- **The connection kit is a tenth of the size.** Old build output was never cleared, so each
+  release carried every previous version of itself — 3.4 MB where 368 KB was needed.
+
+- **Connect your website to your backend in about two minutes.** A workspace now has a Connect
+  page that asks what you are connecting, takes your site's address, and gives you the exact
+  configuration to paste in. It then watches for your site's first request and tells you the
+  moment it arrives, so you find out you are connected instead of hoping.
+
+- **Lock a key to your own website.** A key can now name the addresses it may be used from, and
+  a browser loading your site from anywhere else is refused. This was enforced already but could
+  not be set anywhere, so browser keys had to be configured by hand in the database. You can
+  change the addresses later from either Connect or Account, and the change takes effect within
+  seconds.
+
+- **See at a glance which sites a key allows.** Every key in Account now lists its addresses, and
+  a browser key with none is flagged clearly rather than looking healthy and failing everywhere.
+
+- **Go from a shop to your account without signing in twice.** A customer who is already signed
+  in on a business's own website can open their account portal directly. The website never hands
+  the portal its session; it requests a single-use pass that expires in about a minute and can be
+  redeemed once, and the portal opens a separate session of its own. Signing out of one leaves
+  the other alone, and a pass issued by one business cannot open an account at another.
+
+- **Prove a whole sale end to end on a connected website.** A guarded local run now covers
+  discount codes priced against the real basket, delivery options, an order with authoritative
+  totals that a repeated request cannot duplicate, a customer seeing only their own orders, a
+  two-way message answered by the business and read back by the customer, and the portal pass.
+
+### Changed
+
+- **Discount codes are worked out by QuickDash, never by the website.** A connected site now
+  sends the basket and receives the amount off, instead of sending its own order total. Minimum
+  spend, caps and expiry are checked against the items the server priced, so what a shopper is
+  shown and what they are charged cannot disagree.
+
+- **An order now exists before the customer is sent to pay.** Checkout records the sale, its
+  delivery choice and its discount in one step and then opens the payment against it. Returning
+  from the payment provider only confirms what is already there, so a completed payment can no
+  longer end up with no order behind it, and refreshing the confirmation page cannot pay twice.
+
+- **A referral rewards the person who made it, and no longer pretends to be a discount.** A
+  referral code is recorded with the order it brought in and pays out when that order settles.
+  It is a separate field from a discount code, so clearing the discount box cannot silently cost
+  a referrer their credit.
+
+### Removed
+
+- **Order tracking by order number and email.** Those two values can be guessed or read off a
+  forwarded receipt, and order numbers run in sequence, so the form could be walked to read other
+  people's delivery addresses. Customers see their orders by signing in with the link emailed to
+  them, which proves the address instead of quoting it.
+
 - **Keep a customer's storefront account private and portable.** A custom site can now send a
   passwordless sign-in link back to its own registered origin, restore that customer's session,
   merge a guest wishlist into the account, show published reviews, submit moderated reviews and

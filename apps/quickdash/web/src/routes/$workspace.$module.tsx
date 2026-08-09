@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BookingsView } from "../components/bookings-view";
 import { CatalogView } from "../components/catalog-view";
 import { ClientRecordsView } from "../components/client-records-view";
+import { type ContentEntry, ContentView } from "../components/content-view";
 import {
 	ContractsView,
 	type ContractViewModel,
@@ -84,6 +85,18 @@ function ModulePage() {
 		queryKey: ["quickdash", workspace, "clients"],
 		queryFn: async () => (await workspaceApi(workspace).clients.list()).data,
 		enabled: module === "client-records",
+	});
+	// Drafts included: this is the only route that returns unpublished slots, and
+	// an operator editing their own words has to see what they have not said yet.
+	const content = useQuery({
+		queryKey: ["quickdash", workspace, "content"],
+		queryFn: async () =>
+			(
+				await workspaceApi(workspace).request<{ items: ContentEntry[] }>(
+					"/content/manage/all",
+				)
+			).data,
+		enabled: module === "content",
 	});
 	const catalog = useQuery({
 		queryKey: ["quickdash", workspace, "catalog"],
@@ -435,12 +448,14 @@ function ModulePage() {
 		(module === "projects-tasks" && projects.isPending) ||
 		(module === "time-tracking" && time.isPending) ||
 		(module === "files" && files.isPending) ||
-		(module === "reporting-analytics" && reporting.isPending)
+		(module === "reporting-analytics" && reporting.isPending) ||
+		(module === "content" && content.isPending)
 	) {
 		return <main className="p-6">Loading module…</main>;
 	}
 	if (context.isError) throw context.error;
 	if (clients.isError) throw clients.error;
+	if (content.isError) throw content.error;
 	if (catalog.isError) throw catalog.error;
 	if (inventory.isError) throw inventory.error;
 	if (orders.isError) throw orders.error;
@@ -455,6 +470,9 @@ function ModulePage() {
 	if (time.isError) throw time.error;
 	if (files.isError) throw files.error;
 	if (reporting.isError) throw reporting.error;
+	if (module === "content" && content.data) {
+		return <ContentView workspaceId={workspace} entries={content.data.items} />;
+	}
 	if (module === "client-records" && clients.data) {
 		const settings = context.data.modules.find(
 			(candidate) => candidate.id === module,

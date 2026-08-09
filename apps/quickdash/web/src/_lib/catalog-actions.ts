@@ -59,14 +59,12 @@ export function saveCatalogItemAction(
 ) {
 	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
 	const id = String(form.get("itemId") ?? "");
-	const input = itemInput(form);
-	return actionResult(
-		() =>
-			id
-				? api.catalog.update(id, input, idempotencyKey(form))
-				: api.catalog.create(input, idempotencyKey(form)),
-		"We couldn't save this catalog record.",
-	);
+	return actionResult(() => {
+		const input = itemInput(form);
+		return id
+			? api.catalog.update(id, input, idempotencyKey(form))
+			: api.catalog.create(input, idempotencyKey(form));
+	}, "We couldn't save this catalog record.");
 }
 
 export function changeCatalogItemStatusAction(
@@ -106,18 +104,16 @@ export function saveVariantAction(
 ) {
 	const api = workspaceApi(String(form.get("workspaceId") ?? ""));
 	const variantId = String(form.get("variantId") ?? "");
-	const input = variantInput(form);
-	return actionResult(
-		() =>
-			variantId
-				? api.catalog.updateVariant(variantId, input, idempotencyKey(form))
-				: api.catalog.createVariant(
-						String(form.get("itemId") ?? ""),
-						input,
-						idempotencyKey(form),
-					),
-		"We couldn't save this variant.",
-	);
+	return actionResult(() => {
+		const input = variantInput(form);
+		return variantId
+			? api.catalog.updateVariant(variantId, input, idempotencyKey(form))
+			: api.catalog.createVariant(
+					String(form.get("itemId") ?? ""),
+					input,
+					idempotencyKey(form),
+				);
+	}, "We couldn't save this variant.");
 }
 
 export function changeVariantStatusAction(

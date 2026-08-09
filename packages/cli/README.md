@@ -4,10 +4,10 @@
 `@quickengine/quick` SDK): you configure a workspace-scoped API key once, then read product
 APIs (QuickDash today) from your terminal.
 
-> **Status:** thin first tier, real not stubbed. It only exposes commands backed by real
-> `/api/v1` routes — today that's catalog reads plus config/doctor. Workspace, module, and
-> key *management* commands arrive when their management APIs do (they're session-only in
-> Account for now, so shipping them here would mean stubbing — which we don't).
+> **Status:** real, not stubbed. Commands follow the deployed `/v1` API and cover activity,
+> bookings, catalog, clients, contracts, files, fulfillment, inventory, invoices, orders,
+> payments, projects, quotes, reports, shipments, time tracking and webhooks. Workspace, module
+> and key management remain in Account because their APIs are session-only.
 
 ## Setup
 
@@ -16,7 +16,7 @@ workspace → API keys**:
 
 ```bash
 quick config set \
-  --base-url https://dash.quickengine.xyz/api \
+  --base-url https://api.quickdash.xyz \
   --workspace <workspace-id> \
   --key qsk_...            # qpk_ (publishable), qsk_ (secret), or qsc_ (scoped)
 ```
@@ -25,7 +25,7 @@ Config is stored at `~/.quick/config.json` (owner-only perms). Environment varia
 over the file, so CI needs no written config:
 
 ```bash
-export QUICK_BASE_URL=https://dash.quickengine.xyz/api
+export QUICK_BASE_URL=https://api.quickdash.xyz
 export QUICK_WORKSPACE=<workspace-id>
 export QUICK_KEY=qsk_...
 ```
@@ -40,6 +40,8 @@ quick catalog list [--json]       # active catalog items
 quick catalog get <id> [--json]   # one item with its active variants
 
 quick doctor                      # verify config + key format + API connectivity
+quick init                        # guided, verified setup
+quick create app <name>           # minimal framework-independent connected project
 ```
 
 `quick doctor` is the first thing to run — it checks your settings, validates the key
@@ -48,8 +50,12 @@ translating failures into plain language (bad key, module disabled, wrong worksp
 
 Every command takes `--json` where it prints data, so the CLI composes in scripts.
 
+Run `quick --help` for the complete resource command list. `quick create app` intentionally
+generates one readable server script rather than choosing a frontend framework for you; the
+multi-framework wizard follows the Connect UX design later.
+
 ## What's next
 
-The command surface grows with the API: `quick events`, then `quick workspace` / `quick
-module` / `quick keys` once their management routes exist, then the heavier `quick init` /
-`dev` / `deploy` tier. See `internal/product/QUICK_JS.md` and `internal/planning/BACKLOG.md`.
+The command surface grows with the API. Workspace, module and key management arrive when their
+management contracts are suitable for non-browser credentials. See the public API documentation
+for the authoritative HTTP contract.

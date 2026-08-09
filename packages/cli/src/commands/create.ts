@@ -12,11 +12,8 @@ import {
 } from "@clack/prompts";
 import type { Command } from "commander";
 import { resolveConfig } from "../config";
+import { DEFAULT_API_URL, QUICK_SDK_VERSION } from "../defaults";
 import { scaffoldFiles } from "../scaffold";
-
-/** Kept in step with the SDK the CLI itself depends on. */
-const SDK_VERSION = "0.1.0";
-const DEFAULT_BASE_URL = "https://api.quickengine.xyz";
 
 function ensure<T>(value: T | symbol): T {
 	if (isCancel(value)) {
@@ -80,7 +77,7 @@ export function registerCreateCommands(program: Command): void {
 					return;
 				}
 
-				const baseUrl = options.baseUrl ?? existing.baseUrl ?? DEFAULT_BASE_URL;
+				const baseUrl = options.baseUrl ?? existing.baseUrl ?? DEFAULT_API_URL;
 				const workspaceId = options.workspace ?? existing.workspaceId ?? "";
 
 				if (!workspaceId) {
@@ -107,7 +104,7 @@ export function registerCreateCommands(program: Command): void {
 					baseUrl,
 					workspaceId,
 					key,
-					sdkVersion: SDK_VERSION,
+					sdkVersion: QUICK_SDK_VERSION,
 				});
 
 				mkdirSync(directory, { recursive: true });

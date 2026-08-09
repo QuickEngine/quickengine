@@ -26,7 +26,10 @@ async function readJson(path) {
 	return JSON.parse(await readFile(path, "utf8"));
 }
 
-test("tracks exactly the shipped public package line from 0.1.0", async () => {
+const validSemver = (value) =>
+	/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value);
+
+test("tracks exactly the shipped public package line with aligned versions", async () => {
 	const config = await readJson("release-please-config.json");
 	const manifest = await readJson(".release-please-manifest.json");
 
@@ -45,7 +48,9 @@ test("tracks exactly the shipped public package line from 0.1.0", async () => {
 	assert.deepEqual(config.plugins, ["node-workspace"]);
 
 	for (const [path, component] of Object.entries(expectedPackages)) {
-		assert.equal(manifest[path], "0.1.0");
+		const packageJson = await readJson(`${path}/package.json`);
+		assert.ok(validSemver(manifest[path]), `${path} manifest version`);
+		assert.equal(packageJson.version, manifest[path], `${path} version drift`);
 		assert.equal(config.packages[path].component, component);
 	}
 });

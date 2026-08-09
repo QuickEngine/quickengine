@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import sdkPackage from "../../sdk/package.json";
+import { DEFAULT_API_URL, QUICK_SDK_VERSION } from "./defaults";
 import { scaffoldFiles } from "./scaffold";
 
 const input = {
 	name: "my-backend",
-	baseUrl: "https://api.quickengine.xyz",
+	baseUrl: DEFAULT_API_URL,
 	workspaceId: "00000000-0000-4000-8000-000000000001",
 	sdkVersion: "0.1.0",
 };
@@ -65,7 +67,8 @@ describe("generated project", () => {
 		const files = fileMap(scaffoldFiles(input));
 		// Running `npm start` twice must not create two records — that is the
 		// property most worth teaching in the first thirty seconds.
-		expect(files["index.js"].contents).toContain("idempotencyKey");
+		expect(files["index.js"].contents).toContain("`seed-${");
+		expect(files["index.js"].contents).not.toContain("{ idempotencyKey:");
 	});
 
 	it("produces valid JSON for package.json", () => {
@@ -74,5 +77,12 @@ describe("generated project", () => {
 		expect(parsed.name).toBe("my-backend");
 		expect(parsed.type).toBe("module");
 		expect(parsed.dependencies["@quickengine/quick"]).toBe("^0.1.0");
+	});
+});
+
+describe("published contract", () => {
+	it("uses the live QuickDash API and the current SDK version", () => {
+		expect(DEFAULT_API_URL).toBe("https://api.quickdash.xyz");
+		expect(QUICK_SDK_VERSION).toBe(sdkPackage.version);
 	});
 });

@@ -192,7 +192,7 @@ export async function createPayPalOrder(
 		metadata?: Record<string, string>;
 	},
 	fetcher: PayPalFetch = fetch,
-): Promise<{ orderId: string }> {
+): Promise<{ orderId: string; approvalUrl: string }> {
 	const headers = await partnerHeaders(config, fetcher);
 	headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
 		config.clientId,
@@ -232,9 +232,13 @@ export async function createPayPalOrder(
 			}),
 		},
 	);
-	const body = await json<{ id?: string }>(response, "order creation");
-	if (!body.id) throw new PayPalApiError("order creation", 502);
-	return { orderId: body.id };
+	const body = await json<{
+		id?: string;
+		links?: Array<{ href?: string; rel?: string }>;
+	}>(response, "order creation");
+	const approvalUrl = body.links?.find((link) => link.rel === "approve")?.href;
+	if (!body.id || !approvalUrl) throw new PayPalApiError("order creation", 502);
+	return { orderId: body.id, approvalUrl };
 }
 
 export async function capturePayPalOrder(

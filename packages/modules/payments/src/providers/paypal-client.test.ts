@@ -86,7 +86,15 @@ describe("PayPal platform client", () => {
 	it("creates a seller-owned order using exact integer-cent formatting", async () => {
 		const fetcher = fetchSequence(
 			{ access_token: "token" },
-			{ id: "ORDER123" },
+			{
+				id: "ORDER123",
+				links: [
+					{
+						rel: "approve",
+						href: "https://www.sandbox.paypal.com/checkoutnow?token=ORDER123",
+					},
+				],
+			},
 		);
 		await expect(
 			createPayPalOrder(
@@ -100,7 +108,10 @@ describe("PayPal platform client", () => {
 				},
 				fetcher,
 			),
-		).resolves.toEqual({ orderId: "ORDER123" });
+		).resolves.toEqual({
+			orderId: "ORDER123",
+			approvalUrl: "https://www.sandbox.paypal.com/checkoutnow?token=ORDER123",
+		});
 		const request = fetcher.mock.calls[1]?.[1];
 		const body = JSON.parse(String(request?.body));
 		expect(body.purchase_units[0]).toMatchObject({
@@ -110,6 +121,28 @@ describe("PayPal platform client", () => {
 		});
 		expect(request?.headers).toMatchObject({
 			"PayPal-Auth-Assertion": payPalAuthAssertion("client-id", "SELLER123"),
+		});
+	});
+
+	it("refuses an order response that cannot send the shopper to approval", async () => {
+		const fetcher = fetchSequence(
+			{ access_token: "token" },
+			{ id: "ORDER123", links: [] },
+		);
+		await expect(
+			createPayPalOrder(
+				config,
+				{
+					sellerMerchantId: "SELLER123",
+					amountCents: 2_400,
+					applicationFeeCents: 0,
+					currency: "cad",
+				},
+				fetcher,
+			),
+		).rejects.toMatchObject({
+			operation: "order creation",
+			status: 502,
 		});
 	});
 

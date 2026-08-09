@@ -65,6 +65,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **A mistyped catalog price no longer takes down the entire QuickDash page.** Product and
+  variant form parsing now runs inside the recoverable action boundary, so invalid values stay
+  in the dialog with an actionable error. Ordinary currency input such as `$24.00` and
+  `1,024.50` is accepted and still becomes exact integer cents.
+
 - **New connected projects target the live product and run their first write.** The CLI and its
   generated configuration no longer point at retired QuickEngine API hosts, and the generated
   idempotent client write now uses the SDK's real argument shape instead of throwing at runtime.

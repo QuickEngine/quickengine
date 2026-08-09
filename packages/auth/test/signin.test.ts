@@ -60,8 +60,16 @@ describe("sign-in", () => {
 	});
 
 	it("issues a session for correct credentials once verified", async () => {
-		const cookie = await createVerifiedUser("ok@example.com", "password123");
+		await apiSignUp("ok@example.com", "password123");
+		await markEmailVerified("ok@example.com");
+		const signedIn = await apiSignIn("ok@example.com", "password123");
+		const { cookie } = signedIn;
 		expect(cookie).not.toBe("");
+		const sessionCookie = signedIn.res.headers
+			.getSetCookie()
+			.find((value) => value.includes("session_token"));
+		expect(sessionCookie).toContain("HttpOnly");
+		expect(sessionCookie).toContain("SameSite=Lax");
 
 		const session = await auth.api.getSession({
 			headers: new Headers({ cookie }),
@@ -74,11 +82,8 @@ describe("sign-in", () => {
 
 		await apiSignOut(cookie);
 
-		// Force a DB check — the 5-min cookie cache would otherwise still trust
-		// the pre-sign-out cookie a browser would have already discarded.
 		const session = await auth.api.getSession({
 			headers: new Headers({ cookie }),
-			query: { disableCookieCache: true },
 		});
 		expect(session).toBeNull();
 	});

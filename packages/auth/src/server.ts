@@ -53,16 +53,24 @@ export const auth = betterAuth({
 	// In prod, share the session cookie across subdomains (web/auth/dashboard) by
 	// setting AUTH_COOKIE_DOMAIN (e.g. ".quickengine.xyz"). Unset locally — every
 	// localhost port already shares the cookie.
-	...(serverEnv.AUTH_COOKIE_DOMAIN
-		? {
-				advanced: {
+	advanced: {
+		// Keep the browser contract explicit rather than inheriting a future
+		// library-default change. Better Auth adds Secure (and the __Secure-
+		// prefix) whenever BETTER_AUTH_URL is HTTPS.
+		defaultCookieAttributes: {
+			httpOnly: true,
+			path: "/",
+			sameSite: "lax",
+		},
+		...(serverEnv.AUTH_COOKIE_DOMAIN
+			? {
 					crossSubDomainCookies: {
 						enabled: true,
 						domain: serverEnv.AUTH_COOKIE_DOMAIN,
 					},
-				},
-			}
-		: {}),
+				}
+			: {}),
+	},
 	// Custom user fields surfaced on the session. The account app reads these to
 	// route new users into onboarding and to show the company name in the header.
 	// Server-set only — never accepted from client input.
@@ -161,10 +169,10 @@ export const auth = betterAuth({
 		// user out — a meal break or a long weekend never does.
 		expiresIn: 60 * 60 * 24 * 30,
 		updateAge: 60 * 60 * 24,
-		cookieCache: {
-			enabled: true,
-			maxAge: 60 * 5,
-		},
+		// Server-side revocation must be authoritative immediately. A signed
+		// cookie cache lets a stolen or explicitly revoked session survive until
+		// that cache expires, which is the wrong tradeoff for business data.
+		cookieCache: { enabled: false },
 	},
 	// Rate limiting protects the auth endpoints (sign-in, sign-up, reset, etc.).
 	// Better Auth applies stricter per-endpoint rules on top of this baseline.

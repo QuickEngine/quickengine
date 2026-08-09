@@ -180,8 +180,10 @@ machine does not have — and is tracked as a pre-launch gate.
 
 **The backend feature line is closed; a bounded pre-UI security pass is current.** Its first
 slice prevents outbound webhooks from reaching private networks, clears the production npm
-advisory set, continuously analyzes changes with CodeQL and pins CI dependencies immutably.
-The remaining pass covers browser sessions and headers, sensitive files and provider tokens,
+advisory set, continuously analyzes changes with CodeQL and pins CI dependencies immutably. The
+second gives every deployed web surface an enforced browser policy, makes session revocation
+immediate, removes retired trusted origins and prevents API responses from entering shared
+caches. The remaining pass covers sensitive files and provider tokens,
 automated tenant-isolation attacks, operational response, and the published Quick.js contract.
 Then the UI/UX pass resumes from Workspace
 Connect: sign up, create a workspace, tell it where your site lives, paste three lines of

@@ -20,11 +20,16 @@ export function matchOrigin(
 		return false;
 	}
 	const bare = cookieDomain.replace(/^\./, "");
-	let host: string;
+	let parsed: URL;
 	try {
-		host = new URL(origin).hostname;
+		parsed = new URL(origin);
 	} catch {
 		return false;
 	}
+	// Cross-subdomain production cookies are Secure. Trusting an HTTP, FTP, or
+	// non-default-port sibling as an auth origin would widen CSRF/CORS trust to a
+	// surface that cannot legitimately participate in that production session.
+	if (parsed.protocol !== "https:" || parsed.port) return false;
+	const host = parsed.hostname;
 	return host === bare || host.endsWith(`.${bare}`);
 }

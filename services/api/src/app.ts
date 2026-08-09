@@ -47,7 +47,35 @@ export function createApp(
 		await next();
 		c.header(VERSION_HEADERS.version, CURRENT_API_VERSION);
 	});
-	app.use("*", secureHeaders());
+	app.use(
+		"*",
+		secureHeaders({
+			contentSecurityPolicy: {
+				baseUri: ["'none'"],
+				defaultSrc: ["'none'"],
+				formAction: ["'none'"],
+				frameAncestors: ["'none'"],
+			},
+			permissionsPolicy: {
+				camera: [],
+				geolocation: [],
+				microphone: [],
+				payment: [],
+				usb: [],
+			},
+			referrerPolicy: "no-referrer",
+			strictTransportSecurity: "max-age=31536000; includeSubDomains",
+			xFrameOptions: "DENY",
+		}),
+	);
+	// API responses can contain workspace, customer, billing or session state.
+	// Never let a browser, shared proxy or deployment CDN reuse one for another
+	// request. Public catalog caching can return later with explicit tenant-aware
+	// cache keys; implicit caching is not a safe optimization.
+	app.use("*", async (c, next) => {
+		await next();
+		c.header("Cache-Control", "no-store");
+	});
 	app.use("*", async (c, next) => {
 		const corsMiddleware = cors({
 			// Our own surfaces come from config; a merchant storefront is registered

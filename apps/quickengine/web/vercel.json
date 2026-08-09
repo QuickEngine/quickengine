@@ -26,26 +26,5 @@
 			]
 		}
 	],
-	"rewrites": [
-		{
-			"source": "/api/auth/:path*",
-			"destination": "https://api.quickdash.xyz/api/auth/:path*"
-		},
-		{
-			"source": "/signout",
-			"destination": "https://api.quickdash.xyz/api/auth-signout"
-		},
-		{
-			"source": "/api/auth-native-start",
-			"destination": "https://api.quickdash.xyz/api/auth-native-start"
-		},
-		{
-			"source": "/api/auth-native-handoff",
-			"destination": "https://api.quickdash.xyz/api/auth-native-handoff"
-		},
-		{
-			"source": "/(.*)",
-			"destination": "/index.html"
-		}
-	]
+	"rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

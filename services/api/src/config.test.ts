@@ -11,6 +11,9 @@ describe("loadApiConfig", () => {
 		expect(config.requestTimeoutMs).toBe(10_000);
 		expect(config.readinessTimeoutMs).toBe(2000);
 		expect(config.corsOrigins.has("http://localhost:3011")).toBe(true);
+		expect(config.corsOrigins.has("https://auth.quickdash.xyz")).toBe(true);
+		expect(config.corsOrigins.has("https://auth.quickengine.xyz")).toBe(false);
+		expect(config.corsOrigins.has("https://dash.quickengine.xyz")).toBe(false);
 	});
 
 	it("normalizes an explicit CORS allowlist", () => {

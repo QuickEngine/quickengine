@@ -1,5 +1,6 @@
 import { auth, isAllowedOrigin } from "@quickengine/auth/server";
 import type { Hono } from "hono";
+import { resolveSignOutDestination } from "./auth-redirect";
 import type { PlatformEnv } from "./platform-types";
 
 /**
@@ -194,30 +195,4 @@ function authOrigin(): string {
 	const configured = process.env.QUICKENGINE_AUTH_URL;
 	if (!configured) throw new Error("QUICKENGINE_AUTH_URL is not set");
 	return new URL(configured).origin;
-}
-
-/**
- * Where a signed-out user lands.
- *
- * Only our own origins are accepted. Without this, `?redirect=https://evil.com`
- * turns sign-out into an open redirect — a phishing primitive that looks
- * legitimate precisely because it starts on our domain.
- */
-function resolveSignOutDestination(redirect: string | undefined): string {
-	const fallback = process.env.QUICKENGINE_ACCOUNT_URL ?? "/";
-	if (!redirect) return fallback;
-	const allowed = [
-		process.env.QUICKENGINE_ACCOUNT_URL,
-		process.env.QUICKENGINE_WEB_URL,
-		process.env.QUICKENGINE_AUTH_URL,
-		process.env.QUICKDASH_ADMIN_URL,
-	]
-		.filter((value): value is string => Boolean(value))
-		.map((value) => new URL(value).origin);
-	try {
-		const candidate = new URL(redirect, fallback);
-		return allowed.includes(candidate.origin) ? candidate.toString() : fallback;
-	} catch {
-		return fallback;
-	}
 }

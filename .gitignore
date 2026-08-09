@@ -2,6 +2,7 @@
 
 # Dependencies
 node_modules
+.pnpm-store/
 .pnp
 .pnp.js
 
@@ -70,4 +71,3 @@ yarn-error.log*
 # It has to be committed: `typecheck` runs `tsc --noEmit` without building
 # first, so nothing regenerates the file in CI. Committing it is the choice this
 # repository already made; the ignore rule just hid that from the next app.
-

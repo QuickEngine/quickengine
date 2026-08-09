@@ -81,6 +81,12 @@ async function pendingEvent(overrides: Record<string, unknown> = {}) {
 const deliveries = () =>
 	db.select().from(webhookDeliveries).orderBy(asc(webhookDeliveries.createdAt));
 
+const publicResolver = async () => [
+	{ address: "93.184.216.34", family: 4 as const },
+];
+const deliver = (options: Parameters<typeof deliverPendingWebhooks>[0] = {}) =>
+	deliverPendingWebhooks({ resolver: publicResolver, ...options });
+
 /** A fetcher that records calls and answers with a fixed status. */
 const responder = (status = 200, body = "ok") => {
 	const calls: { url: string; init: RequestInit }[] = [];
@@ -204,7 +210,7 @@ describe("webhook delivery", () => {
 		await queueOne();
 		const { calls, fetcher } = responder();
 
-		const result = await deliverPendingWebhooks({ fetcher });
+		const result = await deliver({ fetcher });
 
 		expect(result).toMatchObject({ claimed: 1, succeeded: 1, retrying: 0 });
 		expect(calls).toHaveLength(1);
@@ -239,7 +245,7 @@ describe("webhook delivery", () => {
 		await queueOne();
 		const { fetcher } = responder(500, "boom");
 
-		const result = await deliverPendingWebhooks({ fetcher });
+		const result = await deliver({ fetcher });
 
 		expect(result).toMatchObject({ claimed: 1, succeeded: 0, retrying: 1 });
 		const [stored] = await deliveries();
@@ -258,7 +264,7 @@ describe("webhook delivery", () => {
 			.fn<typeof fetch>()
 			.mockRejectedValue(new Error("connect ETIMEDOUT"));
 
-		const result = await deliverPendingWebhooks({ fetcher });
+		const result = await deliver({ fetcher });
 
 		expect(result).toMatchObject({ retrying: 1 });
 		const [stored] = await deliveries();
@@ -269,12 +275,29 @@ describe("webhook delivery", () => {
 		});
 	});
 
+	it("never calls the endpoint when DNS resolves into a private network", async () => {
+		await queueOne();
+		const { calls, fetcher } = responder();
+
+		const result = await deliverPendingWebhooks({
+			fetcher,
+			resolver: async () => [
+				{ address: "169.254.169.254", family: 4 as const },
+			],
+		});
+
+		expect(result).toMatchObject({ succeeded: 0, retrying: 1 });
+		expect(calls).toHaveLength(0);
+		const [stored] = await deliveries();
+		expect(stored.error).toBe("WEBHOOK_URL_PRIVATE");
+	});
+
 	it("succeeds on a retry once the endpoint recovers", async () => {
 		await queueOne();
-		await deliverPendingWebhooks({ fetcher: responder(503).fetcher });
+		await deliver({ fetcher: responder(503).fetcher });
 
 		const { fetcher } = responder(200);
-		const result = await deliverPendingWebhooks({
+		const result = await deliver({
 			fetcher,
 			// Pretend the backoff window has passed.
 			now: () => new Date(Date.now() + 120_000),
@@ -291,7 +314,7 @@ describe("webhook delivery", () => {
 
 		let clock = Date.now();
 		for (let i = 0; i < 8; i += 1) {
-			await deliverPendingWebhooks({
+			await deliver({
 				fetcher,
 				maxAttempts: 8,
 				now: () => new Date(clock),
@@ -303,7 +326,7 @@ describe("webhook delivery", () => {
 		expect(stored).toMatchObject({ status: "exhausted", attempts: 8 });
 
 		// An exhausted delivery is never claimed again.
-		const after = await deliverPendingWebhooks({ fetcher, maxAttempts: 8 });
+		const after = await deliver({ fetcher, maxAttempts: 8 });
 		expect(after.claimed).toBe(0);
 	});
 
@@ -311,7 +334,7 @@ describe("webhook delivery", () => {
 		await queueOne();
 		const { fetcher } = responder(400, "x".repeat(10_000));
 
-		await deliverPendingWebhooks({ fetcher });
+		await deliver({ fetcher });
 
 		const [stored] = await deliveries();
 		expect(stored.responseBody).toHaveLength(2_000);
@@ -321,7 +344,7 @@ describe("webhook delivery", () => {
 		await queueOne();
 		const { fetcher } = responder(302, "moved");
 
-		const result = await deliverPendingWebhooks({ fetcher });
+		const result = await deliver({ fetcher });
 
 		expect(result).toMatchObject({ succeeded: 0, retrying: 1 });
 	});
@@ -337,7 +360,7 @@ describe("webhook delivery", () => {
 		}
 		let clock = Date.now();
 		for (let i = 0; i < 3; i += 1) {
-			await deliverPendingWebhooks({
+			await deliver({
 				fetcher,
 				maxAttempts: 2,
 				disableAfterExhausted: 2,
@@ -357,10 +380,10 @@ describe("webhook delivery", () => {
 	it("does not claim a delivery another worker already leased", async () => {
 		await queueOne();
 		// First worker claims and is still in flight (its lease pushed availableAt out).
-		await deliverPendingWebhooks({ fetcher: responder(500).fetcher });
+		await deliver({ fetcher: responder(500).fetcher });
 
 		const { calls, fetcher } = responder(200);
-		const result = await deliverPendingWebhooks({ fetcher });
+		const result = await deliver({ fetcher });
 
 		expect(result.claimed).toBe(0);
 		expect(calls).toHaveLength(0);

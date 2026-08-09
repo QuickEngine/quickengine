@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "./app";
 import type { ApiConfig } from "./config";
 import { noopLogger } from "./logger";
-import type { PlatformDependencies, PlatformEnv } from "./platform-types";
+import type {
+	PlatformDependencies,
+	PlatformEnv,
+	WorkspaceResolution,
+} from "./platform-types";
 
 /**
  * Every `/v1` route must refuse a workspace the caller cannot reach.
@@ -61,6 +65,51 @@ const dependencies: PlatformDependencies = {
 };
 
 const TARGET_WORKSPACE = "00000000-0000-4000-8000-0000000a0001";
+const OTHER_WORKSPACE = "00000000-0000-4000-8000-0000000b0002";
+
+const workspaceFor = (id: string): WorkspaceResolution => ({
+	capabilities: [],
+	enabledModuleIds: [],
+	organizationId: `org-${id}`,
+	ownerId: `owner-${id}`,
+	workspace: { businessType: "test", id, name: "Test", slug: "test" },
+});
+
+const adversarialDependencies: PlatformDependencies = {
+	...dependencies,
+	getWorkspaceForKey: async (id) => workspaceFor(id),
+	verifyApiKey: async (raw) => {
+		if (raw === "sk_workspace_a") {
+			return {
+				allowedOrigins: [],
+				capabilities: [],
+				id: "key_server_a",
+				type: "secret",
+				workspaceId: TARGET_WORKSPACE,
+			};
+		}
+		if (raw === "pk_workspace_a") {
+			return {
+				allowedOrigins: [],
+				capabilities: [],
+				id: "key_browser_a",
+				type: "publishable",
+				workspaceId: TARGET_WORKSPACE,
+			};
+		}
+		return null;
+	},
+	resolveCustomerSession: async (token) =>
+		token === "customer_workspace_b"
+			? {
+					clientRecordId: "client_b",
+					email: "customer-b@example.test",
+					identityId: "identity_b",
+					workspaceCustomerId: "customer_b",
+					workspaceId: OTHER_WORKSPACE,
+				}
+			: null,
+};
 
 /**
  * Routes that legitimately answer without a workspace.
@@ -165,6 +214,129 @@ describe("tenant isolation", () => {
 		expect(
 			leaks,
 			`these routes served a non-member:\n${leaks.join("\n")}`,
+		).toEqual([]);
+	});
+
+	it("refuses every customer route when its key and session name different workspaces", async () => {
+		const { registerAllRoutes } = await import("./register-routes");
+		const instance = createApp(config, {
+			logger: noopLogger,
+			registerRoutes: (registered, logger) =>
+				registerAllRoutes(registered, {
+					dependencies: adversarialDependencies,
+					logger,
+				}),
+		});
+		const leaks: string[] = [];
+		const seen = new Set<string>();
+
+		for (const route of instance.routes) {
+			if (!route.path.startsWith("/v1/customer/")) continue;
+			// These two resolve public portal metadata from a host or slug and carry
+			// no customer/session data. They intentionally precede customer auth.
+			if (route.path.startsWith("/v1/customer/bootstrap")) continue;
+			const key = `${route.method} ${route.path}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+
+			const method = route.method === "ALL" ? "GET" : route.method;
+			const response = await instance.request(concrete(route.path), {
+				method,
+				headers: {
+					"content-type": "application/json",
+					"x-quickengine-customer-session": "customer_workspace_b",
+					"x-quickengine-publishable-key": "pk_workspace_a",
+				},
+				body: method === "GET" || method === "DELETE" ? undefined : "{}",
+			});
+			if (response.status >= 200 && response.status < 300) {
+				leaks.push(`${key} → ${response.status}`);
+			}
+		}
+
+		expect(
+			leaks,
+			`these customer routes accepted a cross-workspace session:\n${leaks.join("\n")}`,
+		).toEqual([]);
+	});
+
+	it("refuses a server credential across every customer route", async () => {
+		const { registerAllRoutes } = await import("./register-routes");
+		const instance = createApp(config, {
+			logger: noopLogger,
+			registerRoutes: (registered, logger) =>
+				registerAllRoutes(registered, {
+					dependencies: adversarialDependencies,
+					logger,
+				}),
+		});
+		const leaks: string[] = [];
+		const seen = new Set<string>();
+
+		for (const route of instance.routes) {
+			if (!route.path.startsWith("/v1/customer/")) continue;
+			if (route.path.startsWith("/v1/customer/bootstrap")) continue;
+			const key = `${route.method} ${route.path}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const method = route.method === "ALL" ? "GET" : route.method;
+			const response = await instance.request(concrete(route.path), {
+				method,
+				headers: {
+					"content-type": "application/json",
+					"x-quickengine-publishable-key": "sk_workspace_a",
+				},
+				body: method === "GET" || method === "DELETE" ? undefined : "{}",
+			});
+			if (response.status >= 200 && response.status < 300) {
+				leaks.push(`${key} → ${response.status}`);
+			}
+		}
+
+		expect(
+			leaks,
+			`these customer routes accepted a server credential:\n${leaks.join("\n")}`,
+		).toEqual([]);
+	});
+
+	it("refuses a valid API key paired with another workspace across operator routes", async () => {
+		const { registerAllRoutes } = await import("./register-routes");
+		const instance = createApp(config, {
+			logger: noopLogger,
+			registerRoutes: (registered, logger) =>
+				registerAllRoutes(registered, {
+					dependencies: adversarialDependencies,
+					logger,
+				}),
+		});
+		const leaks: string[] = [];
+		const seen = new Set<string>();
+
+		for (const route of instance.routes) {
+			if (!route.path.startsWith("/v1")) continue;
+			if (route.path.startsWith("/v1/customer/")) continue;
+			if (skipped(route.path)) continue;
+			const key = `${route.method} ${route.path}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const method = route.method === "ALL" ? "GET" : route.method;
+			const response = await instance.request(concrete(route.path), {
+				method,
+				headers: {
+					authorization: "Bearer sk_workspace_a",
+					"content-type": "application/json",
+					"x-quickengine-workspace": OTHER_WORKSPACE,
+				},
+				body: method === "GET" || method === "DELETE" ? undefined : "{}",
+			});
+			if (response.status >= 200 && response.status < 300) {
+				leaks.push(`${key} → ${response.status}`);
+			}
+		}
+
+		expect(
+			leaks,
+			`these operator routes accepted a cross-workspace key:\n${leaks.join("\n")}`,
 		).toEqual([]);
 	});
 });

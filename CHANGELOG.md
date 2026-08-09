@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Every API route is attacked for tenant confusion in CI.** The security suite now walks the
+  real registered route table with valid credentials deliberately combined in invalid ways: a
+  customer session from another business, a server credential in a storefront channel, and an
+  API key paired with another workspace. Any route that serves a successful response across one
+  of those boundaries fails the build automatically, including routes added in the future.
+
 - **Every web surface now ships a browser security boundary.** QuickEngine, Auth, Account,
   QuickDash and the customer portal send an enforced content policy, anti-framing protection,
   HTTPS persistence, conservative browser permissions and resource-isolation headers. The API

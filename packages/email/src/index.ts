@@ -29,15 +29,12 @@ export type EmailProvider = {
 const DEFAULT_FROM =
 	serverEnv.EMAIL_FROM ?? "QuickEngine <onboarding@resend.dev>";
 
-// Logs instead of sending, so dev auth flows (verification / reset URLs) are
-// visible in the server console without a live inbox.
+// Accepts without sending when no provider is configured. Message content can
+// contain verification links, reset tokens and customer data, so it is never
+// written to the process log.
 export const createConsoleEmailProvider = (): EmailProvider => ({
-	async send(input) {
-		const to = Array.isArray(input.to) ? input.to.join(", ") : input.to;
-		console.info(`\n[email:console] to=${to} subject="${input.subject}"`);
-		if (input.text) {
-			console.info(input.text);
-		}
+	async send(_input) {
+		console.info("[email:console] message accepted (content redacted)");
 		return { id: `console:${Date.now()}`, provider: "console" };
 	},
 });
@@ -73,9 +70,10 @@ let cachedProvider: EmailProvider | undefined;
 
 export const getEmailProvider = (): EmailProvider => {
 	if (!cachedProvider) {
-		cachedProvider = serverEnv.RESEND_API_KEY
-			? createResendEmailProvider(serverEnv.RESEND_API_KEY)
-			: createConsoleEmailProvider();
+		cachedProvider =
+			process.env.NODE_ENV !== "test" && serverEnv.RESEND_API_KEY
+				? createResendEmailProvider(serverEnv.RESEND_API_KEY)
+				: createConsoleEmailProvider();
 	}
 
 	return cachedProvider;

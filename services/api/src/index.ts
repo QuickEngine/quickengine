@@ -46,4 +46,4 @@ export default app;
 export { createApp } from "./app";
 export { loadApiConfig } from "./config";
 // The Vercel adapter (`api/index.ts`) loads this from `dist`, so it must be exported here.
-export { readNodeRequestBody } from "./node-body";
+export { RequestBodyTooLargeError, readNodeRequestBody } from "./node-body";

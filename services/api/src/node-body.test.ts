@@ -66,4 +66,16 @@ describe("readNodeRequestBody", () => {
 		const body = await readNodeRequestBody(asRequest(Readable.from(["hi"])));
 		expect(body && Buffer.from(body).toString()).toBe("hi");
 	});
+
+	it("stops buffering as soon as the byte limit is exceeded", async () => {
+		await expect(
+			readNodeRequestBody(
+				asRequest(Readable.from([Buffer.alloc(3), Buffer.alloc(3)])),
+				5,
+			),
+		).rejects.toMatchObject({
+			maxBytes: 5,
+			name: "RequestBodyTooLargeError",
+		});
+	});
 });

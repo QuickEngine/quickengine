@@ -188,6 +188,7 @@ const serializeDocument = (row: typeof fileDocuments.$inferSelect) =>
 const serializeVersion = ({
 	storageKey: _storageKey,
 	storageBucket: _storageBucket,
+	storageProvider: _storageProvider,
 	...safe
 }: typeof fileVersions.$inferSelect) => serializeDates(safe);
 const serializeAttachment = (row: typeof fileAttachments.$inferSelect) =>

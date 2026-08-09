@@ -34,10 +34,24 @@ import type { IncomingMessage } from "node:http";
  */
 export async function readNodeRequestBody(
 	request: IncomingMessage,
+	maxBytes = 1024 * 1024,
 ): Promise<Uint8Array<ArrayBuffer> | undefined> {
 	const chunks: Buffer[] = [];
+	let totalBytes = 0;
 	for await (const chunk of request) {
-		chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+		const bytes = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+		totalBytes += bytes.byteLength;
+		if (totalBytes > maxBytes) {
+			throw new RequestBodyTooLargeError(maxBytes);
+		}
+		chunks.push(bytes);
 	}
 	return chunks.length > 0 ? new Uint8Array(Buffer.concat(chunks)) : undefined;
+}
+
+export class RequestBodyTooLargeError extends Error {
+	constructor(readonly maxBytes: number) {
+		super("Request body exceeds the configured limit.");
+		this.name = "RequestBodyTooLargeError";
+	}
 }

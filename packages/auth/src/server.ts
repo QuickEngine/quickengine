@@ -116,6 +116,11 @@ export const auth = betterAuth({
 		},
 	}),
 	account: {
+		// Better Auth encrypts access, refresh and ID tokens with AES-256-GCM
+		// before persistence. Its reader deliberately accepts existing plaintext
+		// values, so enabling this is non-destructive: the next provider refresh
+		// rewrites a legacy row encrypted without invalidating current accounts.
+		encryptOAuthTokens: true,
 		// A matching email is not consent to add another sign-in method. Customers
 		// keep the provider they chose at signup unless they explicitly link another
 		// provider from an authenticated account settings flow.

@@ -24,13 +24,23 @@
  *
  * Requires NEON_API_KEY and NEON_PROJECT_ID. Never prints a connection string.
  */
-import { writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import postgres from "postgres";
+import {
+	assertPrivateOutputPath,
+	formatProviderError,
+	writePrivateJson,
+} from "./recovery-safety.mjs";
 
 const API = "https://console.neon.tech/api/v2";
 const KEY = process.env.NEON_API_KEY;
 const PROJECT = process.env.NEON_PROJECT_ID;
+const REPOSITORY_ROOT = resolve(
+	dirname(fileURLToPath(import.meta.url)),
+	"../..",
+);
 
 const args = process.argv.slice(2);
 const workspaceId = args[0];
@@ -48,6 +58,11 @@ if (!workspaceId) {
 	);
 	process.exit(2);
 }
+if (writeIndex >= 0 && !outFile) {
+	console.error("--write requires an output path.");
+	process.exit(2);
+}
+if (outFile) assertPrivateOutputPath(outFile, REPOSITORY_ROOT);
 
 const api = async (path, init = {}) => {
 	const res = await fetch(`${API}${path}`, {
@@ -61,7 +76,7 @@ const api = async (path, init = {}) => {
 	});
 	if (!res.ok) {
 		throw new Error(
-			`Neon ${init.method ?? "GET"} ${path} → ${res.status} ${await res.text()}`,
+			formatProviderError("Neon", init.method ?? "GET", path, res.status),
 		);
 	}
 	return res.json();
@@ -211,8 +226,8 @@ try {
 	} else if (outFile) {
 		// The extract contains real customer data. It is written only when asked,
 		// to a path the operator names, and belongs nowhere near the repository.
-		writeFileSync(outFile, JSON.stringify(extract, null, 2));
-		console.log(`\nWritten to ${outFile}`);
+		const destination = writePrivateJson(outFile, extract, REPOSITORY_ROOT);
+		console.log(`\nWritten to ${destination} with owner-only permissions.`);
 		console.log(
 			"⚠️  This file holds customer data. Delete it when the recovery is done.",
 		);
@@ -221,9 +236,11 @@ try {
 	}
 } finally {
 	if (branchId) {
-		await api(`/projects/${PROJECT}/branches/${branchId}`, {
-			method: "DELETE",
-		}).catch(() => {});
-		console.log(`\nDeleted ${name}.`);
+		await api(`/projects/${PROJECT}/branches/${branchId}`, { method: "DELETE" })
+			.then(() => console.log(`\nDeleted ${name}.`))
+			.catch((error) => {
+				console.error(`\n⚠️  Could not delete ${name}: ${error.message}`);
+				process.exitCode = 1;
+			});
 	}
 }

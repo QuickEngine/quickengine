@@ -26,7 +26,8 @@
 		"db:migration-parity": "node --env-file=../../.env.local migration-parity.mjs",
 		"db:migration-parity:ci": "node migration-parity.mjs",
 		"db:restore-drill": "node --env-file=../../.env.local restore-drill.mjs",
-		"db:tenant-recovery": "node --env-file=../../.env.local tenant-recovery.mjs"
+		"db:tenant-recovery": "node --env-file=../../.env.local tenant-recovery.mjs",
+		"test:recovery-safety": "node --test recovery-safety.test.mjs"
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.0.2",

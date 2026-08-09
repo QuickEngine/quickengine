@@ -1,3 +1,4 @@
+import { request as httpsRequest } from "node:https";
 import { meter } from "@quickengine/billing";
 import {
 	and,
@@ -18,6 +19,11 @@ import {
 	type OutboxHandler,
 	signWebhookPayload,
 } from "@quickengine/events";
+import {
+	resolvePublicWebhookDestination,
+	type WebhookAddress,
+	type WebhookResolver,
+} from "./webhook-security";
 
 /**
  * Outbound webhook delivery, in two stages.
@@ -127,11 +133,62 @@ export type DeliverWebhooksOptions = {
 	timeoutMs?: number;
 	backoffMs?: (attempts: number) => number;
 	fetcher?: typeof fetch;
+	resolver?: WebhookResolver;
 	now?: () => Date;
 	database?: typeof defaultDb;
 	/** Disable an endpoint after this many consecutive exhausted deliveries. */
 	disableAfterExhausted?: number;
 };
+
+/**
+ * Pin the connection to the address that passed validation. Resolving once and
+ * then calling ordinary fetch would leave a DNS-rebinding window between the
+ * check and the socket connection. The original hostname still drives TLS SNI
+ * and certificate validation; only the network address is pinned.
+ */
+async function fetchPinnedWebhook(
+	url: URL,
+	address: WebhookAddress,
+	init: RequestInit,
+): Promise<Response> {
+	return new Promise((resolve, reject) => {
+		const request = httpsRequest(
+			url,
+			{
+				method: init.method,
+				headers: init.headers as Record<string, string>,
+				signal: init.signal ?? undefined,
+				lookup(_hostname, _options, callback) {
+					callback(null, address.address, address.family);
+				},
+			},
+			(response) => {
+				response.setEncoding("utf8");
+				let body = "";
+				response.on("data", (chunk: string) => {
+					if (body.length < MAX_RESPONSE_BODY) {
+						body = (body + chunk).slice(0, MAX_RESPONSE_BODY);
+					}
+				});
+				response.on("end", () => {
+					const receivedStatus = response.statusCode ?? 500;
+					const status =
+						receivedStatus >= 200 && receivedStatus <= 599
+							? receivedStatus
+							: 500;
+					resolve(
+						new Response([204, 205, 304].includes(status) ? null : body, {
+							status,
+						}),
+					);
+				});
+			},
+		);
+		request.on("error", reject);
+		if (typeof init.body === "string") request.write(init.body);
+		request.end();
+	});
+}
 
 export type DeliverWebhooksResult = {
 	claimed: number;
@@ -165,6 +222,7 @@ export async function deliverPendingWebhooks(
 		timeoutMs = 10_000,
 		backoffMs = defaultBackoff,
 		fetcher = fetch,
+		resolver,
 		now = () => new Date(),
 		database = defaultDb,
 		disableAfterExhausted = 5,
@@ -246,10 +304,15 @@ export async function deliverPendingWebhooks(
 		let error: string | null = null;
 
 		try {
+			const destination = await resolvePublicWebhookDestination(
+				endpoint.url,
+				resolver,
+			);
 			const secret = decryptWebhookSecret(endpoint.secretCiphertext);
 			const { header } = signWebhookPayload(secret, body, now().getTime());
-			const response = await fetcher(endpoint.url, {
+			const request: RequestInit = {
 				method: "POST",
+				redirect: "manual",
 				headers: {
 					"content-type": "application/json",
 					"user-agent": "QuickEngine-Webhooks/1",
@@ -259,7 +322,15 @@ export async function deliverPendingWebhooks(
 				},
 				body,
 				signal: AbortSignal.timeout(timeoutMs),
-			});
+			};
+			const response =
+				fetcher === fetch
+					? await fetchPinnedWebhook(
+							destination.url,
+							destination.address,
+							request,
+						)
+					: await fetcher(destination.url, request);
 			responseStatus = response.status;
 			responseBody = (await response.text().catch(() => "")).slice(
 				0,

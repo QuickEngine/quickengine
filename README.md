@@ -178,7 +178,12 @@ storefront reads all of it without changing its visual system.
 One leg is unproven locally — capturing a real PayPal sandbox payment needs credentials this
 machine does not have — and is tracked as a pre-launch gate.
 
-**Backend development is closed; the UI/UX pass has started.** Its first surface is Workspace
+**The backend feature line is closed; a bounded pre-UI security pass is current.** Its first
+slice prevents outbound webhooks from reaching private networks, clears the production npm
+advisory set, continuously analyzes changes with CodeQL and pins CI dependencies immutably.
+The remaining pass covers browser sessions and headers, sensitive files and provider tokens,
+automated tenant-isolation attacks, operational response, and the published Quick.js contract.
+Then the UI/UX pass resumes from Workspace
 Connect: sign up, create a workspace, tell it where your site lives, paste three lines of
 configuration, and the page confirms itself the moment your site makes its first request. A key
 is locked to the addresses you name, so one copied out of your page source cannot be used to

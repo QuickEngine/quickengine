@@ -21,6 +21,7 @@ import {
 	generateWebhookSecret,
 } from "@quickengine/events";
 import { z } from "zod";
+import { parseWebhookUrl, WEBHOOK_URL_ERRORS } from "./webhook-security";
 
 /**
  * Webhook endpoint management.
@@ -37,6 +38,9 @@ const FRIENDLY: Record<string, string> = {
 	WEBHOOK_DELIVERY_NOT_FOUND: "That webhook delivery was not found.",
 	WEBHOOK_URL_INSECURE: "A webhook URL must use https.",
 	WEBHOOK_URL_INVALID: "That webhook URL could not be parsed.",
+	WEBHOOK_URL_PRIVATE:
+		"A webhook URL must resolve to a public internet address.",
+	WEBHOOK_URL_UNRESOLVABLE: "That webhook URL could not be resolved.",
 	WEBHOOK_ENDPOINT_LIMIT:
 		"This workspace has reached its webhook endpoint limit.",
 };
@@ -48,7 +52,7 @@ function mapWebhookError(error: unknown): never {
 		if (error.message.endsWith("NOT_FOUND")) {
 			throw new DomainError("NOT_FOUND", message);
 		}
-		if (/_(INSECURE|INVALID)$/.test(error.message)) {
+		if (/_(INSECURE|INVALID|PRIVATE|UNRESOLVABLE)$/.test(error.message)) {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (error.message.endsWith("_LIMIT")) {
@@ -61,27 +65,23 @@ function mapWebhookError(error: unknown): never {
 /** More than this and fan-out stops being cheap; also a sane abuse ceiling. */
 const MAX_ENDPOINTS_PER_WORKSPACE = 20;
 
-// http:// is refused outright rather than warned about: the payload carries the
-// workspace's business data and the signature does not provide confidentiality.
-// localhost is allowed so a developer can point at a tunnel while building.
+// HTTP and private destinations are refused outright: the payload carries the
+// workspace's business data, and allowing the sender onto an internal network
+// would turn this integration feature into an SSRF primitive. Local development
+// uses an HTTPS tunnel, just like a provider webhook does.
 const webhookUrl = z
 	.string()
 	.trim()
 	.max(2000)
 	.superRefine((value, ctx) => {
-		let parsed: URL;
 		try {
-			parsed = new URL(value);
-		} catch {
-			ctx.addIssue({ code: "custom", message: "WEBHOOK_URL_INVALID" });
-			return;
-		}
-		if (parsed.protocol !== "https:") {
-			const local =
-				parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
-			if (!local) {
-				ctx.addIssue({ code: "custom", message: "WEBHOOK_URL_INSECURE" });
-			}
+			parseWebhookUrl(value);
+		} catch (error) {
+			ctx.addIssue({
+				code: "custom",
+				message:
+					error instanceof Error ? error.message : WEBHOOK_URL_ERRORS.invalid,
+			});
 		}
 	});
 

@@ -8,6 +8,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Webhooks can only call the public internet.** A webhook address is checked when it is
+  registered and resolved again immediately before every delivery. Local, private, reserved,
+  metadata and mixed public/private DNS destinations are refused; the connection is pinned to
+  the address that passed the check; and redirects cannot move a request somewhere unverified.
+
+- **Security analysis now runs continuously.** CodeQL runs for every pull request and main
+  update plus a weekly schedule, and every third-party GitHub Action is pinned to the exact
+  reviewed revision instead of a mutable tag.
+
 - **Edit your website's words in QuickDash.** The Content module had no screen at all, so the
   one thing a portfolio, agency or brochure site needs most could only be reached through the
   API. It now has one: every slot your developer declared, grouped as they grouped it, with the
@@ -29,6 +38,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   exactly like the service being unavailable. It is now the first thing the guide says.
 
 ### Fixed
+
+- **Known vulnerable web dependencies are patched.** Hono, its Node server, PostCSS, Nano ID,
+  JS-YAML and both supported Undici lines now resolve outside their reported advisory ranges.
+  The production dependency audit is clean.
+
+- **Local pnpm cache metadata stays local.** A repository-local `.pnpm-store` can no longer be
+  swept into a commit by `git add -A`.
 
 - **A key for your own server now actually works.** Choosing "a private server" on Connect
   produced a key that signed in and was then refused by everything, including simply reading

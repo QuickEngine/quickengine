@@ -26,6 +26,7 @@
 		"@quickengine/realtime": "workspace:*",
 		"@quickengine/search": "workspace:*",
 		"@quickengine/storage": "workspace:*",
+		"ip-address": "^10.3.1",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

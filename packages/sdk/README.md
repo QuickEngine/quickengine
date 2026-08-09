@@ -3,22 +3,80 @@
 The TypeScript developer surface for building custom storefronts, sites, apps, and
 trusted servers on top of a QuickDash workspace. One business backend, many frontends.
 
-> **Status:** unpublished, evolving. It only exposes endpoints that actually exist on the
-> QuickDash API, with no speculative methods. QuickConnect is the browser-safe bridge from a
-> custom frontend to its workspace; trusted operator integrations use the same client with a
-> server credential.
+> It only exposes endpoints that actually exist on the QuickDash API, with no speculative
+> methods. **QuickConnect** is the browser-safe bridge from a custom frontend to its
+> workspace; trusted server integrations use the same client with a server credential.
 
 ## Install
 
-Inside this monorepo it's a workspace package:
-
-```jsonc
-// package.json
-{ "dependencies": { "@quickengine/quick": "workspace:*" } }
+```sh
+pnpm add @quickengine/quick
+npm  install @quickengine/quick
+yarn add @quickengine/quick
+bun  add @quickengine/quick
 ```
 
-(A public `npm` release comes only after the contract has compatibility and release
-policies — see the build sequence in `internal/product/QUICK_JS.md`.)
+Two entry points, and the split matters:
+
+- `@quickengine/quick/browser` — anything that runs in a browser bundle.
+- `@quickengine/quick` — servers and scripts. The root also carries webhook signature
+  verification, which needs Node's `crypto` and must never enter a bundle.
+
+## Content Security Policy
+
+⚠️ **If your site sets a CSP, add the API to `connect-src` before anything else.** Without it
+the browser refuses the request before dispatching it, and the failure arrives as a bare
+`TypeError: Failed to fetch` — indistinguishable from the API being down, which sends people
+debugging the wrong system.
+
+```
+connect-src 'self' https://api.quickdash.xyz;
+```
+
+If you serve media uploaded to QuickDash, add the same origin to `img-src`.
+
+## Quick start — a site that doesn't sell
+
+A portfolio, an agency site, a brochure site. Its workspace runs the words on its pages, and
+the site reads them. Choose **"A website that doesn't sell"** on the Connect page; you get a
+publishable key that can read content and record a page view, and can do nothing else.
+
+```ts
+import { createQuickConnect } from "@quickengine/quick/browser";
+
+const quick = createQuickConnect({
+  baseUrl: process.env.NEXT_PUBLIC_QUICKDASH_API_URL!,
+  workspaceId: process.env.NEXT_PUBLIC_QUICKDASH_WORKSPACE_ID!,
+  credential: { type: "site", key: process.env.NEXT_PUBLIC_QUICKDASH_SITE_KEY! },
+});
+
+// Every published slot, as a flat map: content["about.body"]
+const { data } = await quick.site.content();
+```
+
+Two things worth doing from the start:
+
+**Read content on the server, and keep a local fallback.** A server request sends no `Origin`,
+so the key's allow-list never applies and your content renders on preview deployments whose
+URLs were never registered. Falling back to a local default means the site is correct before it
+is connected, and stale rather than blank if the API is unreachable.
+
+**A contact form needs a server key.** Creating a client record requires `clients:write`, which
+browser keys never carry. Post the form to your own route handler and call
+`createQuickServer` there with a scoped key.
+
+```ts
+// app/api/contact/route.ts — server only, never a NEXT_PUBLIC_ variable
+import { createQuickServer } from "@quickengine/quick";
+
+const quick = createQuickServer({
+  baseUrl: process.env.QUICKDASH_API_URL!,
+  workspaceId: process.env.QUICKDASH_WORKSPACE_ID!,
+  credential: { type: "scoped", token: process.env.QUICKDASH_API_KEY! },
+});
+
+await quick.clients.create({ name, email, notes: message }, crypto.randomUUID());
+```
 
 ## Quick start — connect any custom frontend
 

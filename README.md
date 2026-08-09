@@ -167,13 +167,22 @@ allowance draws on prepaid credits. Outbound webhook deliveries are counted but 
 
 ## Status
 
-The backend feature line is complete. The isolated Gemsutopia proof now exercises QuickConnect
-against a synthetic Docker catalog with real availability, category membership and published
-site content. Its customer sign-in returns to the storefront safely, two synthetic customers
-retain isolated wishlists, reviews enter moderation, referral codes remain customer-owned and
-sign-out revokes the session. The first custom storefront pages are reading that data without
-changing their visual system.
-The full backend completion audit follows the commerce proof, then the UI/UX pass.
+The backend feature line is complete, and the isolated Gemsutopia proof now runs a whole sale
+through QuickConnect against synthetic Docker data: catalog, availability, categories and
+published content; passwordless sign-in that returns to the storefront; isolated wishlists,
+moderated reviews and customer-owned referral codes; discount codes priced against the real
+basket; delivery options; an order with authoritative totals that a repeated request cannot
+duplicate; owned orders no other customer can read; a two-way message answered by the business;
+and a single-use pass that opens the account portal without a second sign-in. The custom
+storefront reads all of it without changing its visual system.
+One leg is unproven locally — capturing a real PayPal sandbox payment needs credentials this
+machine does not have — and is tracked as a pre-launch gate.
+
+**Backend development is closed; the UI/UX pass has started.** Its first surface is Workspace
+Connect: sign up, create a workspace, tell it where your site lives, paste three lines of
+configuration, and the page confirms itself the moment your site makes its first request. A key
+is locked to the addresses you name, so one copied out of your page source cannot be used to
+build another website. Proven on a freshly created account against a real storefront.
 The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and workflow
 orchestration stay deliberately out of the current delivery path — the goal is one complete,
 truthful business workflow before the ecosystem widens.

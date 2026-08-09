@@ -17,7 +17,7 @@ export function registerConfigCommands(program: Command): void {
 		.description("Save base URL, workspace, and/or API key")
 		.option(
 			"--base-url <url>",
-			"Product API origin, e.g. https://dash.quickengine.xyz/api",
+			"Product API origin, e.g. https://api.quickdash.xyz",
 		)
 		.option("--workspace <id>", "Workspace id to scope requests to")
 		.option(

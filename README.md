@@ -142,6 +142,9 @@ pnpm typecheck
 pnpm test
 ```
 
+Security vulnerabilities should be reported privately according to [SECURITY.md](SECURITY.md),
+never through a public issue containing an exploit, credential or customer data.
+
 ## Plans
 
 | | Free | Launch | Grow | Scale | Expand | Custom |
@@ -178,14 +181,15 @@ storefront reads all of it without changing its visual system.
 One leg is unproven locally — capturing a real PayPal sandbox payment needs credentials this
 machine does not have — and is tracked as a pre-launch gate.
 
-**The backend feature line is closed; a bounded pre-UI security pass is current.** Its first
+**The backend feature line and bounded pre-UI security implementation are closed.** The pass
 slice prevents outbound webhooks from reaching private networks, clears the production npm
 advisory set, continuously analyzes changes with CodeQL and pins CI dependencies immutably. The
 second gives every deployed web surface an enforced browser policy, makes session revocation
 immediate, removes retired trusted origins and prevents API responses from entering shared
-caches. The remaining pass covers sensitive files and provider tokens,
-automated tenant-isolation attacks, operational response, and the published Quick.js contract.
-Then the UI/UX pass resumes from Workspace
+caches. It also protects sensitive files and provider tokens, attacks every API route for tenant
+confusion, establishes recovery and incident controls, and verifies the published Quick.js package
+from a clean install. External production drills remain explicit launch gates. The UI/UX pass
+resumes from Workspace
 Connect: sign up, create a workspace, tell it where your site lives, paste three lines of
 configuration, and the page confirms itself the moment your site makes its first request. A key
 is locked to the addresses you name, so one copied out of your page source cannot be used to

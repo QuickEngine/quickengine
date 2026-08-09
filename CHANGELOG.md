@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Quick.js is verified as the package customers actually install.** CI now builds and packs
+  the public SDK, rejects source and source-map leaks, installs the tarball into an empty project
+  and proves its ESM, CommonJS and browser entry points. Compatibility, deprecation, release and
+  private security-reporting expectations are documented.
+
 - **Recovery artifacts are protected like customer data.** A single-workspace recovery now
   refuses to write inside the repository, creates a private owner-only file and will not
   overwrite an existing extract. Provider failures no longer copy response bodies into terminal
@@ -59,6 +64,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   exactly like the service being unavailable. It is now the first thing the guide says.
 
 ### Fixed
+
+- **New connected projects target the live product and run their first write.** The CLI and its
+  generated configuration no longer point at retired QuickEngine API hosts, and the generated
+  idempotent client write now uses the SDK's real argument shape instead of throwing at runtime.
 
 - **Known vulnerable web dependencies are patched.** Hono, its Node server, PostCSS, Nano ID,
   JS-YAML and both supported Undici lines now resolve outside their reported advisory ranges.

@@ -16,10 +16,8 @@ import {
 	resolveConfig,
 	writeConfigFile,
 } from "../config";
+import { DEFAULT_API_URL } from "../defaults";
 import { verifyConnection } from "../verify";
-
-/** The deployed API. A wizard that teaches localhost would be wrong for most people. */
-const DEFAULT_BASE_URL = "https://api.quickengine.xyz";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -65,9 +63,9 @@ export function registerInitCommand(program: Command): void {
 			const baseUrl = ensure(
 				await text({
 					message: "API URL",
-					placeholder: DEFAULT_BASE_URL,
-					defaultValue: existing.baseUrl ?? DEFAULT_BASE_URL,
-					initialValue: existing.baseUrl ?? DEFAULT_BASE_URL,
+					placeholder: DEFAULT_API_URL,
+					defaultValue: existing.baseUrl ?? DEFAULT_API_URL,
+					initialValue: existing.baseUrl ?? DEFAULT_API_URL,
 					validate: (value) => {
 						try {
 							new URL(value ?? "");

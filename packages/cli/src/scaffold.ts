@@ -57,7 +57,7 @@ console.log(\`Connected. This workspace has \${data.items.length} client record(
 // makes retrying safe.
 const created = await quick.clients.create(
   { name: "Ada Lovelace", email: "ada@example.com" },
-  { idempotencyKey: \`seed-\${new Date().toISOString().slice(0, 10)}\` },
+  \`seed-\${new Date().toISOString().slice(0, 10)}\`,
 );
 console.log("Created client:", created.data.id);
 `;

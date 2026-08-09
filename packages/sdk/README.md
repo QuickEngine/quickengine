@@ -192,3 +192,31 @@ QuickConnect is not a generated storefront and imposes no frontend structure. A 
 Svelte booking site, an Astro marketing site, a native shell or plain JavaScript can all map
 their own interface to the same workspace contract. Non-TypeScript clients may call the
 documented REST API directly.
+
+## Compatibility and deprecation
+
+Quick.js follows Semantic Versioning independently from the continuously deployed product. While
+the package is below 1.0, a breaking TypeScript surface change increments the minor version and is
+called out with migration instructions. Patch releases remain compatible bug and security fixes.
+
+The client targets the versioned `/v1` HTTP contract. A deprecation is documented in the public
+changelog and package types before removal and remains through at least the next minor release,
+unless retaining it would preserve an active security vulnerability. The latest published minor is
+the supported pre-1.0 line; older versions remain usable against `/v1` on a best-effort basis.
+
+## Security
+
+Never place a `qsk_` or `qsc_` credential in browser or mobile code. Use the browser entry point
+with a publishable/site key, keep customer data out of URLs and logs, and include the API request
+ID when reporting a problem.
+
+Report suspected vulnerabilities privately according to the repository
+[security policy](https://github.com/QuickEngine/quickengine/security/policy). Do not open a public
+issue containing an exploit, credential or customer data.
+
+## Releases
+
+Every package release requires green repository checks, SDK tests, both module formats and type
+declarations, a dry-run inspection of the npm tarball, customer-readable release notes and a
+post-publish install/import check. Package versions are prepared through Release Please; npm
+publication remains an explicit maintainer action rather than an automatic side effect of a merge.

@@ -2,6 +2,18 @@
 	"name": "@quickengine/cli",
 	"version": "0.1.0",
 	"description": "The `quick` command-line tool for QuickEngine and QuickDash",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/QuickEngine/quickengine.git",
+		"directory": "packages/cli"
+	},
+	"homepage": "https://quickengine.xyz",
+	"bugs": {
+		"url": "https://github.com/QuickEngine/quickengine/issues"
+	},
+	"engines": {
+		"node": ">=22"
+	},
 	"private": false,
 	"publishConfig": {
 		"access": "public"

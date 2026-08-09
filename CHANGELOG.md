@@ -65,6 +65,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **PayPal checkout now sends shoppers to the approval screen it promised.** QuickDash kept
+  PayPal's order identifier but discarded the provider's approval link, while Quick.js told
+  every storefront it would receive a URL. The provider now preserves the exact reviewed link
+  returned by PayPal and refuses an incomplete response instead of handing a broken next action
+  to the storefront.
+
 - **A mistyped catalog price no longer takes down the entire QuickDash page.** Product and
   variant form parsing now runs inside the recoverable action boundary, so invalid values stay
   in the dialog with an actionable error. Ordinary currency input such as `$24.00` and

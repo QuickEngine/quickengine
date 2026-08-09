@@ -130,7 +130,7 @@ export const paypalPaymentProvider: PaymentProvider = {
 		});
 		return {
 			externalPaymentId: created.orderId,
-			nextAction: { type: "approval", token: created.orderId },
+			nextAction: { type: "approval", approvalUrl: created.approvalUrl },
 		};
 	},
 

@@ -47,7 +47,7 @@ export type ProviderAccount = {
  */
 export type PaymentNextAction =
 	| { type: "client_secret"; clientSecret: string }
-	| { type: "approval"; token: string }
+	| { type: "approval"; approvalUrl: string }
 	| { type: "redirect"; url: string }
 	| { type: "none" };
 

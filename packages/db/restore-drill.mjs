@@ -27,6 +27,7 @@
  *   node packages/db/restore-drill.mjs [hoursAgo]     # default 2
  */
 import postgres from "postgres";
+import { formatProviderError } from "./recovery-safety.mjs";
 
 const API = "https://console.neon.tech/api/v2";
 const KEY = process.env.NEON_API_KEY;
@@ -53,7 +54,7 @@ const api = async (path, init = {}) => {
 	});
 	if (!res.ok) {
 		throw new Error(
-			`Neon ${init.method ?? "GET"} ${path} → ${res.status} ${await res.text()}`,
+			formatProviderError("Neon", init.method ?? "GET", path, res.status),
 		);
 	}
 	return res.json();
@@ -139,8 +140,9 @@ try {
 	if (branchId) {
 		await api(`/projects/${PROJECT}/branches/${branchId}`, { method: "DELETE" })
 			.then(() => console.log(`\nDeleted ${name}.`))
-			.catch((e) =>
-				console.error(`\n⚠️  Could not delete ${name}: ${e.message}`),
-			);
+			.catch((error) => {
+				console.error(`\n⚠️  Could not delete ${name}: ${error.message}`);
+				process.exitCode = 1;
+			});
 	}
 }

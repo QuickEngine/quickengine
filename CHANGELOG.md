@@ -8,6 +8,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Recovery artifacts are protected like customer data.** A single-workspace recovery now
+  refuses to write inside the repository, creates a private owner-only file and will not
+  overwrite an existing extract. Provider failures no longer copy response bodies into terminal
+  errors, and the safety contract runs automatically with the repository checks.
+
+- **Incidents have an operating procedure.** The internal response plan now defines severity,
+  ownership, evidence preservation, containment, provider and credential compromise, tenant
+  disclosure, data recovery, customer communication and post-incident review for the two-founder
+  team.
+
 - **Every API route is attacked for tenant confusion in CI.** The security suite now walks the
   real registered route table with valid credentials deliberately combined in invalid ways: a
   customer session from another business, a server credential in a storefront channel, and an

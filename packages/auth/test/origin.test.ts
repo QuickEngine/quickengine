@@ -24,6 +24,17 @@ describe("matchOrigin — auth CORS allowlist", () => {
 		expect(matchOrigin("https://quickengine.xyz", ALLOW, COOKIE)).toBe(true);
 	});
 
+	it.each([
+		"http://auth.quickdash.xyz",
+		"ftp://auth.quickdash.xyz",
+		"https://auth.quickdash.xyz:444",
+	])(
+		"rejects a sibling origin that cannot share the secure production session: %s",
+		(origin) => {
+			expect(matchOrigin(origin, [], ".quickdash.xyz")).toBe(false);
+		},
+	);
+
 	it("rejects look-alike and hostile origins", () => {
 		const hostile = [
 			"https://evil.com",

@@ -26,9 +26,6 @@ const DEFAULT_CORS_ORIGINS = [
 	"https://quickdash.xyz",
 	"https://auth.quickdash.xyz",
 	"https://account.quickdash.xyz",
-	"https://auth.quickengine.xyz",
-	"https://account.quickengine.xyz",
-	"https://dash.quickengine.xyz",
 ];
 
 const apiEnvSchema = z.object({

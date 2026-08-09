@@ -42,6 +42,22 @@ describe("QuickEngine API foundation", () => {
 		expect(body.meta.requestId).toBe("request-from-edge");
 	});
 
+	it("hardens every API response for browsers", async () => {
+		const response = await app.request("/health");
+
+		expect(response.headers.get("content-security-policy")).toContain(
+			"default-src 'none'",
+		);
+		expect(response.headers.get("strict-transport-security")).toBe(
+			"max-age=31536000; includeSubDomains",
+		);
+		expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+		expect(response.headers.get("x-frame-options")).toBe("DENY");
+		expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+		expect(response.headers.get("permissions-policy")).toContain("camera=()");
+		expect(response.headers.get("cache-control")).toBe("no-store");
+	});
+
 	it("returns a valid OpenAPI foundation", async () => {
 		const response = await app.request("/openapi.json");
 		const body = await response.json();

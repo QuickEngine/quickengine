@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Every web surface now ships a browser security boundary.** QuickEngine, Auth, Account,
+  QuickDash and the customer portal send an enforced content policy, anti-framing protection,
+  HTTPS persistence, conservative browser permissions and resource-isolation headers. The API
+  applies the same principles to every response, and CI refuses a new surface that omits them.
+
 - **Webhooks can only call the public internet.** A webhook address is checked when it is
   registered and resolved again immediately before every delivery. Local, private, reserved,
   metadata and mixed public/private DNS destinations are refused; the connection is pinned to
@@ -61,6 +66,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   problem never matched and every fault looked identical while debugging.
 
 ### Changed
+
+- **Revoking a session takes effect immediately.** Authentication no longer trusts a cached
+  session for several minutes after the server has revoked it. Session cookies remain HTTP-only,
+  same-site and secure in production, but every authenticated request now verifies that the
+  session still exists.
+
+- **Private API responses cannot enter browser or CDN caches.** The API marks every response
+  `no-store`; public catalog caching can return later with explicit workspace-aware cache keys
+  instead of risking one business receiving another business's response.
 
 - **The connection kit is a tenth of the size.** Old build output was never cleared, so each
   release carried every previous version of itself — 3.4 MB where 368 KB was needed.

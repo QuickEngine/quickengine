@@ -28,7 +28,9 @@ export function createRedisCacheProvider(url: string): CacheProvider {
 			// Without a listener, a dropped connection throws an unhandled 'error' event and
 			// takes the process down — worse than the cache being unavailable.
 			client.on("error", (error) => {
-				console.error("[cache] redis connection error", error);
+				console.error(
+					`[cache] redis connection error (${error instanceof Error ? error.name : "UnknownError"})`,
+				);
 			});
 			await client.connect();
 		}

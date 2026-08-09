@@ -1,6 +1,7 @@
 import { trace } from "@opentelemetry/api";
 import * as Sentry from "@sentry/node";
 import type { ApiConfig } from "./config";
+import { redact, safeError } from "./logger";
 
 export type ApiTelemetry = {
 	captureException(error: unknown, context: Record<string, unknown>): void;
@@ -32,8 +33,14 @@ export function initializeTelemetry(config: ApiConfig): ApiTelemetry {
 	return {
 		captureException(error, context) {
 			Sentry.withScope((scope) => {
-				scope.setContext("quickengine", context);
-				Sentry.captureException(error);
+				scope.setContext(
+					"quickengine",
+					redact(context) as Record<string, unknown>,
+				);
+				const safe = safeError(error);
+				scope.setTag("error.name", safe.name);
+				if (safe.code) scope.setTag("error.code", safe.code);
+				Sentry.captureMessage("API request failed", "error");
 			});
 		},
 		withSpan(name, attributes, work) {

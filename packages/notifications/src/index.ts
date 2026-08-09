@@ -24,7 +24,9 @@ export async function notify(input: NotifyInput): Promise<NotificationRow> {
 			// Email is best-effort: the in-app row is the durable record, so a delivery
 			// failure must never fail the notification (or the action that triggered it).
 			// Moving delivery to a durable Inngest job is a later refinement.
-			console.error("[notify] email delivery failed:", error);
+			console.error(
+				`[notify] email delivery failed (${error instanceof Error ? error.name : "UnknownError"})`,
+			);
 		}
 	}
 
@@ -39,6 +41,8 @@ export async function sendNotificationEmail(
 	try {
 		await getEmailProvider().send(email);
 	} catch (error) {
-		console.error("[notify] email delivery failed:", error);
+		console.error(
+			`[notify] email delivery failed (${error instanceof Error ? error.name : "UnknownError"})`,
+		);
 	}
 }

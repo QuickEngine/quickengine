@@ -20,6 +20,11 @@ export type ApiLogger = {
 	error(message: string, fields?: LogFields): void;
 };
 
+export type SafeError = {
+	name: string;
+	code?: string;
+};
+
 type LogSink = (line: string) => void;
 
 const LEVEL_WEIGHT: Record<LogLevel, number> = {
@@ -36,6 +41,17 @@ function shouldRedact(key: string): boolean {
 	);
 }
 
+export function safeError(value: unknown): SafeError {
+	if (!(value instanceof Error)) return { name: "UnknownError" };
+	const code = Reflect.get(value, "code");
+	return {
+		name: value.name || "Error",
+		...(typeof code === "string" && /^[A-Z0-9_]{1,64}$/.test(code)
+			? { code }
+			: {}),
+	};
+}
+
 export function redact(
 	value: unknown,
 	key = "",
@@ -44,7 +60,7 @@ export function redact(
 	if (shouldRedact(key)) return REDACTED;
 	if (value === null || typeof value !== "object") return value;
 	if (value instanceof Error) {
-		return { message: value.message, name: value.name };
+		return safeError(value);
 	}
 	if (seen.has(value)) return "[CIRCULAR]";
 	seen.add(value);

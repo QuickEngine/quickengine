@@ -67,6 +67,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **Secrets stay out of storage, logs and diagnostics.** New OAuth provider tokens are encrypted
+  before they reach the database, while existing accounts remain usable and are upgraded when a
+  provider refreshes them. API logs and error monitoring keep safe error names and codes without
+  copying database values, provider messages, tokens or customer details. File responses no
+  longer reveal which internal storage provider holds an upload, and oversized requests are
+  stopped while they are being read rather than after they have consumed memory. Automated tests
+  cannot send through a live email provider even when a developer's local key is present.
+
 - **Revoking a session takes effect immediately.** Authentication no longer trusts a cached
   session for several minutes after the server has revoked it. Session cookies remain HTTP-only,
   same-site and secure in production, but every authenticated request now verifies that the

@@ -18,6 +18,22 @@ describe("structured API logging", () => {
 		});
 	});
 
+	it("never serializes exception messages or embedded record values", () => {
+		const error = Object.assign(
+			new Error(
+				"Failed query params: customer@example.com,https://example.test/?token=secret",
+			),
+			{ code: "23505" },
+		);
+
+		expect(redact({ error })).toEqual({
+			error: { code: "23505", name: "Error" },
+		});
+		expect(JSON.stringify(redact({ error }))).not.toContain(
+			"customer@example.com",
+		);
+	});
+
 	it("emits JSON at or above the configured level", () => {
 		const lines: string[] = [];
 		const logger = createJsonLogger({

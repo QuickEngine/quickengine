@@ -114,7 +114,10 @@ export const customerAuthDependencies: CustomerAuthDependencies = {
 		//
 		// Printing it in development is the difference between testing this flow
 		// and not being able to.
-		if (process.env.NODE_ENV !== "production") {
+		if (
+			process.env.NODE_ENV !== "production" &&
+			process.env.QUICKENGINE_UNSAFE_LOG_AUTH_LINKS === "true"
+		) {
 			console.info(
 				`\n🔑 Sign-in link for ${input.email}:\n   ${url.toString()}\n`,
 			);

@@ -268,6 +268,8 @@ describe("Files durable commands", () => {
 		);
 		const dto = await getFileDocumentDto(workspaceId, documentId);
 		expect(dto).toMatchObject({ status: "archived" });
-		expect(JSON.stringify(dto)).not.toMatch(/storageKey|storage_key/);
+		expect(JSON.stringify(dto)).not.toMatch(
+			/storageKey|storage_key|storageProvider|storage_provider/,
+		);
 	});
 });

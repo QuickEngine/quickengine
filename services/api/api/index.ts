@@ -1,5 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import app, { readNodeRequestBody } from "../dist/index.js";
+import app, {
+	RequestBodyTooLargeError,
+	readNodeRequestBody,
+} from "../dist/index.js";
 
 /**
  * Vercel entry point for the QuickEngine API.
@@ -56,7 +59,29 @@ export default async function handler(
 	// write in production until its deadline expired — the stream never signalled
 	// end, so the body-limit middleware waited forever and no route was ever
 	// reached. GET was unaffected only because it skips the body entirely.
-	const body = hasBody ? await readNodeRequestBody(req) : undefined;
+	let body: Uint8Array<ArrayBuffer> | undefined;
+	try {
+		body = hasBody
+			? await readNodeRequestBody(
+					req,
+					Number(process.env.API_BODY_LIMIT_BYTES ?? 1024 * 1024),
+				)
+			: undefined;
+	} catch (error) {
+		if (!(error instanceof RequestBodyTooLargeError)) throw error;
+		res.statusCode = 413;
+		res.setHeader("content-type", "application/json; charset=UTF-8");
+		res.setHeader("cache-control", "no-store");
+		res.end(
+			JSON.stringify({
+				error: {
+					code: "PAYLOAD_TOO_LARGE",
+					message: "The request body is too large.",
+				},
+			}),
+		);
+		return;
+	}
 
 	const request = new Request(url, {
 		method,

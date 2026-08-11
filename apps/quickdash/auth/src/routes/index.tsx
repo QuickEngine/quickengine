@@ -4,6 +4,9 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 // landing on the root goes straight to sign-in, before anything renders.
 export const Route = createFileRoute("/")({
 	beforeLoad: () => {
-		throw redirect({ to: "/signin", search: { redirect: undefined } });
+		throw redirect({
+			to: "/signin",
+			search: { redirect: undefined, signedout: undefined, reason: undefined },
+		});
 	},
 });

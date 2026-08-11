@@ -9,7 +9,7 @@ import {
 	faYoutube,
 } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { StatusIndicator, Wordmark } from "@quickengine/ui";
+import { STATUS_URL, StatusIndicator, Wordmark } from "@quickengine/ui";
 import { LanguageSelector } from "./language-selector";
 import { ThemeSwitch } from "./theme-switch";
 
@@ -35,7 +35,7 @@ const COLUMNS = [
 			{ label: "SDKs", href: "/docs/sdks" },
 			{ label: "CLI", href: "/docs/cli" },
 			{ label: "Quickstarts", href: "/docs/quickstarts" },
-			{ label: "Status", href: "/status" },
+			{ label: "Status", href: STATUS_URL },
 		],
 	},
 	{
@@ -46,26 +46,30 @@ const COLUMNS = [
 			{ label: "Freelancers", href: "/business/freelancers" },
 			{ label: "SaaS", href: "/business/saas" },
 			{ label: "Enterprise", href: "/business/enterprise" },
-			{ label: "Partners", href: "/partners" },
 		],
 	},
 	{
+		// ⚠️ Rebuilt from what EXISTS, 2026-08-10. Guides, Tutorials, Customers and
+		// Case studies were removed — all four were placeholder shelves, and
+		// between them they carried twelve links to pages that were never written.
+		// What is left all resolves.
 		title: "Resources",
 		links: [
-			{ label: "Blog", href: "/blog" },
-			{ label: "Guides", href: "/guides" },
-			{ label: "Tutorials", href: "/tutorials" },
-			{ label: "Customers", href: "/customers" },
+			{ label: "Documentation", href: "/docs" },
+			{ label: "Changelog", href: "/changelog" },
 			{ label: "Support", href: "/support" },
 			{ label: "Community", href: "/community" },
+			// Off-site: Statuspage is hosted independently so it survives an outage
+			// that takes us down.
+			{ label: "Status", href: STATUS_URL, external: true },
 		],
 	},
 	{
 		title: "Company",
 		links: [
 			{ label: "About", href: "/about" },
-			{ label: "Careers", href: "/careers" },
 			{ label: "Contact", href: "/contact" },
+			{ label: "Security", href: "/security" },
 			{ label: "Brand", href: "/brand" },
 		],
 	},
@@ -154,7 +158,7 @@ export function SiteFooter() {
 				{/* Bottom bar: socials left · copyright center · theme + language right */}
 				<div className="mt-16 grid grid-cols-1 items-center justify-items-center gap-6 sm:grid-cols-3">
 					<div className="flex flex-col items-center gap-4 sm:items-start sm:justify-self-start">
-						<StatusIndicator href="/status" />
+						<StatusIndicator />
 						<div className="flex flex-wrap items-center justify-center gap-4">
 							{SOCIALS.map((social) => (
 								<a

@@ -1,76 +1,131 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { env } from "@/lib/env";
-import { getModule, MODULES } from "@/lib/modules";
+import { ICE, Pill } from "@/components/pill";
+import { TextPage, TextSection, textProse } from "@/components/text-page";
+import { BILLING_LABEL, moduleBySlug } from "@/lib/modules";
 
-const AUTH_URL = env.VITE_AUTH_URL;
-
-export function generateStaticParams() {
-	return MODULES.map((module) => ({ module: module.slug }));
-}
-
+/**
+ * A page for every module.
+ *
+ * ⚠️ ONE PER REAL MODULE, keyed by the same slug the catalog and the header
+ * menu use. It replaced six invented GROUPINGS (commerce, billing, files…) that
+ * bundled several modules under a name nothing in the product uses.
+ *
+ * All content comes from `@/lib/modules` so the catalog, these pages and the
+ * header menu cannot disagree about what exists. Adding a module means adding it
+ * there and to the menu in the same change — nothing else.
+ *
+ * 🔴 A `caveat` is printed prominently and must never be dropped to make a page
+ * read better. It is where Payments admits PayPal is unproven, Shipping admits
+ * carrier labels are unfinished, and Content admits it is half-built.
+ */
 function ModulePage() {
-	const { module } = Route.useParams();
-	const def = getModule(module);
-	// `notFound()` throws, but its return type does not tell TypeScript so.
-	if (!def) throw notFound();
+	const { module: slug } = Route.useParams();
+	const module = moduleBySlug(slug);
+
+	if (!module) throw notFound();
 
 	return (
-		<>
-			<SiteHeader />
-			<main className="pt-16">
-				<section className="page-gutter border-border border-b py-32">
-					<a
-						href="/products/modules"
-						className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-					>
-						← Modules
-					</a>
-					<p className="mt-6 text-[13px] text-muted-foreground uppercase tracking-[0.2em]">
-						{def.tagline}
-					</p>
-					<h1 className="mt-3 max-w-3xl font-display font-normal text-5xl text-foreground leading-[1.05] tracking-tight sm:text-6xl">
-						{def.name}
-					</h1>
-					<p className="mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-						{def.description}
-					</p>
-					<div className="mt-10">
-						<a
-							href={`${AUTH_URL}/signup`}
-							className="inline-flex h-11 items-center rounded-full bg-foreground px-6 font-normal text-background text-sm transition-opacity hover:opacity-90"
+		<TextPage title={module.title} lede={module.lede}>
+			<TextSection title="What it does">
+				<div className="flex flex-col">
+					{module.capabilities.map((capability) => (
+						<div
+							key={capability.name}
+							className="flex flex-col gap-1.5 border-white/[0.07] border-b py-5 first:pt-0 last:border-b-0 sm:flex-row sm:gap-8"
 						>
-							Get Started
-						</a>
+							<span className="shrink-0 font-body font-normal text-[0.9375rem] text-white sm:w-52">
+								{capability.name}
+							</span>
+							<span className="font-body font-light text-[0.9375rem] text-white/60 leading-[1.6]">
+								{capability.what}
+							</span>
+						</div>
+					))}
+				</div>
+			</TextSection>
+
+			{/* ⚠️ Deliberately its own section rather than a footnote. Somebody
+			    evaluating a module needs to meet its limits at the same weight as its
+			    features, not below the fold in smaller text. */}
+			{module.caveat ? (
+				<TextSection title="Worth knowing">
+					<div className={textProse}>
+						<p>{module.caveat}</p>
 					</div>
+				</TextSection>
+			) : null}
 
-					{def.code ? (
-						<pre className="mt-12 max-w-2xl overflow-x-auto rounded-xl border border-border bg-secondary/20 p-5 font-mono text-foreground text-sm leading-relaxed">
-							<code>{def.code}</code>
-						</pre>
-					) : null}
-				</section>
+			<TextSection title="How it is charged">
+				<div className="flex flex-wrap gap-2.5">
+					{module.billing.map((mark) => (
+						<span
+							key={mark}
+							style={
+								mark === "free"
+									? { borderColor: `${ICE}33`, color: ICE }
+									: undefined
+							}
+							className={`rounded-full border px-3.5 py-1.5 font-body font-light text-[0.8125rem] ${
+								mark === "free" ? "" : "border-white/15 text-white/45"
+							}`}
+						>
+							{BILLING_LABEL[mark]}
+						</span>
+					))}
+				</div>
+				<div className={`mt-5 ${textProse}`}>
+					<p>
+						Unlocked capabilities are paid once on your plan and then unlimited
+						never per record, per customer or per invoice. Metered ones are
+						charged on the resource they genuinely consume.{" "}
+						<a href="/pricing">Pricing</a> sets out where the line sits.
+					</p>
+				</div>
+			</TextSection>
 
-				<section className="page-gutter py-24">
-					<h2 className="font-display font-normal text-2xl text-foreground tracking-tight sm:text-3xl">
-						What it does
-					</h2>
-					<ul className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
-						{def.capabilities.map((capability) => (
-							<li
-								key={capability}
-								className="flex items-start gap-2 text-muted-foreground"
-							>
-								<span className="text-foreground">—</span>
-								{capability}
-							</li>
-						))}
-					</ul>
-				</section>
-			</main>
-			<SiteFooter />
-		</>
+			{module.needs?.length ? (
+				<TextSection title="Works with">
+					<div className="flex flex-wrap gap-2.5">
+						{module.needs.map((need) => {
+							const other = moduleBySlug(need);
+							if (!other) return null;
+							return (
+								<a
+									key={need}
+									href={`/products/modules/${other.slug}`}
+									className="rounded-full border border-white/15 px-3.5 py-1.5 font-body font-light text-[0.8125rem] text-white/70 no-underline transition-colors hover:border-white/30 hover:text-white"
+								>
+									{other.name}
+								</a>
+							);
+						})}
+					</div>
+					<div className={`mt-5 ${textProse}`}>
+						<p>
+							Modules are wired to each other rather than synced. That is the
+							part a folder of separate tools cannot do however good each one
+							is.
+						</p>
+					</div>
+				</TextSection>
+			) : null}
+
+			<TextSection title="Next">
+				<div className="flex flex-col gap-3 sm:flex-row">
+					<Pill
+						href="/products/modules"
+						variant="primary"
+						size="lg"
+						disc="arrow"
+					>
+						Every module
+					</Pill>
+					<Pill href="/pricing" variant="secondary" size="lg" disc="arrow">
+						What it costs
+					</Pill>
+				</div>
+			</TextSection>
+		</TextPage>
 	);
 }
 

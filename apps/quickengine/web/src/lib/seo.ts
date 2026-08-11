@@ -8,14 +8,14 @@ export const SITE_NAME = "QuickEngine";
 export const SITE_URL = env.VITE_WEB_URL;
 export const SITE_TAGLINE = "Build more. Switch less.";
 export const SITE_DESCRIPTION =
-	"QuickEngine is the headless backend your whole business runs on — one platform, configured per workspace, so you build more and switch less.";
+	"QuickEngine is the headless backend your whole business runs on · one platform, configured per workspace, so you build more and switch less.";
 
 // One 1200x630 image (public/og-image.png) for every share card, no drift.
 export const OG_IMAGE = {
 	url: "/og-image.png",
 	width: 1200,
 	height: 630,
-	alt: `${SITE_NAME} — ${SITE_TAGLINE}`,
+	alt: `${SITE_NAME} · ${SITE_TAGLINE}`,
 };
 
 // X/Twitter's large card uses a 16:9 crop, so it gets its own 1200x675 image.
@@ -24,7 +24,7 @@ export const TWITTER_IMAGE = {
 	url: "/twitter-image.png",
 	width: 1200,
 	height: 675,
-	alt: `${SITE_NAME} — ${SITE_TAGLINE}`,
+	alt: `${SITE_NAME} · ${SITE_TAGLINE}`,
 };
 
 // Public profiles, mirrored from the footer. Feeds the Organization schema's

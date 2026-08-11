@@ -110,7 +110,11 @@ export function ProfileMenu({
 		} else setOrientationError(result.error);
 		setPending(false);
 	}
-	const signOutHref = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(clientEnv.WEB_URL)}`;
+	// Back to sign-in with a confirmation, not to the marketing site. Someone
+	// signing out OF the product wants to know the session ended — on a shared
+	// machine that is the entire reason they pressed it — and a landing page
+	// tells them nothing. Matches the account app.
+	const signOutHref = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(`${clientEnv.AUTH_URL}/signin?signedout=1`)}`;
 
 	// 🔴 The shell cannot sign out through the auth site. What signs it in is the
 	// stored token, not a cookie, so clearing the cookie would leave the app fully

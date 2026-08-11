@@ -417,6 +417,18 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		email: "buyer@example.com",
 		name: "Sam Rivera",
 	},
+	submitContact: {
+		name: "Sam Rivera",
+		email: "sam@example.com",
+		topic: "Pricing or plans",
+		message:
+			"We run a two-location bike shop and want to move bookings and invoicing off spreadsheets. Which plan covers both?",
+		// ⚠️ The honeypot is documented as empty ON PURPOSE. It is the value a
+		// real client sends, and showing it here stops anyone integrating against
+		// this endpoint from "helpfully" populating it and having every
+		// submission silently dropped.
+		website: "",
+	},
 	// getCustomerOrder takes only the documented order UUID path parameter.
 	startPaymentOnboarding: {
 		returnUrl: "https://account.quickdash.xyz/payments?connected=1",

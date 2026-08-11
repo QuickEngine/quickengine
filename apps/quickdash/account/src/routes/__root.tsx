@@ -1,12 +1,6 @@
 import { GearSixIcon } from "@phosphor-icons/react";
 import { authClient } from "@quickengine/auth/client";
-import {
-	ConsoleShell,
-	LoadingScreen,
-	RequestErrorScreen,
-	StatusScreen,
-	textLink,
-} from "@quickengine/ui";
+import { ConsoleShell } from "@quickengine/ui";
 import {
 	type QueryClient,
 	useQuery,
@@ -18,6 +12,11 @@ import {
 	redirect,
 	useRouterState,
 } from "@tanstack/react-router";
+import {
+	ErrorScreen,
+	LoadingScreen,
+	NotFoundScreen,
+} from "@/components/status-screens";
 import { AccountNav, AccountNavTop } from "../components/account-nav";
 import { Breadcrumbs } from "../components/breadcrumbs";
 import { NotificationBell } from "../components/notification-bell";
@@ -213,28 +212,13 @@ function AccountShell() {
 	);
 }
 
-function NotFoundScreen() {
-	return (
-		<StatusScreen
-			code="404"
-			title="Page not found"
-			message="That page doesn't exist."
-			action={
-				<a href="/" className={textLink}>
-					Back to your account
-				</a>
-			}
-		/>
-	);
-}
-
-function ErrorScreen({ error, reset }: { error: Error; reset: () => void }) {
-	return (
-		<RequestErrorScreen
-			error={error}
-			onRetry={reset}
-			homeHref="/"
-			homeLabel="Back to your account"
-		/>
-	);
-}
+// 🔴 The status screens moved to `components/status-screens.tsx` on 2026-08-11
+// because they have to know WHICH CONTEXT they are in. This app holds both
+// onboarding and the account, and an error during onboarding must not offer to
+// send somebody to an account that does not exist yet, or render dashboard
+// chrome for a product they have not finished creating.
+//
+// They also used `StatusScreen` and `RequestErrorScreen` from `@quickengine/ui`,
+// which are the pre-redesign components — the same ones the marketing and auth
+// apps stopped using. An error screen is the worst possible moment to look like
+// a different product.

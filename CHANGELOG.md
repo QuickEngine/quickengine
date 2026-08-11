@@ -8,6 +8,58 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The front of the product now looks like the product.** The backend and the security work
+  were done; the interface in front of them was not. This is the first full design pass: a new
+  marketing front page built around a live gradient, a pricing page driven by the real plan
+  ladder instead of placeholder tiers, and every sign-in, sign-up, verification, recovery and
+  two-factor screen rebuilt. One typeface, one set of buttons and one header across all of it,
+  so moving between the marketing site and signing in no longer feels like changing companies.
+
+- **Error pages that belong to the site.** A missing page, a failure on our side and planned
+  maintenance each have a real screen now, with the same header, footer, gradient and buttons as
+  everything else, instead of a bare status number on a black background. None of them show you
+  a status code or an internal error message, because neither tells you anything you can act on.
+
+- **The site tells you when your connection drops.** A banner across the top when you go
+  offline, a confirmation when you come back, and a way to dismiss either. It uses the same two
+  colours as the buttons rather than an alert red, because losing signal is not an error and
+  nothing is broken.
+
+- **A slow page now looks like it is loading.** Pages that take a moment to arrive show their
+  shape while they do. It is deliberately hard to trigger: pages are fetched as soon as you hover
+  a link, and the placeholder is held back until a page has genuinely stalled, so an ordinary
+  click never flashes one.
+
+- **Passwords now have real rules, and you can see them as you type.** Setting a password shows
+  a strength bar and a live checklist: ten characters, an uppercase and a lowercase letter, a
+  number and a symbol. Signing up still needs no password at all — a code, Google, GitHub or a
+  passkey — and a password stays something you add later if you want one.
+
+- **Email addresses are checked before we try to send anything.** Typing an address that cannot
+  work now says so straight away, in the same place every other message on the page appears,
+  rather than through the browser's own popup.
+
+- **The pricing page now shows the intended launch model without pretending billing is open.**
+  Free, Launch, Grow, Scale, Expand and Custom have one coherent allowance table, and the public
+  repository labels it pre-release while entitlement and live Stripe verification remain launch
+  work rather than hidden assumptions.
+
+### Fixed
+
+- **An error under a form no longer moves the button you were reaching for.** Messages appear in
+  space that is already reserved for them, so nothing on the screen shifts when one arrives or
+  clears. It mattered most when entering a code, where you get three attempts and the button used
+  to jump down at the exact moment you went to press it again.
+
+- **Reopening a tab after an update no longer looks like a crash.** If we shipped a new version
+  while you had the site open, moving to a page you had not visited failed and reported an error
+  on our side. It now recognises what happened, picks up the new version by itself, and if that
+  does not work says plainly that there is a newer version rather than blaming something else.
+
+- **The logo and buttons line up between the marketing site and signing in.** The two headers
+  were set to different heights and the mark to different sizes, which nothing revealed on one
+  page and which was obvious the moment you moved between them. The footer mark matches now too.
+
 - **Quick.js is verified as the package customers actually install.** CI now builds and packs
   the public SDK, rejects source and source-map leaks, installs the tarball into an empty project
   and proves its ESM, CommonJS and browser entry points. Compatibility, deprecation, release and

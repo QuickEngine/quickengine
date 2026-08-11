@@ -1,5 +1,5 @@
 import { List, Plus, X } from "@phosphor-icons/react";
-import { Wordmark } from "@quickengine/ui";
+import { STATUS_URL, Wordmark } from "@quickengine/ui";
 import { useEffect, useState } from "react";
 import { env } from "@/lib/env";
 
@@ -11,10 +11,8 @@ type MenuColumn = { title: string; links: { label: string; href: string }[] };
 // links (Company = low-traffic hub, Pricing = single high-intent destination).
 const NAV_LINKS: { label: string; href: string; menu?: string }[] = [
 	{ label: "Product", href: "/products", menu: "products" },
-	{ label: "Developers", href: "/developers", menu: "developers" },
+	{ label: "Developers", href: "/docs", menu: "developers" },
 	{ label: "Business", href: "/business", menu: "business" },
-	{ label: "Resources", href: "/resources", menu: "resources" },
-	{ label: "Company", href: "/company" },
 	{ label: "Pricing", href: "/pricing" },
 ];
 
@@ -55,7 +53,6 @@ const MENUS: Record<string, MenuColumn[]> = {
 		{
 			title: "Build",
 			links: [
-				{ label: "Overview", href: "/developers" },
 				{ label: "Documentation", href: "/docs" },
 				{ label: "API reference", href: "/docs/api" },
 				{ label: "SDKs", href: "/docs/sdks" },
@@ -68,7 +65,7 @@ const MENUS: Record<string, MenuColumn[]> = {
 				{ label: "Quickstarts", href: "/docs/quickstarts" },
 				{ label: "Examples", href: "/docs/examples" },
 				{ label: "Changelog", href: "/changelog" },
-				{ label: "Status", href: "/status" },
+				{ label: "Status", href: STATUS_URL },
 			],
 		},
 		{
@@ -93,40 +90,17 @@ const MENUS: Record<string, MenuColumn[]> = {
 		},
 		{
 			title: "By stage",
-			links: [
-				{ label: "Startups", href: "/business/startups" },
-				{ label: "Scale-ups", href: "/business/scale-ups" },
-				{ label: "Enterprise", href: "/business/enterprise" },
-				{ label: "Migrations", href: "/business/migrations" },
-			],
+			links: [{ label: "Enterprise", href: "/business/enterprise" }],
 		},
 		{
 			title: "Programs",
-			links: [
-				{ label: "Partners", href: "/partners" },
-				{ label: "Startup program", href: "/startup-program" },
-				{ label: "Talk to sales", href: "/contact" },
-			],
+			links: [{ label: "Talk to sales", href: "/contact" }],
 		},
 	],
 	resources: [
 		{
 			title: "Learn",
-			links: [
-				{ label: "Overview", href: "/resources" },
-				{ label: "Blog", href: "/blog" },
-				{ label: "Guides", href: "/guides" },
-				{ label: "Tutorials", href: "/tutorials" },
-				{ label: "Webinars", href: "/webinars" },
-			],
-		},
-		{
-			title: "Proof",
-			links: [
-				{ label: "Customers", href: "/customers" },
-				{ label: "Case studies", href: "/case-studies" },
-				{ label: "Events", href: "/events" },
-			],
+			links: [],
 		},
 		{
 			title: "Help",

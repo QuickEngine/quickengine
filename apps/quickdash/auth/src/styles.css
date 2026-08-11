@@ -6,3 +6,119 @@
 /* Tailwind v4 must scan the shared UI package so its component + brand classes
    are generated. */
 @source "../../../../packages/ui/src";
+
+/* ── Auth entrance ────────────────────────────────────────────────────────
+   Content settles in rather than appearing. Three rules keep it from being
+   the "blink" that a plain fade produces:
+
+   1. It STARTS at opacity 0 (`both` fill), so nothing is painted at full
+      strength for a frame before the animation begins — that flash is the
+      thing people actually notice.
+   2. It rises 8px. Motion gives the eye something to follow, so the arrival
+      reads as placement rather than as a state change.
+   3. Title, message and body are staggered 70ms apart, which is enough to
+      read as one movement with direction and too little to feel like waiting.
+
+   ⚠️ 420ms total. Anything longer and a returning visitor who knows exactly
+   where they are going is watching an animation instead of typing. */
+.auth-in {
+	animation: auth-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.auth-in-1 {
+	animation-delay: 70ms;
+}
+.auth-in-2 {
+	animation-delay: 140ms;
+}
+@keyframes auth-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* The field itself fades without moving — it is the largest object on the
+   screen and 8px of travel on it reads as the layout settling badly. */
+.auth-in-still {
+	animation: auth-fade 520ms ease-out both;
+	animation-delay: 140ms;
+}
+@keyframes auth-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.auth-in,
+	.auth-in-still {
+		animation: none;
+	}
+}
+
+/* ── No rubber-band ───────────────────────────────────────────────────────
+   A trackpad flick or a phone drag past either end of an auth screen pulls
+   the whole document and exposes the page behind it. On a full-bleed animated
+   background that reads as a broken layer rather than as a scroll gesture, and
+   these screens never scroll anyway — there is nothing below the fold to reach.
+
+   ⚠️ Set on BOTH `html` and `body`: whichever element ends up being the
+   scrolling box is the one that bounces, and which one that is depends on the
+   browser.
+
+   `overscroll-behavior`, not `overflow: hidden`. Hiding overflow would also
+   break a short viewport where the form genuinely does need to scroll — a
+   phone in landscape with the keyboard open being the obvious one. */
+html,
+body {
+	overscroll-behavior: none;
+}
+
+/* An inline error arriving. Short and small — this runs while someone is already
+   waiting to retry, so it announces itself and gets out of the way. The slot it
+   lands in is already the right height, so nothing around it moves. */
+.auth-error {
+	animation: auth-error 220ms ease-out both;
+}
+@keyframes auth-error {
+	from {
+		opacity: 0;
+		transform: translateY(2px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.auth-error {
+		animation: none;
+	}
+}
+
+/* ── Auth does not scroll ─────────────────────────────────────────────────
+   Every screen in this app is one short column that fits a viewport by design,
+   so a scrollbar here is never a way to reach something — it only ever means the
+   gradient can be dragged away from under the form.
+
+   ⚠️ `100dvh`, not `100vh`. On mobile Safari `vh` is the height with the browser
+   chrome HIDDEN, so `100vh` plus `overflow: hidden` clips the bottom of the page
+   behind the address bar with no way to scroll to it — the legal line would be
+   permanently unreachable.
+
+   ⚠️ This is the one app where locking the scroll is safe, BECAUSE the content
+   is short. Do not copy it to the dashboard or the marketing site. If a screen
+   is ever added here that genuinely does not fit, this rule is what will hide
+   the bottom of it. */
+html,
+body {
+	height: 100dvh;
+	overflow: hidden;
+}

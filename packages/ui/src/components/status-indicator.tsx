@@ -5,11 +5,25 @@ import { cn } from "../lib/utils";
 
 type Status = "loading" | "operational" | "degraded";
 
+/**
+ * The public status page — Atlassian Statuspage, not a route we host.
+ *
+ * Exported so the footers, the marketing header and the account settings dialog
+ * all point at one string. It replaced an in-repo `/status` route on 2026-08-10;
+ * that page listed hand-written uptime figures like "99.99%" that nothing
+ * measured, which is a fabricated claim on a public page.
+ *
+ * A status page has to be hosted somewhere that stays up when we do not — an
+ * outage that also takes down the page reporting the outage is the one failure
+ * a status page exists to prevent.
+ */
+export const STATUS_URL = "https://quickdash.statuspage.io";
+
 // A small "All systems operational" pill that actually pings the app's health
 // endpoint (so it's honest, not decorative) and links out to the status page.
 // Shared so the web footer and the account app show the same thing.
 export function StatusIndicator({
-	href = "/status",
+	href = STATUS_URL,
 	endpoint = "/api/health",
 	className,
 }: {
@@ -55,6 +69,11 @@ export function StatusIndicator({
 	return (
 		<a
 			href={href}
+			// The destination is off-site, so it opens in a new tab: someone checking
+			// whether we are up is usually mid-task in the product and should not
+			// lose it. `noreferrer noopener` because the target is third-party.
+			target="_blank"
+			rel="noreferrer noopener"
 			className={cn(
 				"inline-flex items-center gap-2 text-muted-foreground text-xs transition-colors hover:text-foreground",
 				className,

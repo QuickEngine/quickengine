@@ -1,90 +1,54 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { TextPage, TextSection, textProse } from "@/components/text-page";
 
-// PLACEHOLDER — ways to plug into the community. Real links/counts swap in later.
-const CHANNELS = [
-	{
-		name: "Discord",
-		desc: "Chat with the team and other builders, get help, share what you're building.",
-		cta: "Join the server",
-		href: "https://discord.gg/quickengine",
-	},
-	{
-		name: "GitHub",
-		desc: "Follow development, file issues, and contribute to the open pieces.",
-		cta: "Star on GitHub",
-		href: "https://github.com/QuickEngine",
-	},
-	{
-		name: "X",
-		desc: "Product updates, launches, and the occasional build-in-public thread.",
-		cta: "Follow along",
-		href: "https://x.com/QuickEngineSW",
-	},
-];
-
-const STATS = [
-	{ value: "1,200+", label: "Builders" },
-	{ value: "300+", label: "Discord members" },
-	{ value: "Weekly", label: "Office hours" },
-];
-
+/**
+ * Community.
+ *
+ * ⚠️ STUBBED ON PURPOSE, 2026-08-10. The Discord exists as a decision, not as a
+ * server — there is no invite link yet. When there is, replace the section below
+ * with the invite and nothing else needs to change.
+ *
+ * 🔴 Do NOT add an invite that goes nowhere, a member count, or "join hundreds
+ * of developers". An empty room somebody was invited to is worse than a page
+ * that said honestly it was not open yet.
+ *
+ * The previous version listed Discord, GitHub Discussions and a community forum
+ * as though all three were live. None were.
+ */
 function CommunityPage() {
 	return (
-		<>
-			<SiteHeader />
-			<main className="pt-16">
-				<section className="page-gutter flex flex-col items-center border-border border-b py-24 text-center">
-					<h1 className="font-display font-normal text-5xl text-foreground leading-[1.05] tracking-tight sm:text-6xl">
-						Join the community.
-					</h1>
-					<p className="mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed">
-						Build alongside other founders and developers using QuickEngine.
+		<TextPage
+			title="Somewhere to ask things out loud."
+			lede="A Discord is coming, for the questions that are not worth an email and the answers worth other people seeing."
+		>
+			<TextSection title="Not open yet">
+				<div className={textProse}>
+					<p>
+						We would rather open it when there is somebody in it to answer you.
+						An empty server you were invited to is a worse first impression than
+						no server at all.
 					</p>
+					<p>
+						It will be linked here the day it opens. Nothing else will be
+						required, no application, no waitlist.
+					</p>
+				</div>
+			</TextSection>
 
-					<div className="mt-12 grid w-full max-w-2xl grid-cols-3 gap-8">
-						{STATS.map((stat) => (
-							<div key={stat.label}>
-								<p className="font-display text-3xl text-foreground">
-									{stat.value}
-								</p>
-								<p className="mt-1 text-muted-foreground text-sm">
-									{stat.label}
-								</p>
-							</div>
-						))}
-					</div>
-				</section>
-
-				<section className="page-gutter py-16">
-					<div className="grid gap-6 sm:grid-cols-3">
-						{CHANNELS.map((channel) => (
-							<div
-								key={channel.name}
-								className="flex flex-col rounded-xl border border-border p-6"
-							>
-								<h2 className="font-display text-foreground text-lg">
-									{channel.name}
-								</h2>
-								<p className="mt-2 flex-1 text-muted-foreground text-sm leading-relaxed">
-									{channel.desc}
-								</p>
-								<a
-									href={channel.href}
-									target="_blank"
-									rel="noreferrer noopener"
-									className="mt-6 inline-flex h-10 items-center justify-center rounded-full border border-border px-5 font-normal text-foreground text-sm transition-colors hover:bg-foreground/5"
-								>
-									{channel.cta}
-								</a>
-							</div>
-						))}
-					</div>
-				</section>
-			</main>
-			<SiteFooter />
-		</>
+			<TextSection title="Until then">
+				<div className={textProse}>
+					<p>
+						<a href="/contact">Email us</a>. It reaches the two people who build
+						QuickDash, and right now that is a faster answer than any community
+						would give you.
+					</p>
+					<p>
+						If you want to be told when the Discord opens, say so in that
+						message and we will come back to you.
+					</p>
+				</div>
+			</TextSection>
+		</TextPage>
 	);
 }
 

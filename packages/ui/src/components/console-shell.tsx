@@ -83,13 +83,13 @@ export function ConsoleShell({
 			style={{ "--header-height": "2.75rem" } as React.CSSProperties}
 		>
 			{/* `data-tauri-drag-region` makes the empty parts of the band grab the
-			    window — with an overlay title bar and no visible chrome there is
+			    window, with an overlay title bar and no visible chrome there is
 			    otherwise nowhere else to drag from. Its children carry no such
 			    attribute, so clicking a control never starts a drag.
 
 			    🔴 The band must NOT be `pointer-events-none`. The drag region works by
 			    receiving a mousedown, and an element that takes no pointer events never
-			    gets one — the window simply could not be moved. It does not need to be
+			    gets one, the window simply could not be moved. It does not need to be
 			    transparent to clicks anyway: the frame below starts exactly at this
 			    band's bottom edge, so there is nothing underneath it to block.
 
@@ -123,7 +123,7 @@ export function ConsoleShell({
 			    of content instead of beside it.
 
 			    The menu control plus the current page. Without the name a phone gives
-			    no indication of where you are — the rail that carries the active state
+			    no indication of where you are, the rail that carries the active state
 			    on desktop is behind a drawer here, so the header has to say it.
 
 			    `breadcrumbs` is reused rather than a separate prop: it already derives
@@ -190,7 +190,7 @@ export function ConsoleShell({
 					    both places, so the phone can never present different navigation
 					    from the desktop.
 
-					    Navigation only — the rail's bottom group lives in the account sheet
+					    Navigation only, the rail's bottom group lives in the account sheet
 					    on this breakpoint, not here.
 
 					    Closes on any click inside: everything in here navigates, and a

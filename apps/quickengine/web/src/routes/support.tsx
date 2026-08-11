@@ -1,108 +1,74 @@
+import { STATUS_URL } from "@quickengine/ui";
 import { createFileRoute } from "@tanstack/react-router";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { TextPage, TextSection, textProse } from "@/components/text-page";
 
-// PLACEHOLDER — a help-center entry. Topics link into /docs sections.
-const TOPICS = [
-	{
-		title: "Getting started",
-		desc: "Create an account, spin up your first workspace.",
-	},
-	{
-		title: "Account & billing",
-		desc: "Plans, invoices, seats, and payment methods.",
-	},
-	{
-		title: "Modules",
-		desc: "Auth, billing, storage, search, jobs, realtime, and more.",
-	},
-	{
-		title: "API & SDKs",
-		desc: "Endpoints, keys, rate limits, and client libraries.",
-	},
-	{
-		title: "Workspaces",
-		desc: "Business types, limits, members, and data export.",
-	},
-	{
-		title: "Troubleshooting",
-		desc: "Common errors and how to resolve them.",
-	},
-];
-
+/**
+ * Support.
+ *
+ * ⚠️ The previous version was a grid of six "help centre" topic cards — Getting
+ * started, Account & billing, Modules, API & SDKs, Workspaces, Troubleshooting —
+ * and every one of them linked to `/docs`. Six doors into the same room, and a
+ * help centre that does not exist.
+ *
+ * What a two-person company can honestly offer is an email address and a
+ * truthful response time, so that is what this says.
+ */
 function SupportPage() {
 	return (
-		<>
-			<SiteHeader />
-			<main className="pt-16">
-				<section className="page-gutter flex flex-col items-center border-border border-b py-24 text-center">
-					<h1 className="font-display font-normal text-5xl text-foreground leading-[1.05] tracking-tight sm:text-6xl">
-						How can we help?
-					</h1>
-					<form
-						action="/docs"
-						className="mt-10 flex w-full max-w-xl items-center gap-2 rounded-full border border-border bg-secondary/20 p-2 focus-within:border-foreground/30"
-					>
-						<input
-							type="search"
-							name="q"
-							placeholder="Search the docs…"
-							aria-label="Search the docs"
-							className="flex-1 bg-transparent px-4 text-base text-foreground outline-none placeholder:text-muted-foreground"
-						/>
-						<button
-							type="submit"
-							className="inline-flex h-9 items-center rounded-full bg-foreground px-5 font-normal text-background text-sm transition-opacity hover:opacity-90"
-						>
-							Search
-						</button>
-					</form>
-				</section>
-
-				<section className="page-gutter border-border border-b py-16">
-					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						{TOPICS.map((topic) => (
-							<a
-								key={topic.title}
-								href="/docs"
-								className="flex flex-col rounded-xl border border-border p-6 transition-colors hover:bg-foreground/5"
-							>
-								<h2 className="font-display text-foreground text-lg">
-									{topic.title}
-								</h2>
-								<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-									{topic.desc}
-								</p>
-							</a>
-						))}
-					</div>
-				</section>
-
-				<section className="page-gutter flex flex-col items-center py-16 text-center">
-					<h2 className="font-display font-normal text-2xl text-foreground tracking-tight sm:text-3xl">
-						Still stuck?
-					</h2>
-					<p className="mt-4 max-w-md text-muted-foreground">
-						Reach the team directly, or ask the community.
+		<TextPage
+			title="Talk to the people who built it."
+			lede="There is no support tier, no ticket queue and no chatbot. You email us and one of the two people who wrote the code answers."
+		>
+			<TextSection title="Getting help">
+				<div className={textProse}>
+					<p>
+						Email{" "}
+						<a href="mailto:quickenginesw@gmail.com">quickenginesw@gmail.com</a>{" "}
+						or use the <a href="/contact">contact form</a>. Both land in the
+						same inbox.
 					</p>
-					<div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-						<a
-							href="/contact"
-							className="inline-flex h-11 items-center rounded-full bg-foreground px-6 font-normal text-background text-sm transition-opacity hover:opacity-90"
-						>
-							Contact support
-						</a>
-						<a
-							href="/community"
-							className="inline-flex h-11 items-center rounded-full border border-border px-6 font-normal text-foreground text-sm transition-colors hover:bg-foreground/5"
-						>
-							Ask the community
-						</a>
-					</div>
-				</section>
-			</main>
-			<SiteFooter />
-		</>
+					<p>
+						Include what you were doing and what happened instead. If it
+						involves a specific record, the workspace and the identifier saves a
+						round trip.
+					</p>
+					<p>
+						We answer everything, usually within a day. There is no separate
+						paid support plan, and there is not going to be one.
+					</p>
+				</div>
+			</TextSection>
+
+			<TextSection title="Before you write">
+				<div className={textProse}>
+					<p>Two things answer most questions faster than we can:</p>
+					<ul>
+						<li>
+							<a href={STATUS_URL} target="_blank" rel="noreferrer">
+								Live status
+							</a>{" "}
+							if something stopped working suddenly, check whether we already
+							know.
+						</li>
+						<li>
+							<a href="/docs">The documentation</a>, every API operation is
+							listed with what it accepts and returns.
+						</li>
+					</ul>
+				</div>
+			</TextSection>
+
+			<TextSection title="Reporting a security issue">
+				<div className={textProse}>
+					<p>
+						Security reports go to the same address, and we would rather have
+						them early and wrong than late and right.{" "}
+						<a href="/security">Our security page</a> covers what we do and what
+						we do not have yet.
+					</p>
+				</div>
+			</TextSection>
+		</TextPage>
 	);
 }
 

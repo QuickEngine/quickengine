@@ -1,3 +1,4 @@
+import { setWorkspaceEnvironment } from "@quickengine/db";
 import { testDbClient } from "@quickengine/db/testing";
 import {
 	createInvoice,
@@ -6,6 +7,7 @@ import {
 } from "@quickengine/mod-invoicing";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+	applyCheckoutSettlement,
 	getPayment,
 	getPaymentAccount,
 	listPayments,
@@ -41,6 +43,39 @@ async function issuedInvoice() {
 }
 
 describe("Connected payment providers", () => {
+	it("locks a workspace environment after a provider account exists", async () => {
+		await expect(
+			setWorkspaceEnvironment(workspaceId, "test"),
+		).resolves.toMatchObject({
+			environment: "test",
+		});
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_test_lock",
+		});
+		await expect(setWorkspaceEnvironment(workspaceId, "live")).rejects.toThrow(
+			"WORKSPACE_ENVIRONMENT_LOCKED",
+		);
+	});
+
+	it("never resolves a test connected account from the live webhook channel", async () => {
+		await setWorkspaceEnvironment(workspaceId, "test");
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_same_mode_boundary",
+		});
+		const event = {
+			id: "evt_test_boundary",
+			type: "payment_intent.succeeded",
+			externalPaymentId: "pi_test_boundary",
+			externalAccountId: "acct_same_mode_boundary",
+			payload: {},
+		};
+		await expect(
+			applyCheckoutSettlement(event, event.externalAccountId, "stripe", "live"),
+		).resolves.toEqual({
+			applied: false,
+			reason: "unknown connected account",
+		});
+	});
 	it("keeps one account per provider and switches the default without deleting either", async () => {
 		await upsertPaymentAccount(workspaceId, "stripe", {
 			externalAccountId: "acct_stripe_1",
@@ -85,6 +120,21 @@ describe("Connected payment providers", () => {
 });
 
 describe("Payments persistence", () => {
+	it("allows the same provider id in isolated test and live workspaces", async () => {
+		await setWorkspaceEnvironment(otherWorkspaceId, "test");
+		const live = await recordPayment(workspaceId, {
+			amountCents: 100,
+			provider: "stripe",
+			externalPaymentId: "pi_same_across_modes",
+		});
+		const test = await recordPayment(otherWorkspaceId, {
+			amountCents: 100,
+			provider: "stripe",
+			externalPaymentId: "pi_same_across_modes",
+		});
+		expect(live.environment).toBe("live");
+		expect(test.environment).toBe("test");
+	});
 	it("snapshots identity and keeps a partial invoice outstanding", async () => {
 		const invoice = await issuedInvoice();
 		const payment = await recordPayment(workspaceId, {

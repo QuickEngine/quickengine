@@ -91,6 +91,7 @@ import {
 	archiveWorkspaceSchema,
 	createWorkspaceSchema,
 	renameWorkspaceSchema,
+	workspaceEnvironmentSchema,
 	workspaceModuleSchema,
 } from "./account-workspace-routes";
 import {
@@ -256,6 +257,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createWorkspace: createWorkspaceSchema,
 	renameWorkspace: renameWorkspaceSchema,
 	setWorkspaceArchived: archiveWorkspaceSchema,
+	setWorkspaceEnvironment: workspaceEnvironmentSchema,
 	setWorkspaceModuleEnabled: workspaceModuleSchema,
 	startPaymentOnboarding: paymentOnboardingInputSchema,
 	setDefaultPaymentProvider: paymentProviderInputSchema,

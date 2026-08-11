@@ -17,6 +17,7 @@ async function loadWorkspace(workspaceId: string) {
 	const [workspace] = await db
 		.select({
 			businessType: quickengineWorkspaces.businessType,
+			environment: quickengineWorkspaces.environment,
 			id: quickengineWorkspaces.id,
 			name: quickengineWorkspaces.name,
 			organizationId: quickengineWorkspaces.organizationId,
@@ -56,6 +57,7 @@ export const defaultPlatformDependencies: PlatformDependencies = {
 			ownerId: loaded.workspace.ownerId,
 			workspace: {
 				businessType: loaded.workspace.businessType,
+				environment: loaded.workspace.environment,
 				id: loaded.workspace.id,
 				name: loaded.workspace.name,
 				slug: loaded.workspace.slug,
@@ -78,6 +80,7 @@ export const defaultPlatformDependencies: PlatformDependencies = {
 			role: access.role,
 			workspace: {
 				businessType: loaded.workspace.businessType,
+				environment: loaded.workspace.environment,
 				id: loaded.workspace.id,
 				name: loaded.workspace.name,
 				slug: loaded.workspace.slug,

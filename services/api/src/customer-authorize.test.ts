@@ -31,7 +31,13 @@ const workspaceFor = (id: string): WorkspaceResolution => ({
 	enabledModuleIds: ["orders"],
 	organizationId: `org-${id}`,
 	ownerId: `owner-${id}`,
-	workspace: { businessType: "commerce", id, name: "Gemsutopia", slug: "gems" },
+	workspace: {
+		businessType: "commerce",
+		environment: "live",
+		id,
+		name: "Gemsutopia",
+		slug: "gems",
+	},
 });
 
 function deps(

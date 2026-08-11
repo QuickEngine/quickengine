@@ -62,6 +62,8 @@ const FRIENDLY: Record<string, string> = {
 	PAYMENT_ACCOUNT_NOT_FOUND: "That payment provider is not connected.",
 	PAYMENT_ACCOUNT_ALREADY_CONNECTED:
 		"That payment provider is already connected.",
+	PAYMENT_ENVIRONMENT_MISMATCH:
+		"That payment provider belongs to a different workspace environment.",
 	CLIENT_NOT_FOUND: "The client on this payment was not found.",
 	INVOICE_NOT_PAYABLE:
 		"That invoice can't take a payment in its current status.",

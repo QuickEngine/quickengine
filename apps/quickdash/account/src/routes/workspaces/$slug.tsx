@@ -104,6 +104,18 @@ function WorkspacePage() {
 		onError: (cause) =>
 			setError(cause instanceof Error ? cause.message : "Update failed."),
 	});
+	const changeEnvironment = useMutation({
+		mutationFn: (environment: "test" | "live") =>
+			api.request(
+				`/account/workspaces/${workspace?.id}/environment?organizationId=${active?.id}`,
+				{ method: "PATCH", body: { environment } },
+			),
+		onSuccess: invalidate,
+		onError: (cause) =>
+			setError(
+				cause instanceof Error ? cause.message : "Environment update failed.",
+			),
+	});
 	const remove = useMutation({
 		mutationFn: () =>
 			api.request(
@@ -252,7 +264,13 @@ function WorkspacePage() {
 					preserved, but it is outside the active workspace list until restored.
 				</div>
 			)}
-			<section className="grid gap-4 sm:grid-cols-3">
+			<section className="grid gap-4 sm:grid-cols-4">
+				<div className="rounded-xl border border-foreground/[0.06] p-4">
+					<p className="text-muted-foreground text-xs">Environment</p>
+					<p className="mt-1 font-medium text-sm capitalize">
+						{workspace.environment}
+					</p>
+				</div>
 				<div className="rounded-xl border border-foreground/[0.06] p-4">
 					<p className="text-muted-foreground text-xs">Stable slug</p>
 					<p className="mt-1 break-all font-medium text-sm">{workspace.slug}</p>
@@ -281,6 +299,25 @@ function WorkspacePage() {
 					</Button>
 				</div>
 			</form>
+			<section className="space-y-3 rounded-xl border border-foreground/10 p-5">
+				<h2 className="font-medium">Test and live data</h2>
+				<p className="text-muted-foreground text-sm">
+					Test workspaces use sandbox payment credentials and never settle live
+					orders. After a provider, order or payment exists, this setting locks;
+					create a separate workspace when you go live.
+				</p>
+				<Button
+					variant="outline"
+					disabled={changeEnvironment.isPending}
+					onClick={() =>
+						changeEnvironment.mutate(
+							workspace.environment === "test" ? "live" : "test",
+						)
+					}
+				>
+					Switch to {workspace.environment === "test" ? "live" : "test"}
+				</Button>
+			</section>
 			<section className="space-y-3 rounded-xl border border-foreground/10 p-5">
 				<h2 className="font-medium">Lifecycle</h2>
 				<p className="text-muted-foreground text-sm">

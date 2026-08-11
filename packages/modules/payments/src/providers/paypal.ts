@@ -1,4 +1,5 @@
 import type {
+	PaymentEnvironment,
 	PaymentProvider,
 	ProviderAccount,
 	VerifiedProviderEvent,
@@ -18,21 +19,35 @@ import {
 const trackingPrefix = "tracking:";
 const merchantPrefix = "merchant:";
 
-async function config(): Promise<PayPalConfig> {
+async function config(environment: PaymentEnvironment): Promise<PayPalConfig> {
 	const { serverEnv } = await import("@quickengine/env/server");
+	const prefix = environment === "test" ? "TEST" : "LIVE";
+	const legacyMatches =
+		serverEnv.PAYPAL_ENVIRONMENT ===
+		(environment === "test" ? "sandbox" : "live");
 	const required = {
-		clientId: serverEnv.PAYPAL_CLIENT_ID,
-		clientSecret: serverEnv.PAYPAL_CLIENT_SECRET,
-		partnerMerchantId: serverEnv.PAYPAL_PARTNER_MERCHANT_ID,
-		partnerAttributionId: serverEnv.PAYPAL_PARTNER_ATTRIBUTION_ID,
-		webhookId: serverEnv.PAYPAL_WEBHOOK_ID,
+		clientId:
+			serverEnv[`PAYPAL_${prefix}_CLIENT_ID`] ??
+			(legacyMatches ? serverEnv.PAYPAL_CLIENT_ID : undefined),
+		clientSecret:
+			serverEnv[`PAYPAL_${prefix}_CLIENT_SECRET`] ??
+			(legacyMatches ? serverEnv.PAYPAL_CLIENT_SECRET : undefined),
+		partnerMerchantId:
+			serverEnv[`PAYPAL_${prefix}_PARTNER_MERCHANT_ID`] ??
+			(legacyMatches ? serverEnv.PAYPAL_PARTNER_MERCHANT_ID : undefined),
+		partnerAttributionId:
+			serverEnv[`PAYPAL_${prefix}_PARTNER_ATTRIBUTION_ID`] ??
+			(legacyMatches ? serverEnv.PAYPAL_PARTNER_ATTRIBUTION_ID : undefined),
+		webhookId:
+			serverEnv[`PAYPAL_${prefix}_WEBHOOK_ID`] ??
+			(legacyMatches ? serverEnv.PAYPAL_WEBHOOK_ID : undefined),
 	};
 	for (const [name, value] of Object.entries(required)) {
 		if (!value) throw new Error(`PayPal is not configured (${name}).`);
 	}
 	return {
 		...(required as Record<keyof typeof required, string>),
-		environment: serverEnv.PAYPAL_ENVIRONMENT ?? "sandbox",
+		environment: environment === "test" ? "sandbox" : "live",
 	};
 }
 
@@ -88,18 +103,21 @@ export const paypalPaymentProvider: PaymentProvider = {
 
 	async startOnboarding(params) {
 		const trackingId = crypto.randomUUID();
-		const referral = await createPayPalSellerReferral(await config(), {
-			trackingId,
-			returnUrl: params.returnUrl,
-		});
+		const referral = await createPayPalSellerReferral(
+			await config(params.environment),
+			{
+				trackingId,
+				returnUrl: params.returnUrl,
+			},
+		);
 		return {
 			account: account(`${trackingPrefix}${trackingId}`, false),
 			onboardingUrl: referral.onboardingUrl,
 		};
 	},
 
-	async getAccount(externalAccountId) {
-		const paypal = await config();
+	async getAccount(externalAccountId, environment) {
+		const paypal = await config(environment);
 		if (externalAccountId.startsWith(trackingPrefix)) {
 			const status = await getPayPalSellerByTrackingId(
 				paypal,
@@ -121,7 +139,7 @@ export const paypalPaymentProvider: PaymentProvider = {
 	},
 
 	async createCharge(params) {
-		const created = await createPayPalOrder(await config(), {
+		const created = await createPayPalOrder(await config(params.environment), {
 			sellerMerchantId: sellerId(params.connectedAccountId),
 			amountCents: params.amountCents,
 			applicationFeeCents: params.applicationFeeCents,
@@ -135,10 +153,13 @@ export const paypalPaymentProvider: PaymentProvider = {
 	},
 
 	async captureCharge(params) {
-		const captured = await capturePayPalOrder(await config(), {
-			sellerMerchantId: sellerId(params.connectedAccountId),
-			orderId: params.externalPaymentId,
-		});
+		const captured = await capturePayPalOrder(
+			await config(params.environment),
+			{
+				sellerMerchantId: sellerId(params.connectedAccountId),
+				orderId: params.externalPaymentId,
+			},
+		);
 		return {
 			externalCaptureId: captured.captureId,
 			settled: captured.settled,
@@ -155,7 +176,7 @@ export const paypalPaymentProvider: PaymentProvider = {
 	},
 
 	async refund(params) {
-		const paypal = await config();
+		const paypal = await config(params.environment);
 		const merchantId = sellerId(params.connectedAccountId);
 		const capture = await getPayPalOrderCapture(paypal, {
 			sellerMerchantId: merchantId,
@@ -170,8 +191,8 @@ export const paypalPaymentProvider: PaymentProvider = {
 		return { externalRefundId: refund.refundId, settled: refund.settled };
 	},
 
-	async verifyWebhook(request) {
-		const paypal = await config();
+	async verifyWebhook(request, environment) {
+		const paypal = await config(environment);
 		if (!(await verifyPayPalWebhook(paypal, request))) return null;
 		return parsePayPalWebhookEvent(JSON.parse(request.rawBody));
 	},

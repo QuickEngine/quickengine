@@ -14,7 +14,8 @@
 // second provider is the plan (Polar, PayPal, Square).
 //
 // The ledger below this seam is ALREADY provider-agnostic: `payments.provider`
-// is a real column and `(provider, external_payment_id)` is the uniqueness key.
+// is a real column and `(provider, environment, external_payment_id)` is the
+// uniqueness key.
 // This interface is the missing half.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@
  * than display labels.
  */
 export type PaymentProviderId = "stripe" | "paypal" | "manual";
+export type PaymentEnvironment = "test" | "live";
 
 /** A connected account, in whatever shape the provider expresses it. */
 export type ProviderAccount = {
@@ -104,6 +106,7 @@ export interface PaymentProvider {
 	 * at the provider with nothing pointing at it.
 	 */
 	startOnboarding(params: {
+		environment: PaymentEnvironment;
 		email?: string;
 		country?: string;
 		returnUrl: string;
@@ -111,7 +114,10 @@ export interface PaymentProvider {
 	}): Promise<{ account: ProviderAccount; onboardingUrl: string }>;
 
 	/** Re-read an account's capabilities. Onboarding finishes asynchronously. */
-	getAccount(externalAccountId: string): Promise<ProviderAccount>;
+	getAccount(
+		externalAccountId: string,
+		environment: PaymentEnvironment,
+	): Promise<ProviderAccount>;
 
 	/**
 	 * Charge a customer, routing the money to the business.
@@ -131,6 +137,7 @@ export interface PaymentProvider {
 	 * decision revisited rather than a quiet fallback to platform-held funds.
 	 */
 	createCharge(params: {
+		environment: PaymentEnvironment;
 		amountCents: number;
 		currency: string;
 		connectedAccountId: string;
@@ -140,6 +147,7 @@ export interface PaymentProvider {
 
 	/** Complete a browser-approved payment when the provider requires it. */
 	captureCharge?(params: {
+		environment: PaymentEnvironment;
 		externalPaymentId: string;
 		connectedAccountId: string;
 	}): Promise<ProviderCapture>;
@@ -152,6 +160,7 @@ export interface PaymentProvider {
 	 * whole amount.
 	 */
 	refund(params: {
+		environment: PaymentEnvironment;
 		externalPaymentId: string;
 		/**
 		 * 🔴 Required, not optional. Charges are created ON the business's account
@@ -178,5 +187,6 @@ export interface PaymentProvider {
 	 */
 	verifyWebhook(
 		request: ProviderWebhookRequest,
+		environment: PaymentEnvironment,
 	): Promise<VerifiedProviderEvent | null>;
 }

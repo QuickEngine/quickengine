@@ -2947,6 +2947,22 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/account/workspaces/{id}/environment": {
+				patch: {
+					operationId: "setWorkspaceEnvironment",
+					summary: "Choose test or live operation",
+					description:
+						"A workspace locks to its environment when it gains a payment account, order or payment. Going live after testing requires a separate workspace so sandbox records can never become business history.",
+					responses: {
+						"200": { description: "The workspace environment changed." },
+						"403": { description: "You cannot manage this workspace." },
+						"404": { description: "No such workspace." },
+						"409": {
+							description: "The workspace environment is already locked.",
+						},
+					},
+				},
+			},
 			"/v1/account/workspaces/{id}/modules/{moduleId}": {
 				put: {
 					operationId: "setWorkspaceModuleEnabled",

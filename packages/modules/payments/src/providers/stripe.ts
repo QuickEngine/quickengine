@@ -1,4 +1,6 @@
+import type Stripe from "stripe";
 import type {
+	PaymentEnvironment,
 	PaymentProvider,
 	ProviderAccount,
 	VerifiedProviderEvent,
@@ -7,8 +9,8 @@ import type {
 /**
  * 🔴 Loaded on FIRST USE, never at import time.
  *
- * `@quickengine/billing` pulls in the Stripe SDK, and this file is reachable
- * from `registerAllRoutes` via the checkout route — so a top-level import drags
+ * This file is reachable from `registerAllRoutes` via the checkout route, so a
+ * top-level Stripe import would drag the SDK
  * a payment SDK into the module graph of every route registration, including a
  * cold start and the OpenAPI route-table test, which then timed out in CI at
  * 5000ms.
@@ -16,16 +18,44 @@ import type {
  * Same failure and same fix as the mail provider in `customer-auth-dependencies.ts`.
  * Nothing about DEFINING a payment provider needs the SDK; only calling one does.
  */
-async function billing() {
-	return import("@quickengine/billing");
+const clients = new Map<PaymentEnvironment, Stripe>();
+
+async function stripeFor(environment: PaymentEnvironment) {
+	const [{ default: Stripe }, { serverEnv }] = await Promise.all([
+		import("stripe"),
+		import("@quickengine/env/server"),
+	]);
+	const secret =
+		environment === "test"
+			? serverEnv.STRIPE_CONNECT_TEST_SECRET_KEY
+			: serverEnv.STRIPE_CONNECT_LIVE_SECRET_KEY;
+	if (!secret) {
+		throw new Error(`Stripe Connect ${environment} mode is not configured.`);
+	}
+	const existing = clients.get(environment);
+	if (existing) return existing;
+	const client = new Stripe(secret);
+	clients.set(environment, client);
+	return client;
+}
+
+async function webhookSecret(environment: PaymentEnvironment) {
+	const { serverEnv } = await import("@quickengine/env/server");
+	const secret =
+		environment === "test"
+			? serverEnv.STRIPE_CONNECT_TEST_WEBHOOK_SECRET
+			: serverEnv.STRIPE_CONNECT_LIVE_WEBHOOK_SECRET;
+	if (!secret) {
+		throw new Error(`Stripe Connect ${environment} webhook is not configured.`);
+	}
+	return secret;
 }
 
 /**
  * Stripe, behind the seam.
  *
- * The only file in the module that names Stripe. It uses **destination
- * charges**: the shopper pays, funds route to the business's connected account,
- * and QuickEngine may keep an application fee.
+ * The only file in the module that names Stripe. It uses **direct charges** on
+ * the business's connected account, and QuickEngine may keep an application fee.
  *
  * ⚠️ Everything here talks to the network. Nothing here decides an amount — the
  * caller computes that from the catalog, because a price arriving from outside
@@ -54,7 +84,8 @@ export const stripePaymentProvider: PaymentProvider = {
 	id: "stripe",
 
 	async startOnboarding(params) {
-		const account = await (await billing()).getStripe().accounts.create({
+		const stripe = await stripeFor(params.environment);
+		const account = await stripe.accounts.create({
 			// Express: Stripe hosts onboarding and owns the compliance burden. A
 			// business that has outgrown it can be migrated; starting with Standard
 			// would put KYC, disputes and tax forms on us from day one.
@@ -63,7 +94,7 @@ export const stripePaymentProvider: PaymentProvider = {
 			country: params.country,
 		});
 
-		const link = await (await billing()).getStripe().accountLinks.create({
+		const link = await stripe.accountLinks.create({
 			account: account.id,
 			refresh_url: params.refreshUrl,
 			return_url: params.returnUrl,
@@ -73,14 +104,16 @@ export const stripePaymentProvider: PaymentProvider = {
 		return { account: toAccount(account), onboardingUrl: link.url };
 	},
 
-	async getAccount(externalAccountId) {
+	async getAccount(externalAccountId, environment) {
 		return toAccount(
-			await (await billing()).getStripe().accounts.retrieve(externalAccountId),
+			await (await stripeFor(environment)).accounts.retrieve(externalAccountId),
 		);
 	},
 
 	async createCharge(params) {
-		const intent = await (await billing()).getStripe().paymentIntents.create(
+		const intent = await (
+			await stripeFor(params.environment)
+		).paymentIntents.create(
 			{
 				amount: params.amountCents,
 				currency: params.currency.toLowerCase(),
@@ -122,7 +155,7 @@ export const stripePaymentProvider: PaymentProvider = {
 	},
 
 	async refund(params) {
-		const refund = await (await billing()).getStripe().refunds.create(
+		const refund = await (await stripeFor(params.environment)).refunds.create(
 			{
 				payment_intent: params.externalPaymentId,
 				// Absent means "all of it" to Stripe, which matches the seam's contract.
@@ -147,12 +180,19 @@ export const stripePaymentProvider: PaymentProvider = {
 		};
 	},
 
-	async verifyWebhook(request): Promise<VerifiedProviderEvent | null> {
+	async verifyWebhook(
+		request,
+		environment,
+	): Promise<VerifiedProviderEvent | null> {
 		try {
 			const signature = request.headers["stripe-signature"];
 			if (!signature) return null;
-			const { constructStripeEvent } = await billing();
-			const event = constructStripeEvent(request.rawBody, signature);
+			const stripe = await stripeFor(environment);
+			const event = stripe.webhooks.constructEvent(
+				request.rawBody,
+				signature,
+				await webhookSecret(environment),
+			);
 			const object = event.data.object as { id?: string; object?: string };
 
 			// Only claim a payment id when the event is actually about one. A

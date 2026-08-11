@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Test payments can no longer contaminate a live business.** A workspace now declares whether
+  it is for sandbox testing or live operation. Provider accounts, payment records, refunds and
+  signed webhook endpoints carry the same boundary, QuickDash keeps test mode visible, and the
+  system requires a separate live workspace once testing reaches an order or payment.
+
 - **The front of the product now looks like the product.** The backend and the security work
   were done; the interface in front of them was not. This is the first full design pass: a new
   marketing front page built around a live gradient, a pricing page driven by the real plan
@@ -45,6 +50,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   work rather than hidden assumptions.
 
 ### Fixed
+
+- **Provider events cannot cross from sandbox to live.** Stripe and PayPal now use separate
+  credentials and webhook signatures for each mode, and settlement resolves the provider,
+  environment and connected account together. Identical test and live provider IDs remain
+  isolated rather than colliding or updating the wrong order.
 
 - **Customer portals can be published again.** Portal setup now issues a usable,
   browser-safe catalog key instead of requesting an empty credential that every API

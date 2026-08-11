@@ -26,6 +26,7 @@ const authorized: AuthorizedApiContext = {
 		role: "owner",
 		workspace: {
 			businessType: "agency",
+			environment: "live",
 			id: "workspace_1",
 			name: "Example",
 			slug: "example",

@@ -11,6 +11,7 @@ import {
 	recordControlPlaneAudit,
 	renameWorkspace,
 	setWorkspaceArchived,
+	setWorkspaceEnvironment,
 	setWorkspaceModuleEnabled,
 	workspaceBelongsToOrganization,
 } from "@quickengine/db";
@@ -44,6 +45,7 @@ export const createWorkspaceSchema = z.object({
 	moduleIds: z.array(z.string()).optional(),
 	organizationId: z.string().uuid().optional(),
 	completeOnboarding: z.boolean().optional(),
+	environment: z.enum(["test", "live"]).optional(),
 });
 
 export const renameWorkspaceSchema = z.object({
@@ -51,6 +53,9 @@ export const renameWorkspaceSchema = z.object({
 });
 export const archiveWorkspaceSchema = z.object({ archived: z.boolean() });
 export const workspaceModuleSchema = z.object({ enabled: z.boolean() });
+export const workspaceEnvironmentSchema = z.object({
+	environment: z.enum(["test", "live"]),
+});
 
 /** Domain errors the data layer throws, mapped to something a caller can act on. */
 function messageFor(
@@ -69,6 +74,12 @@ function messageFor(
 			return {
 				code: "VALIDATION_ERROR",
 				message: "That module does not exist.",
+			};
+		case "WORKSPACE_ENVIRONMENT_LOCKED":
+			return {
+				code: "VALIDATION_ERROR",
+				message:
+					"This workspace has entered the payment lifecycle. Create a separate workspace to keep test and live business data isolated.",
 			};
 		default:
 			return null;
@@ -142,6 +153,7 @@ export function registerAccountWorkspaceRoutes(
 					modules,
 					organizationId: input.organizationId,
 					completeOnboarding: input.completeOnboarding,
+					environment: input.environment,
 				});
 				// Onboarding only: the business name the customer typed names their
 				// organisation, not just the workspace. Runs after the workspace commits
@@ -226,6 +238,29 @@ export function registerAccountWorkspaceRoutes(
 		} catch (error) {
 			const mapped = messageFor(error);
 			if (mapped) return respondError(c, mapped.code, mapped.message, 400);
+			throw error;
+		}
+	});
+
+	app.patch("/v1/account/workspaces/:id/environment", manage, async (c) => {
+		if (
+			!(await ownsTarget(c.req.param("id"), c.get("account").organizationId))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		const input = workspaceEnvironmentSchema.parse(await c.req.json());
+		try {
+			const workspace = await setWorkspaceEnvironment(
+				c.req.param("id"),
+				input.environment,
+			);
+			if (!workspace) {
+				return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+			}
+			return respond(c, workspace);
+		} catch (error) {
+			const mapped = messageFor(error);
+			if (mapped) return respondError(c, mapped.code, mapped.message, 409);
 			throw error;
 		}
 	});

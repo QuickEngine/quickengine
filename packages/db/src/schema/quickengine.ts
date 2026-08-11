@@ -118,6 +118,9 @@ export const quickengineWorkspaces = pgTable(
 		// always get one generated (see the account app's slug helpers).
 		slug: text("slug"),
 		businessType: text("business_type").notNull(),
+		environment: text("environment", { enum: ["test", "live"] })
+			.notNull()
+			.default("live"),
 		modules: jsonb("modules").$type<string[]>().notNull().default([]),
 		// Archiving removes a workspace from normal operation without deleting any
 		// module data. Permanent deletion remains a separate explicit action.

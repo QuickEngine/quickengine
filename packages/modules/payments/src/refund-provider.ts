@@ -46,6 +46,7 @@ export async function refundAtProvider(input: {
 			provider: payments.provider,
 			externalPaymentId: payments.externalPaymentId,
 			status: payments.status,
+			environment: payments.environment,
 		})
 		.from(payments)
 		.where(
@@ -84,8 +85,15 @@ export async function refundAtProvider(input: {
 			reason: "The workspace has no connected payment account.",
 		};
 	}
+	if (account.environment !== payment.environment) {
+		return {
+			refunded: false,
+			reason: "The payment account belongs to a different environment.",
+		};
+	}
 
 	const result = await getPaymentProvider(payment.provider).refund({
+		environment: payment.environment,
 		externalPaymentId: payment.externalPaymentId,
 		connectedAccountId: account.externalAccountId,
 		amountCents: input.amountCents,

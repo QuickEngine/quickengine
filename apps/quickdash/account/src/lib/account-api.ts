@@ -13,6 +13,7 @@ export type Workspace = {
 	name: string;
 	slug: string | null;
 	businessType: string;
+	environment: "test" | "live";
 	modules: string[];
 	archivedAt: string | null;
 	createdAt: string;

@@ -8,6 +8,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A business can connect Stripe where it manages payments.** The Payments module now shows
+  whether Stripe is disconnected, incomplete or ready, keeps sandbox mode visible, sends the
+  owner through Stripe's hosted setup and checks the account again when they return.
+
+- **Custom storefronts can finish connected-account payments securely.** Checkout now returns
+  the browser-safe provider account identifier alongside its provider-neutral next action, so
+  Stripe.js can confirm a direct charge without exposing a server credential or guessing which
+  merchant owns the payment.
+
 - **Test payments can no longer contaminate a live business.** A workspace now declares whether
   it is for sandbox testing or live operation. Provider accounts, payment records, refunds and
   signed webhook endpoints carry the same boundary, QuickDash keeps test mode visible, and the
@@ -50,6 +59,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   work rather than hidden assumptions.
 
 ### Fixed
+
+- **Webhook encryption checks no longer pass by chance.** The tamper test now always changes
+  the encrypted payload, so CI consistently proves that modified signing secrets are rejected.
+
+- **Restarting payment setup no longer creates another merchant account.** An expired or
+  abandoned Stripe or PayPal onboarding session now resumes the pending provider account instead
+  of leaving duplicates behind every time the owner tries again.
 
 - **Provider events cannot cross from sandbox to live.** Stripe and PayPal now use separate
   credentials and webhook signatures for each mode, and settlement resolves the provider,

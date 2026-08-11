@@ -107,6 +107,8 @@ export interface PaymentProvider {
 	 */
 	startOnboarding(params: {
 		environment: PaymentEnvironment;
+		/** Resume the same pending provider account instead of creating a duplicate. */
+		existingAccountId?: string;
 		email?: string;
 		country?: string;
 		returnUrl: string;

@@ -2,7 +2,9 @@ import type { QuickClient } from "../client";
 import type {
 	QuickCursorPage,
 	QuickPayment,
+	QuickPaymentConnectStatus,
 	QuickPaymentInput,
+	QuickPaymentOnboardingInput,
 	QuickPaymentStatus,
 	QuickRefundInput,
 	QuickResponse,
@@ -36,6 +38,29 @@ export class PaymentsResource {
 	get(id: string) {
 		return this.client.request<QuickPayment>(
 			`/payments/${encodeURIComponent(id)}`,
+		);
+	}
+	connection(provider: "stripe" | "paypal" = "stripe") {
+		return this.client.request<QuickPaymentConnectStatus>(
+			`/payments/connect?provider=${encodeURIComponent(provider)}`,
+		);
+	}
+	startOnboarding(input: QuickPaymentOnboardingInput) {
+		return this.client.request<{
+			onboardingUrl: string;
+			status: QuickPaymentConnectStatus;
+		}>("/payments/connect/onboard", { method: "POST", body: input });
+	}
+	refreshConnection(provider: "stripe" | "paypal" = "stripe") {
+		return this.client.request<QuickPaymentConnectStatus>(
+			`/payments/connect/refresh?provider=${encodeURIComponent(provider)}`,
+			{ method: "POST" },
+		);
+	}
+	setDefaultProvider(provider: "stripe" | "paypal") {
+		return this.client.request<QuickPaymentConnectStatus>(
+			"/payments/connect/default",
+			{ method: "PUT", body: { provider } },
 		);
 	}
 	record(input: QuickPaymentInput, idempotencyKey: string) {

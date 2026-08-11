@@ -42,6 +42,7 @@ import {
 } from "../_lib/payment-actions";
 import { useRouter } from "../compat/router-navigation";
 import { ConnectedRecords } from "./connected-records";
+import { PaymentProviderPanel } from "./payment-provider-panel";
 
 export type PaymentInvoiceOption = {
 	id: string;
@@ -465,6 +466,7 @@ export function PaymentsView({
 	);
 	return (
 		<section className="mt-8 space-y-5">
+			<PaymentProviderPanel workspaceId={workspaceId} />
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex flex-1 gap-3">
 					<div className="relative max-w-md flex-1">
@@ -548,8 +550,8 @@ export function PaymentsView({
 						</EmptyMedia>
 						<EmptyTitle>No payments yet</EmptyTitle>
 						<EmptyDescription>
-							Record completed offline payments here. Connected-provider
-							collection comes later.
+							Connect Stripe above for online checkout, or record a completed
+							cash, check, bank transfer, or other offline payment.
 						</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>

@@ -102,7 +102,9 @@ export const paypalPaymentProvider: PaymentProvider = {
 	id: "paypal",
 
 	async startOnboarding(params) {
-		const trackingId = crypto.randomUUID();
+		const trackingId = params.existingAccountId?.startsWith(trackingPrefix)
+			? params.existingAccountId.slice(trackingPrefix.length)
+			: crypto.randomUUID();
 		const referral = await createPayPalSellerReferral(
 			await config(params.environment),
 			{

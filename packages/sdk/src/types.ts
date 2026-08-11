@@ -150,10 +150,31 @@ export type QuickCheckoutResult = {
 	order: QuickOrder;
 	payment: {
 		provider: string;
+		/** Browser-safe provider account id used to confirm a direct charge. */
+		providerAccountId: string;
 		externalPaymentId: string;
 		nextAction: QuickCheckoutNextAction;
 	} | null;
 	paymentUnavailableReason?: string;
+};
+
+export type QuickPaymentEnvironment = "test" | "live";
+
+export type QuickPaymentConnectStatus = {
+	environment: QuickPaymentEnvironment;
+	provider: string;
+	connected: boolean;
+	chargesEnabled: boolean;
+	payoutsEnabled: boolean;
+	status: "pending" | "active" | "restricted" | "disabled";
+};
+
+export type QuickPaymentOnboardingInput = {
+	provider?: "stripe" | "paypal";
+	returnUrl: string;
+	refreshUrl: string;
+	email?: string;
+	country?: string;
 };
 
 export type QuickCustomerOrderDetail = QuickOrder & {

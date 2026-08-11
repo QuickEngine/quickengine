@@ -62,6 +62,42 @@ describe("QuickConnect", () => {
 		);
 	});
 
+	it("carries the connected provider account needed for browser confirmation", async () => {
+		const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+			response(
+				{
+					order: { id: "order_123" },
+					payment: {
+						provider: "stripe",
+						providerAccountId: "acct_connected_123",
+						externalPaymentId: "pi_123",
+						nextAction: {
+							type: "client_secret",
+							clientSecret: "pi_secret_123",
+						},
+					},
+				},
+				201,
+			),
+		);
+		const quick = createQuickConnect({
+			baseUrl: "https://api.quickdash.xyz",
+			workspaceId: "workspace_123",
+			credential: { type: "site", key: "qsf_public_123" },
+			fetcher,
+		});
+
+		const result = await quick.site.checkout(
+			{
+				items: [{ catalogItemId: "item_123", quantity: 1 }],
+				email: "customer@example.com",
+			},
+			"checkout_attempt_123",
+		);
+
+		expect(result.data.payment?.providerAccountId).toBe("acct_connected_123");
+	});
+
 	it("reads authoritative catalog availability without an operator key", async () => {
 		const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response([]));
 		const quick = createQuickConnect({

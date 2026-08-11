@@ -10,15 +10,28 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CodeRouteImport } from './routes/code'
+import { Route as ForgotRouteImport } from './routes/forgot'
 import { Route as ResetRouteImport } from './routes/reset'
 import { Route as SecureRouteImport } from './routes/secure'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as ErrorsCodeRouteImport } from './routes/errors.$code'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CodeRoute = CodeRouteImport.update({
+  id: '/code',
+  path: '/code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotRoute = ForgotRouteImport.update({
+  id: '/forgot',
+  path: '/forgot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetRoute = ResetRouteImport.update({
@@ -46,48 +59,92 @@ const VerifyRoute = VerifyRouteImport.update({
   path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ErrorsCodeRoute = ErrorsCodeRouteImport.update({
+  id: '/errors/$code',
+  path: '/errors/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/code': typeof CodeRoute
+  '/forgot': typeof ForgotRoute
   '/reset': typeof ResetRoute
   '/secure': typeof SecureRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/errors/$code': typeof ErrorsCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/code': typeof CodeRoute
+  '/forgot': typeof ForgotRoute
   '/reset': typeof ResetRoute
   '/secure': typeof SecureRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/errors/$code': typeof ErrorsCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/code': typeof CodeRoute
+  '/forgot': typeof ForgotRoute
   '/reset': typeof ResetRoute
   '/secure': typeof SecureRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/errors/$code': typeof ErrorsCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/reset' | '/secure' | '/signin' | '/signup' | '/verify'
+  fullPaths:
+    | '/'
+    | '/code'
+    | '/forgot'
+    | '/reset'
+    | '/secure'
+    | '/signin'
+    | '/signup'
+    | '/verify'
+    | '/errors/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/reset' | '/secure' | '/signin' | '/signup' | '/verify'
+  to:
+    | '/'
+    | '/code'
+    | '/forgot'
+    | '/reset'
+    | '/secure'
+    | '/signin'
+    | '/signup'
+    | '/verify'
+    | '/errors/$code'
   id:
-    '__root__' | '/' | '/reset' | '/secure' | '/signin' | '/signup' | '/verify'
+    | '__root__'
+    | '/'
+    | '/code'
+    | '/forgot'
+    | '/reset'
+    | '/secure'
+    | '/signin'
+    | '/signup'
+    | '/verify'
+    | '/errors/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CodeRoute: typeof CodeRoute
+  ForgotRoute: typeof ForgotRoute
   ResetRoute: typeof ResetRoute
   SecureRoute: typeof SecureRoute
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
   VerifyRoute: typeof VerifyRoute
+  ErrorsCodeRoute: typeof ErrorsCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -97,6 +154,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/code': {
+      id: '/code'
+      path: '/code'
+      fullPath: '/code'
+      preLoaderRoute: typeof CodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot': {
+      id: '/forgot'
+      path: '/forgot'
+      fullPath: '/forgot'
+      preLoaderRoute: typeof ForgotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset': {
@@ -134,16 +205,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/errors/$code': {
+      id: '/errors/$code'
+      path: '/errors/$code'
+      fullPath: '/errors/$code'
+      preLoaderRoute: typeof ErrorsCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CodeRoute: CodeRoute,
+  ForgotRoute: ForgotRoute,
   ResetRoute: ResetRoute,
   SecureRoute: SecureRoute,
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
   VerifyRoute: VerifyRoute,
+  ErrorsCodeRoute: ErrorsCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

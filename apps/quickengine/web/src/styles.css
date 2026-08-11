@@ -21,11 +21,54 @@
 	}
 }
 
-/* The header is `fixed`, so it no longer reserves its own height and the content
-   below must offset by exactly as much. Both read this one value, so changing the
-   header height cannot leave the page overlapping or gapped. */
-:root {
-	--header-h: 4rem;
+/* No rubber-band. A trackpad flick past either end of the page drags the whole
+   document and exposes the body colour behind it, which on a full-bleed gradient
+   reads as a broken layer rather than as a scroll gesture.
+
+   Set on BOTH html and body: whichever element ends up being the scrolling box
+   is the one that bounces, and which one that is depends on the browser. */
+html,
+body {
+	overscroll-behavior-y: none;
+}
+
+/* Scroll without a visible bar, for horizontal card sliders. The content still
+   scrolls by wheel, trackpad, touch and keyboard — this hides the chrome only,
+   which is why the last card is deliberately allowed to bleed off the edge: with
+   no bar, that overhang is the only thing saying there is more to the right. */
+.no-scrollbar {
+	scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
+/* The capability rows swapping between business types.
+
+   Staggered, not simultaneous. Every row fading at once is a single event the
+   eye reads as a flicker; a 55ms cascade reads as the workspace ASSEMBLING,
+   which is the actual claim the section makes. The delay is applied per row
+   inline, so the sequence follows the order the work happens in.
+
+   Rows also slide from the left rather than from below — they are a chain, and
+   a chain builds along its own axis. */
+.config-row {
+	animation: config-row-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes config-row-in {
+	from {
+		opacity: 0;
+		transform: translateX(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.config-row {
+		animation: none;
+	}
 }
 
 /* ── The mesh ─────────────────────────────────────────────────────────────

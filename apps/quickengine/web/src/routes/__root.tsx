@@ -1,11 +1,6 @@
-import {
-	Background,
-	LoadingScreen,
-	primaryButton,
-	StatusScreen,
-	textLink,
-} from "@quickengine/ui";
+import { Background, ConnectionBanner } from "@quickengine/ui";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { AppErrorPage, NotFoundPage } from "../components/error-page";
 import { ThemeProvider } from "../components/theme-provider";
 
 /**
@@ -25,46 +20,20 @@ import { ThemeProvider } from "../components/theme-provider";
  */
 export const Route = createRootRoute({
 	component: RootLayout,
-	errorComponent: ErrorScreen,
-	notFoundComponent: NotFoundScreen,
-	pendingComponent: LoadingScreen,
+	errorComponent: AppErrorPage,
+	notFoundComponent: NotFoundPage,
+	// No `pendingComponent` here: `defaultPendingComponent` on the router covers
+	// this route and every child with one declaration. See `main.tsx`.
 });
 
 function RootLayout() {
 	return (
 		<ThemeProvider>
+			{/* Above the route, so it survives every navigation rather than being
+			    unmounted and remounted with each page. */}
+			<ConnectionBanner />
 			<Background />
 			<Outlet />
 		</ThemeProvider>
-	);
-}
-
-function NotFoundScreen() {
-	return (
-		<StatusScreen
-			code="404"
-			title="Page not found"
-			message="That page doesn't exist. Head back home to continue."
-			action={
-				<a href="/" className={textLink}>
-					Back home
-				</a>
-			}
-		/>
-	);
-}
-
-function ErrorScreen({ reset }: { error: Error; reset: () => void }) {
-	return (
-		<StatusScreen
-			code="500"
-			title="Something went wrong"
-			message="An unexpected error occurred on our end. Try again in a moment."
-			action={
-				<button type="button" onClick={reset} className={primaryButton}>
-					Try again
-				</button>
-			}
-		/>
 	);
 }

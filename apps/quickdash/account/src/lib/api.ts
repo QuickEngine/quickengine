@@ -1,5 +1,6 @@
 import { createQuickBrowser } from "@quickengine/quick/browser";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryCache, QueryClient } from "@tanstack/react-query";
+import { clientEnv } from "@/lib/env";
 
 /**
  * The API client for the account console.
@@ -17,7 +18,33 @@ export const api = createQuickBrowser({
 	credential: { type: "session" },
 });
 
+/**
+ * 🔴 A 401 means the session is gone, and the ONLY correct response is to send
+ * the visitor somewhere that says so.
+ *
+ * Before this, the account app recognised a 401 well enough not to retry it and
+ * then did nothing else — so an expired session rendered as a failed query on a
+ * dashboard that still looked signed in. People read that as the product losing
+ * their data, not as needing to sign in again.
+ *
+ * ⚠️ Guarded against a redirect loop. `signin` bounces an authenticated visitor
+ * straight back here, so if the cookie is present but the API disagrees the two
+ * can ping-pong forever. The flag makes it happen at most once per page load.
+ */
+let redirecting = false;
+
+function sessionExpired() {
+	if (redirecting) return;
+	redirecting = true;
+	window.location.href = `${clientEnv.AUTH_URL}/signin?reason=expired&redirect=${encodeURIComponent(window.location.href)}`;
+}
+
 export const queryClient = new QueryClient({
+	queryCache: new QueryCache({
+		onError: (error) => {
+			if ((error as { status?: number })?.status === 401) sessionExpired();
+		},
+	}),
 	defaultOptions: {
 		queries: {
 			// Account data changes rarely and is re-read on every navigation. A short

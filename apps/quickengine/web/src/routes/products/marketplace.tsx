@@ -1,89 +1,71 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { TextPage, TextSection, textProse } from "@/components/text-page";
 
-// PLACEHOLDER — marketplace listings.
-const ITEMS = [
-	{
-		name: "Shopify sync",
-		category: "Integration",
-		desc: "Keep products and orders in sync with a Shopify store.",
-	},
-	{
-		name: "QuickBooks",
-		category: "Integration",
-		desc: "Push invoices and payments into your accounting.",
-	},
-	{
-		name: "Slack",
-		category: "Integration",
-		desc: "Send workspace events to a Slack channel.",
-	},
-	{
-		name: "Zapier",
-		category: "Integration",
-		desc: "Connect QuickDash to thousands of apps.",
-	},
-	{
-		name: "Invoicing",
-		category: "Module",
-		desc: "Estimates, invoices, and payments for service businesses.",
-	},
-	{
-		name: "Scheduling",
-		category: "Module",
-		desc: "Bookings and appointments with reminders.",
-	},
-	{
-		name: "E-commerce starter",
-		category: "Template",
-		desc: "A ready-made storefront workspace to fork.",
-	},
-	{
-		name: "Agency starter",
-		category: "Template",
-		desc: "Client workspaces, projects, and invoicing, preconfigured.",
-	},
-];
-
+/**
+ * Marketplace.
+ *
+ * 🔴 THE MARKETPLACE DOES NOT EXIST. There is no third-party module, no
+ * submission process and no revenue share. The previous version described all
+ * three as though they were live.
+ *
+ * ⚠️ This page is kept because the concept is real and reserved in the module
+ * registry, and because deleting it would silently drop it from the plan. It
+ * says plainly that it is not open. Do not add a "browse extensions" grid, a
+ * "coming soon" countdown, or a developer waitlist form that goes nowhere.
+ */
 function MarketplacePage() {
 	return (
-		<>
-			<SiteHeader />
-			<main className="pt-16">
-				<section className="page-gutter border-border border-b py-32">
-					<h1 className="max-w-3xl font-display font-normal text-5xl text-foreground leading-[1.05] tracking-tight sm:text-6xl">
-						Marketplace
-					</h1>
-					<p className="mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-						Extend QuickDash with integrations, extra modules, and ready-made
-						workspace templates.
+		<TextPage
+			title="Not open yet."
+			lede="A marketplace for modules other people build is where QuickDash is going. It is not there today, and this page will not pretend otherwise."
+		>
+			<TextSection title="What exists now">
+				<div className={textProse}>
+					<p>
+						Sixteen modules, all built by us, all switched on and off per
+						workspace. <a href="/products/modules">The catalog</a> lists every
+						one.
 					</p>
-				</section>
+					<p>
+						The architecture underneath is already modular in the way it would
+						need to be, modules declare what they are, what they depend on and
+						how they are billed, and the platform reads that rather than hard
+						coding it. That is the groundwork, not the product.
+					</p>
+				</div>
+			</TextSection>
 
-				<section className="page-gutter py-16">
-					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						{ITEMS.map((item) => (
-							<div
-								key={item.name}
-								className="flex flex-col rounded-xl border border-border p-6"
-							>
-								<span className="text-[11px] text-muted-foreground uppercase tracking-wider">
-									{item.category}
-								</span>
-								<h2 className="mt-2 font-display text-foreground text-lg">
-									{item.name}
-								</h2>
-								<p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-									{item.desc}
-								</p>
-							</div>
-						))}
-					</div>
-				</section>
-			</main>
-			<SiteFooter />
-		</>
+			<TextSection title="What is missing">
+				<div className={textProse}>
+					<ul>
+						<li>No way for anyone outside QuickEngine to publish a module.</li>
+						<li>No review process, and no sandbox to run untrusted code in.</li>
+						<li>No billing split, and no revenue share agreement.</li>
+					</ul>
+					<p>
+						Each of those is a serious piece of work, and the sandboxing one is
+						the reason this is not close. Running somebody else's code against
+						your customers' data is not a feature to rush.
+					</p>
+				</div>
+			</TextSection>
+
+			<TextSection title="If you were going to build one">
+				<div className={textProse}>
+					<p>
+						You do not have to wait. Everything the dashboard does is reachable
+						over <a href="/docs/api">the API</a>, so a tool that reads and
+						writes a workspace can be built today and run wherever you like, it
+						simply is not distributed through us.
+					</p>
+					<p>
+						If that is what you are doing, <a href="/contact">tell us</a>. What
+						people build outside the marketplace is what should decide its
+						shape.
+					</p>
+				</div>
+			</TextSection>
+		</TextPage>
 	);
 }
 

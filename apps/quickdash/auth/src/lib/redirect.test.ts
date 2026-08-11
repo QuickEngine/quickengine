@@ -13,7 +13,7 @@ const config: RedirectConfig = {
 };
 const resolve = (r: string | null | undefined) => resolveRedirect(r, config);
 
-describe("resolveRedirect — open-redirect guard", () => {
+describe("resolveRedirect, open-redirect guard", () => {
 	// ── Attack cases: an untrusted target must NEVER be honored ──────────────
 	it.each([
 		["a plain external origin", "https://evil.com"],

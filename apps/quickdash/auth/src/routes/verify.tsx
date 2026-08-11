@@ -1,16 +1,31 @@
 import { sendVerificationEmail } from "@quickengine/auth/client";
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { createFileRoute, redirect, useSearch } from "@tanstack/react-router";
 import { type FormEvent, Suspense, useState } from "react";
 import {
-	AuthShell,
-	field,
-	primaryButton,
-	textLink,
-} from "@/components/auth-ui";
+	AuthButton,
+	AuthError,
+	AuthScreen,
+	authField,
+	authLink,
+} from "@/components/auth-screen";
+import { describeError } from "@/lib/describe-error";
+import { hasSession } from "@/lib/guards";
 
+/**
+ * Where the email verification link lands.
+ *
+ * ⚠️ The token is NOT verified here. Better Auth checks it on its own API route
+ * and then redirects to this page — with `?error=…` only when something went
+ * wrong. So the absence of an error IS the success signal, which is why this
+ * screen shows "verified" by default rather than doing any work.
+ *
+ * That inversion is worth knowing before anyone "fixes" it: adding a token check
+ * here would double-consume a single-use token and turn every successful
+ * verification into a failure.
+ *
+ * Three states, all reachable: verified, the link failed, and a fresh link sent.
+ */
 function VerifyEmail() {
-	// Better Auth verifies the token on its API route, then redirects here — with
-	// `?error=...` only when something went wrong. No error means it worked.
 	const { error: verifyError } = useSearch({ strict: false }) as {
 		error?: string;
 	};
@@ -29,7 +44,7 @@ function VerifyEmail() {
 		});
 		setPending(false);
 		if (sendError) {
-			setError(sendError.message ?? "Could not send the email.");
+			setError(describeError(sendError, "Could not send the email."));
 			return;
 		}
 		setResent(true);
@@ -37,72 +52,56 @@ function VerifyEmail() {
 
 	if (!verifyError) {
 		return (
-			<AuthShell>
-				<div className="text-center">
-					<h1 className="font-medium text-[22px] text-foreground tracking-tight">
-						Email verified
-					</h1>
-					<p className="mt-2 text-[14px] text-muted-foreground leading-relaxed">
-						Your email is confirmed. Let's secure your account.
-					</p>
-					{/* Fresh email/password signups flow through the optional security
-					    step next. (OAuth never lands here — it doesn't verify email.) */}
-					<a href="/secure" className={`${primaryButton} mt-6 w-full`}>
-						Continue
-					</a>
-				</div>
-			</AuthShell>
+			<AuthScreen title="Email verified" subtitle="Your address is confirmed.">
+				{/* Email and password signups continue to the optional security step.
+				    OAuth never lands here, those providers have already verified the
+				    address, so there is nothing for this page to confirm. */}
+				<AuthButton href="/secure">Continue</AuthButton>
+			</AuthScreen>
 		);
 	}
 
 	if (resent) {
 		return (
-			<AuthShell>
-				<div className="text-center">
-					<h1 className="font-medium text-[22px] text-foreground tracking-tight">
-						Check your email
-					</h1>
-					<p className="mt-2 text-[14px] text-muted-foreground leading-relaxed">
-						We sent a fresh verification link to{" "}
-						<span className="text-foreground">{email}</span>.
-					</p>
-				</div>
-			</AuthShell>
+			<AuthScreen
+				title="Check your email"
+				swap={{ label: "Sign In", href: "/signin" }}
+			></AuthScreen>
 		);
 	}
 
 	return (
-		<AuthShell>
-			<div className="mb-8 text-center">
-				<h1 className="font-medium text-[22px] text-foreground tracking-tight">
-					Verification failed
-				</h1>
-				<p className="mt-2 text-[14px] text-muted-foreground">
-					That link has expired or already been used. Enter your email and we'll
-					send a new one.
-				</p>
-			</div>
+		<AuthScreen
+			title="That link has expired"
+			subtitle="Verification links are single use."
+			swap={{ label: "Sign In", href: "/signin" }}
+		>
 			<form onSubmit={resend} className="flex flex-col gap-3">
 				<input
-					className={field}
+					className={authField}
 					type="email"
-					placeholder="Email"
+					placeholder="you@company.com"
+					aria-label="Email address"
 					autoComplete="email"
 					value={email}
-					onChange={(e) => setEmail(e.target.value)}
+					onChange={(event) => setEmail(event.target.value)}
 					required
 				/>
-				{error && <p className="text-[13px] text-red-400">{error}</p>}
-				<button type="submit" disabled={pending} className={primaryButton}>
-					{pending ? "Sending…" : "Resend verification"}
-				</button>
+
+				<AuthError>{error}</AuthError>
+
+				<AuthButton disabled={pending || !email}>
+					{pending ? "Sending…" : "Send a new link"}
+				</AuthButton>
+
+				<p className="mt-4 text-center font-body font-light text-[0.8125rem] text-white/50">
+					Wrong account?{" "}
+					<a href="/signin" className={authLink}>
+						Sign In
+					</a>
+				</p>
 			</form>
-			<p className="mt-6 text-center text-[13px] text-muted-foreground">
-				<a href="/signin" className={textLink}>
-					Back to sign in
-				</a>
-			</p>
-		</AuthShell>
+		</AuthScreen>
 	);
 }
 
@@ -115,5 +114,33 @@ function Page() {
 }
 
 export const Route = createFileRoute("/verify")({
+	/**
+	 * Two legitimate ways to be here, and nothing else.
+	 *
+	 * ⚠️ `?error=` FIRST. A rejected or expired link is precisely the case where
+	 * there is no session, so checking the session first would bounce the person
+	 * whose problem this screen exists to explain.
+	 *
+	 * Otherwise a session is required, which is sound because the server sets
+	 * `autoSignInAfterVerification: true` — succeeding at verification signs you
+	 * in, so anyone who genuinely arrived here has one. Typing the address
+	 * directly used to render "Email verified" to somebody who had verified
+	 * nothing, which is worse than useless: it is wrong.
+	 */
+	beforeLoad: async ({ location }) => {
+		if (new URLSearchParams(location.searchStr).has("error")) return;
+		if (!(await hasSession()))
+			throw redirect({
+				to: "/signin",
+				search: {
+					// ⚠️ Every key stated. `/signin` declares `validateSearch`, so its
+					// search shape is required in full here even though all three are
+					// optional at runtime — `{}` does not satisfy it.
+					redirect: undefined,
+					signedout: undefined,
+					reason: undefined,
+				},
+			});
+	},
 	component: Page,
 });

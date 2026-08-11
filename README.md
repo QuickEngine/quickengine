@@ -149,15 +149,17 @@ never through a public issue containing an exploit, credential or customer data.
 
 | | Free | Launch | Grow | Scale | Expand | Custom |
 |---|---|---|---|---|---|---|
-| Price / mo | $0 | $30 | $90 | $240 | **$30 per seat** | conversation |
-| Seats | 1 | 2 | 5 | 15 | 16 minimum | custom |
-| Workspaces | 1 | 3 | 10 | 25 | unlimited | custom |
-| Storage | 1 GB | 25 GB | 100 GB | 500 GB | 50 GB per seat | custom |
-| API requests | 10k | 250k | 1M | 5M | 500k per seat | custom |
+| Price / mo | $0 | $30 | $90 | $240 | **$25 per seat** | conversation |
+| Seats | 1 | 3 | 8 | 20 | 12 minimum | custom |
+| Workspaces | 1 | 2 | 5 | 15 | per-seat model | custom |
+| Storage | 2 GB | 25 GB | 150 GB | 500 GB | 50 GB per seat | custom |
+| API requests | 50k | 250k | 1M | 5M | 500k per seat | custom |
 | AI actions | 25 | 500 | 2,500 | 10,000 | 1,500 per seat | custom |
 
-Annual is ten months on every tier. **Expand bills per seat and starts at 16**, so its entry
-price is $480/mo — the point at which a company has outgrown Scale's flat 15.
+Annual is ten months on every tier. **Expand bills per seat and is planned to start at 12.**
+QuickEngine is pre-release: this table is the intended launch model, while final entitlement,
+extra-seat, overage and live Stripe behavior still must be completed and verified before paid
+subscriptions open.
 
 A hidden **Bypass** tier exists for internal use. It is never sold or listed: unlimited on
 everything that costs only our own infrastructure, with AI still capped, because that allowance

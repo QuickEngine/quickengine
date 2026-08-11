@@ -9,7 +9,12 @@ import {
 	getUsage,
 	meter,
 } from "../src/metering";
+import { getPlanLimits } from "../src/plans";
 import { insertOrg } from "./helpers";
+
+const freeApiRequests = getPlanLimits("free").apiRequests;
+if (freeApiRequests === null)
+	throw new Error("Free API requests must be capped");
 
 // DB-backed engine tests. The usage table isn't FK'd to users, so most tests use
 // a bare scopeId string; plan-resolution tests insert a real user + subscription.
@@ -33,17 +38,26 @@ describe("metering engine", () => {
 		).toBe(200);
 	});
 
-	it("reports ok → warn → over against the Free plan (10k API requests)", async () => {
+	it("reports ok → warn → over against the canonical Free plan limit", async () => {
 		const scope = "acc-states";
-		await meter({ scopeId: scope, meter: "apiRequests", amount: 7_999 });
+		const warningThreshold = Math.ceil(freeApiRequests * 0.8);
+		await meter({
+			scopeId: scope,
+			meter: "apiRequests",
+			amount: warningThreshold - 1,
+		});
 		expect(
 			(await checkLimit({ scopeId: scope, meter: "apiRequests" })).state,
 		).toBe("ok");
-		await meter({ scopeId: scope, meter: "apiRequests", amount: 1 }); // 8000 → 80%
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 1 });
 		expect(
 			(await checkLimit({ scopeId: scope, meter: "apiRequests" })).state,
 		).toBe("warn");
-		await meter({ scopeId: scope, meter: "apiRequests", amount: 2_000 }); // 10000 → at the limit
+		await meter({
+			scopeId: scope,
+			meter: "apiRequests",
+			amount: freeApiRequests - warningThreshold,
+		});
 		const over = await checkLimit({ scopeId: scope, meter: "apiRequests" });
 		expect(over.state).toBe("over");
 		expect(over.exceeded).toBe(true);
@@ -51,24 +65,29 @@ describe("metering engine", () => {
 	});
 
 	it("enforce allows + records within grace, blocks + doesn't record past the ceiling", async () => {
-		const scope = "acc-enforce"; // Free apiRequests = 10_000, grace ceiling = 11_000
-		await meter({ scopeId: scope, meter: "apiRequests", amount: 10_500 });
+		const scope = "acc-enforce";
+		const graceCeiling = Math.floor(freeApiRequests * 1.1);
+		await meter({
+			scopeId: scope,
+			meter: "apiRequests",
+			amount: graceCeiling - 500,
+		});
 		const graceHit = await enforce({
 			scopeId: scope,
 			meter: "apiRequests",
 			amount: 1,
 		});
 		expect(graceHit.allowed).toBe(true);
-		expect(graceHit.used).toBe(10_501);
+		expect(graceHit.used).toBe(graceCeiling - 499);
 
-		await meter({ scopeId: scope, meter: "apiRequests", amount: 600 }); // 11_101, past ceiling
+		await meter({ scopeId: scope, meter: "apiRequests", amount: 600 });
 		const blocked = await enforce({
 			scopeId: scope,
 			meter: "apiRequests",
 			amount: 1,
 		});
 		expect(blocked.allowed).toBe(false);
-		expect(blocked.used).toBe(11_101); // unchanged — a blocked request isn't counted
+		expect(blocked.used).toBe(graceCeiling + 101);
 	});
 
 	it("enforce treats a gauge amount as the proposed absolute total", async () => {

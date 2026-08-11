@@ -12,6 +12,7 @@ import { registerCategoryRoutes } from "./category-routes";
 import { registerCheckoutRoutes } from "./checkout-routes";
 import { registerClientRecordRoutes } from "./client-records-routes";
 import { registerConnectWebhookRoutes } from "./connect-webhook-routes";
+import { registerContactRoutes } from "./contact-routes";
 import { registerContentRoutes } from "./content-routes";
 import { registerContractsRoutes } from "./contracts-routes";
 import { registerCreditRoutes } from "./credit-routes";
@@ -101,6 +102,7 @@ export function registerAllRoutes(
 	registerCustomerMessageRoutes(app, dependencies);
 	registerRealtimeRoutes(app, dependencies);
 	registerRolesRoutes(app, dependencies);
+	registerContactRoutes(app, { logger });
 	registerResendWebhookRoutes(app, { logger });
 	registerBillingInfoRoutes(app);
 	registerCreditRoutes(app, { platform: dependencies.platform });

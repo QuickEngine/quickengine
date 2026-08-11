@@ -11,7 +11,7 @@ import {
 	User,
 	UsersThree,
 } from "@phosphor-icons/react";
-import { StatusIndicator } from "@quickengine/ui";
+import { STATUS_URL, StatusIndicator } from "@quickengine/ui";
 import {
 	Dialog,
 	DialogContent,
@@ -156,10 +156,7 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
 												Live status of QuickEngine services.
 											</span>
 										</div>
-										<StatusIndicator
-											endpoint="/api/health"
-											href={`${WEB_URL}/status`}
-										/>
+										<StatusIndicator endpoint="/api/health" href={STATUS_URL} />
 									</div>
 									<a
 										href={`${WEB_URL}/support`}

@@ -970,6 +970,26 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			// ── Contact: the marketing site's form ───────────────────────────────
+			"/v1/contact": {
+				post: {
+					operationId: "submitContact",
+					summary: "Send a message from the marketing contact form",
+					description:
+						"Public and unauthenticated, like checkout, and the only other write that is. Delivers the message to QuickEngine by email and stores nothing: there is no record, no queue and no admin screen, so a stranger's details never enter a database. Carries a hidden honeypot field which, when filled, is answered as success and dropped. Subject to the standard rate limit.",
+					responses: {
+						"202": {
+							description:
+								"Accepted for delivery. Also returned when the honeypot rejected the submission, deliberately indistinguishable from success.",
+						},
+						"400": {
+							description:
+								"The message failed validation. No field detail is returned.",
+						},
+						"502": { description: "The mail provider could not be reached." },
+					},
+				},
+			},
 			// ── Checkout: the merchant's own website selling ─────────────────────
 			"/v1/checkout": {
 				post: {

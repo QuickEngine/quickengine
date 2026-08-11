@@ -1,142 +1,171 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { env } from "@/lib/env";
+import { TextPage, TextSection, textProse } from "@/components/text-page";
 
-const AUTH_URL = env.VITE_AUTH_URL;
-
-// PLACEHOLDER — all copy on this page is provisional.
-const VALUES = [
-	{
-		title: "Build more, switch less.",
-		desc: "One backend for every part of your business, so you stop juggling a dozen disconnected tools.",
-	},
-	{
-		title: "You own your data.",
-		desc: "It's your Postgres — exportable, portable, no lock-in. Ever.",
-	},
-	{
-		title: "Simplicity is the product.",
-		desc: "The best software disappears. We sweat the details so you never have to.",
-	},
-	{
-		title: "Ship, don't assemble.",
-		desc: "Spin up a workspace and go — the plumbing is already done and running.",
-	},
-];
-
-const TEAM = [
-	{ name: "Asher", role: "Co-founder · Engineering & Product", initials: "A" },
-	{ name: "Reese", role: "Co-founder · Growth & Marketing", initials: "R" },
-];
-
+/**
+ * About.
+ *
+ * ⚠️ The previous page's copy is NOT revived here. It is preserved at
+ * `internal/snapshots/web-prerebuild/files/routes/about.tsx`, and its own comment
+ * marks every line `PLACEHOLDER` — there was nothing to recover.
+ *
+ * 🔴 EVERY CLAIM BELOW IS TRUE TODAY and load-bearing. The specifics — the module
+ * count, the single-transaction write, the tenant tests, the billing rule — are
+ * drawn from what is actually built and are the entire reason this page is
+ * credible rather than another startup about page. Do not add a customer count,
+ * a logo wall, a funding line or a team that does not exist. This is the page
+ * someone opens specifically to work out whether we are real, and it is the one
+ * place an invented claim is certain to be checked.
+ */
 function AboutPage() {
 	return (
-		<>
-			<SiteHeader />
-			<main className="pt-16">
-				{/* Mission */}
-				<section className="page-gutter flex flex-col items-center border-border border-b py-32 text-center">
-					<p className="text-[13px] text-muted-foreground uppercase tracking-[0.2em]">
-						QuickEngine Software
+		<TextPage
+			title="Build more. Switch less."
+			lede="QuickEngine Software is a two-person partnership in Alberta, Canada. We build QuickDash: one backend a business can actually run on, instead of six that almost fit."
+		>
+			<TextSection title="Why we exist">
+				<div className={textProse}>
+					<p>
+						Every business runs on the same machinery underneath. Customers.
+						Orders. Inventory. Invoices. Payments. Files. Bookings. A
+						trustworthy record of what happened and when.
 					</p>
-					<h1 className="mt-6 max-w-3xl font-display font-normal text-5xl text-foreground leading-[1.05] tracking-tight sm:text-6xl">
-						We're building the backend every business runs on.
-					</h1>
-					<p className="mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-						One company, one flagship — QuickDash — and one belief: running a
-						business shouldn't mean stitching together a dozen tools that barely
-						talk to each other.
+					<p>
+						Nobody sells that as one thing. So a business either pays to have it
+						rebuilt from scratch, or rents six tools that were never designed to
+						meet, and then spends the rest of its life reconciling them. Both
+						options cost more the better the business does.
 					</p>
-				</section>
-
-				{/* Story */}
-				<section className="page-gutter border-border border-b py-32">
-					<div className="mx-auto max-w-2xl">
-						<h2 className="font-display font-normal text-3xl text-foreground tracking-tight sm:text-4xl">
-							Why we started.
-						</h2>
-						<p className="mt-8 text-lg text-muted-foreground leading-relaxed">
-							Every business runs on the same handful of things — accounts,
-							billing, files, search, notifications, jobs. Yet everyone rebuilds
-							or rents them separately, wiring eight services together and
-							maintaining the seams forever.
-						</p>
-						<p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-							We think that's backwards. QuickEngine is one backend you own,
-							shaped to your business, with the modules already built. Less
-							plumbing, more building — for everyone from a solo freelancer to a
-							scaling team.
-						</p>
-					</div>
-				</section>
-
-				{/* Values */}
-				<section className="page-gutter border-border border-b py-32">
-					<h2 className="max-w-2xl font-display font-normal text-3xl text-foreground tracking-tight sm:text-4xl">
-						What we believe.
-					</h2>
-					<div className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-						{VALUES.map((value) => (
-							<div key={value.title}>
-								<h3 className="font-display text-foreground text-lg">
-									{value.title}
-								</h3>
-								<p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-									{value.desc}
-								</p>
-							</div>
-						))}
-					</div>
-				</section>
-
-				{/* Team */}
-				<section className="page-gutter border-border border-b py-32">
-					<h2 className="font-display font-normal text-3xl text-foreground tracking-tight sm:text-4xl">
-						The team.
-					</h2>
-					<div className="mt-16 grid max-w-2xl gap-8 sm:grid-cols-2">
-						{TEAM.map((member) => (
-							<div key={member.name} className="flex items-center gap-4">
-								<div className="flex size-14 items-center justify-center rounded-full border border-border bg-secondary/40 font-display text-foreground text-lg">
-									{member.initials}
-								</div>
-								<div>
-									<p className="text-foreground">{member.name}</p>
-									<p className="text-muted-foreground text-sm">{member.role}</p>
-								</div>
-							</div>
-						))}
-					</div>
-				</section>
-
-				{/* CTA */}
-				<section className="page-gutter flex flex-col items-center py-32 text-center">
-					<h2 className="font-display font-normal text-4xl text-foreground leading-[1.05] tracking-tight sm:text-5xl">
-						Build with us.
-					</h2>
-					<p className="mt-6 max-w-xl text-muted-foreground">
-						We're a small team building in the open. Come help — or just start
-						building on what we've made.
+					<p>
+						We had built that same backend enough times to stop finding it
+						interesting. QuickDash is that work done once, carefully, and
+						configured per business rather than rewritten per business.
 					</p>
-					<div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-						<a
-							href={`${AUTH_URL}/signup`}
-							className="inline-flex h-11 items-center rounded-full bg-foreground px-6 font-normal text-background text-sm transition-opacity hover:opacity-90"
-						>
-							Get Started
-						</a>
-						<a
-							href="/careers"
-							className="inline-flex h-11 items-center rounded-full border border-border px-6 font-normal text-foreground text-sm transition-colors hover:bg-foreground/5"
-						>
-							See open roles
-						</a>
-					</div>
-				</section>
-			</main>
-			<SiteFooter />
-		</>
+				</div>
+			</TextSection>
+
+			<TextSection title="What it is">
+				<div className={textProse}>
+					<p>
+						A modular backend, delivered as a service. You choose a workspace
+						for your kind of business and switch on the modules it needs fifteen
+						of them today, covering commerce, client records, invoicing,
+						contracts, bookings, projects, files, fulfilment, shipping and
+						reporting.
+					</p>
+					<p>
+						Everything is reachable over one documented API, and everything the
+						dashboard can do, your own code can do. There is no private
+						interface we kept for ourselves.
+					</p>
+					<p>
+						You do not have to use our front end at all. QuickConnect bridges
+						any site you already own, any framework, or none, straight to your
+						workspace. Your design, your domain, your hosting. We never host
+						your code.
+					</p>
+				</div>
+			</TextSection>
+
+			<TextSection title="How we charge">
+				<div className={textProse}>
+					<p>
+						We meter what costs us real infrastructure: storage, file
+						conversion, email and SMS, automation runs, API volume. That is it.
+					</p>
+					<p>
+						<strong>
+							We never charge for an outcome your business earned.
+						</strong>{" "}
+						No fee per customer. No fee per invoice. No fee for creating a
+						record. A tool that takes a cut of your growth is charging you for
+						its own success, and it quietly punishes the thing you are trying to
+						do.
+					</p>
+					<p>
+						Modules are free, or unlocked once and then unlimited, or metered on
+						the resource they actually consume. And there is no advertising
+						anywhere inside the product. There never will be.
+					</p>
+				</div>
+			</TextSection>
+
+			<TextSection title="How it's built">
+				<div className={textProse}>
+					<p>
+						Money and records are the parts nobody forgives you for getting
+						wrong, so they are the parts we spent the most time on.
+					</p>
+					<p>
+						A write commits your data, its idempotency key, its audit entry and
+						its outbound event in a <strong>single database transaction</strong>
+						. A retried request replays instead of duplicating, so a
+						double-tapped button cannot become two orders and a repeated webhook
+						cannot take payment twice.
+					</p>
+					<p>
+						Every workspace is sealed from every other, and that is proven
+						rather than promised: our test suite walks the real route table and
+						attacks each endpoint with another tenant's credentials,
+						deliberately combined in invalid ways. Any route that answers across
+						that boundary fails the build, including routes written years from
+						now.
+					</p>
+					<p>
+						Outbound webhooks are signed so you can verify they came from us,
+						and carry the identifiers you need to reject anything you have
+						already handled.
+					</p>
+				</div>
+			</TextSection>
+
+			<TextSection title="Your data">
+				<div className={textProse}>
+					<p>
+						It is Postgres, and it is yours. Exportable, portable, and leaving
+						is a supported operation rather than a support ticket you have to
+						fight.
+					</p>
+					<p>
+						We would rather earn the next month than trap you into it. Lock-in
+						is a product decision, and we have made the other one.
+					</p>
+				</div>
+			</TextSection>
+
+			<TextSection title="Who we are">
+				<div className={textProse}>
+					<p>
+						Asher builds the product. Reese handles growth and everything that
+						involves talking to people. That is the whole company.
+					</p>
+					<p>
+						Two people is a real constraint and we treat it as one. It means we
+						say no to most things, keep the product narrow, and answer our own
+						support email. It also means we are not going to pretend to be
+						bigger than we are.
+					</p>
+				</div>
+			</TextSection>
+
+			<TextSection title="Where we are">
+				<div className={textProse}>
+					<p>
+						QuickDash is pre-launch. The backend is built and running, the
+						interface is being designed now, and we are onboarding the first
+						businesses by hand so we can watch what genuinely breaks rather than
+						guess.
+					</p>
+					<p>
+						No customer count, no logo wall, no case studies yet. When those
+						exist they will be here, and they will be real.
+					</p>
+					<p>
+						If being early appeals to you,{" "}
+						<a href="/contact">tell us what you run</a>.
+					</p>
+				</div>
+			</TextSection>
+		</TextPage>
 	);
 }
 

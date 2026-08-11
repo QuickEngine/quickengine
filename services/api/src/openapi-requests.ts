@@ -260,6 +260,17 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	startPaymentOnboarding: paymentOnboardingInputSchema,
 	setDefaultPaymentProvider: paymentProviderInputSchema,
 	createCheckout: checkoutInputSchema,
+	// ⚠️ Declared inline rather than imported from a module package: contact is
+	// not a domain module and has no schema to borrow. Keep it in step with
+	// `contactSchema` in `contact-routes.ts` — they are the same contract stated
+	// twice, and only the route file's copy is enforced.
+	submitContact: z.object({
+		name: z.string().min(1).max(120),
+		email: z.string().min(3).max(254),
+		topic: z.string().min(1).max(80),
+		message: z.string().min(10).max(4000),
+		website: z.string().max(0).optional(),
+	}),
 	// getCustomerOrder is a GET whose UUID lives in the path; it deliberately has no body.
 	createDiscount: discountInputSchema,
 	updateDiscount: discountPatchSchema,

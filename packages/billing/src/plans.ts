@@ -13,6 +13,19 @@ import type {
 // change without a code change. Any of these env vars may be unset pre-launch.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// 🔴 REVISED 2026-08-11 from `internal/planning/PRICING_STRATEGY.md`, after market
+// research against Odoo, Zoho, HubSpot, Shopify, FreshBooks and Supabase.
+//
+// The two changes that matter:
+//
+//  1. **Free API requests: 10k → 50k.** 10k is ~330 requests a day, which cannot
+//     host the connected website the marketing site advertises. Supabase gives
+//     unlimited on free; 50k is the minimum that makes our own pitch true.
+//  2. **Seats: 1/2/5/15 → 1/3/8/20.** Two seats on a $30 plan meant the third
+//     hire triggered a $60 jump to Grow they did not otherwise need, and 15 on
+//     Scale created a $160/month cliff at the sixteenth seat that customers
+//     would rationally game by sharing logins.
+//
 // Per-plan usage limits. Metered PER ACCOUNT (one budget shared across all the
 // account's workspaces). `actions` is a COUNTER (an allowance that refills each
 // billing period); the rest are GAUGES (a current-total cap that never resets).
@@ -111,9 +124,9 @@ export const PLANS: readonly PlanDefinition[] = [
 		free: true,
 		priceEnv: {},
 		limits: {
-			apiRequests: 10_000,
+			apiRequests: 50_000,
 			aiActions: 25,
-			storageBytes: 1 * GB,
+			storageBytes: 2 * GB,
 			seats: 1,
 			workspaces: 1,
 			webhookDeliveries: null,
@@ -123,24 +136,24 @@ export const PLANS: readonly PlanDefinition[] = [
 		apiRequests: 250_000,
 		aiActions: 500,
 		storageBytes: 25 * GB,
-		seats: 2,
-		workspaces: 3,
+		seats: 3,
+		workspaces: 2,
 		webhookDeliveries: null,
 	}),
 	paidPlan("grow", "Grow", {
 		apiRequests: 1_000_000,
 		aiActions: 2_500,
-		storageBytes: 100 * GB,
-		seats: 5,
-		workspaces: 10,
+		storageBytes: 150 * GB,
+		seats: 8,
+		workspaces: 5,
 		webhookDeliveries: null,
 	}),
 	paidPlan("scale", "Scale", {
 		apiRequests: 5_000_000,
 		aiActions: 10_000,
 		storageBytes: 500 * GB,
-		seats: 15,
-		workspaces: 25,
+		seats: 20,
+		workspaces: 15,
 		webhookDeliveries: null,
 	}),
 	// 🔴 Teams is the only PER-SEAT tier. Launch, Grow and Scale are flat prices

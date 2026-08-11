@@ -42,7 +42,7 @@ export function GeneratedAvatar({
 	// Second hue 40–110° away for a harmonious (not clashing) gradient.
 	const hue2 = Math.floor((hue1 + 40 + rng() * 70) % 360);
 	const angle = Math.floor(rng() * 360);
-	const spacing = 4 + rng() * 3; // grid density: 4–7 units
+	const spacing = 4 + rng() * 3; // grid density: 4, 7 units
 	const dotR = spacing * (0.36 + rng() * 0.1); // dot size, proportional
 	const gridAngle = Math.floor(rng() * 90); // grid rotation
 

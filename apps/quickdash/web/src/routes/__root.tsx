@@ -14,6 +14,11 @@ import {
 } from "@tanstack/react-router";
 import { clientEnv } from "../lib/env";
 import {
+	clearHadSession,
+	hadSession,
+	markHadSession,
+} from "../lib/had-session";
+import {
 	clearNativeToken,
 	isNativeShell,
 	nativeAuthHeaders,
@@ -31,7 +36,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 				const { data } = await authClient.getSession({
 					fetchOptions: { headers: nativeAuthHeaders() },
 				});
-				if (data?.session && data.user) return { user: data.user };
+				if (data?.session && data.user) {
+					markHadSession();
+					return { user: data.user };
+				}
 			} catch {
 				// QuickDash fails closed. An unverifiable session may not see workspace data.
 			}
@@ -50,6 +58,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 				"redirect",
 				window.location.origin + location.href,
 			);
+			// ⚠️ Only claim the session EXPIRED when there was one to expire. This
+			// guard also catches a first-time visitor who has never signed in, and
+			// telling them their session ended is a lie that reads as a bug. The
+			// marker is set below once a session is confirmed, so its presence is
+			// the difference between "you were signed in" and "you never were".
+			if (hadSession()) {
+				target.searchParams.set("reason", "expired");
+				clearHadSession();
+			}
 			throw redirect({ href: target.toString() });
 		},
 		component: () => (

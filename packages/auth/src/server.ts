@@ -128,6 +128,17 @@ export const auth = betterAuth({
 	},
 	emailAndPassword: {
 		enabled: true,
+		/**
+		 * ⚠️ The real floor. The client checks the same number in
+		 * `apps/quickdash/auth/src/lib/validation.ts` so it can say something
+		 * useful while someone types, but that file is a courtesy — this is the
+		 * line that is enforced, and it is the only one an API caller meets.
+		 *
+		 * It was unset until 2026-08-10, which meant the policy was Better Auth's
+		 * default of 8. Not a bad number; simply one nobody here had chosen, in a
+		 * message nobody here had written. Keep it in step with `MIN_PASSWORD`.
+		 */
+		minPasswordLength: 10,
 		// Password is an optional method (passkeys/OTP come next); when used, an
 		// account must verify its email before it can sign in.
 		requireEmailVerification: true,
@@ -224,6 +235,19 @@ export const auth = betterAuth({
 				: {}),
 		}),
 		emailOTP({
+			// 🔴 EXPLICIT LIMITS. This is now the primary way into every account, so
+			// the defaults are not something to inherit silently.
+			//
+			// Six digits is a million combinations, which is only safe while guesses
+			// are capped — uncapped, a script walks the whole space in minutes.
+			// Three attempts, then the code is dead and a new one must be requested.
+			//
+			// Five minutes is long enough to switch to an email app and back, short
+			// enough that a code left visible on a shared screen or in a forwarded
+			// message stops being useful quickly.
+			otpLength: 6,
+			expiresIn: 60 * 5,
+			allowedAttempts: 3,
 			async sendVerificationOTP({ email, otp }) {
 				await getEmailProvider().send({
 					to: email,

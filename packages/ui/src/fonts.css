@@ -8,24 +8,159 @@
  *
  * `font-display: swap` keeps text visible while the face loads rather than
  * blanking it, which matters most on the marketing pages.
+ *
+ * 2026-08-10: General Sans and Clash Grotesk were removed and the whole system
+ * moved to Söhne, one family across display and body.
+ *
+ * Sixteen faces are declared and that is deliberate — a browser only downloads
+ * the ones a page actually renders, so the full range costs nothing until
+ * something asks for it. Each file is roughly 8KB.
+ *
+ * Real italics are declared rather than left out. Without a matching face the
+ * browser silently synthesises a slant by shearing the upright, which is both
+ * uglier and heavier-looking than the drawn italic.
+ *
+ * Weight names are Klim's German: Extraleicht 200, Leicht 300, Buch 400,
+ * Kräftig 500, Halbfett 600, Dreiviertelfett 700, Fett 800, Extrafett 900.
+ *
+ * ⚠️ These are the TRIAL cuts. Klim's trial licence covers evaluation and
+ * mockups, not a public deployment — recorded as a pre-live gate in
+ * `internal/planning/TECH_DEBT.md`.
  */
+
 @font-face {
-	font-family: "General Sans";
-	src: url("./fonts/GeneralSans-Variable.woff2") format("woff2-variations");
-	font-weight: 200 700;
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-200.woff2") format("woff2");
+	font-weight: 200;
 	font-style: normal;
 	font-display: swap;
 }
 
 @font-face {
-	font-family: "Clash Grotesk";
-	src: url("./fonts/ClashGrotesk-Variable.woff2") format("woff2-variations");
-	font-weight: 200 700;
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-200-italic.woff2") format("woff2");
+	font-weight: 200;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-300.woff2") format("woff2");
+	font-weight: 300;
 	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-300-italic.woff2") format("woff2");
+	font-weight: 300;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-400.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-400-italic.woff2") format("woff2");
+	font-weight: 400;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-500.woff2") format("woff2");
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-500-italic.woff2") format("woff2");
+	font-weight: 500;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-600.woff2") format("woff2");
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-600-italic.woff2") format("woff2");
+	font-weight: 600;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-700.woff2") format("woff2");
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-700-italic.woff2") format("woff2");
+	font-weight: 700;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-800.woff2") format("woff2");
+	font-weight: 800;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-800-italic.woff2") format("woff2");
+	font-weight: 800;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-900.woff2") format("woff2");
+	font-weight: 900;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Sohne";
+	src: url("./fonts/Sohne-900-italic.woff2") format("woff2");
+	font-weight: 900;
+	font-style: italic;
 	font-display: swap;
 }
 
 :root {
-	--font-general: "General Sans", ui-sans-serif, system-ui, sans-serif;
-	--font-clash: "Clash Grotesk", var(--font-general);
+	/* One family covers display and body. `--font-general` and `--font-clash`
+	   were removed outright rather than aliased here: a variable still named
+	   after a font the project no longer ships reads as truth six months later.
+	   Consumers use `--font-display` / `--font-body` from `theme.css`, which now
+	   both resolve to this. */
+	--font-sohne: "Sohne", ui-sans-serif, system-ui, sans-serif;
 }

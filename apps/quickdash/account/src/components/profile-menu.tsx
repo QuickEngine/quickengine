@@ -19,7 +19,11 @@ import type { ReactNode } from "react";
 import { clientEnv } from "../lib/env";
 
 // Sign-out routes through the auth IdP (same-origin there — no cross-origin call).
-const SIGN_OUT_HREF = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(clientEnv.WEB_URL)}`;
+// Back to the sign-in screen with a confirmation, not to the marketing site.
+// Someone signing out OF THE PRODUCT wants to know the session ended — on a
+// shared machine that is the whole point of pressing it — and dropping them on
+// a landing page tells them nothing.
+const SIGN_OUT_HREF = `${clientEnv.AUTH_URL}/signout?redirect=${encodeURIComponent(`${clientEnv.AUTH_URL}/signin?signedout=1`)}`;
 
 // Clickable profile avatar with an account dropdown.
 /**

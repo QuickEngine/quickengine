@@ -68,7 +68,7 @@
 }
 
 @theme {
-	--font-display: var(--font-clash), ui-sans-serif, sans-serif;
+	--font-display: var(--font-sohne), ui-sans-serif, sans-serif;
 }
 
 html,
@@ -79,7 +79,7 @@ body {
 	background: var(--background);
 	color: var(--foreground);
 	font-family:
-		var(--font-general), ui-sans-serif, system-ui, -apple-system,
+		var(--font-sohne), ui-sans-serif, system-ui, -apple-system,
 		BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 

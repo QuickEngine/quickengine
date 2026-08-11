@@ -24,6 +24,27 @@
      --ca        ACCENT chroma, independent — muted surfaces, saturated accent
      --invert-l  primary fill lightness. 1.0 is pure white and glares. */
 :root {
+	/* Header height, shared by every app that draws unauthenticated chrome.
+
+	   🔴 This lived in the web app's own stylesheet until 2026-08-10 while the
+	   auth app referenced `var(--header-h)` anyway. An undefined custom property
+	   makes the whole declaration invalid, so `h-[var(--header-h)]` fell back to
+	   `auto` and the auth bar was as tall as its own contents — which is why the
+	   logo and button would not line up with the marketing header no matter what
+	   sizes were set on them. A shared token referenced from two apps has to live
+	   somewhere both of them import. */
+	--header-h: 4rem;
+
+	/* How much the connection banner is currently pushing the page down. Zero
+	   whenever it is hidden, which is almost always.
+
+	   🔴 Defined HERE, not in the component that sets it. An undefined custom
+	   property makes the whole declaration invalid, so every `calc()` and every
+	   `top` reading it would silently fall back — which is exactly how the auth
+	   header ended up with no height at all. The banner overwrites this value at
+	   runtime; it must already exist for it to have anything to overwrite. */
+	--banner-h: 0px;
+
 	--h: 248;
 	/* Neutral. Surfaces carry only a trace of hue — enough that the darks are not
 	   dead grey, not enough to read as a colour. The accent keeps full saturation
@@ -182,8 +203,8 @@
 	--color-invert: var(--invert);
 	--color-on-invert: var(--on-invert);
 
-	--font-display: "Clash Grotesk", ui-sans-serif, system-ui, sans-serif;
-	--font-body: "General Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-display: "Sohne", ui-sans-serif, system-ui, sans-serif;
+	--font-body: "Sohne", ui-sans-serif, system-ui, sans-serif;
 	/* `--font-mono` in globals points at `--font-geist-mono`, which is not loaded
 	   anywhere — a Next leftover. System mono is sharp on macOS and costs zero
 	   bytes; swap for a licensed face later. */
@@ -199,13 +220,17 @@ body {
 /* The shared horizontal gutter. Marketing header, auth shell and every section
    reference this one class, so their left edges line up across surfaces and a
    change is one value in one place. Distinct from `.page-gutter`, which the
-   un-redesigned marketing routes still use at 9.5rem. */
+   un-redesigned marketing routes still use at 9.5rem.
+
+   Desktop went 6.5rem to 4rem on 2026-08-10 in the design pass. 4rem is the
+   header height, so the content inset and the bar depth match and the page is
+   framed by one measurement rather than two unrelated ones. */
 .site-gutter {
 	padding-inline: 1.25rem;
 }
 @media (min-width: 640px) {
 	.site-gutter {
-		padding-inline: 6.5rem;
+		padding-inline: 4rem;
 	}
 }
 
@@ -331,5 +356,51 @@ body {
 @media (prefers-reduced-motion: reduce) {
 	.btn:active {
 		transform: none;
+	}
+}
+
+/* The banner is `fixed`, so it takes no space of its own — this is what actually
+   moves the page out from under it. Fixed chrome (the header, the hero's sticky
+   offset) reads `--banner-h` directly instead, because padding on the body means
+   nothing to an element positioned against the viewport.
+
+   Transitioned to match the banner's own 500ms slide, so the page travels WITH
+   it rather than jumping once it has arrived. */
+body {
+	padding-top: var(--banner-h);
+	transition: padding-top 500ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+	body {
+		transition: none;
+	}
+}
+
+/* ── Form controls never trigger the iOS zoom ─────────────────────────────
+   Safari on iOS zooms the page in when you focus a control whose font is under
+   16px, then leaves you scrolled sideways on a layout that no longer fits. It is
+   not a bug and it is not something to defeat — it is an accessibility
+   behaviour, and it is telling us the text is too small to read at arm's length.
+   So the answer is to make the text big enough, not to suppress the response.
+
+   🔴 The usual "fix" found online is `maximum-scale=1` or `user-scalable=no` on
+   the viewport meta. NEVER do that. It disables pinch-zoom for the entire site,
+   permanently, for everyone — including the people who need it most. Every app's
+   viewport tag is deliberately plain `width=device-width, initial-scale=1.0` and
+   must stay that way.
+
+   Scoped to coarse pointers so desktop keeps the smaller sizes the design uses;
+   the zoom only ever happens on touch.
+
+   ⚠️ This is UNLAYERED on purpose. Tailwind's utilities live in `@layer
+   utilities`, and unlayered declarations beat layered ones outright no matter
+   how specific the layered one is — which is what lets a bare element selector
+   here override `text-[0.9375rem]` on the element itself. Wrapping this in a
+   layer would silently stop it working. */
+@media (pointer: coarse) {
+	input,
+	select,
+	textarea {
+		font-size: 16px;
 	}
 }

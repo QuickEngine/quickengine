@@ -60,6 +60,28 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **A paid order now shows its payment as paid, and can be refunded.** Settlement placed the order
+  but left the payment itself in pending forever, so money that had already cleared still looked
+  outstanding and no completed sale could be refunded, because refunding requires a settled
+  payment. The payment is now settled from the same signed webhook and separately from the order,
+  so it is never stranded by an order that had already moved on.
+
+- **Stripe accounts can now actually take a card.** Connecting Stripe asks for the card payment
+  capability when the account is created, which it previously never did. Without it Stripe
+  accepted the setup, reported the account as working and then refused every payment, so the
+  failure only appeared once a real customer tried to buy something.
+
+- **Payments no longer reports a business as ready when it cannot be paid.** Readiness now
+  checks whether Stripe has actually granted the card payment capability, rather than trusting a
+  general status flag that can be true while every charge is rejected. A business that cannot
+  sell yet is shown as still in setup, and its storefront says so at checkout instead of failing
+  after the shopper has entered their card.
+
+- **A business stuck part way through Stripe setup can now recover on its own.** Resuming setup
+  re-requests the missing capability on the existing account, so an account created before this
+  fix repairs itself the next time the owner continues setup, without a support request and
+  without a second merchant account.
+
 - **Opening payment setup no longer treats “connect” as a payment ID.** The static provider
   setup routes now take precedence over individual payment records, so a workspace that has not
   connected Stripe sees the setup action instead of an invalid-request error.

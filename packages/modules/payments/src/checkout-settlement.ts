@@ -6,12 +6,39 @@ import {
 	paymentAccounts,
 	payments,
 } from "@quickengine/db";
+import { setPaymentStatus } from "./payments";
 import type {
 	PaymentEnvironment,
 	PaymentProviderId,
 	VerifiedProviderEvent,
 } from "./provider";
 import { getPaymentProvider } from "./providers";
+
+/**
+ * Move the payment row to `succeeded`, tolerating every shape of redelivery.
+ *
+ * Stripe retries on any non-2xx, so this runs again for events already applied.
+ * `setPaymentStatus` signals both "already there" and "already moved past" by
+ * throwing, and here each means the work is done, not that it failed. Letting
+ * either escape would answer the provider non-2xx and buy an infinite retry of
+ * a settlement that already happened.
+ *
+ * A genuine fault still propagates.
+ */
+async function settlePaymentRow(workspaceId: string, paymentId: string) {
+	try {
+		await setPaymentStatus(workspaceId, paymentId, "succeeded");
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : "";
+		if (
+			reason === "PAYMENT_STATUS_UNCHANGED" ||
+			reason === "PAYMENT_ILLEGAL_TRANSITION"
+		) {
+			return;
+		}
+		throw error;
+	}
+}
 
 /**
  * What happens when a provider says a checkout was paid.
@@ -127,6 +154,20 @@ export async function applyCheckoutSettlement(
 	}
 
 	if (event.type === "payment_intent.succeeded") {
+		// 🔴 The MONEY is settled first, and deliberately NOT gated on the order
+		// transition below.
+		//
+		// These are two different facts. An order can already be `placed` while its
+		// payment is still `pending` — a redelivery, or a human who moved the order
+		// on — and gating the payment on the order update would leave that row
+		// stranded in `pending` forever. That is not cosmetic: a refund requires
+		// `succeeded`, so a stranded payment can never be refunded, and Payments
+		// shows real money as still pending.
+		//
+		// Found on 2026-08-11 by the first real Caffeinate purchase: the webhook
+		// placed the order correctly and nothing ever settled the payment.
+		await settlePaymentRow(workspaceId, payment.id);
+
 		// 🔴 Conditional on `draft`. A redelivered event finds the order already
 		// placed and changes nothing — and an order a human has since moved on to
 		// `processing` or `fulfilled` is never dragged backwards.

@@ -17,7 +17,10 @@
  * portal, point it at Neon for the one command — the portal at
  * `portal.quickdash.xyz` reads the live database, not your Docker one.
  */
-import { issueApiKey } from "@quickengine/auth/api-keys";
+import {
+	issueApiKey,
+	PUBLISHABLE_CAPABILITIES,
+} from "@quickengine/auth/api-keys";
 import { availablePortalSlug, db, eq } from "@quickengine/db";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 import { workspaceBranding } from "@quickengine/db/schema/workspace-branding";
@@ -82,7 +85,7 @@ const key = await issueApiKey({
 	createdByUserId: workspace.ownerId,
 	name: "Customer portal",
 	type: "publishable",
-	capabilities: [],
+	capabilities: PUBLISHABLE_CAPABILITIES,
 });
 
 if (existing) {

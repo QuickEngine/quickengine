@@ -12,7 +12,10 @@
  * to be public — they end up in page source — so printing one is not a leak.
  * A SECRET key would be, which is why this can only issue the other kind.
  */
-import { issueApiKey } from "@quickengine/auth/api-keys";
+import {
+	issueApiKey,
+	PUBLISHABLE_CAPABILITIES,
+} from "@quickengine/auth/api-keys";
 import { db } from "@quickengine/db/client";
 import { quickengineWorkspaces } from "@quickengine/db/schema/quickengine";
 
@@ -51,7 +54,7 @@ const key = await issueApiKey({
 	createdByUserId: workspace.ownerId,
 	name: "Customer portal (local)",
 	type: "publishable",
-	capabilities: [],
+	capabilities: PUBLISHABLE_CAPABILITIES,
 });
 
 console.log(`\n✅ ${workspace.name}  (${workspace.id})\n`);

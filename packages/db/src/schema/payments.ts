@@ -30,6 +30,9 @@ export const paymentAccounts = pgTable(
 			.notNull()
 			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
 		provider: text("provider").notNull().default("stripe"),
+		environment: text("environment", { enum: ["test", "live"] })
+			.notNull()
+			.default("live"),
 		// Provider account identity. Null until hosted onboarding starts.
 		externalAccountId: text("external_account_id"),
 		// Exactly one connected provider supplies checkout by default. Historical
@@ -115,6 +118,9 @@ export const payments = pgTable(
 			.notNull()
 			.default("pending"),
 		provider: text("provider").notNull().default("stripe"),
+		environment: text("environment", { enum: ["test", "live"] })
+			.notNull()
+			.default("live"),
 		paymentMethod: text("payment_method").notNull().default("card"),
 		externalPaymentId: text("external_payment_id"),
 		stripePaymentIntentId: text("stripe_payment_intent_id"),
@@ -135,6 +141,7 @@ export const payments = pgTable(
 		index("payments_invoice_idx").on(table.invoiceId),
 		uniqueIndex("payments_provider_external_unique").on(
 			table.provider,
+			table.environment,
 			table.externalPaymentId,
 		),
 		// Stripe retries webhooks, and a retry that populated only the payment intent
@@ -163,6 +170,9 @@ export const paymentRefunds = pgTable(
 			.references(() => payments.id, { onDelete: "restrict" }),
 		amountCents: integer("amount_cents").notNull(),
 		provider: text("provider").notNull(),
+		environment: text("environment", { enum: ["test", "live"] })
+			.notNull()
+			.default("live"),
 		externalRefundId: text("external_refund_id"),
 		reason: text("reason"),
 		createdAt: timestamp("created_at", { withTimezone: true })
@@ -174,6 +184,7 @@ export const paymentRefunds = pgTable(
 		index("payment_refunds_payment_idx").on(table.paymentId),
 		uniqueIndex("payment_refunds_provider_external_unique").on(
 			table.provider,
+			table.environment,
 			table.externalRefundId,
 		),
 	],

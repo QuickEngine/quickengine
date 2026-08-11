@@ -15,6 +15,7 @@ export type SessionIdentity = { userId: string };
 
 export type WorkspaceIdentity = {
 	businessType: string;
+	environment: "test" | "live";
 	id: string;
 	name: string;
 	slug: string | null;

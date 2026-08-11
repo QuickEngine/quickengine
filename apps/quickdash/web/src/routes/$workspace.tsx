@@ -165,6 +165,11 @@ function WorkspaceShell() {
 				</>
 			}
 		>
+			{context.data.workspace.environment === "test" ? (
+				<div className="relative z-20 border-amber-500/30 border-b bg-amber-400/10 px-4 py-2 text-center font-medium text-amber-700 text-xs uppercase tracking-[0.16em] dark:text-amber-300">
+					Test mode · sandbox payments and disposable business data
+				</div>
+			) : null}
 			{/* Watermark behind the content — a module view lands on top of it. */}
 			<div
 				aria-hidden="true"

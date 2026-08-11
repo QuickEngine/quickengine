@@ -15,6 +15,7 @@ function NewWorkspacePage() {
 	const [error, setError] = useState<string | null>(null);
 	const [query, setQuery] = useState("");
 	const [businessType, setBusinessType] = useState("ecommerce");
+	const [environment, setEnvironment] = useState<"test" | "live">("live");
 	const [creationMode, setCreationMode] = useState<"preset" | "custom">(
 		"preset",
 	);
@@ -26,7 +27,11 @@ function NewWorkspacePage() {
 			.includes(normalizedQuery),
 	);
 	const createWorkspace = useMutation({
-		mutationFn: (input: { name: string; businessType: string }) =>
+		mutationFn: (input: {
+			name: string;
+			businessType: string;
+			environment: "test" | "live";
+		}) =>
 			api.request<{ slug: string }>("/account/workspaces", {
 				method: "POST",
 				body: { ...input, organizationId: active?.id },
@@ -53,6 +58,7 @@ function NewWorkspacePage() {
 		createWorkspace.mutate({
 			name: String(data.get("name") ?? ""),
 			businessType,
+			environment,
 		});
 	};
 
@@ -76,6 +82,28 @@ function NewWorkspacePage() {
 					autoFocus
 				/>
 			</div>
+			<fieldset className="space-y-3">
+				<legend className="font-medium text-sm">Environment</legend>
+				<div className="grid gap-3 sm:grid-cols-2">
+					{(["live", "test"] as const).map((value) => (
+						<button
+							key={value}
+							type="button"
+							onClick={() => setEnvironment(value)}
+							className={`rounded-xl border p-4 text-left ${environment === value ? "border-foreground/30 bg-foreground/[0.05]" : "border-foreground/10"}`}
+						>
+							<p className="font-medium text-sm">
+								{value === "live" ? "Live business" : "Test workspace"}
+							</p>
+							<p className="mt-1 text-muted-foreground text-xs">
+								{value === "live"
+									? "Real customers, orders and provider accounts."
+									: "Sandbox providers and disposable test orders only."}
+							</p>
+						</button>
+					))}
+				</div>
+			</fieldset>
 			<fieldset className="space-y-3">
 				<legend className="font-medium text-sm">How should it start?</legend>
 				<div className="grid gap-3 md:grid-cols-3">

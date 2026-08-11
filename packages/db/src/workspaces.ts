@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "./client";
 import { ensurePersonalOrg } from "./orgs";
+import { orders } from "./schema/orders";
+import { paymentAccounts, payments } from "./schema/payments";
 import {
 	quickengineOrganizationMembers,
 	quickengineUsers,
@@ -31,13 +33,17 @@ export type CreateWorkspaceInput = {
 	completeOnboarding?: boolean;
 	/** The org to create the workspace in. Defaults to the user's personal org (onboarding). */
 	organizationId?: string;
+	environment?: WorkspaceEnvironment;
 };
+
+export type WorkspaceEnvironment = "test" | "live";
 
 export type CreatedWorkspace = {
 	id: string;
 	name: string;
 	slug: string;
 	businessType: string;
+	environment: WorkspaceEnvironment;
 	moduleIds: readonly string[];
 	/**
 	 * The organization this landed in.
@@ -98,6 +104,7 @@ export async function createWorkspaceForUser(
 				name,
 				slug,
 				businessType,
+				environment: input.environment ?? "live",
 				// Temporary compatibility mirror; registry rows are canonical.
 				modules: moduleIds,
 			})
@@ -106,6 +113,7 @@ export async function createWorkspaceForUser(
 				name: quickengineWorkspaces.name,
 				slug: quickengineWorkspaces.slug,
 				businessType: quickengineWorkspaces.businessType,
+				environment: quickengineWorkspaces.environment,
 			});
 		if (!workspace?.slug) {
 			throw new Error("WORKSPACE_CREATE_FAILED");
@@ -132,9 +140,67 @@ export async function createWorkspaceForUser(
 			name: workspace.name,
 			slug: workspace.slug,
 			businessType: workspace.businessType,
+			environment: workspace.environment,
 			moduleIds,
 			organizationId,
 		};
+	});
+}
+
+/**
+ * Change a pristine workspace between test and live operation.
+ *
+ * A workspace that has entered the money lifecycle is deliberately immutable:
+ * promoting it would relabel test orders or provider records as real business
+ * history. Going live means creating a separate live workspace instead.
+ */
+export async function setWorkspaceEnvironment(
+	workspaceId: string,
+	environment: WorkspaceEnvironment,
+) {
+	return db.transaction(async (tx) => {
+		const [workspace] = await tx
+			.select({
+				id: quickengineWorkspaces.id,
+				environment: quickengineWorkspaces.environment,
+			})
+			.from(quickengineWorkspaces)
+			.where(eq(quickengineWorkspaces.id, workspaceId))
+			.limit(1)
+			.for("update");
+		if (!workspace) return null;
+		if (workspace.environment === environment) return workspace;
+
+		const [account, order, payment] = await Promise.all([
+			tx
+				.select({ id: paymentAccounts.id })
+				.from(paymentAccounts)
+				.where(eq(paymentAccounts.workspaceId, workspaceId))
+				.limit(1),
+			tx
+				.select({ id: orders.id })
+				.from(orders)
+				.where(eq(orders.workspaceId, workspaceId))
+				.limit(1),
+			tx
+				.select({ id: payments.id })
+				.from(payments)
+				.where(eq(payments.workspaceId, workspaceId))
+				.limit(1),
+		]);
+		if (account.length > 0 || order.length > 0 || payment.length > 0) {
+			throw new Error("WORKSPACE_ENVIRONMENT_LOCKED");
+		}
+
+		const [updated] = await tx
+			.update(quickengineWorkspaces)
+			.set({ environment, updatedAt: new Date() })
+			.where(eq(quickengineWorkspaces.id, workspaceId))
+			.returning({
+				id: quickengineWorkspaces.id,
+				environment: quickengineWorkspaces.environment,
+			});
+		return updated ?? null;
 	});
 }
 
@@ -235,6 +301,7 @@ export async function listWorkspacesForOrganization(organizationId: string) {
 			name: quickengineWorkspaces.name,
 			slug: quickengineWorkspaces.slug,
 			businessType: quickengineWorkspaces.businessType,
+			environment: quickengineWorkspaces.environment,
 			modules: quickengineWorkspaces.modules,
 			archivedAt: quickengineWorkspaces.archivedAt,
 			createdAt: quickengineWorkspaces.createdAt,
@@ -258,6 +325,7 @@ export async function listAccessibleWorkspaces(userId: string) {
 			name: quickengineWorkspaces.name,
 			slug: quickengineWorkspaces.slug,
 			businessType: quickengineWorkspaces.businessType,
+			environment: quickengineWorkspaces.environment,
 			organizationId: quickengineWorkspaces.organizationId,
 		})
 		.from(quickengineWorkspaces)

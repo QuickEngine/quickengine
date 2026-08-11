@@ -484,6 +484,13 @@
 			"when": 1786093596459,
 			"tag": "0068_charming_thunderbolts",
 			"breakpoints": true
+		},
+		{
+			"idx": 69,
+			"version": "7",
+			"when": 1786442710067,
+			"tag": "0069_bumpy_bug",
+			"breakpoints": true
 		}
 	]
 }

@@ -42,6 +42,7 @@ function testApp(options: {
 				role: "owner",
 				workspace: {
 					businessType: "other",
+					environment: "live",
 					id: workspaceId,
 					name: "Example",
 					slug: null,

@@ -445,6 +445,7 @@ export function registerCheckoutRoutes(
 		}
 
 		const charge = await getPaymentProvider(account.provider).createCharge({
+			environment: account.environment,
 			amountCents: order.totalCents,
 			currency: priced.currency,
 			connectedAccountId: externalAccountId,
@@ -466,6 +467,7 @@ export function registerCheckoutRoutes(
 			provider: account.provider,
 			amountCents: order.totalCents,
 			currency: priced.currency,
+			environment: account.environment,
 		});
 
 		return respond(

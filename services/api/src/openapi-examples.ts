@@ -305,6 +305,7 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	},
 	renameWorkspace: { name: "Northwind Trading Co." },
 	setWorkspaceArchived: { archived: true },
+	setWorkspaceEnvironment: { environment: "test" },
 	setWorkspaceModuleEnabled: { enabled: true },
 	registerContentManifest: {
 		slots: [

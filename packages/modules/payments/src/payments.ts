@@ -90,6 +90,7 @@ export async function getPaymentAccount(
 }
 
 export type PaymentAccountPatch = {
+	environment?: "test" | "live";
 	externalAccountId?: string | null;
 	isDefault?: boolean;
 	status?: "pending" | "active" | "restricted" | "disabled";
@@ -102,11 +103,18 @@ export async function upsertPaymentAccount(
 	provider: string,
 	patch: PaymentAccountPatch,
 ) {
+	const environment = await workspaceEnvironment(workspaceId);
+	if (patch.environment && patch.environment !== environment) {
+		throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
+	}
 	const existing = await getPaymentAccount(workspaceId, provider);
 	if (existing) {
+		if (existing.environment !== environment) {
+			throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
+		}
 		const [updated] = await db
 			.update(paymentAccounts)
-			.set({ ...patch, updatedAt: new Date() })
+			.set({ ...patch, environment, updatedAt: new Date() })
 			.where(
 				and(
 					eq(paymentAccounts.workspaceId, workspaceId),
@@ -118,9 +126,21 @@ export async function upsertPaymentAccount(
 	}
 	const [created] = await db
 		.insert(paymentAccounts)
-		.values({ workspaceId, provider, ...patch })
+		.values({ workspaceId, provider, ...patch, environment })
 		.returning();
 	return created;
+}
+
+export async function workspaceEnvironment(
+	workspaceId: string,
+): Promise<"test" | "live"> {
+	const [workspace] = await db
+		.select({ environment: quickengineWorkspaces.environment })
+		.from(quickengineWorkspaces)
+		.where(eq(quickengineWorkspaces.id, workspaceId))
+		.limit(1);
+	if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
+	return workspace.environment;
 }
 
 export async function setDefaultPaymentProvider(
@@ -246,7 +266,8 @@ async function reconcileInvoice(
  * Find a payment we have already recorded for the same provider identity.
  *
  * Two identifiers can carry it. `external_payment_id` is covered by a unique index
- * on `(provider, external_payment_id)`, but that column is **nullable and Postgres
+ * on `(provider, environment, external_payment_id)`, but that column is
+ * **nullable and Postgres
  * does not collide NULLs** — so before migration `0042` a Stripe webhook that
  * populated only the payment intent had nothing stopping it inserting a duplicate.
  * `payments_stripe_intent_unique` closes that, and this lookup turns the collision
@@ -256,6 +277,7 @@ async function findPaymentByProviderIdentity(
 	tx: PaymentTransaction,
 	workspaceId: string,
 	values: {
+		environment: "test" | "live";
 		provider?: string;
 		externalPaymentId?: string | null;
 		stripePaymentIntentId?: string | null;
@@ -269,6 +291,7 @@ async function findPaymentByProviderIdentity(
 				and(
 					eq(payments.workspaceId, workspaceId),
 					eq(payments.provider, values.provider ?? "stripe"),
+					eq(payments.environment, values.environment),
 					eq(payments.externalPaymentId, values.externalPaymentId),
 				),
 			)
@@ -307,7 +330,10 @@ export async function recordPaymentInTx(
 	const initialStatus = values.status ?? "pending";
 	{
 		const [workspace] = await tx
-			.select({ id: quickengineWorkspaces.id })
+			.select({
+				id: quickengineWorkspaces.id,
+				environment: quickengineWorkspaces.environment,
+			})
 			.from(quickengineWorkspaces)
 			.where(eq(quickengineWorkspaces.id, workspaceId))
 			.limit(1);
@@ -320,11 +346,10 @@ export async function recordPaymentInTx(
 		// Checked before the balance guard deliberately: a replay adds no money, so
 		// re-running the overpayment check against it would reject a duplicate
 		// delivery of a payment that was legitimately accepted the first time.
-		const replayed = await findPaymentByProviderIdentity(
-			tx,
-			workspaceId,
-			values,
-		);
+		const replayed = await findPaymentByProviderIdentity(tx, workspaceId, {
+			...values,
+			environment: workspace.environment,
+		});
 		if (replayed) return replayed;
 
 		// Scoped by workspace, and locked, for the same reason the invoice is:
@@ -428,6 +453,7 @@ export async function recordPaymentInTx(
 					values.currency ?? invoice?.currency ?? order?.currency ?? "USD",
 				status: initialStatus,
 				provider: values.provider ?? "stripe",
+				environment: workspace.environment,
 				paymentMethod: values.paymentMethod ?? "card",
 				externalPaymentId: values.externalPaymentId ?? null,
 				stripePaymentIntentId: values.stripePaymentIntentId ?? null,
@@ -539,6 +565,7 @@ export async function setPaymentStatusInTx(
 					paymentId: id,
 					amountCents: remainder,
 					provider: current.provider,
+					environment: current.environment,
 					reason: "Provider reported a full refund",
 					createdAt: now,
 				});
@@ -613,6 +640,7 @@ export async function refundPaymentInTx(
 				paymentId: id,
 				amountCents: values.amountCents,
 				provider: payment.provider,
+				environment: payment.environment,
 				externalRefundId: values.externalRefundId ?? null,
 				reason: values.reason ?? null,
 			})

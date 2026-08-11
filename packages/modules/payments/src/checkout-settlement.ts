@@ -6,7 +6,11 @@ import {
 	paymentAccounts,
 	payments,
 } from "@quickengine/db";
-import type { VerifiedProviderEvent } from "./provider";
+import type {
+	PaymentEnvironment,
+	PaymentProviderId,
+	VerifiedProviderEvent,
+} from "./provider";
 import { getPaymentProvider } from "./providers";
 
 /**
@@ -45,11 +49,19 @@ export function isSettlementEvent(type: string): boolean {
  */
 async function workspaceForAccount(
 	externalAccountId: string,
+	provider: PaymentProviderId,
+	environment: PaymentEnvironment,
 ): Promise<string | null> {
 	const [row] = await db
 		.select({ workspaceId: paymentAccounts.workspaceId })
 		.from(paymentAccounts)
-		.where(eq(paymentAccounts.externalAccountId, externalAccountId))
+		.where(
+			and(
+				eq(paymentAccounts.externalAccountId, externalAccountId),
+				eq(paymentAccounts.provider, provider),
+				eq(paymentAccounts.environment, environment),
+			),
+		)
 		.limit(1);
 	return row?.workspaceId ?? null;
 }
@@ -71,6 +83,8 @@ export type SettlementOutcome =
 export async function applyCheckoutSettlement(
 	event: VerifiedProviderEvent,
 	externalAccountId: string | null,
+	provider: PaymentProviderId,
+	environment: PaymentEnvironment,
 ): Promise<SettlementOutcome> {
 	if (!isSettlementEvent(event.type)) {
 		return { applied: false, reason: "not a settlement event" };
@@ -82,7 +96,11 @@ export async function applyCheckoutSettlement(
 		return { applied: false, reason: "event carries no payment id" };
 	}
 
-	const workspaceId = await workspaceForAccount(externalAccountId);
+	const workspaceId = await workspaceForAccount(
+		externalAccountId,
+		provider,
+		environment,
+	);
 	if (!workspaceId) {
 		// An account we have never stored. Acknowledged so the provider stops
 		// retrying: this is not a failure, it is somebody else's event.
@@ -97,6 +115,8 @@ export async function applyCheckoutSettlement(
 		.where(
 			and(
 				eq(payments.workspaceId, workspaceId),
+				eq(payments.provider, provider),
+				eq(payments.environment, environment),
 				eq(payments.externalPaymentId, event.externalPaymentId),
 			),
 		)
@@ -169,6 +189,7 @@ export async function recordPendingCheckoutPayment(input: {
 	provider: string;
 	amountCents: number;
 	currency: string;
+	environment: PaymentEnvironment;
 }): Promise<void> {
 	await db
 		.insert(payments)
@@ -178,6 +199,7 @@ export async function recordPendingCheckoutPayment(input: {
 			clientId: input.clientId,
 			clientEmail: input.clientEmail,
 			provider: input.provider,
+			environment: input.environment,
 			externalPaymentId: input.externalPaymentId,
 			amountCents: input.amountCents,
 			currency: input.currency,
@@ -207,7 +229,10 @@ export async function captureCheckoutPayment(input: {
 	externalPaymentId: string;
 }): Promise<CheckoutCaptureOutcome> {
 	const [payment] = await db
-		.select({ provider: payments.provider })
+		.select({
+			provider: payments.provider,
+			environment: payments.environment,
+		})
 		.from(payments)
 		.where(
 			and(
@@ -221,6 +246,7 @@ export async function captureCheckoutPayment(input: {
 	const [connected] = await db
 		.select({
 			provider: paymentAccounts.provider,
+			environment: paymentAccounts.environment,
 			externalAccountId: paymentAccounts.externalAccountId,
 		})
 		.from(paymentAccounts)
@@ -228,7 +254,8 @@ export async function captureCheckoutPayment(input: {
 		.limit(1);
 	if (
 		!connected?.externalAccountId ||
-		connected.provider !== payment.provider
+		connected.provider !== payment.provider ||
+		connected.environment !== payment.environment
 	) {
 		return { captured: false, reason: "Payment account is not connected." };
 	}
@@ -241,6 +268,7 @@ export async function captureCheckoutPayment(input: {
 		};
 	}
 	const captured = await provider.captureCharge({
+		environment: payment.environment,
 		externalPaymentId: input.externalPaymentId,
 		connectedAccountId: connected.externalAccountId,
 	});
@@ -251,6 +279,8 @@ export async function captureCheckoutPayment(input: {
 		settlement: await applyCheckoutSettlement(
 			captured.event,
 			captured.event.externalAccountId,
+			payment.provider as PaymentProviderId,
+			payment.environment,
 		),
 	};
 }

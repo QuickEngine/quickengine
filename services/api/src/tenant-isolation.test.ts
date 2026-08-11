@@ -72,7 +72,13 @@ const workspaceFor = (id: string): WorkspaceResolution => ({
 	enabledModuleIds: [],
 	organizationId: `org-${id}`,
 	ownerId: `owner-${id}`,
-	workspace: { businessType: "test", id, name: "Test", slug: "test" },
+	workspace: {
+		businessType: "test",
+		environment: "live",
+		id,
+		name: "Test",
+		slug: "test",
+	},
 });
 
 const adversarialDependencies: PlatformDependencies = {
@@ -121,6 +127,10 @@ const NOT_WORKSPACE_SCOPED = [
 	// Account-level: scoped to the session's own organization, never to a
 	// workspace supplied by the caller.
 	"/v1/account",
+	// Session-scoped workspace switcher. It ignores the workspace header and
+	// returns only memberships resolved from the signed-in user; a 200 with an
+	// empty list is the correct non-member response, not a tenant leak.
+	"/v1/quickdash/workspaces",
 	/**
 	 * 🔴 `/v1/catalog` was here as "platform metadata with no tenant data". That
 	 * was wrong — it is the products-services module and its 8 routes carry a

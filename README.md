@@ -51,7 +51,9 @@ order.
 Payments supports multiple connected merchant processors per workspace. Stripe and PayPal can
 remain connected together, one is selected as the checkout default, and each historical payment
 retains its processor so settlement and refunds never depend on whichever provider is active
-today.
+today. Test and live workspaces use separate provider credentials, webhook signatures and payment
+identity; a workspace locks to its mode when it enters the money lifecycle, so sandbox orders can
+never be promoted into real business history.
 
 ---
 
@@ -126,7 +128,7 @@ packages/
 ```sh
 pnpm install
 pnpm docker:up          # Postgres :5435, Redis :6381
-pnpm db:push
+pnpm db:migrate
 pnpm dev                # everything
 ```
 

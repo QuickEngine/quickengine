@@ -3,7 +3,9 @@ import {
 	getPaymentAccount,
 	setDefaultPaymentProvider,
 	upsertPaymentAccount,
+	workspaceEnvironment,
 } from "./payments";
+import type { PaymentEnvironment } from "./provider";
 import { getPaymentProvider } from "./providers";
 
 /**
@@ -48,6 +50,7 @@ export const paymentProviderInputSchema = z.object({
  */
 
 export type ConnectStatus = {
+	environment: PaymentEnvironment;
 	provider: string;
 	connected: boolean;
 	chargesEnabled: boolean;
@@ -55,7 +58,11 @@ export type ConnectStatus = {
 	status: "pending" | "active" | "restricted" | "disabled";
 };
 
-const notConnected = (provider = "stripe"): ConnectStatus => ({
+const notConnected = (
+	environment: PaymentEnvironment,
+	provider = "stripe",
+): ConnectStatus => ({
+	environment,
 	provider,
 	connected: false,
 	chargesEnabled: false,
@@ -86,6 +93,7 @@ export async function startPaymentOnboarding(input: {
 	refreshUrl: string;
 }): Promise<{ onboardingUrl: string; status: ConnectStatus }> {
 	const providerId = input.provider ?? "stripe";
+	const environment = await workspaceEnvironment(input.workspaceId);
 	const provider = getPaymentProvider(providerId);
 	const existing = await getPaymentAccount(input.workspaceId, providerId);
 
@@ -94,13 +102,19 @@ export async function startPaymentOnboarding(input: {
 	}
 
 	const { account, onboardingUrl } = await provider.startOnboarding({
+		environment,
 		email: input.email,
 		country: input.country,
 		returnUrl: input.returnUrl,
 		refreshUrl: input.refreshUrl,
 	});
 
-	const status = await persist(input.workspaceId, providerId, account);
+	const status = await persist(
+		input.workspaceId,
+		providerId,
+		environment,
+		account,
+	);
 	return { onboardingUrl, status };
 }
 
@@ -116,13 +130,17 @@ export async function refreshPaymentAccount(
 	provider?: string,
 ): Promise<ConnectStatus> {
 	const existing = await getPaymentAccount(workspaceId, provider);
-	if (!existing?.externalAccountId) return notConnected(provider);
+	const environment = await workspaceEnvironment(workspaceId);
+	if (!existing?.externalAccountId) return notConnected(environment, provider);
+	if (existing.environment !== environment)
+		throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
 
 	const providerId = existing.provider ?? "stripe";
 	const account = await getPaymentProvider(providerId).getAccount(
 		existing.externalAccountId,
+		environment,
 	);
-	return persist(workspaceId, providerId, account);
+	return persist(workspaceId, providerId, environment, account);
 }
 
 /** Our stored view, with no network call. */
@@ -131,8 +149,12 @@ export async function readPaymentAccount(
 	provider?: string,
 ): Promise<ConnectStatus> {
 	const existing = await getPaymentAccount(workspaceId, provider);
-	if (!existing?.externalAccountId) return notConnected(provider);
+	const environment = await workspaceEnvironment(workspaceId);
+	if (!existing?.externalAccountId) return notConnected(environment, provider);
+	if (existing.environment !== environment)
+		throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
 	return {
+		environment,
 		provider: existing.provider ?? "stripe",
 		connected: true,
 		chargesEnabled: existing.chargesEnabled,
@@ -144,6 +166,7 @@ export async function readPaymentAccount(
 async function persist(
 	workspaceId: string,
 	provider: string,
+	environment: PaymentEnvironment,
 	account: {
 		externalAccountId: string;
 		chargesEnabled: boolean;
@@ -156,6 +179,7 @@ async function persist(
 	const status = account.chargesEnabled ? "active" : "pending";
 
 	await upsertPaymentAccount(workspaceId, provider, {
+		environment,
 		externalAccountId: account.externalAccountId,
 		isDefault: false,
 		status,
@@ -165,6 +189,7 @@ async function persist(
 	await setDefaultPaymentProvider(workspaceId, provider);
 
 	return {
+		environment,
 		provider,
 		connected: true,
 		chargesEnabled: account.chargesEnabled,

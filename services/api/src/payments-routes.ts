@@ -127,27 +127,6 @@ export function registerPaymentsRoutes(
 			await recordPaymentCommand(context, body, options.uow),
 		);
 	});
-	app.get("/v1/payments/:id", readAccess, readLimit, async (c) => {
-		const payment = await getPaymentDto(
-			c.get("authorized").workspaceId,
-			uuid.parse(c.req.param("id")),
-		);
-		return payment
-			? respond(c, payment)
-			: respondError(c, "NOT_FOUND", "The payment was not found.", 404);
-	});
-	app.post("/v1/payments/:id/status", writeAccess, writeLimit, async (c) => {
-		const id = uuid.parse(c.req.param("id"));
-		const { status } = statusSchema.parse(await c.req.json());
-		const context = await mutationContext(c, "payments.set-status", {
-			id,
-			status,
-		});
-		return respondMutation(
-			c,
-			await setPaymentStatusCommand(context, id, status, options.uow),
-		);
-	});
 	// ── Connect: the business's OWN payment account ─────────────────────────
 	//
 	// 🔴 Until these existed, `createConnectedAccount`,
@@ -290,6 +269,31 @@ export function registerPaymentsRoutes(
 			}
 		},
 	);
+
+	// Static Connect routes must stay above the dynamic payment-id routes. Hono
+	// matches in registration order, so `/payments/:id` would otherwise capture
+	// the literal `connect` segment and reject it as an invalid UUID.
+	app.get("/v1/payments/:id", readAccess, readLimit, async (c) => {
+		const payment = await getPaymentDto(
+			c.get("authorized").workspaceId,
+			uuid.parse(c.req.param("id")),
+		);
+		return payment
+			? respond(c, payment)
+			: respondError(c, "NOT_FOUND", "The payment was not found.", 404);
+	});
+	app.post("/v1/payments/:id/status", writeAccess, writeLimit, async (c) => {
+		const id = uuid.parse(c.req.param("id"));
+		const { status } = statusSchema.parse(await c.req.json());
+		const context = await mutationContext(c, "payments.set-status", {
+			id,
+			status,
+		});
+		return respondMutation(
+			c,
+			await setPaymentStatusCommand(context, id, status, options.uow),
+		);
+	});
 
 	app.post("/v1/payments/:id/refund", writeAccess, writeLimit, async (c) => {
 		const id = uuid.parse(c.req.param("id"));

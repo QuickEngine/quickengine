@@ -60,6 +60,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Opening payment setup no longer treats “connect” as a payment ID.** The static provider
+  setup routes now take precedence over individual payment records, so a workspace that has not
+  connected Stripe sees the setup action instead of an invalid-request error.
+
 - **Webhook encryption checks no longer pass by chance.** The tamper test now always changes
   the encrypted payload, so CI consistently proves that modified signing secrets are rejected.
 

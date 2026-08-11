@@ -1,5 +1,46 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { createApp } from "./app";
+import type { ApiConfig } from "./config";
+import { noopLogger } from "./logger";
 import { isOwnOrigin } from "./payments-routes";
+import type { PlatformDependencies } from "./platform-types";
+
+const config: ApiConfig = {
+	baseUrl: "https://api.quickdash.xyz",
+	bodyLimitBytes: 1024,
+	callbackTimeoutMs: 50_000,
+	corsOrigins: new Set(["https://quickdash.xyz"]),
+	environment: "test",
+	logLevel: "error",
+	port: 3020,
+	readinessTimeoutMs: 50,
+	requestTimeoutMs: 50_000,
+	tracesSampleRate: 0,
+	version: "0.1.0-test",
+};
+
+describe("Connect route precedence", () => {
+	it("does not parse the static connect segment as a payment UUID", async () => {
+		const dependencies: PlatformDependencies = {
+			getSession: async () => null,
+			getWorkspaceForKey: async () => null,
+			getWorkspaceForUser: async () => null,
+			verifyApiKey: async () => null,
+		};
+		const { registerAllRoutes } = await import("./register-routes");
+		const app = createApp(config, {
+			logger: noopLogger,
+			registerRoutes: (instance, logger) =>
+				registerAllRoutes(instance, { dependencies, logger }),
+		});
+		const response = await app.request("/v1/payments/connect?provider=stripe");
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body.error.code).toBe("WORKSPACE_REQUIRED");
+		expect(body.error.message).not.toMatch(/valid|uuid/i);
+	});
+});
 
 /**
  * The open-redirect guard on Connect onboarding.

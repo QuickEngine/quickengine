@@ -46,6 +46,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Customer portals can be published again.** Portal setup now issues a usable,
+  browser-safe catalog key instead of requesting an empty credential that every API
+  endpoint correctly refuses.
+
 - **An error under a form no longer moves the button you were reaching for.** Messages appear in
   space that is already reserved for them, so nothing on the screen shifts when one arrives or
   clears. It mattered most when entering a code, where you get three attempts and the button used

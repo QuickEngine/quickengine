@@ -11,6 +11,11 @@ import {
 // not a convenience. These tests exist because the two capability lists sit next to each
 // other and a careless edit can widen the public one without anyone noticing.
 describe("publishable key capability allowlist", () => {
+	it("always gives a portal key at least one usable read capability", () => {
+		expect(PUBLISHABLE_CAPABILITIES).toContain("catalog:read");
+		expect(PUBLISHABLE_CAPABILITIES.length).toBeGreaterThan(0);
+	});
+
 	it("grants no write capability except self-reported site telemetry", () => {
 		const writes = PUBLISHABLE_CAPABILITIES.filter((capability) =>
 			capability.endsWith(":write"),

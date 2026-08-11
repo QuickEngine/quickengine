@@ -12,6 +12,7 @@ import {
 	getPaymentAccount,
 	listPayments,
 	recordPayment,
+	recordPendingCheckoutPayment,
 	refundPayment,
 	setDefaultPaymentProvider,
 	setPaymentStatus,
@@ -22,6 +23,7 @@ const ownerId = "payments-owner";
 const workspaceId = "00000000-0000-4000-8000-000000000801";
 const otherWorkspaceId = "00000000-0000-4000-8000-000000000802";
 const clientId = "00000000-0000-4000-8000-000000000803";
+const settlementOrderId = "00000000-0000-4000-8000-000000000804";
 
 beforeEach(async () => {
 	const sql = testDbClient();
@@ -76,6 +78,60 @@ describe("Connected payment providers", () => {
 			reason: "unknown connected account",
 		});
 	});
+	/**
+	 * 🔴 Settlement used to place the order and leave the payment in `pending`
+	 * forever. Real money showed as pending in Payments, and because a refund
+	 * requires `succeeded`, no completed checkout could ever be refunded. Found
+	 * by the first real Caffeinate purchase on 2026-08-11.
+	 */
+	it("settles the payment itself, not only the order it belongs to", async () => {
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_settles_payment",
+		});
+		const sql = testDbClient();
+		await sql`insert into orders (id, workspace_id, client_id, client_name, sequence, number, currency, subtotal_cents, total_cents, status) values (${settlementOrderId}, ${workspaceId}, ${clientId}, 'Grace Client', 1, 'ORD-0001', 'CAD', 2400, 3600, 'draft')`;
+		await recordPendingCheckoutPayment({
+			workspaceId,
+			orderId: settlementOrderId,
+			clientId,
+			clientEmail: "grace@example.com",
+			externalPaymentId: "pi_settles_payment",
+			provider: "stripe",
+			amountCents: 3600,
+			currency: "CAD",
+			environment: "live",
+		});
+
+		const event = {
+			id: "evt_settles_payment",
+			type: "payment_intent.succeeded",
+			externalPaymentId: "pi_settles_payment",
+			externalAccountId: "acct_settles_payment",
+			payload: {},
+		};
+		await expect(
+			applyCheckoutSettlement(event, event.externalAccountId, "stripe", "live"),
+		).resolves.toMatchObject({ applied: true, status: "placed" });
+
+		const settled = (await listPayments(workspaceId)).find(
+			(row) => row.externalPaymentId === "pi_settles_payment",
+		);
+		expect(settled?.status).toBe("succeeded");
+		expect(settled?.succeededAt).not.toBeNull();
+
+		// Stripe retries on any non-2xx, so the same event arrives again. The order
+		// is no longer `draft` and the payment is already `succeeded`; neither may
+		// throw, or the provider would redeliver this settlement forever.
+		await expect(
+			applyCheckoutSettlement(event, event.externalAccountId, "stripe", "live"),
+		).resolves.toMatchObject({ applied: false });
+		expect(
+			(await listPayments(workspaceId)).find(
+				(row) => row.externalPaymentId === "pi_settles_payment",
+			)?.status,
+		).toBe("succeeded");
+	});
+
 	it("keeps one account per provider and switches the default without deleting either", async () => {
 		await upsertPaymentAccount(workspaceId, "stripe", {
 			externalAccountId: "acct_stripe_1",

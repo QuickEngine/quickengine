@@ -476,6 +476,9 @@ export function registerCheckoutRoutes(
 				order,
 				payment: {
 					provider: account.provider,
+					// Safe to expose and required by provider browser SDKs when the
+					// charge belongs to a connected account rather than the platform.
+					providerAccountId: externalAccountId,
 					externalPaymentId: charge.externalPaymentId,
 					// A discriminated browser step: Stripe supplies a client secret,
 					// PayPal supplies an approval token, and a hosted provider may supply

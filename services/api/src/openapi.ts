@@ -1000,7 +1000,7 @@ function declaredDocument(config: ApiConfig) {
 					responses: {
 						"201": {
 							description:
-								"The order and a provider-neutral next action when the business can be paid online. The action is a client secret, approval token, hosted redirect, or no further browser work.",
+								"The order, browser-safe connected provider account id, and a provider-neutral next action when the business can be paid online. The action is a client secret, approval token, hosted redirect, or no further browser work.",
 						},
 						"400": {
 							description:

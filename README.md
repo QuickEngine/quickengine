@@ -53,7 +53,9 @@ remain connected together, one is selected as the checkout default, and each his
 retains its processor so settlement and refunds never depend on whichever provider is active
 today. Test and live workspaces use separate provider credentials, webhook signatures and payment
 identity; a workspace locks to its mode when it enters the money lifecycle, so sandbox orders can
-never be promoted into real business history.
+never be promoted into real business history. Operators connect and resume Stripe's hosted setup
+from the Payments module; custom storefronts receive the browser-safe account context required to
+confirm the resulting direct charge without receiving a server key.
 
 ---
 

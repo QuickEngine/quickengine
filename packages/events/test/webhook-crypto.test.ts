@@ -31,7 +31,9 @@ describe("webhook secret storage", () => {
 	it("refuses tampered ciphertext instead of returning a wrong key", () => {
 		const stored = encryptWebhookSecret(generateWebhookSecret());
 		const [version, iv, tag, ciphertext] = stored.split(".");
-		const flipped = `${ciphertext.slice(0, -2)}${ciphertext.slice(-2) === "AA" ? "AB" : "AA"}`;
+		const index = Math.floor(ciphertext.length / 2);
+		const replacement = ciphertext[index] === "A" ? "B" : "A";
+		const flipped = `${ciphertext.slice(0, index)}${replacement}${ciphertext.slice(index + 1)}`;
 
 		expect(() =>
 			decryptWebhookSecret([version, iv, tag, flipped].join(".")),

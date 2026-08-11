@@ -103,6 +103,7 @@ export async function startPaymentOnboarding(input: {
 
 	const { account, onboardingUrl } = await provider.startOnboarding({
 		environment,
+		existingAccountId: existing?.externalAccountId ?? undefined,
 		email: input.email,
 		country: input.country,
 		returnUrl: input.returnUrl,

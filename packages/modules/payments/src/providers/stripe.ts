@@ -85,14 +85,16 @@ export const stripePaymentProvider: PaymentProvider = {
 
 	async startOnboarding(params) {
 		const stripe = await stripeFor(params.environment);
-		const account = await stripe.accounts.create({
-			// Express: Stripe hosts onboarding and owns the compliance burden. A
-			// business that has outgrown it can be migrated; starting with Standard
-			// would put KYC, disputes and tax forms on us from day one.
-			type: "express",
-			email: params.email,
-			country: params.country,
-		});
+		const account = params.existingAccountId
+			? await stripe.accounts.retrieve(params.existingAccountId)
+			: await stripe.accounts.create({
+					// Express: Stripe hosts onboarding and owns the compliance burden. A
+					// business that has outgrown it can be migrated; starting with Standard
+					// would put KYC, disputes and tax forms on us from day one.
+					type: "express",
+					email: params.email,
+					country: params.country,
+				});
 
 		const link = await stripe.accountLinks.create({
 			account: account.id,

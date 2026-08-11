@@ -67,18 +67,40 @@ async function webhookSecret(environment: PaymentEnvironment) {
  * account can accept charges days before payouts clear review. Collapsing them
  * into one "connected" boolean would either block a business that could already
  * sell, or promise payouts that cannot happen yet.
+ *
+ * 🔴 `charges_enabled` on its own does NOT mean this account can take a card.
+ * An Express account reports it while `card_payments` is still inactive, and
+ * Stripe then rejects the PaymentIntent with "you cannot create a charge on a
+ * connected account without the card_payments capability enabled". Reporting
+ * such an account as ready tells the operator they are open for business while
+ * every single checkout fails — which is exactly what happened on 2026-08-11,
+ * during the first real Caffeinate purchase. Readiness must name the capability
+ * that actually gates charging.
  */
 function toAccount(account: {
 	id: string;
 	charges_enabled?: boolean;
 	payouts_enabled?: boolean;
+	capabilities?: { card_payments?: string; transfers?: string };
 }): ProviderAccount {
 	return {
 		externalAccountId: account.id,
-		chargesEnabled: account.charges_enabled ?? false,
+		chargesEnabled:
+			(account.charges_enabled ?? false) &&
+			account.capabilities?.card_payments === "active",
 		payoutsEnabled: account.payouts_enabled ?? false,
 	};
 }
+
+/**
+ * `card_payments` is what actually gates taking a card on a direct charge.
+ * `transfers` rides along so an application fee can be introduced later without
+ * dragging every merchant back through onboarding for a second capability.
+ */
+const CONNECT_CAPABILITIES = {
+	card_payments: { requested: true },
+	transfers: { requested: true },
+} as const;
 
 export const stripePaymentProvider: PaymentProvider = {
 	id: "stripe",
@@ -86,7 +108,15 @@ export const stripePaymentProvider: PaymentProvider = {
 	async startOnboarding(params) {
 		const stripe = await stripeFor(params.environment);
 		const account = params.existingAccountId
-			? await stripe.accounts.retrieve(params.existingAccountId)
+			? // 🔴 UPDATE, not retrieve. An account created before capabilities were
+				// requested can never take a card, and merely reading it back would
+				// return that broken state faithfully forever — leaving the merchant
+				// stuck behind a "connected" badge with no way out through the product.
+				// Re-requesting on resume is what lets them recover by clicking finish
+				// setup. Requesting a capability an account already holds is a no-op.
+				await stripe.accounts.update(params.existingAccountId, {
+					capabilities: CONNECT_CAPABILITIES,
+				})
 			: await stripe.accounts.create({
 					// Express: Stripe hosts onboarding and owns the compliance burden. A
 					// business that has outgrown it can be migrated; starting with Standard
@@ -94,6 +124,11 @@ export const stripePaymentProvider: PaymentProvider = {
 					type: "express",
 					email: params.email,
 					country: params.country,
+					// 🔴 Capabilities have to be REQUESTED. Omit them and the account
+					// still creates, still onboards, still reports `charges_enabled` — and
+					// then refuses every direct charge because `card_payments` was never
+					// granted. Nothing surfaces the mistake until a customer tries to pay.
+					capabilities: CONNECT_CAPABILITIES,
 				});
 
 		const link = await stripe.accountLinks.create({

@@ -230,13 +230,30 @@ export const stripePaymentProvider: PaymentProvider = {
 				signature,
 				await webhookSecret(environment),
 			);
-			const object = event.data.object as { id?: string; object?: string };
+			const object = event.data.object as {
+				id?: string;
+				object?: string;
+				payment_intent?: unknown;
+			};
 
 			// Only claim a payment id when the event is actually about one. A
 			// `payout.paid` carries an id too, and mistaking it for a payment id
 			// would attach a refund or a status change to the wrong row.
+			//
+			// 🔴 A refund arrives as `charge.refunded`, whose object is a CHARGE, so
+			// its `id` is a `ch_...` and matches no payment row — we store the
+			// PaymentIntent id. Reading only `payment_intent` here left every refund
+			// event with a null payment id, and settlement dropped it at "event
+			// carries no payment id" before any handler saw it. Found 2026-08-11,
+			// after the refund handler itself was already written and could never
+			// fire. The charge carries the intent it belongs to; use that.
 			const externalPaymentId =
-				object.object === "payment_intent" ? (object.id ?? null) : null;
+				object.object === "payment_intent"
+					? (object.id ?? null)
+					: object.object === "charge" &&
+							typeof object.payment_intent === "string"
+						? object.payment_intent
+						: null;
 
 			return {
 				id: event.id,

@@ -60,6 +60,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Refund notifications now reach the payment they belong to.** A refund arrives from Stripe
+  describing the charge, while a payment is tracked by the payment attempt it came from, so every
+  refund notification was discarded before anything could act on it. Refunds made in Stripe were
+  accepted and then lost. They now find their payment and are recorded against it.
+
 - **A refund can no longer go out on a request that is then rejected.** The refund endpoint called
   the payment provider before checking the request was valid, so a call missing its idempotency key
   sent the money back and then answered with an error. The business was told nothing happened while

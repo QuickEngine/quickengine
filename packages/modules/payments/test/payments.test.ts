@@ -170,7 +170,18 @@ describe("Connected payment providers", () => {
 			"live",
 		);
 
-		const refunded = { ...paid, id: "evt_refunded", type: "charge.refunded" };
+		// 🔴 Built deliberately, not spread from `paid`. The first version of this
+		// test copied the succeeded event and only changed its type, so it carried a
+		// `pi_` id that a real `charge.refunded` never has, and it passed against a
+		// handler that could not fire in production. `verifyWebhook` is what turns
+		// the charge into this intent id; see `providers/stripe.test.ts`.
+		const refunded = {
+			id: "evt_refunded",
+			type: "charge.refunded",
+			externalPaymentId: "pi_refund_webhook",
+			externalAccountId: "acct_refund_webhook",
+			payload: {},
+		};
 		await expect(
 			applyCheckoutSettlement(
 				refunded,

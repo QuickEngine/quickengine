@@ -132,6 +132,71 @@ describe("Connected payment providers", () => {
 		).toBe("succeeded");
 	});
 
+	/**
+	 * 🔴 `charge.refunded` was a declared settlement event with no handler, so a
+	 * refund taken at the provider was acknowledged and then dropped. That is the
+	 * path the Payments module itself recommends, since it tells the operator to
+	 * refund through Stripe. Found 2026-08-11 when a sandbox refund succeeded at
+	 * Stripe and left no trace in QuickDash.
+	 */
+	it("records a refund announced by the provider", async () => {
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_refund_webhook",
+		});
+		const sql = testDbClient();
+		await sql`insert into orders (id, workspace_id, client_id, client_name, sequence, number, currency, subtotal_cents, total_cents, status) values (${settlementOrderId}, ${workspaceId}, ${clientId}, 'Grace Client', 1, 'ORD-0001', 'CAD', 2400, 3600, 'draft')`;
+		await recordPendingCheckoutPayment({
+			workspaceId,
+			orderId: settlementOrderId,
+			clientId,
+			clientEmail: "grace@example.com",
+			externalPaymentId: "pi_refund_webhook",
+			provider: "stripe",
+			amountCents: 3600,
+			currency: "CAD",
+			environment: "live",
+		});
+		const paid = {
+			id: "evt_refund_paid",
+			type: "payment_intent.succeeded",
+			externalPaymentId: "pi_refund_webhook",
+			externalAccountId: "acct_refund_webhook",
+			payload: {},
+		};
+		await applyCheckoutSettlement(
+			paid,
+			paid.externalAccountId,
+			"stripe",
+			"live",
+		);
+
+		const refunded = { ...paid, id: "evt_refunded", type: "charge.refunded" };
+		await expect(
+			applyCheckoutSettlement(
+				refunded,
+				refunded.externalAccountId,
+				"stripe",
+				"live",
+			),
+		).resolves.toMatchObject({ applied: false });
+
+		const row = (await listPayments(workspaceId)).find(
+			(p) => p.externalPaymentId === "pi_refund_webhook",
+		);
+		expect(row?.status).toBe("refunded");
+		expect(row?.refundedAt).not.toBeNull();
+
+		// A redelivery must not throw, or Stripe retries the refund forever.
+		await expect(
+			applyCheckoutSettlement(
+				refunded,
+				refunded.externalAccountId,
+				"stripe",
+				"live",
+			),
+		).resolves.toMatchObject({ applied: false });
+	});
+
 	it("keeps one account per provider and switches the default without deleting either", async () => {
 		await upsertPaymentAccount(workspaceId, "stripe", {
 			externalAccountId: "acct_stripe_1",

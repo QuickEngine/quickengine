@@ -60,6 +60,18 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **A refund can no longer go out on a request that is then rejected.** The refund endpoint called
+  the payment provider before checking the request was valid, so a call missing its idempotency key
+  sent the money back and then answered with an error. The business was told nothing happened while
+  the customer had already been refunded, and no record of it existed. Every check now runs before
+  any money moves.
+
+- **A refund made in Stripe now appears in QuickDash.** Refund notifications from the provider were
+  accepted and then ignored, so a refund issued outside QuickDash left no trace here. This is the
+  route the Payments module itself recommends, and it now records the refund against the payment
+  and reconciles any invoice it belonged to. The order is deliberately left alone, because a refund
+  is not a cancellation and what happens to the order is the operator's decision.
+
 - **A paid order now shows its payment as paid, and can be refunded.** Settlement placed the order
   but left the payment itself in pending forever, so money that had already cleared still looked
   outstanding and no completed sale could be refunded, because refunding requires a settled

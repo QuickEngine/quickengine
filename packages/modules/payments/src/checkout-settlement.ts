@@ -15,7 +15,7 @@ import type {
 import { getPaymentProvider } from "./providers";
 
 /**
- * Move the payment row to `succeeded`, tolerating every shape of redelivery.
+ * Move the payment row to a settled status, tolerating every shape of redelivery.
  *
  * Stripe retries on any non-2xx, so this runs again for events already applied.
  * `setPaymentStatus` signals both "already there" and "already moved past" by
@@ -25,9 +25,13 @@ import { getPaymentProvider } from "./providers";
  *
  * A genuine fault still propagates.
  */
-async function settlePaymentRow(workspaceId: string, paymentId: string) {
+async function settlePaymentRow(
+	workspaceId: string,
+	paymentId: string,
+	status: "succeeded" | "refunded",
+) {
 	try {
-		await setPaymentStatus(workspaceId, paymentId, "succeeded");
+		await setPaymentStatus(workspaceId, paymentId, status);
 	} catch (error) {
 		const reason = error instanceof Error ? error.message : "";
 		if (
@@ -166,7 +170,7 @@ export async function applyCheckoutSettlement(
 		//
 		// Found on 2026-08-11 by the first real Caffeinate purchase: the webhook
 		// placed the order correctly and nothing ever settled the payment.
-		await settlePaymentRow(workspaceId, payment.id);
+		await settlePaymentRow(workspaceId, payment.id, "succeeded");
 
 		// 🔴 Conditional on `draft`. A redelivered event finds the order already
 		// placed and changes nothing — and an order a human has since moved on to
@@ -196,6 +200,29 @@ export async function applyCheckoutSettlement(
 					status: updated.status,
 				}
 			: { applied: false, reason: "order was not awaiting payment" };
+	}
+
+	if (event.type === "charge.refunded") {
+		// 🔴 `charge.refunded` was listed as a settlement event and then handled
+		// nowhere, so it fell through to "no action for this event" and QuickDash
+		// acknowledged a refund it never recorded.
+		//
+		// That silence mattered most on the path the product itself recommends: the
+		// Payments module tells an operator to refund through Stripe, and Stripe
+		// announces it here. It also leaves a refund issued outside QuickDash, or
+		// one stranded by a failed API call, permanently invisible with no way to
+		// reconcile. Found 2026-08-11 after a sandbox refund went through at Stripe
+		// and left no trace here.
+		//
+		// `setPaymentStatus` owns what "refunded" means: it records the outstanding
+		// remainder in `payment_refunds` and reconciles any invoice, so a partial
+		// refund already taken at the provider is not double counted.
+		await settlePaymentRow(workspaceId, payment.id, "refunded");
+
+		// The ORDER is deliberately untouched. A refund is not a cancellation, and
+		// whether a refunded order stays placed, gets cancelled or goes back for
+		// fulfillment is the operator's decision, not this webhook's.
+		return { applied: false, reason: "refund recorded against the payment" };
 	}
 
 	if (event.type === "payment_intent.payment_failed") {

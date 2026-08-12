@@ -300,6 +300,20 @@ export function registerPaymentsRoutes(
 		const body = await c.req.json();
 		const { workspaceId } = c.get("authorized");
 
+		// 🔴 EVERYTHING that can reject this request runs BEFORE the money moves.
+		//
+		// `buildMutationContext` rejects a missing or malformed Idempotency-Key by
+		// throwing, and it used to run *after* the provider refund. A request
+		// without the header therefore refunded a real customer and then answered
+		// 400 — the operator reads "nothing happened" while the money is gone and
+		// QuickDash holds no record of it. That is the same "record that lies"
+		// failure described below, one step earlier in the route.
+		//
+		// Observed 2026-08-11 against the Caffeinate sandbox: $36.00 went back to
+		// the card on a call that reported failure. The function's own contract says
+		// to call it after authorization and validation and before side effects.
+		const context = await mutationContext(c, "payments.refund", { body, id });
+
 		// 🔴 Send the money back BEFORE recording it. Until 2026-08-03 this route
 		// wrote the ledger and called no provider at all, so an operator could
 		// "refund" a customer who never got their money — a record that lies is
@@ -314,8 +328,6 @@ export function registerPaymentsRoutes(
 				typeof body?.amountCents === "number" ? body.amountCents : undefined,
 			reason: typeof body?.reason === "string" ? body.reason : undefined,
 		});
-
-		const context = await mutationContext(c, "payments.refund", { body, id });
 		return respondMutation(
 			c,
 			await refundPaymentCommand(

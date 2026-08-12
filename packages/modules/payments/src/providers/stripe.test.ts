@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 	retrieve: vi.fn(),
 	update: vi.fn(),
 	linkCreate: vi.fn(),
+	constructEvent: vi.fn(),
 }));
 
 vi.mock("stripe", () => ({
@@ -25,6 +26,7 @@ vi.mock("stripe", () => ({
 			update: mocks.update,
 		};
 		accountLinks = { create: mocks.linkCreate };
+		webhooks = { constructEvent: mocks.constructEvent };
 	},
 }));
 
@@ -32,6 +34,8 @@ vi.mock("@quickengine/env/server", () => ({
 	serverEnv: {
 		STRIPE_CONNECT_TEST_SECRET_KEY: "sk_test_not_a_real_key",
 		STRIPE_CONNECT_LIVE_SECRET_KEY: "sk_live_not_a_real_key",
+		STRIPE_CONNECT_TEST_WEBHOOK_SECRET: "whsec_not_a_real_secret",
+		STRIPE_CONNECT_LIVE_WEBHOOK_SECRET: "whsec_not_a_real_secret",
 	},
 }));
 
@@ -149,5 +153,73 @@ describe("Stripe connected accounts", () => {
 			chargesEnabled: true,
 			payoutsEnabled: true,
 		});
+	});
+});
+
+/**
+ * 🔴 These use the event shapes Stripe actually sends, copied from a real
+ * sandbox delivery, because the previous refund test faked one.
+ *
+ * It built a `charge.refunded` event by spreading a `payment_intent.succeeded`
+ * event, so the object kept a `pi_` id and the test passed against a handler
+ * that could never fire in production. A real refund event carries a CHARGE,
+ * whose `id` is a `ch_...` matching no payment row, and settlement dropped it
+ * at "event carries no payment id" before any handler saw it.
+ */
+describe("Stripe webhook payment identity", () => {
+	const request = {
+		headers: { "stripe-signature": "t=1,v1=x" },
+		rawBody: "{}",
+	};
+
+	it("reads the intent from a payment_intent event", async () => {
+		mocks.constructEvent.mockReturnValue({
+			id: "evt_pi",
+			type: "payment_intent.succeeded",
+			account: "acct_1",
+			data: { object: { object: "payment_intent", id: "pi_123" } },
+		});
+
+		expect(
+			await stripePaymentProvider.verifyWebhook(request, "test"),
+		).toMatchObject({ externalPaymentId: "pi_123" });
+	});
+
+	it("reads the intent from a charge event rather than the charge id", async () => {
+		mocks.constructEvent.mockReturnValue({
+			id: "evt_3U3Pei8NQtUJM22L0eMj8BAJ",
+			type: "charge.refunded",
+			account: "acct_1U3K278NQtUJM22L",
+			data: {
+				object: {
+					object: "charge",
+					id: "ch_3U3Pei8NQtUJM22L05AzoFXT",
+					payment_intent: "pi_3U3Pei8NQtUJM22L0smaFcPw",
+					amount_refunded: 3600,
+					refunded: true,
+				},
+			},
+		});
+
+		expect(
+			await stripePaymentProvider.verifyWebhook(request, "test"),
+		).toMatchObject({
+			type: "charge.refunded",
+			// The INTENT, never `ch_...`, because that is what a payment row stores.
+			externalPaymentId: "pi_3U3Pei8NQtUJM22L0smaFcPw",
+		});
+	});
+
+	it("claims no payment id from an event that is about something else", async () => {
+		mocks.constructEvent.mockReturnValue({
+			id: "evt_payout",
+			type: "payout.paid",
+			account: "acct_1",
+			data: { object: { object: "payout", id: "po_123" } },
+		});
+
+		expect(
+			await stripePaymentProvider.verifyWebhook(request, "test"),
+		).toMatchObject({ externalPaymentId: null });
 	});
 });

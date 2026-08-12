@@ -65,6 +65,37 @@ export async function bootstrapPortal(slug: string): Promise<PortalBootstrap> {
 }
 
 /**
+ * Resolve a portal from the address the visitor arrived at.
+ *
+ * A business on its own domain has no slug in the URL — `account.theirshop.com`
+ * is the whole identifier — so the host is what names the workspace. The API
+ * answers 404 for an unknown host exactly as it does for an unknown slug, so
+ * this tells a caller nothing they did not already know by typing the address.
+ *
+ * 🔴 The workspace's own slug still scopes the stored session. Reaching one
+ * business through its custom domain and through `/<slug>` must land on ONE
+ * session, or a customer signs in twice and appears signed out by changing
+ * address.
+ */
+export async function bootstrapPortalByHost(): Promise<PortalBootstrap> {
+	const response = await fetch("/v1/customer/bootstrap-by-host");
+	const payload = await response.json().catch(() => null);
+
+	if (!response.ok) {
+		throw new CustomerApiError(
+			payload?.error?.code ?? "PORTAL_NOT_FOUND",
+			payload?.error?.message ?? "No portal is published at this address.",
+			response.status,
+		);
+	}
+
+	const data = payload.data as PortalBootstrap & { portalSlug?: string | null };
+	current = { ...data, slug: data.portalSlug ?? window.location.host };
+	applyBranding(current.brand);
+	return current;
+}
+
+/**
  * Put the business's identity on the page itself.
  *
  * ⚠️ Done at RUNTIME because a static `index.html` ships one title and one icon,

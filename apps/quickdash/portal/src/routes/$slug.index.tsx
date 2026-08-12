@@ -25,7 +25,7 @@ import {
  * its name in the header, its enabled modules in the rail. Nothing about the
  * business is hardcoded, so one deployment serves every client.
  */
-function Portal() {
+export function Portal() {
 	const queryClient = useQueryClient();
 	const [active, setActive] = useState<string | null>(null);
 

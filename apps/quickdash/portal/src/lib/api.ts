@@ -26,6 +26,41 @@ export type PortalBootstrap = {
 	brand: PortalBrand;
 };
 
+export type CustomerOrderDetail = {
+	id: string;
+	number: string;
+	status: string;
+	currency: string;
+	subtotalCents: number;
+	discountCents: number;
+	shippingCents: number;
+	taxCents: number;
+	totalCents: number;
+	createdAt: string;
+	lineItems: Array<{
+		id: string;
+		name: string;
+		quantity: number;
+		unitPriceCents: number;
+		lineTotalCents: number;
+	}>;
+	payment: {
+		id: string;
+		amountCents: number;
+		currency: string;
+		provider: string;
+		status: string;
+		createdAt: string;
+		updatedAt: string;
+	} | null;
+	shipments: Array<{
+		id: string;
+		status: string;
+		carrier?: string | null;
+		trackingNumber?: string | null;
+	}>;
+};
+
 /**
  * The resolved portal for this page load.
  *
@@ -253,6 +288,16 @@ export const customerApi = {
 		}),
 	list: (resource: "orders" | "bookings" | "invoices") =>
 		call<{ items: Record<string, unknown>[] }>(`/v1/customer/${resource}`),
+	/**
+	 * One order in full.
+	 *
+	 * 🔴 The only place a customer can see that they were refunded. The list
+	 * endpoint returns order rows, and an order stays `placed` after a refund
+	 * because a refund is not a cancellation — so the money's actual state lives
+	 * on `payment.status` and nowhere else.
+	 */
+	getOrder: (id: string) =>
+		call<CustomerOrderDetail>(`/v1/customer/orders/${encodeURIComponent(id)}`),
 	listMessages: () =>
 		call<{ items: PortalConversation[] }>("/v1/customer/messages"),
 	getMessage: (id: string) =>

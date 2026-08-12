@@ -279,7 +279,18 @@ function SignIn({ businessName }: { businessName: string }) {
 	);
 }
 
+const formatMoney = (cents: unknown, currency: unknown) =>
+	typeof cents === "number"
+		? `${(cents / 100).toFixed(2)} ${String(currency ?? "").toUpperCase()}`.trim()
+		: "";
+
+const formatDate = (value: unknown) =>
+	typeof value === "string" && value
+		? new Date(value).toLocaleDateString()
+		: "";
+
 function RecordList({ section }: { section: string | null }) {
+	const [openOrder, setOpenOrder] = useState<string | null>(null);
 	const records = useQuery({
 		queryKey: ["records", section],
 		queryFn: () =>
@@ -287,6 +298,10 @@ function RecordList({ section }: { section: string | null }) {
 		enabled: section !== null,
 		retry: false,
 	});
+
+	if (section === "orders" && openOrder) {
+		return <OrderDetail id={openOrder} onBack={() => setOpenOrder(null)} />;
+	}
 
 	if (!section) {
 		return (
@@ -311,12 +326,157 @@ function RecordList({ section }: { section: string | null }) {
 				<ul className="mt-4 divide-y divide-border">
 					{records.data.items.map((item) => (
 						<li key={String(item.id)} className="py-3 text-sm">
-							{String(item.reference ?? item.number ?? item.id)}
+							{section === "orders" ? (
+								// 🔴 Openable, because the money's real state is only on the
+								// detail. A refunded order still reads `placed` in this list.
+								<button
+									type="button"
+									onClick={() => setOpenOrder(String(item.id))}
+									className="flex w-full items-center justify-between gap-4 text-left hover:underline"
+								>
+									<span>
+										{String(item.number ?? item.reference ?? item.id)}
+									</span>
+									<span className="text-muted-foreground">
+										{formatDate(item.createdAt)}
+									</span>
+									<span className="capitalize">
+										{String(item.status ?? "")}
+									</span>
+									<span>{formatMoney(item.totalCents, item.currency)}</span>
+								</button>
+							) : (
+								String(item.reference ?? item.number ?? item.id)
+							)}
 						</li>
 					))}
 				</ul>
 			)}
 		</main>
+	);
+}
+
+/**
+ * One order, and the only place a refund is visible to a customer.
+ *
+ * 🔴 `payment.status` is the whole point of this view. An order stays `placed`
+ * after a refund, because a refund is not a cancellation, so a customer reading
+ * order status alone learns nothing about their money. Before this existed,
+ * someone refunded in full saw `placed` and no mention of the refund anywhere in
+ * the product. Found 2026-08-11 against the first real Caffeinate refund.
+ */
+function OrderDetail({ id, onBack }: { id: string; onBack: () => void }) {
+	const order = useQuery({
+		queryKey: ["order", id],
+		queryFn: () => customerApi.getOrder(id),
+		retry: false,
+	});
+
+	if (order.isPending) {
+		return <main className="p-6 text-muted-foreground text-sm">Loading…</main>;
+	}
+	if (order.isError) {
+		return (
+			<main className="p-6">
+				<button type="button" onClick={onBack} className="text-sm underline">
+					Back to orders
+				</button>
+				<p className="mt-4 text-muted-foreground text-sm">
+					{(order.error as Error).message}
+				</p>
+			</main>
+		);
+	}
+
+	const data = order.data;
+	const refunded = data.payment?.status === "refunded";
+
+	return (
+		<main className="p-6">
+			<button type="button" onClick={onBack} className="text-sm underline">
+				Back to orders
+			</button>
+
+			<h1 className="mt-4 font-medium text-lg">{data.number}</h1>
+			<p className="mt-1 text-muted-foreground text-sm">
+				{formatDate(data.createdAt)} ·{" "}
+				<span className="capitalize">{data.status}</span>
+			</p>
+
+			{refunded ? (
+				<p className="mt-4 text-sm">
+					This order was refunded.{" "}
+					{formatMoney(data.payment?.amountCents, data.payment?.currency)} was
+					returned to your original payment method.
+				</p>
+			) : null}
+
+			<ul className="mt-6 divide-y divide-border">
+				{data.lineItems.map((line) => (
+					<li key={line.id} className="flex justify-between gap-4 py-3 text-sm">
+						<span>
+							{line.quantity} × {line.name}
+						</span>
+						<span>{formatMoney(line.lineTotalCents, data.currency)}</span>
+					</li>
+				))}
+			</ul>
+
+			<dl className="mt-6 space-y-1 text-sm">
+				<Row
+					label="Subtotal"
+					value={formatMoney(data.subtotalCents, data.currency)}
+				/>
+				{data.discountCents > 0 ? (
+					<Row
+						label="Discount"
+						value={formatMoney(-data.discountCents, data.currency)}
+					/>
+				) : null}
+				<Row
+					label="Shipping"
+					value={formatMoney(data.shippingCents, data.currency)}
+				/>
+				{data.taxCents > 0 ? (
+					<Row label="Tax" value={formatMoney(data.taxCents, data.currency)} />
+				) : null}
+				<Row
+					label="Total"
+					value={formatMoney(data.totalCents, data.currency)}
+				/>
+				{data.payment ? (
+					<Row
+						label="Payment"
+						value={`${data.payment.provider} · ${data.payment.status}`}
+					/>
+				) : null}
+			</dl>
+
+			{data.shipments.length > 0 ? (
+				<>
+					<h2 className="mt-6 font-medium text-sm">Shipments</h2>
+					<ul className="mt-2 divide-y divide-border">
+						{data.shipments.map((shipment) => (
+							<li key={shipment.id} className="py-2 text-sm">
+								<span className="capitalize">{shipment.status}</span>
+								{shipment.trackingNumber
+									? ` · ${shipment.carrier ?? ""} ${shipment.trackingNumber}`.trim()
+									: null}
+							</li>
+						))}
+					</ul>
+				</>
+			) : null}
+		</main>
+	);
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="flex justify-between gap-4">
+			<dt className="text-muted-foreground">{label}</dt>
+			<dd>{value}</dd>
+		</div>
 	);
 }
 

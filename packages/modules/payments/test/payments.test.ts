@@ -8,6 +8,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	applyCheckoutSettlement,
+	getOrderPaymentSummary,
 	getPayment,
 	getPaymentAccount,
 	listPayments,
@@ -45,6 +46,47 @@ async function issuedInvoice() {
 }
 
 describe("Connected payment providers", () => {
+	it("returns an order's settlement and complete refund history", async () => {
+		const sql = testDbClient();
+		await sql`
+			insert into orders (
+				id, workspace_id, client_id, client_name, sequence, number, status,
+				currency, subtotal_cents, total_cents
+			) values (
+				${settlementOrderId}, ${workspaceId}, ${clientId}, 'Grace Client', 1,
+				'ORD-0001', 'placed', 'CAD', 3600, 3600
+			)
+		`;
+		const [payment] = await sql<{ id: string }[]>`
+			insert into payments (
+				workspace_id, order_id, client_id, amount_cents, currency, status,
+				provider, environment, payment_method, reference, succeeded_at
+			) values (
+				${workspaceId}, ${settlementOrderId}, ${clientId}, 3600, 'CAD',
+				'refunded', 'stripe', 'live', 'card', 'pi_order_summary', now()
+			) returning id
+		`;
+		await sql`
+			insert into payment_refunds (
+				workspace_id, payment_id, amount_cents, provider, environment,
+				external_refund_id, reason
+			) values (
+				${workspaceId}, ${payment.id}, 1200, 'stripe', 'live',
+				're_order_summary', 'Customer request'
+			)
+		`;
+
+		await expect(
+			getOrderPaymentSummary(workspaceId, settlementOrderId),
+		).resolves.toMatchObject({
+			provider: "stripe",
+			paymentMethod: "card",
+			reference: "pi_order_summary",
+			status: "refunded",
+			refunds: [{ amountCents: 1200, reason: "Customer request" }],
+		});
+	});
+
 	it("locks a workspace environment after a provider account exists", async () => {
 		await expect(
 			setWorkspaceEnvironment(workspaceId, "test"),

@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Orders now carry the complete operating picture.** Opening an order in QuickDash shows its
+  immutable purchased items and totals, delivery destination, payment and refund state, and
+  shipment progress. Creating a shipment prefills the order's snapshotted destination instead
+  of asking an operator to retype a customer's address.
+
 - **A business can connect Stripe where it manages payments.** The Payments module now shows
   whether Stripe is disconnected, incomplete or ready, keeps sandbox mode visible, sends the
   owner through Stripe's hosted setup and checks the account again when they return.

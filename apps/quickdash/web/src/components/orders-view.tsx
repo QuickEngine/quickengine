@@ -78,7 +78,37 @@ export type OrderViewModel = {
 	clientName: string;
 	clientEmail: string | null;
 	currency: string;
+	subtotalCents: number;
+	discountCents: number;
+	discountCode: string | null;
+	shippingCents: number;
+	shippingRateName: string | null;
+	taxCents: number;
 	totalCents: number;
+	destination: {
+		name: string;
+		line1: string;
+		line2: string | null;
+		city: string;
+		region: string | null;
+		postalCode: string | null;
+		countryCode: string;
+	} | null;
+	payment: {
+		provider: string;
+		paymentMethod: string;
+		reference: string | null;
+		status: string;
+		amountCents: number;
+		refundedCents: number;
+	} | null;
+	shipments: Array<{
+		id: string;
+		status: string;
+		carrier: string | null;
+		trackingNumber: string | null;
+		trackingUrl: string | null;
+	}>;
 	notes: string | null;
 	fulfillmentId: string | null;
 	createdAt: string;
@@ -506,6 +536,79 @@ function OrderDetails({
 							{order.clientName} · {money(order.totalCents, order.currency)}
 						</span>
 					</div>
+					<div className="grid gap-4 md:grid-cols-2">
+						<div className="rounded-lg border p-4 text-sm">
+							<p className="mb-3 font-medium">Payment</p>
+							{order.payment ? (
+								<div className="space-y-2">
+									<div className="flex justify-between gap-4">
+										<span className="text-muted-foreground">State</span>
+										<Badge>{title(order.payment.status)}</Badge>
+									</div>
+									<div className="flex justify-between gap-4">
+										<span className="text-muted-foreground">Collected</span>
+										<span>
+											{money(order.payment.amountCents, order.currency)}
+										</span>
+									</div>
+									{order.payment.refundedCents > 0 && (
+										<div className="flex justify-between gap-4">
+											<span className="text-muted-foreground">Refunded</span>
+											<span>
+												{money(order.payment.refundedCents, order.currency)}
+											</span>
+										</div>
+									)}
+									<div className="flex justify-between gap-4">
+										<span className="text-muted-foreground">Provider</span>
+										<span>
+											{title(order.payment.provider)} ·{" "}
+											{title(order.payment.paymentMethod)}
+										</span>
+									</div>
+									{order.payment.reference && (
+										<p className="break-all text-muted-foreground text-xs">
+											Reference: {order.payment.reference}
+										</p>
+									)}
+								</div>
+							) : (
+								<p className="text-muted-foreground">No payment is attached.</p>
+							)}
+						</div>
+						<div className="rounded-lg border p-4 text-sm">
+							<p className="mb-3 font-medium">Delivery destination</p>
+							{order.destination ? (
+								<address className="not-italic text-muted-foreground leading-6">
+									<span className="text-foreground">
+										{order.destination.name}
+									</span>
+									<br />
+									{order.destination.line1}
+									<br />
+									{order.destination.line2 && (
+										<>
+											{order.destination.line2}
+											<br />
+										</>
+									)}
+									{[
+										order.destination.city,
+										order.destination.region,
+										order.destination.postalCode,
+									]
+										.filter(Boolean)
+										.join(", ")}
+									<br />
+									{order.destination.countryCode}
+								</address>
+							) : (
+								<p className="text-muted-foreground">
+									This order has no physical destination.
+								</p>
+							)}
+						</div>
+					</div>
 					<div className="overflow-hidden rounded-lg border">
 						<Table>
 							<TableHeader>
@@ -537,6 +640,60 @@ function OrderDetails({
 							</TableBody>
 						</Table>
 					</div>
+					<div className="ml-auto grid w-full max-w-sm gap-1 text-sm">
+						<div className="flex justify-between">
+							<span className="text-muted-foreground">Subtotal</span>
+							<span>{money(order.subtotalCents, order.currency)}</span>
+						</div>
+						{order.discountCents > 0 && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">
+									Discount{order.discountCode ? ` (${order.discountCode})` : ""}
+								</span>
+								<span>-{money(order.discountCents, order.currency)}</span>
+							</div>
+						)}
+						{order.shippingCents > 0 && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">
+									Shipping
+									{order.shippingRateName ? ` (${order.shippingRateName})` : ""}
+								</span>
+								<span>{money(order.shippingCents, order.currency)}</span>
+							</div>
+						)}
+						{order.taxCents > 0 && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Tax</span>
+								<span>{money(order.taxCents, order.currency)}</span>
+							</div>
+						)}
+						<div className="flex justify-between border-t pt-2 font-medium">
+							<span>Total</span>
+							<span>{money(order.totalCents, order.currency)}</span>
+						</div>
+					</div>
+					{order.shipments.length > 0 && (
+						<div className="rounded-lg border p-4 text-sm">
+							<p className="mb-3 font-medium">Shipments</p>
+							<div className="space-y-2">
+								{order.shipments.map((shipment) => (
+									<div
+										key={shipment.id}
+										className="flex flex-wrap items-center justify-between gap-2"
+									>
+										<span>
+											{shipment.carrier ?? "Shipment"}
+											{shipment.trackingNumber
+												? ` · ${shipment.trackingNumber}`
+												: ""}
+										</span>
+										<Badge variant="secondary">{title(shipment.status)}</Badge>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
 					{order.notes && (
 						<p className="rounded-lg border p-3 text-sm">{order.notes}</p>
 					)}

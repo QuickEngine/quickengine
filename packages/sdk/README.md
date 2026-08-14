@@ -183,7 +183,8 @@ await quick.events.record({
 - Discount previews and server-priced shipping quotes.
 - Idempotent checkout with provider-specific next actions and capture.
 - Customer passwordless sign-in and sign-out.
-- The signed-in customer's orders, payment summary, shipment tracking, bookings and invoices.
+- Operator order detail with purchased items, settlement/refunds and shipment progress, plus the
+  signed-in customer's isolated view of the same payment and tracking state.
 - Wishlists, reviews and referrals.
 - Private customer conversations with the business.
 - Privacy-minimal site telemetry.

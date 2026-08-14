@@ -699,7 +699,11 @@ export async function getOrderPaymentSummary(
 			amountCents: payments.amountCents,
 			currency: payments.currency,
 			provider: payments.provider,
+			paymentMethod: payments.paymentMethod,
+			reference: payments.reference,
 			status: payments.status,
+			succeededAt: payments.succeededAt,
+			refundedAt: payments.refundedAt,
 			createdAt: payments.createdAt,
 			updatedAt: payments.updatedAt,
 		})
@@ -709,13 +713,33 @@ export async function getOrderPaymentSummary(
 		)
 		.orderBy(sql`${payments.createdAt} desc`, sql`${payments.id} desc`)
 		.limit(1);
-	return payment
-		? {
-				...payment,
-				createdAt: payment.createdAt.toISOString(),
-				updatedAt: payment.updatedAt.toISOString(),
-			}
-		: null;
+	if (!payment) return null;
+	const refunds = await db
+		.select({
+			id: paymentRefunds.id,
+			amountCents: paymentRefunds.amountCents,
+			reason: paymentRefunds.reason,
+			createdAt: paymentRefunds.createdAt,
+		})
+		.from(paymentRefunds)
+		.where(
+			and(
+				eq(paymentRefunds.workspaceId, workspaceId),
+				eq(paymentRefunds.paymentId, payment.id),
+			),
+		)
+		.orderBy(paymentRefunds.createdAt);
+	return {
+		...payment,
+		succeededAt: payment.succeededAt?.toISOString() ?? null,
+		refundedAt: payment.refundedAt?.toISOString() ?? null,
+		createdAt: payment.createdAt.toISOString(),
+		updatedAt: payment.updatedAt.toISOString(),
+		refunds: refunds.map((refund) => ({
+			...refund,
+			createdAt: refund.createdAt.toISOString(),
+		})),
+	};
 }
 
 export async function listPayments(workspaceId: string) {

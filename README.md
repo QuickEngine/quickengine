@@ -57,6 +57,9 @@ never be promoted into real business history. Operators connect and resume Strip
 from the Payments module; custom storefronts receive the browser-safe account context required to
 confirm the resulting direct charge without receiving a server key. Customer confirmation is
 raised only after provider-verified settlement, never when an unpaid order is first drafted.
+QuickDash reads each order as one operational record: purchased items and price breakdown,
+snapshotted destination, payment and refund state, and shipment progress. Shipment creation uses
+that destination as its editable starting point rather than duplicating data entry.
 
 ---
 

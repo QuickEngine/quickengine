@@ -2,6 +2,7 @@ import type { QuickClient } from "../client";
 import type {
 	QuickCursorPage,
 	QuickOrder,
+	QuickOrderDetail,
 	QuickOrderFulfillmentRef,
 	QuickOrderInput,
 	QuickOrderStatus,
@@ -35,7 +36,9 @@ export class OrdersResource {
 	}
 
 	get(id: string) {
-		return this.client.request<QuickOrder>(`/orders/${encodeURIComponent(id)}`);
+		return this.client.request<QuickOrderDetail>(
+			`/orders/${encodeURIComponent(id)}`,
+		);
 	}
 	create(input: QuickOrderInput, idempotencyKey: string) {
 		return this.client.request<QuickOrder>("/orders", {

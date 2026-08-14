@@ -30,6 +30,7 @@ describe("customer order detail", () => {
 						serviceLevel: "tracked",
 						trackingNumber: "TRACK123",
 						trackingUrl: "https://carrier.test/TRACK123",
+						createdAt: new Date("2026-08-01T00:00:00.000Z"),
 						shippedAt: new Date("2026-08-01T00:00:00.000Z"),
 						inTransitAt: null,
 						deliveredAt: null,

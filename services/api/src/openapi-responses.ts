@@ -83,7 +83,7 @@ const _invoiceLine = tableResponse(invoiceLineItems);
 const payment = tableResponse(payments);
 const paymentRefund = tableResponse(paymentRefunds);
 const order = tableResponse(orders);
-const _orderLine = tableResponse(orderLineItems);
+const orderLine = tableResponse(orderLineItems);
 const fulfillment = tableResponse(fulfillments);
 const inventoryItem = tableResponse(inventoryItems);
 const inventoryAdjustment = tableResponse(inventoryAdjustments);
@@ -97,6 +97,48 @@ const contract = tableResponse(contracts);
 const fileFolder = tableResponse(fileFolders);
 const fileDocument = tableResponse(fileDocuments);
 const activity = tableResponse(workspaceActivity);
+
+const orderPaymentSummary = z.object({
+	id: z.string(),
+	amountCents: z.number(),
+	currency: z.string(),
+	provider: z.string(),
+	paymentMethod: z.string(),
+	reference: z.string().nullable(),
+	status: z.string(),
+	succeededAt: z.string().nullable(),
+	refundedAt: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	refunds: z.array(
+		z.object({
+			id: z.string(),
+			amountCents: z.number(),
+			reason: z.string().nullable(),
+			createdAt: z.string(),
+		}),
+	),
+});
+const orderShipmentSummary = z.object({
+	id: z.string(),
+	status: z.string(),
+	carrier: z.string().nullable(),
+	serviceLevel: z.string().nullable(),
+	trackingNumber: z.string().nullable(),
+	trackingUrl: z.string().nullable(),
+	createdAt: z.string(),
+	shippedAt: z.string().nullable(),
+	inTransitAt: z.string().nullable(),
+	deliveredAt: z.string().nullable(),
+});
+const orderDetail = z.intersection(
+	order,
+	z.object({
+		lineItems: z.array(orderLine),
+		payment: orderPaymentSummary.nullable(),
+		shipments: z.array(orderShipmentSummary),
+	}),
+);
 
 /**
  * Webhook endpoints and deliveries are built field by field, not spread from the
@@ -154,6 +196,13 @@ const _paymentRefund: ExactKeys<
 	PaymentRefundDto
 > = true;
 const _order: ExactKeys<z.infer<typeof order>, OrderDto> = true;
+type OperatorOrderDetail = NonNullable<
+	Awaited<ReturnType<typeof import("./orders-routes").loadOperatorOrderDetail>>
+>;
+const _orderDetail: ExactKeys<
+	z.infer<typeof orderDetail>,
+	OperatorOrderDetail
+> = true;
 const _fulfillment: ExactKeys<
 	z.infer<typeof fulfillment>,
 	FulfillmentDto
@@ -257,7 +306,7 @@ export const RESPONSE_SCHEMAS: Record<string, z.ZodType> = {
 	refundPayment: paymentRefund,
 
 	listOrders: list(order),
-	getOrder: order,
+	getOrder: orderDetail,
 	createOrder: order,
 	updateDraftOrder: order,
 	setOrderStatus: order,

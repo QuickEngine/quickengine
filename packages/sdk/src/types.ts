@@ -179,26 +179,8 @@ export type QuickPaymentOnboardingInput = {
 
 export type QuickCustomerOrderDetail = QuickOrder & {
 	lineItems: QuickOrderLine[];
-	payment: {
-		id: string;
-		amountCents: number;
-		currency: string;
-		provider: string;
-		status: QuickPaymentStatus;
-		createdAt: string;
-		updatedAt: string;
-	} | null;
-	shipments: Array<{
-		id: string;
-		status: string;
-		carrier: string | null;
-		serviceLevel: string | null;
-		trackingNumber: string | null;
-		trackingUrl: string | null;
-		shippedAt: string | null;
-		inTransitAt: string | null;
-		deliveredAt: string | null;
-	}>;
+	payment: QuickOrderPaymentSummary | null;
+	shipments: QuickOrderShipmentSummary[];
 };
 
 export type QuickWishlistItem = {
@@ -623,6 +605,46 @@ export type QuickOrder = {
 	updatedAt: string;
 	lineItems?: QuickOrderLine[];
 	[field: string]: unknown;
+};
+
+export type QuickOrderPaymentSummary = {
+	id: string;
+	amountCents: number;
+	currency: string;
+	provider: string;
+	paymentMethod: string;
+	reference: string | null;
+	status: QuickPaymentStatus;
+	succeededAt: string | null;
+	refundedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	refunds: Array<{
+		id: string;
+		amountCents: number;
+		reason: string | null;
+		createdAt: string;
+	}>;
+};
+
+export type QuickOrderShipmentSummary = {
+	id: string;
+	status: string;
+	carrier: string | null;
+	serviceLevel: string | null;
+	trackingNumber: string | null;
+	trackingUrl: string | null;
+	createdAt: string;
+	shippedAt: string | null;
+	inTransitAt: string | null;
+	deliveredAt: string | null;
+};
+
+/** Complete commercial, settlement and delivery state for one operator order. */
+export type QuickOrderDetail = QuickOrder & {
+	lineItems: QuickOrderLine[];
+	payment: QuickOrderPaymentSummary | null;
+	shipments: QuickOrderShipmentSummary[];
 };
 
 /** The fulfillment record opened for a confirmed order. */

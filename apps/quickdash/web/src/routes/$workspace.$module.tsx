@@ -672,7 +672,57 @@ function ModulePage() {
 						clientName: order.clientName,
 						clientEmail: order.clientEmail,
 						currency: order.currency,
+						subtotalCents: order.subtotalCents,
+						discountCents: Number(order.discountCents ?? 0),
+						discountCode:
+							typeof order.discountCode === "string"
+								? order.discountCode
+								: null,
+						shippingCents: Number(order.shippingCents ?? 0),
+						shippingRateName:
+							typeof order.shippingRateName === "string"
+								? order.shippingRateName
+								: null,
+						taxCents: Number(order.taxCents ?? 0),
 						totalCents: order.totalCents,
+						destination:
+							typeof order.shipToName === "string" &&
+							typeof order.shipToLine1 === "string" &&
+							typeof order.shipToCity === "string" &&
+							typeof order.shipToCountryCode === "string"
+								? {
+										name: order.shipToName,
+										line1: order.shipToLine1,
+										line2:
+											typeof order.shipToLine2 === "string"
+												? order.shipToLine2
+												: null,
+										city: order.shipToCity,
+										region:
+											typeof order.shipToRegion === "string"
+												? order.shipToRegion
+												: null,
+										postalCode:
+											typeof order.shipToPostalCode === "string"
+												? order.shipToPostalCode
+												: null,
+										countryCode: order.shipToCountryCode,
+									}
+								: null,
+						payment: order.payment
+							? {
+									provider: order.payment.provider,
+									paymentMethod: order.payment.paymentMethod,
+									reference: order.payment.reference,
+									status: order.payment.status,
+									amountCents: order.payment.amountCents,
+									refundedCents: order.payment.refunds.reduce(
+										(sum, refund) => sum + refund.amountCents,
+										0,
+									),
+								}
+							: null,
+						shipments: order.shipments,
 						notes: order.notes,
 						fulfillmentId: order.fulfillmentId,
 						createdAt: String(order.createdAt),
@@ -1138,8 +1188,33 @@ function ModulePage() {
 										lineId: line.id,
 										label: line.sku ? `${line.name} (${line.sku})` : line.name,
 										remaining,
-										recipientName: order.clientName,
+										recipientName:
+											typeof order.shipToName === "string"
+												? order.shipToName
+												: order.clientName,
 										recipientEmail: order.clientEmail,
+										destination:
+											typeof order.shipToLine1 === "string" &&
+											typeof order.shipToCity === "string" &&
+											typeof order.shipToCountryCode === "string"
+												? {
+														line1: order.shipToLine1,
+														line2:
+															typeof order.shipToLine2 === "string"
+																? order.shipToLine2
+																: null,
+														city: order.shipToCity,
+														region:
+															typeof order.shipToRegion === "string"
+																? order.shipToRegion
+																: null,
+														postalCode:
+															typeof order.shipToPostalCode === "string"
+																? order.shipToPostalCode
+																: null,
+														countryCode: order.shipToCountryCode,
+													}
+												: null,
 									},
 								]
 							: [];

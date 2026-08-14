@@ -12,6 +12,8 @@ import {
 	setOrderStatusCommand,
 	updateDraftOrderCommand,
 } from "@quickengine/mod-orders";
+import { getOrderPaymentSummary } from "@quickengine/mod-payments";
+import { listShipments } from "@quickengine/mod-shipping";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
@@ -24,6 +26,48 @@ import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
 const statusSchema = z.object({ status: z.enum(ORDER_STATUSES) });
+
+type OperatorOrderLoaders = {
+	getOrder: typeof getOrderDto;
+	getPayment: typeof getOrderPaymentSummary;
+	getShipments: typeof listShipments;
+};
+
+const operatorOrderLoaders: OperatorOrderLoaders = {
+	getOrder: getOrderDto,
+	getPayment: getOrderPaymentSummary,
+	getShipments: listShipments,
+};
+
+/** One operator-safe order view: commercial terms, settlement and delivery. */
+export async function loadOperatorOrderDetail(
+	workspaceId: string,
+	id: string,
+	loaders: OperatorOrderLoaders = operatorOrderLoaders,
+) {
+	const order = await loaders.getOrder(workspaceId, id);
+	if (!order) return null;
+	const [payment, shipmentRows] = await Promise.all([
+		loaders.getPayment(workspaceId, id),
+		loaders.getShipments(workspaceId, id),
+	]);
+	return {
+		...order,
+		payment,
+		shipments: shipmentRows.map((shipment) => ({
+			id: shipment.id,
+			status: shipment.status,
+			carrier: shipment.carrier,
+			serviceLevel: shipment.serviceLevel,
+			trackingNumber: shipment.trackingNumber,
+			trackingUrl: shipment.trackingUrl,
+			createdAt: shipment.createdAt.toISOString(),
+			shippedAt: shipment.shippedAt?.toISOString() ?? null,
+			inTransitAt: shipment.inTransitAt?.toISOString() ?? null,
+			deliveredAt: shipment.deliveredAt?.toISOString() ?? null,
+		})),
+	};
+}
 
 export function registerOrdersRoutes(
 	app: Hono<PlatformEnv>,
@@ -93,7 +137,7 @@ export function registerOrdersRoutes(
 		);
 	});
 	app.get("/v1/orders/:id", readAccess, readLimit, async (c) => {
-		const order = await getOrderDto(
+		const order = await loadOperatorOrderDetail(
 			c.get("authorized").workspaceId,
 			uuid.parse(c.req.param("id")),
 		);

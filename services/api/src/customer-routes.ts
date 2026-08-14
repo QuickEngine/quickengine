@@ -151,6 +151,7 @@ export async function loadCustomerOrderDetail(
 			serviceLevel: shipment.serviceLevel,
 			trackingNumber: shipment.trackingNumber,
 			trackingUrl: shipment.trackingUrl,
+			createdAt: shipment.createdAt.toISOString(),
 			shippedAt: shipment.shippedAt?.toISOString() ?? null,
 			inTransitAt: shipment.inTransitAt?.toISOString() ?? null,
 			deliveredAt: shipment.deliveredAt?.toISOString() ?? null,

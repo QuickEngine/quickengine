@@ -59,6 +59,14 @@ export type ShippableLine = {
 	remaining: number;
 	recipientName: string;
 	recipientEmail: string | null;
+	destination: {
+		line1: string;
+		line2: string | null;
+		city: string;
+		region: string | null;
+		postalCode: string | null;
+		countryCode: string;
+	} | null;
 };
 export type ShipmentViewModel = {
 	id: string;
@@ -154,7 +162,7 @@ function CreateDialog({
 							shipments for split delivery.
 						</DialogDescription>
 					</DialogHeader>
-					<div className="grid gap-4 py-4 md:grid-cols-2">
+					<div key={line?.lineId} className="grid gap-4 py-4 md:grid-cols-2">
 						<div className="space-y-2 md:col-span-2">
 							<Label>Order line</Label>
 							<NativeSelect
@@ -208,29 +216,52 @@ function CreateDialog({
 						</div>
 						<div className="space-y-2 md:col-span-2">
 							<Label>Address line 1</Label>
-							<Input name="line1" maxLength={200} required />
+							<Input
+								name="line1"
+								defaultValue={line?.destination?.line1 ?? ""}
+								maxLength={200}
+								required
+							/>
 						</div>
 						<div className="space-y-2 md:col-span-2">
 							<Label>Address line 2</Label>
-							<Input name="line2" maxLength={200} />
+							<Input
+								name="line2"
+								defaultValue={line?.destination?.line2 ?? ""}
+								maxLength={200}
+							/>
 						</div>
 						<div className="space-y-2">
 							<Label>City</Label>
-							<Input name="city" maxLength={120} required />
+							<Input
+								name="city"
+								defaultValue={line?.destination?.city ?? ""}
+								maxLength={120}
+								required
+							/>
 						</div>
 						<div className="space-y-2">
 							<Label>State / region</Label>
-							<Input name="region" maxLength={120} />
+							<Input
+								name="region"
+								defaultValue={line?.destination?.region ?? ""}
+								maxLength={120}
+							/>
 						</div>
 						<div className="space-y-2">
 							<Label>Postal code</Label>
-							<Input name="postalCode" maxLength={32} required />
+							<Input
+								name="postalCode"
+								defaultValue={line?.destination?.postalCode ?? ""}
+								maxLength={32}
+								required
+							/>
 						</div>
 						<div className="space-y-2">
 							<Label>Country code</Label>
 							<Input
 								name="countryCode"
-								defaultValue={defaultCountry}
+								defaultValue={line?.destination?.countryCode ?? defaultCountry}
 								minLength={2}
 								maxLength={2}
 								required

@@ -104,6 +104,14 @@ export type SettlementOutcome =
 	| { applied: true; orderId: string; workspaceId: string; status: string }
 	| { applied: false; reason: string };
 
+export type PaidCheckoutCoordinator = (input: {
+	eventId: string;
+	orderId: string;
+	paymentId: string;
+	provider: PaymentProviderId;
+	workspaceId: string;
+}) => Promise<SettlementOutcome>;
+
 /**
  * Apply a verified provider event to the order it paid for.
  *
@@ -116,6 +124,7 @@ export async function applyCheckoutSettlement(
 	externalAccountId: string | null,
 	provider: PaymentProviderId,
 	environment: PaymentEnvironment,
+	paidCheckoutCoordinator?: PaidCheckoutCoordinator,
 ): Promise<SettlementOutcome> {
 	if (!isSettlementEvent(event.type)) {
 		return { applied: false, reason: "not a settlement event" };
@@ -158,6 +167,18 @@ export async function applyCheckoutSettlement(
 	}
 
 	if (event.type === "payment_intent.succeeded") {
+		// Cross-module consequences belong to the API composition boundary. When a
+		// coordinator is supplied it settles Payment + Order + Inventory + audit +
+		// outbox in one transaction. The fallback remains for module-only callers.
+		if (paidCheckoutCoordinator) {
+			return paidCheckoutCoordinator({
+				eventId: event.id,
+				orderId: payment.orderId,
+				paymentId: payment.id,
+				provider,
+				workspaceId,
+			});
+		}
 		// 🔴 The MONEY is settled first, and deliberately NOT gated on the order
 		// transition below.
 		//
@@ -292,10 +313,13 @@ export type CheckoutCaptureOutcome =
  * Complete a provider order after the buyer approves it in the provider UI.
  * The workspace and stored payment choose the provider; the browser cannot.
  */
-export async function captureCheckoutPayment(input: {
-	workspaceId: string;
-	externalPaymentId: string;
-}): Promise<CheckoutCaptureOutcome> {
+export async function captureCheckoutPayment(
+	input: {
+		workspaceId: string;
+		externalPaymentId: string;
+	},
+	paidCheckoutCoordinator?: PaidCheckoutCoordinator,
+): Promise<CheckoutCaptureOutcome> {
 	const [payment] = await db
 		.select({
 			provider: payments.provider,
@@ -349,6 +373,7 @@ export async function captureCheckoutPayment(input: {
 			captured.event.externalAccountId,
 			payment.provider as PaymentProviderId,
 			payment.environment,
+			paidCheckoutCoordinator,
 		),
 	};
 }

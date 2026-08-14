@@ -4,6 +4,7 @@ import {
 	getPaymentProvider,
 } from "@quickengine/mod-payments";
 import type { Hono } from "hono";
+import { settlePaidCheckout } from "./checkout-settlement";
 import type { ApiLogger } from "./logger";
 import type { PlatformEnv } from "./platform-types";
 
@@ -57,6 +58,7 @@ export function registerConnectWebhookRoutes(
 						event.externalAccountId,
 						providerId,
 						environment,
+						settlePaidCheckout,
 					);
 					if (outcome.applied) {
 						options.logger.info("connect.webhook.order_placed", {

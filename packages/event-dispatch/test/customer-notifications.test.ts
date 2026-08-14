@@ -32,7 +32,7 @@ function handlerCapturing(sent: Sent[]) {
 	);
 }
 
-const event = (aggregateId: string, eventName = "order.created") => ({
+const event = (aggregateId: string, eventName = "order.paid") => ({
 	id: `evt-${aggregateId}`,
 	workspaceId: WORKSPACE,
 	aggregateType: "order",
@@ -114,6 +114,15 @@ beforeEach(async () => {
 });
 
 describe("customer notifications", () => {
+	it("does not confirm an order before verified payment", async () => {
+		const sent: Sent[] = [];
+		await handlerCapturing(sent).handle(
+			event(ORDER_WITH_CLIENT, "order.created"),
+		);
+
+		expect(sent).toHaveLength(0);
+	});
+
 	it("sends an order confirmation branded as the WORKSPACE", async () => {
 		const sent: Sent[] = [];
 		await handlerCapturing(sent).handle(event(ORDER_WITH_CLIENT));

@@ -68,7 +68,7 @@ type Notification = { to: string; email: RenderedEmail };
  * slower before anyone noticed.
  */
 const NOTIFIED_EVENTS = new Set([
-	"order.created",
+	"order.paid",
 	"payment.recorded",
 	"shipment.created",
 	"booking.created",
@@ -81,7 +81,7 @@ const NOTIFIED_EVENTS = new Set([
 
 async function recordLifecycle(event: OutboxEvent) {
 	switch (event.eventName) {
-		case "order.created": {
+		case "order.paid": {
 			const [order] = await db
 				.select()
 				.from(orders)
@@ -93,7 +93,7 @@ async function recordLifecycle(event: OutboxEvent) {
 				clientRecordId: order.clientId,
 				topicKey: `order:${order.id}`,
 				subject: `Order ${order.number}`,
-				body: "Your order was received.",
+				body: "Your order was paid and confirmed.",
 				eventId: event.id,
 			});
 			return;
@@ -226,7 +226,7 @@ async function buildNotification(
 	brand: EmailBrand,
 ): Promise<Notification | null> {
 	switch (event.eventName) {
-		case "order.created": {
+		case "order.paid": {
 			const [order] = await db
 				.select()
 				.from(orders)

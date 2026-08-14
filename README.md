@@ -23,7 +23,7 @@ into separate applications.
 | `account.quickdash.xyz` | Console — organizations, workspaces, team, billing, usage |
 | `auth.quickdash.xyz` | Identity — signup, login, passkeys, TOTP, sessions |
 | `api.quickdash.xyz` | The public API |
-| `portal.quickdash.xyz` | **The customer portal — our users' users.** Their orders, bookings and invoices, and nothing else |
+| `portal.quickdash.xyz` | Undeployed reference implementation for customer account experiences |
 | `quickdash.statuspage.io` | **Status — live.** Incidents and uptime |
 | `docs.` · `help.` | Documentation and support — planned |
 
@@ -67,9 +67,9 @@ enabled, everything in the workspace.
 **Their customers** — a shopper, a client, a patient, a student — reach `/v1/customer/*` with a
 publishable key and a session of their own. They see their own orders, bookings and invoices and
 nothing else, and they are a separate kind of identity: no seat, no team membership, no route
-into anybody's dashboard. One hosted portal serves every workspace, showing each business's name
-and only the sections it runs — on its own domain if the business points one at us, so its
-customers never see ours.
+into anybody's dashboard. The business embeds that experience in its own site, as Caffeinate
+does. The old hosted portal remains in the repository only as reference code for building those
+customer-owned surfaces; it is not a deployed product surface.
 
 The two are separate namespaces with no foreign key between them, resolved by different
 middleware from different headers. A customer session cannot satisfy an operator route.
@@ -109,7 +109,7 @@ pnpm + Turborepo · Vercel
 ```txt
 apps/quickengine/{web,auth,account}   the frontends
 apps/quickdash/web                    the operator's workspace
-apps/quickdash/portal                 the customer portal — our users' users
+apps/quickdash/portal                 undeployed reference customer-account implementation
 services/api                          the canonical Hono boundary
 packages/
   modules/          16 isolated business capabilities
@@ -134,11 +134,7 @@ pnpm db:migrate
 pnpm dev                # everything
 ```
 
-Individually: `pnpm web` · `pnpm auth` · `pnpm account` · `pnpm dash` ·
-`pnpm portal` · `pnpm api`
-
-A customer portal is not reachable until it is published — `pnpm portal:enable [workspaceId]`
-assigns its address and mints its publishable key.
+Individually: `pnpm web` · `pnpm auth` · `pnpm account` · `pnpm dash` · `pnpm api`
 
 ```sh
 pnpm check              # Biome + boundary ratchet + error-map check

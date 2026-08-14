@@ -60,6 +60,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **A paid storefront order now commits as one complete business event.** Provider settlement
+  now records the successful payment, places the order through its real lifecycle, reserves its
+  stock, writes audit evidence and publishes a dedicated paid-order event in one transaction.
+  Stripe webhooks and captured PayPal checkouts use the same path, so an external fulfiller can
+  never receive an order that only looked paid while its inventory or ledger disagreed.
+
 - **Refund notifications now reach the payment they belong to.** A refund arrives from Stripe
   describing the charge, while a payment is tracked by the payment attempt it came from, so every
   refund notification was discarded before anything could act on it. Refunds made in Stripe were

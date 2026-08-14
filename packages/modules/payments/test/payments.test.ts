@@ -5,7 +5,7 @@ import {
 	getInvoice,
 	setInvoiceStatus,
 } from "@quickengine/mod-invoicing";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	applyCheckoutSettlement,
 	getPayment,
@@ -130,6 +130,61 @@ describe("Connected payment providers", () => {
 				(row) => row.externalPaymentId === "pi_settles_payment",
 			)?.status,
 		).toBe("succeeded");
+	});
+
+	it("delegates a paid checkout to the cross-module transaction coordinator", async () => {
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_coordinated_payment",
+		});
+		const sql = testDbClient();
+		await sql`insert into orders (id, workspace_id, client_id, client_name, sequence, number, currency, subtotal_cents, total_cents, status) values (${settlementOrderId}, ${workspaceId}, ${clientId}, 'Grace Client', 1, 'ORD-0001', 'CAD', 3600, 3600, 'draft')`;
+		await recordPendingCheckoutPayment({
+			workspaceId,
+			orderId: settlementOrderId,
+			clientId,
+			clientEmail: "grace@example.com",
+			externalPaymentId: "pi_coordinated_payment",
+			provider: "stripe",
+			amountCents: 3600,
+			currency: "CAD",
+			environment: "live",
+		});
+		const coordinator = vi.fn().mockResolvedValue({
+			applied: true,
+			orderId: settlementOrderId,
+			workspaceId,
+			status: "placed",
+		});
+		const event = {
+			id: "evt_coordinated_payment",
+			type: "payment_intent.succeeded",
+			externalPaymentId: "pi_coordinated_payment",
+			externalAccountId: "acct_coordinated_payment",
+			payload: {},
+		};
+
+		await expect(
+			applyCheckoutSettlement(
+				event,
+				event.externalAccountId,
+				"stripe",
+				"live",
+				coordinator,
+			),
+		).resolves.toMatchObject({ applied: true });
+		expect(coordinator).toHaveBeenCalledWith({
+			eventId: event.id,
+			orderId: settlementOrderId,
+			paymentId: expect.any(String),
+			provider: "stripe",
+			workspaceId,
+		});
+		// The module does not perform a second, non-atomic fallback write.
+		expect(
+			(await listPayments(workspaceId)).find(
+				(row) => row.externalPaymentId === "pi_coordinated_payment",
+			)?.status,
+		).toBe("pending");
 	});
 
 	/**

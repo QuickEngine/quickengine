@@ -31,6 +31,7 @@ import {
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
+import { settlePaidCheckout } from "./checkout-settlement";
 import type { ApiLogger } from "./logger";
 import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
@@ -99,10 +100,13 @@ export function registerCheckoutRoutes(
 			const externalPaymentId = providerPaymentIdSchema.parse(
 				c.req.param("externalPaymentId"),
 			);
-			const result = await captureCheckoutPayment({
-				workspaceId: c.get("authorized").workspaceId,
-				externalPaymentId,
-			});
+			const result = await captureCheckoutPayment(
+				{
+					workspaceId: c.get("authorized").workspaceId,
+					externalPaymentId,
+				},
+				settlePaidCheckout,
+			);
 			if (!result.captured) {
 				return respondError(c, "NOT_FOUND", result.reason, 404);
 			}

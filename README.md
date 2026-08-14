@@ -55,7 +55,8 @@ today. Test and live workspaces use separate provider credentials, webhook signa
 identity; a workspace locks to its mode when it enters the money lifecycle, so sandbox orders can
 never be promoted into real business history. Operators connect and resume Stripe's hosted setup
 from the Payments module; custom storefronts receive the browser-safe account context required to
-confirm the resulting direct charge without receiving a server key.
+confirm the resulting direct charge without receiving a server key. Customer confirmation is
+raised only after provider-verified settlement, never when an unpaid order is first drafted.
 
 ---
 

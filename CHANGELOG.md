@@ -60,6 +60,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Unpaid checkouts no longer tell customers that an order is confirmed.** Order email and
+  customer-account confirmation now wait for the provider-verified `order.paid` event, while
+  paid guest orders still receive the business's branded confirmation.
+
 - **A paid storefront order now commits as one complete business event.** Provider settlement
   now records the successful payment, places the order through its real lifecycle, reserves its
   stock, writes audit evidence and publishes a dedicated paid-order event in one transaction.

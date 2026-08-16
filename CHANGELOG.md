@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Products have a page again.** QuickDash lists what a business sells, with search, a status
+  filter and a choice of cards or a table. Opening a product shows its photographs, where they can
+  be added by dragging them in or picking files, removed, and put in order. The first photograph is
+  the one a shop shows, and the page says so.
+
 - **Product photographs can be uploaded.** A business can add images to a catalog item, reorder
   them and remove them, and the pictures are served from a permanent web address so a storefront
   can show them. Images are kept apart from private documents like signed contracts, which are

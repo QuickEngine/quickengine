@@ -190,7 +190,14 @@ export class QuickClient {
 		}
 
 		let body: BodyInit | undefined;
-		if (requestBody !== undefined) {
+		if (requestBody instanceof FormData) {
+			// 🔴 Content-Type is deliberately NOT set. A multipart body carries a
+			// generated boundary, and the only thing that knows it is fetch itself —
+			// setting the header here produces a boundary-less content type and the
+			// server parses nothing. Uploading a product photograph is the reason
+			// this branch exists.
+			body = requestBody;
+		} else if (requestBody !== undefined) {
 			headers.set("Content-Type", "application/json");
 			body = JSON.stringify(requestBody);
 		}

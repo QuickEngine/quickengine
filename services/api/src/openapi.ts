@@ -624,6 +624,21 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/payments/connect/credentials": {
+				post: {
+					operationId: "connectProviderCredentials",
+					summary: "Connect a provider the business owns outright",
+					description:
+						"For providers with no platform-hosted setup. The business supplies its own app credentials, which are validated against the provider before anything is stored and encrypted at rest afterwards. Nothing supplied here is ever returned, logged, or written to the audit trail. PayPal only: Stripe uses its own hosted onboarding, and a Stripe secret key can do far more than take payments for one business.",
+					responses: {
+						"200": { description: "The connected account state." },
+						"400": {
+							description:
+								"Missing fields, credentials the provider rejected, or a provider that uses hosted setup instead.",
+						},
+					},
+				},
+			},
 			// ── Catalog browsing: categories and collections ─────────────────────
 			// One shape for both. A category is where a thing belongs; a collection
 			// is a curated grouping. They differ in meaning and nothing else.

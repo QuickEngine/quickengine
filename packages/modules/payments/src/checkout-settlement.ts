@@ -102,7 +102,21 @@ export type SettlementOutcome =
 	// work — settling a referral, for one — without re-deriving it from the
 	// connected account.
 	| { applied: true; orderId: string; workspaceId: string; status: string }
-	| { applied: false; reason: string };
+	/**
+	 * Not applied, and whether that is NORMAL or ALARMING.
+	 *
+	 * 🔴 This distinction is the whole point. Most unapplied events are somebody
+	 * else's business — a provider sends every event type to every endpoint, and
+	 * "not a settlement event" is the expected answer for nearly all of them.
+	 * But a settlement event we could not act on is a real divergence: the
+	 * provider believes money moved and QuickDash has no record of it.
+	 *
+	 * Both answer 200, because a non-2xx makes the provider redeliver forever.
+	 * Without `expected` the caller cannot tell them apart, so it logs neither —
+	 * which is exactly how a refund defect stayed invisible in Stripe for three
+	 * PRs while every webhook returned success.
+	 */
+	| { applied: false; reason: string; expected: boolean };
 
 export type PaidCheckoutCoordinator = (input: {
 	eventId: string;
@@ -127,13 +141,21 @@ export async function applyCheckoutSettlement(
 	paidCheckoutCoordinator?: PaidCheckoutCoordinator,
 ): Promise<SettlementOutcome> {
 	if (!isSettlementEvent(event.type)) {
-		return { applied: false, reason: "not a settlement event" };
+		return { applied: false, reason: "not a settlement event", expected: true };
 	}
 	if (!externalAccountId) {
-		return { applied: false, reason: "no connected account on the event" };
+		return {
+			applied: false,
+			reason: "no connected account on the event",
+			expected: false,
+		};
 	}
 	if (!event.externalPaymentId) {
-		return { applied: false, reason: "event carries no payment id" };
+		return {
+			applied: false,
+			reason: "event carries no payment id",
+			expected: false,
+		};
 	}
 
 	const workspaceId = await workspaceForAccount(
@@ -144,7 +166,11 @@ export async function applyCheckoutSettlement(
 	if (!workspaceId) {
 		// An account we have never stored. Acknowledged so the provider stops
 		// retrying: this is not a failure, it is somebody else's event.
-		return { applied: false, reason: "unknown connected account" };
+		return {
+			applied: false,
+			reason: "unknown connected account",
+			expected: true,
+		};
 	}
 
 	// The payment row carries the order it belongs to. Scoped by workspace as
@@ -163,7 +189,11 @@ export async function applyCheckoutSettlement(
 		.limit(1);
 
 	if (!payment?.orderId) {
-		return { applied: false, reason: "no order for this payment" };
+		return {
+			applied: false,
+			reason: "no order for this payment",
+			expected: false,
+		};
 	}
 
 	if (event.type === "payment_intent.succeeded") {
@@ -220,7 +250,11 @@ export async function applyCheckoutSettlement(
 					workspaceId,
 					status: updated.status,
 				}
-			: { applied: false, reason: "order was not awaiting payment" };
+			: {
+					applied: false,
+					reason: "order was not awaiting payment",
+					expected: true,
+				};
 	}
 
 	if (event.type === "charge.refunded") {
@@ -243,17 +277,25 @@ export async function applyCheckoutSettlement(
 		// The ORDER is deliberately untouched. A refund is not a cancellation, and
 		// whether a refunded order stays placed, gets cancelled or goes back for
 		// fulfillment is the operator's decision, not this webhook's.
-		return { applied: false, reason: "refund recorded against the payment" };
+		return {
+			applied: false,
+			reason: "refund recorded against the payment",
+			expected: true,
+		};
 	}
 
 	if (event.type === "payment_intent.payment_failed") {
 		// Deliberately NOT cancelled. A failed card is usually retried moments
 		// later on the same intent, and cancelling would destroy the basket in
 		// front of a customer who is about to succeed.
-		return { applied: false, reason: "payment failed; order left as draft" };
+		return {
+			applied: false,
+			reason: "payment failed; order left as draft",
+			expected: true,
+		};
 	}
 
-	return { applied: false, reason: "no action for this event" };
+	return { applied: false, reason: "no action for this event", expected: true };
 }
 
 /**

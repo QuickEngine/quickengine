@@ -447,6 +447,14 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		refreshUrl: "https://account.quickdash.xyz/payments",
 		country: "CA",
 	},
+	// 🔴 A deliberately fake secret. This document is public, and an example is
+	// the easiest place in a codebase to leave a real credential by accident.
+	connectProviderCredentials: {
+		provider: "paypal",
+		clientId: "AaBbCc-ExampleClientId",
+		clientSecret: "EXAMPLE-not-a-real-secret",
+		webhookId: "WH-0EXAMPLE0000000",
+	},
 	setDefaultPaymentProvider: { provider: "paypal" },
 	createRole: {
 		name: "Bookkeeper",

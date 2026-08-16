@@ -46,6 +46,23 @@ export const paymentAccounts = pgTable(
 		// Mirrors Stripe's account capabilities — can it take charges / receive payouts.
 		chargesEnabled: boolean("charges_enabled").notNull().default(false),
 		payoutsEnabled: boolean("payouts_enabled").notNull().default(false),
+		/**
+		 * The business's OWN provider credentials, encrypted at rest.
+		 *
+		 * 🔴 Only for providers with no platform-level connect flow. Stripe leaves
+		 * this null: Connect issues an account id and the platform key does the
+		 * rest, so QuickEngine never holds a Stripe secret belonging to a
+		 * customer. PayPal reserves its hosted onboarding for approved partners,
+		 * and QuickEngine deliberately is not one — it takes no cut of what a
+		 * business earns, so standing between them and PayPal buys nothing.
+		 *
+		 * ⚠️ Encrypted with AES-256-GCM under a key derived from the application
+		 * secret, and NEVER readable back through the API. A business can replace
+		 * these values; it cannot ask us what they are. Storing somebody else's
+		 * payment credentials is a real liability and the shape of this column is
+		 * the smallest version of it: one provider, one workspace, no history.
+		 */
+		credentials: text("credentials"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

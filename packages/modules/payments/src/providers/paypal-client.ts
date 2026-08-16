@@ -1,11 +1,28 @@
 export type PayPalEnvironment = "sandbox" | "live";
 
+/**
+ * How we are talking to PayPal.
+ *
+ * 🔴 The partner fields are OPTIONAL because QuickEngine has two possible
+ * relationships with a business's PayPal, and only one of them involves us:
+ *
+ * · **As the business** (the supported path) — the business supplies its own
+ *   app's credentials, we authenticate as them, and there is no partner
+ *   merchant, no attribution id, no auth assertion and no `payee`, because the
+ *   authenticated account IS the payee.
+ * · **As a partner acting for a seller** — requires PayPal partner approval,
+ *   which QuickEngine deliberately does not have. It takes no cut of what a
+ *   business earns, so standing in the middle buys nothing.
+ *
+ * Making these required would make the supported path impossible to express
+ * without inventing values.
+ */
 export type PayPalConfig = {
 	clientId: string;
 	clientSecret: string;
-	partnerMerchantId: string;
-	partnerAttributionId: string;
-	webhookId: string;
+	partnerMerchantId?: string;
+	partnerAttributionId?: string;
+	webhookId?: string;
 	environment: PayPalEnvironment;
 };
 
@@ -53,8 +70,22 @@ async function json<T>(response: Response, operation: string): Promise<T> {
 	return (await response.json()) as T;
 }
 
+/**
+ * The only fields authentication needs.
+ *
+ * 🔑 Narrower than `PayPalConfig` on purpose: a business connecting its OWN
+ * PayPal app supplies exactly these, and has no partner merchant id or
+ * attribution id to give — those belong to a platform relationship QuickEngine
+ * deliberately does not have. Widening this back to `PayPalConfig` would make
+ * validating a business's credentials impossible without inventing values.
+ */
+export type PayPalAuth = Pick<
+	PayPalConfig,
+	"clientId" | "clientSecret" | "environment"
+>;
+
 export async function getPayPalAccessToken(
-	config: PayPalConfig,
+	config: PayPalAuth,
 	fetcher: PayPalFetch = fetch,
 ): Promise<string> {
 	const response = await fetcher(
@@ -83,7 +114,12 @@ async function partnerHeaders(
 	return {
 		Authorization: `Bearer ${await getPayPalAccessToken(config, fetcher)}`,
 		"Content-Type": "application/json",
-		"PayPal-Partner-Attribution-Id": config.partnerAttributionId,
+		// Only meaningful when acting FOR a seller as an approved partner. Sending
+		// it while authenticated as the business itself would attribute their sale
+		// to a partner relationship that does not exist.
+		...(config.partnerAttributionId
+			? { "PayPal-Partner-Attribution-Id": config.partnerAttributionId }
+			: {}),
 	};
 }
 
@@ -137,13 +173,27 @@ export type PayPalSellerStatus = {
 	primaryEmailConfirmed: boolean;
 };
 
+/**
+ * The partner merchant id, or a refusal.
+ *
+ * These endpoints only exist for an approved partner acting on a seller's
+ * behalf. Reaching them without partner configuration is a programming error,
+ * and failing here beats sending PayPal a URL containing `undefined`.
+ */
+function requirePartner(config: PayPalConfig): string {
+	if (!config.partnerMerchantId) {
+		throw new Error("PAYPAL_PARTNER_NOT_CONFIGURED");
+	}
+	return config.partnerMerchantId;
+}
+
 export async function getPayPalSellerByTrackingId(
 	config: PayPalConfig,
 	trackingId: string,
 	fetcher: PayPalFetch = fetch,
 ): Promise<PayPalSellerStatus> {
 	const url = new URL(
-		`${baseUrl(config.environment)}/v1/customer/partners/${encodeURIComponent(config.partnerMerchantId)}/merchant-integrations`,
+		`${baseUrl(config.environment)}/v1/customer/partners/${encodeURIComponent(requirePartner(config))}/merchant-integrations`,
 	);
 	url.searchParams.set("tracking_id", trackingId);
 	const response = await fetcher(url, {
@@ -167,7 +217,7 @@ export async function getPayPalSellerByMerchantId(
 	fetcher: PayPalFetch = fetch,
 ): Promise<PayPalSellerStatus> {
 	const response = await fetcher(
-		`${baseUrl(config.environment)}/v1/customer/partners/${encodeURIComponent(config.partnerMerchantId)}/merchant-integrations/${encodeURIComponent(merchantId)}`,
+		`${baseUrl(config.environment)}/v1/customer/partners/${encodeURIComponent(requirePartner(config))}/merchant-integrations/${encodeURIComponent(merchantId)}`,
 		{ headers: await partnerHeaders(config, fetcher) },
 	);
 	const body = await json<{
@@ -185,7 +235,7 @@ export async function getPayPalSellerByMerchantId(
 export async function createPayPalOrder(
 	config: PayPalConfig,
 	input: {
-		sellerMerchantId: string;
+		sellerMerchantId?: string;
 		amountCents: number;
 		applicationFeeCents: number;
 		currency: string;
@@ -194,10 +244,14 @@ export async function createPayPalOrder(
 	fetcher: PayPalFetch = fetch,
 ): Promise<{ orderId: string; approvalUrl: string }> {
 	const headers = await partnerHeaders(config, fetcher);
-	headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
-		config.clientId,
-		input.sellerMerchantId,
-	);
+	// 🔴 Only when acting for somebody else. Authenticated as the business, an
+	// auth assertion naming them would be PayPal refusing the call, not a no-op.
+	if (input.sellerMerchantId) {
+		headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
+			config.clientId,
+			input.sellerMerchantId,
+		);
+	}
 	const paymentInstruction =
 		input.applicationFeeCents > 0
 			? {
@@ -221,7 +275,12 @@ export async function createPayPalOrder(
 				purchase_units: [
 					{
 						custom_id: input.metadata?.orderId,
-						payee: { merchant_id: input.sellerMerchantId },
+						// Omitted when we authenticate as the business: the authenticated
+						// account is already the payee, and naming it explicitly is how a
+						// direct call gets rejected.
+						...(input.sellerMerchantId
+							? { payee: { merchant_id: input.sellerMerchantId } }
+							: {}),
 						amount: {
 							currency_code: input.currency.toUpperCase(),
 							value: cents(input.amountCents),
@@ -243,14 +302,17 @@ export async function createPayPalOrder(
 
 export async function capturePayPalOrder(
 	config: PayPalConfig,
-	input: { sellerMerchantId: string; orderId: string },
+	input: { sellerMerchantId?: string; orderId: string },
 	fetcher: PayPalFetch = fetch,
 ): Promise<{ captureId: string; settled: boolean }> {
 	const headers = await partnerHeaders(config, fetcher);
-	headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
-		config.clientId,
-		input.sellerMerchantId,
-	);
+	// Only when acting for somebody else — see `createPayPalOrder`.
+	if (input.sellerMerchantId) {
+		headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
+			config.clientId,
+			input.sellerMerchantId,
+		);
+	}
 	const response = await fetcher(
 		`${baseUrl(config.environment)}/v2/checkout/orders/${encodeURIComponent(input.orderId)}/capture`,
 		{ method: "POST", headers, body: "{}" },
@@ -271,14 +333,17 @@ export async function capturePayPalOrder(
 
 export async function getPayPalOrderCapture(
 	config: PayPalConfig,
-	input: { sellerMerchantId: string; orderId: string },
+	input: { sellerMerchantId?: string; orderId: string },
 	fetcher: PayPalFetch = fetch,
 ): Promise<{ captureId: string; currency: string }> {
 	const headers = await partnerHeaders(config, fetcher);
-	headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
-		config.clientId,
-		input.sellerMerchantId,
-	);
+	// Only when acting for somebody else — see `createPayPalOrder`.
+	if (input.sellerMerchantId) {
+		headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
+			config.clientId,
+			input.sellerMerchantId,
+		);
+	}
 	const response = await fetcher(
 		`${baseUrl(config.environment)}/v2/checkout/orders/${encodeURIComponent(input.orderId)}`,
 		{ headers },
@@ -303,7 +368,7 @@ export async function getPayPalOrderCapture(
 export async function refundPayPalCapture(
 	config: PayPalConfig,
 	input: {
-		sellerMerchantId: string;
+		sellerMerchantId?: string;
 		captureId: string;
 		amountCents?: number;
 		currency?: string;
@@ -311,10 +376,13 @@ export async function refundPayPalCapture(
 	fetcher: PayPalFetch = fetch,
 ): Promise<{ refundId: string; settled: boolean }> {
 	const headers = await partnerHeaders(config, fetcher);
-	headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
-		config.clientId,
-		input.sellerMerchantId,
-	);
+	// Only when acting for somebody else — see `createPayPalOrder`.
+	if (input.sellerMerchantId) {
+		headers["PayPal-Auth-Assertion"] = payPalAuthAssertion(
+			config.clientId,
+			input.sellerMerchantId,
+		);
+	}
 	const response = await fetcher(
 		`${baseUrl(config.environment)}/v2/payments/captures/${encodeURIComponent(input.captureId)}/refund`,
 		{
@@ -345,6 +413,11 @@ export async function verifyPayPalWebhook(
 	},
 	fetcher: PayPalFetch = fetch,
 ): Promise<boolean> {
+	// 🔴 No webhook id means nothing can be verified, and an UNVERIFIED event must
+	// never be treated as authentic. Refusing here makes a half-configured
+	// connection fail closed: the business sees "no webhook yet" on the Payments
+	// page rather than QuickDash silently trusting whatever arrives.
+	if (!config.webhookId) return false;
 	const body = JSON.parse(input.rawBody) as unknown;
 	const response = await fetcher(
 		`${baseUrl(config.environment)}/v1/notifications/verify-webhook-signature`,

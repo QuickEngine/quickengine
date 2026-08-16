@@ -8,6 +8,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A business can collect payments through its own PayPal.** Connect it from Payments, and
+  checkout, captures and refunds all run through that business's own PayPal account. The money is
+  theirs and goes straight to them; QuickEngine never stands in the middle and takes nothing from
+  what they earn. The details they supply are checked with PayPal before they are saved, stored
+  encrypted, and never shown again by anyone.
+
+- **Where you get paid is now a page.** Payments shows every supported provider, whether each one
+  can actually take money rather than merely being connected, and which one checkout will use.
+
 - **Products have a page again.** QuickDash lists what a business sells, with search, a status
   filter and a choice of cards or a table. Opening a product shows its photographs, where they can
   be added by dragging them in or picking files, removed, and put in order. The first photograph is

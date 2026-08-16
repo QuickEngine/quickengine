@@ -118,6 +118,41 @@ describe("Connected payment providers", () => {
 		).resolves.toEqual({
 			applied: false,
 			reason: "unknown connected account",
+			// A live endpoint receiving a test account's event is somebody else's
+			// business, not a divergence — so it must NOT raise an alert.
+			expected: true,
+		});
+	});
+
+	/**
+	 * 🔴 A refund the provider says happened, that we could not apply, must be
+	 * ALARMING rather than silent.
+	 *
+	 * This is the shape of the defect that survived three PRs in Stripe and is
+	 * predicted to exist in PayPal: `charge.refunded` arrives carrying no payment
+	 * id, settlement discards it, and the webhook answers 200 — so the provider is
+	 * satisfied, our totals are wrong, and nothing anywhere says so.
+	 *
+	 * ⚠️ This asserts OUR classification, not a provider payload. It deliberately
+	 * does not invent a PayPal refund body: `TECH_DEBT.md` records that the Stripe
+	 * equivalent passed against a hand-written event while remaining broken in
+	 * production. The payload-shaped test is written from a captured sandbox
+	 * refund, once credentials exist.
+	 */
+	it("flags a settlement event it could not apply, rather than dropping it quietly", async () => {
+		const event = {
+			id: "evt_refund_without_payment_id",
+			type: "charge.refunded",
+			externalPaymentId: null,
+			externalAccountId: "acct_refund_alarm",
+			payload: {},
+		};
+		await expect(
+			applyCheckoutSettlement(event, event.externalAccountId, "stripe", "live"),
+		).resolves.toEqual({
+			applied: false,
+			reason: "event carries no payment id",
+			expected: false,
 		});
 	});
 	/**

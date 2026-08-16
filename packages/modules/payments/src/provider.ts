@@ -190,5 +190,26 @@ export interface PaymentProvider {
 	verifyWebhook(
 		request: ProviderWebhookRequest,
 		environment: PaymentEnvironment,
+		/**
+		 * The BUSINESS's own verification material, for providers connected with
+		 * their own app.
+		 *
+		 * 🔴 Stripe ignores this: Connect signs every merchant's events with the
+		 * platform's one endpoint secret. PayPal cannot, because each business
+		 * registers its own webhook against its own app and PayPal verifies
+		 * against that app's id — so there is no platform-wide secret that could
+		 * check the signature.
+		 *
+		 * ⚠️ The consequence is that the caller must resolve WHICH business before
+		 * it can verify anything, which inverts the usual order. That resolution
+		 * therefore comes from the request PATH, never from the unverified body:
+		 * trusting the payload to say who it is would let anyone claim to be
+		 * anyone and skip verification entirely.
+		 */
+		credentials?: {
+			clientId: string;
+			clientSecret: string;
+			webhookId?: string;
+		},
 	): Promise<VerifiedProviderEvent | null>;
 }

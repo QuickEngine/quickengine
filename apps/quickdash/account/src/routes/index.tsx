@@ -47,7 +47,12 @@ function fillDays(
 	workspaceId?: string,
 ) {
 	const byDay = new Map<string, number>();
-	for (const row of daily) {
+	// 🔴 Defaulted, because the API and this app deploy SEPARATELY. During the
+	// window where the frontend is newer, `daily` is simply absent — and
+	// iterating undefined threw "t is not iterable" out of a minified bundle,
+	// which took down the whole overview and locked people out of Account. A
+	// missing field must degrade one chart, never the page.
+	for (const row of daily ?? []) {
 		if (row.currency !== currency) continue;
 		if (workspaceId && row.workspaceId !== workspaceId) continue;
 		byDay.set(row.day, (byDay.get(row.day) ?? 0) + row.netCents);

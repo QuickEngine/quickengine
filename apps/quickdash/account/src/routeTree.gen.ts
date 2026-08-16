@@ -14,19 +14,24 @@ import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as OverviewRouteImport } from './routes/overview'
+import { Route as OnboardingPreviewRouteImport } from './routes/onboarding-preview'
+import { Route as RolesRouteImport } from './routes/roles'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as UsageRouteImport } from './routes/usage'
+import { Route as ActivityNotificationsRouteImport } from './routes/activity/notifications'
 import { Route as BillingCheckoutRouteImport } from './routes/billing/checkout'
-import { Route as BillingPlansRouteImport } from './routes/billing/plans'
+import { Route as BillingCreditsRouteImport } from './routes/billing/credits'
 import { Route as BillingSuccessRouteImport } from './routes/billing/success'
 import { Route as JoinTokenRouteImport } from './routes/join/$token'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
 import { Route as SettingsApiKeysRouteImport } from './routes/settings/api-keys'
 import { Route as SettingsProfileRouteImport } from './routes/settings/profile'
 import { Route as SettingsSecurityRouteImport } from './routes/settings/security'
+import { Route as SettingsSessionsRouteImport } from './routes/settings/sessions'
 import { Route as SettingsTeamRouteImport } from './routes/settings/team'
+import { Route as TeamInvitationsRouteImport } from './routes/team/invitations'
+import { Route as WorkspacesIndexRouteImport } from './routes/workspaces/index'
 import { Route as WorkspacesSlugRouteImport } from './routes/workspaces/$slug'
 import { Route as WorkspacesNewRouteImport } from './routes/workspaces/new'
 
@@ -55,9 +60,14 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OverviewRoute = OverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
+const OnboardingPreviewRoute = OnboardingPreviewRouteImport.update({
+  id: '/onboarding-preview',
+  path: '/onboarding-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RolesRoute = RolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SupportRoute = SupportRouteImport.update({
@@ -75,14 +85,19 @@ const UsageRoute = UsageRouteImport.update({
   path: '/usage',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivityNotificationsRoute = ActivityNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => ActivityRoute,
+} as any)
 const BillingCheckoutRoute = BillingCheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
   getParentRoute: () => BillingRoute,
 } as any)
-const BillingPlansRoute = BillingPlansRouteImport.update({
-  id: '/plans',
-  path: '/plans',
+const BillingCreditsRoute = BillingCreditsRouteImport.update({
+  id: '/credits',
+  path: '/credits',
   getParentRoute: () => BillingRoute,
 } as any)
 const BillingSuccessRoute = BillingSuccessRouteImport.update({
@@ -115,9 +130,24 @@ const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
   path: '/settings/security',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsSessionsRoute = SettingsSessionsRouteImport.update({
+  id: '/settings/sessions',
+  path: '/settings/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsTeamRoute = SettingsTeamRouteImport.update({
   id: '/settings/team',
   path: '/settings/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamInvitationsRoute = TeamInvitationsRouteImport.update({
+  id: '/invitations',
+  path: '/invitations',
+  getParentRoute: () => TeamRoute,
+} as any)
+const WorkspacesIndexRoute = WorkspacesIndexRouteImport.update({
+  id: '/workspaces/',
+  path: '/workspaces/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WorkspacesSlugRoute = WorkspacesSlugRouteImport.update({
@@ -133,70 +163,85 @@ const WorkspacesNewRoute = WorkspacesNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
+  '/activity': typeof ActivityRouteWithChildren
   '/billing': typeof BillingRouteWithChildren
   '/integrations': typeof IntegrationsRoute
   '/onboarding': typeof OnboardingRoute
-  '/overview': typeof OverviewRoute
+  '/onboarding-preview': typeof OnboardingPreviewRoute
+  '/roles': typeof RolesRoute
   '/support': typeof SupportRoute
-  '/team': typeof TeamRoute
+  '/team': typeof TeamRouteWithChildren
   '/usage': typeof UsageRoute
+  '/activity/notifications': typeof ActivityNotificationsRoute
   '/billing/checkout': typeof BillingCheckoutRoute
-  '/billing/plans': typeof BillingPlansRoute
+  '/billing/credits': typeof BillingCreditsRoute
   '/billing/success': typeof BillingSuccessRoute
   '/join/$token': typeof JoinTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/settings/api-keys': typeof SettingsApiKeysRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
+  '/settings/sessions': typeof SettingsSessionsRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/team/invitations': typeof TeamInvitationsRoute
   '/workspaces/$slug': typeof WorkspacesSlugRoute
   '/workspaces/new': typeof WorkspacesNewRoute
+  '/workspaces/': typeof WorkspacesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
+  '/activity': typeof ActivityRouteWithChildren
   '/billing': typeof BillingRouteWithChildren
   '/integrations': typeof IntegrationsRoute
   '/onboarding': typeof OnboardingRoute
-  '/overview': typeof OverviewRoute
+  '/onboarding-preview': typeof OnboardingPreviewRoute
+  '/roles': typeof RolesRoute
   '/support': typeof SupportRoute
-  '/team': typeof TeamRoute
+  '/team': typeof TeamRouteWithChildren
   '/usage': typeof UsageRoute
+  '/activity/notifications': typeof ActivityNotificationsRoute
   '/billing/checkout': typeof BillingCheckoutRoute
-  '/billing/plans': typeof BillingPlansRoute
+  '/billing/credits': typeof BillingCreditsRoute
   '/billing/success': typeof BillingSuccessRoute
   '/join/$token': typeof JoinTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/settings/api-keys': typeof SettingsApiKeysRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
+  '/settings/sessions': typeof SettingsSessionsRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/team/invitations': typeof TeamInvitationsRoute
   '/workspaces/$slug': typeof WorkspacesSlugRoute
   '/workspaces/new': typeof WorkspacesNewRoute
+  '/workspaces': typeof WorkspacesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
+  '/activity': typeof ActivityRouteWithChildren
   '/billing': typeof BillingRouteWithChildren
   '/integrations': typeof IntegrationsRoute
   '/onboarding': typeof OnboardingRoute
-  '/overview': typeof OverviewRoute
+  '/onboarding-preview': typeof OnboardingPreviewRoute
+  '/roles': typeof RolesRoute
   '/support': typeof SupportRoute
-  '/team': typeof TeamRoute
+  '/team': typeof TeamRouteWithChildren
   '/usage': typeof UsageRoute
+  '/activity/notifications': typeof ActivityNotificationsRoute
   '/billing/checkout': typeof BillingCheckoutRoute
-  '/billing/plans': typeof BillingPlansRoute
+  '/billing/credits': typeof BillingCreditsRoute
   '/billing/success': typeof BillingSuccessRoute
   '/join/$token': typeof JoinTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/settings/api-keys': typeof SettingsApiKeysRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/security': typeof SettingsSecurityRoute
+  '/settings/sessions': typeof SettingsSessionsRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/team/invitations': typeof TeamInvitationsRoute
   '/workspaces/$slug': typeof WorkspacesSlugRoute
   '/workspaces/new': typeof WorkspacesNewRoute
+  '/workspaces/': typeof WorkspacesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -206,21 +251,26 @@ export interface FileRouteTypes {
     | '/billing'
     | '/integrations'
     | '/onboarding'
-    | '/overview'
+    | '/onboarding-preview'
+    | '/roles'
     | '/support'
     | '/team'
     | '/usage'
+    | '/activity/notifications'
     | '/billing/checkout'
-    | '/billing/plans'
+    | '/billing/credits'
     | '/billing/success'
     | '/join/$token'
     | '/organizations/new'
     | '/settings/api-keys'
     | '/settings/profile'
     | '/settings/security'
+    | '/settings/sessions'
     | '/settings/team'
+    | '/team/invitations'
     | '/workspaces/$slug'
     | '/workspaces/new'
+    | '/workspaces/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -228,21 +278,26 @@ export interface FileRouteTypes {
     | '/billing'
     | '/integrations'
     | '/onboarding'
-    | '/overview'
+    | '/onboarding-preview'
+    | '/roles'
     | '/support'
     | '/team'
     | '/usage'
+    | '/activity/notifications'
     | '/billing/checkout'
-    | '/billing/plans'
+    | '/billing/credits'
     | '/billing/success'
     | '/join/$token'
     | '/organizations/new'
     | '/settings/api-keys'
     | '/settings/profile'
     | '/settings/security'
+    | '/settings/sessions'
     | '/settings/team'
+    | '/team/invitations'
     | '/workspaces/$slug'
     | '/workspaces/new'
+    | '/workspaces'
   id:
     | '__root__'
     | '/'
@@ -250,41 +305,49 @@ export interface FileRouteTypes {
     | '/billing'
     | '/integrations'
     | '/onboarding'
-    | '/overview'
+    | '/onboarding-preview'
+    | '/roles'
     | '/support'
     | '/team'
     | '/usage'
+    | '/activity/notifications'
     | '/billing/checkout'
-    | '/billing/plans'
+    | '/billing/credits'
     | '/billing/success'
     | '/join/$token'
     | '/organizations/new'
     | '/settings/api-keys'
     | '/settings/profile'
     | '/settings/security'
+    | '/settings/sessions'
     | '/settings/team'
+    | '/team/invitations'
     | '/workspaces/$slug'
     | '/workspaces/new'
+    | '/workspaces/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ActivityRoute: typeof ActivityRoute
+  ActivityRoute: typeof ActivityRouteWithChildren
   BillingRoute: typeof BillingRouteWithChildren
   IntegrationsRoute: typeof IntegrationsRoute
   OnboardingRoute: typeof OnboardingRoute
-  OverviewRoute: typeof OverviewRoute
+  OnboardingPreviewRoute: typeof OnboardingPreviewRoute
+  RolesRoute: typeof RolesRoute
   SupportRoute: typeof SupportRoute
-  TeamRoute: typeof TeamRoute
+  TeamRoute: typeof TeamRouteWithChildren
   UsageRoute: typeof UsageRoute
   JoinTokenRoute: typeof JoinTokenRoute
   OrganizationsNewRoute: typeof OrganizationsNewRoute
   SettingsApiKeysRoute: typeof SettingsApiKeysRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   SettingsSecurityRoute: typeof SettingsSecurityRoute
+  SettingsSessionsRoute: typeof SettingsSessionsRoute
   SettingsTeamRoute: typeof SettingsTeamRoute
   WorkspacesSlugRoute: typeof WorkspacesSlugRoute
   WorkspacesNewRoute: typeof WorkspacesNewRoute
+  WorkspacesIndexRoute: typeof WorkspacesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -324,11 +387,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/overview': {
-      id: '/overview'
-      path: '/overview'
-      fullPath: '/overview'
-      preLoaderRoute: typeof OverviewRouteImport
+    '/onboarding-preview': {
+      id: '/onboarding-preview'
+      path: '/onboarding-preview'
+      fullPath: '/onboarding-preview'
+      preLoaderRoute: typeof OnboardingPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roles': {
+      id: '/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof RolesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/support': {
@@ -352,6 +422,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activity/notifications': {
+      id: '/activity/notifications'
+      path: '/notifications'
+      fullPath: '/activity/notifications'
+      preLoaderRoute: typeof ActivityNotificationsRouteImport
+      parentRoute: typeof ActivityRoute
+    }
     '/billing/checkout': {
       id: '/billing/checkout'
       path: '/checkout'
@@ -359,11 +436,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingCheckoutRouteImport
       parentRoute: typeof BillingRoute
     }
-    '/billing/plans': {
-      id: '/billing/plans'
-      path: '/plans'
-      fullPath: '/billing/plans'
-      preLoaderRoute: typeof BillingPlansRouteImport
+    '/billing/credits': {
+      id: '/billing/credits'
+      path: '/credits'
+      fullPath: '/billing/credits'
+      preLoaderRoute: typeof BillingCreditsRouteImport
       parentRoute: typeof BillingRoute
     }
     '/billing/success': {
@@ -408,11 +485,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsSecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/sessions': {
+      id: '/settings/sessions'
+      path: '/settings/sessions'
+      fullPath: '/settings/sessions'
+      preLoaderRoute: typeof SettingsSessionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/team': {
       id: '/settings/team'
       path: '/settings/team'
       fullPath: '/settings/team'
       preLoaderRoute: typeof SettingsTeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team/invitations': {
+      id: '/team/invitations'
+      path: '/invitations'
+      fullPath: '/team/invitations'
+      preLoaderRoute: typeof TeamInvitationsRouteImport
+      parentRoute: typeof TeamRoute
+    }
+    '/workspaces/': {
+      id: '/workspaces/'
+      path: '/workspaces'
+      fullPath: '/workspaces/'
+      preLoaderRoute: typeof WorkspacesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/workspaces/$slug': {
@@ -432,39 +530,64 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ActivityRouteChildren {
+  ActivityNotificationsRoute: typeof ActivityNotificationsRoute
+}
+
+const ActivityRouteChildren: ActivityRouteChildren = {
+  ActivityNotificationsRoute: ActivityNotificationsRoute,
+}
+
+const ActivityRouteWithChildren = ActivityRoute._addFileChildren(
+  ActivityRouteChildren,
+)
+
 interface BillingRouteChildren {
   BillingCheckoutRoute: typeof BillingCheckoutRoute
-  BillingPlansRoute: typeof BillingPlansRoute
+  BillingCreditsRoute: typeof BillingCreditsRoute
   BillingSuccessRoute: typeof BillingSuccessRoute
 }
 
 const BillingRouteChildren: BillingRouteChildren = {
   BillingCheckoutRoute: BillingCheckoutRoute,
-  BillingPlansRoute: BillingPlansRoute,
+  BillingCreditsRoute: BillingCreditsRoute,
   BillingSuccessRoute: BillingSuccessRoute,
 }
 
 const BillingRouteWithChildren =
   BillingRoute._addFileChildren(BillingRouteChildren)
 
+interface TeamRouteChildren {
+  TeamInvitationsRoute: typeof TeamInvitationsRoute
+}
+
+const TeamRouteChildren: TeamRouteChildren = {
+  TeamInvitationsRoute: TeamInvitationsRoute,
+}
+
+const TeamRouteWithChildren = TeamRoute._addFileChildren(TeamRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ActivityRoute: ActivityRoute,
+  ActivityRoute: ActivityRouteWithChildren,
   BillingRoute: BillingRouteWithChildren,
   IntegrationsRoute: IntegrationsRoute,
   OnboardingRoute: OnboardingRoute,
-  OverviewRoute: OverviewRoute,
+  OnboardingPreviewRoute: OnboardingPreviewRoute,
+  RolesRoute: RolesRoute,
   SupportRoute: SupportRoute,
-  TeamRoute: TeamRoute,
+  TeamRoute: TeamRouteWithChildren,
   UsageRoute: UsageRoute,
   JoinTokenRoute: JoinTokenRoute,
   OrganizationsNewRoute: OrganizationsNewRoute,
   SettingsApiKeysRoute: SettingsApiKeysRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   SettingsSecurityRoute: SettingsSecurityRoute,
+  SettingsSessionsRoute: SettingsSessionsRoute,
   SettingsTeamRoute: SettingsTeamRoute,
   WorkspacesSlugRoute: WorkspacesSlugRoute,
   WorkspacesNewRoute: WorkspacesNewRoute,
+  WorkspacesIndexRoute: WorkspacesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

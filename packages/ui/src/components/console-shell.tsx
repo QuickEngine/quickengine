@@ -1,247 +1,541 @@
-import { CaretDoubleLeftIcon, ListIcon } from "@phosphor-icons/react";
-import { type ReactNode, useState } from "react";
+import {
+	BellIcon,
+	BookOpenIcon,
+	CaretDoubleLeftIcon,
+	CaretDownIcon,
+	CaretUpDownIcon,
+	ChatCircleIcon,
+	CheckIcon,
+	ClockCounterClockwiseIcon,
+	GaugeIcon,
+	GearSixIcon,
+	HeadsetIcon,
+	ListIcon,
+	MagnifyingGlassIcon,
+	PlusIcon,
+	SignOutIcon,
+} from "@phosphor-icons/react";
+import { type MouseEventHandler, type ReactNode, useState } from "react";
+import { InitialsAvatar } from "./initials-avatar";
+import {
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+	PopoverTrigger,
+} from "./ui/popover";
 import { Sheet, SheetContent, SheetTitle } from "./ui/sheet";
-import { Sidebar, SidebarInset, SidebarProvider } from "./ui/sidebar";
 
 /**
- * The console layout, shared by QuickDash and Account.
+ * How the shell renders a link to somewhere inside the SAME application.
  *
- * They are one product, so they get one shell. Keeping two copies in step by
- * hand is a promise nobody keeps — the second copy drifts the moment either is
- * touched, which is exactly what "identical layout" cannot survive.
+ * 🔴 A plain `<a>` here is a full document navigation: the SPA unmounts, the
+ * bundle re-executes and the sidebar visibly reloads on every click, which reads
+ * as the shell not being part of the layout at all. Account passes its router's
+ * `Link` so those stay client-side.
  *
- * Everything structural lives here: the framed window, the permanent rail, the
- * floating header band, the scroll containment, the content measure. Callers
- * supply only what differs — which is content, never geometry.
- *
- * Notes worth keeping:
- *
- * · `h-svh overflow-hidden` locks the PAGE. Without it the whole layout scrolls
- *   and the floating band slides over the content. Scrolling belongs inside the
- *   rail and inside the panel, independently. `html, body, #root` must also be
- *   locked in each app's stylesheet — a wrapper alone cannot stop `body`
- *   scrolling when its child overflows.
- *
- * · `collapsible="none"` is required for a rail inside a clipped, rounded
- *   container — the default renders it `fixed`, which cannot be clipped. It also
- *   drops shadcn's mobile sheet, so mobile is built here explicitly: the rail is
- *   hidden below `md` and the same nav is rendered into a drawer instead. Nothing
- *   is duplicated; both surfaces receive the identical slots.
- *
- * · `--header-height` is what drops the rail below the band. Both read the same
- *   value so they cannot drift apart.
+ * The default is still an anchor, because the same menu is rendered by QuickDash,
+ * where these targets live on a different origin and MUST be a real navigation.
  */
+export type ConsoleLinkProps = {
+	href: string;
+	className?: string;
+	children: ReactNode;
+};
+export type ConsoleLink = (props: ConsoleLinkProps) => ReactNode;
+
+const AnchorLink: ConsoleLink = ({ href, className, children }) => (
+	<a href={href} className={className}>
+		{children}
+	</a>
+);
+
+/**
+ * The sandbox strip: this workspace is not real money.
+ *
+ * 🔴 **Never dismissible.** A test-mode marker you can hide is one you will
+ * forget, and forgetting is the exact failure it exists to prevent — a real card
+ * charged in a sandbox, or a test card taken against the live business.
+ *
+ * It spans the whole window rather than the content area, because the sidebar is
+ * part of what is sandboxed: the records in it are not real either.
+ */
+export function SandboxBanner({ action }: { action?: ReactNode }) {
+	return (
+		<div className="flex h-9 shrink-0 items-center justify-center gap-3 bg-[var(--console-banner)] px-4 text-[var(--console-banner-ink)]">
+			{/* A dot rather than a colour field: the marker is unmistakable up close
+			    and the band stays quiet from across the room. */}
+			<span
+				aria-hidden="true"
+				className="size-1.5 shrink-0 rounded-full bg-[#f5b44a]"
+			/>
+			<p className="truncate text-[11.5px]">
+				Sandbox mode — nothing here is real. Payments are not charged and
+				records do not belong to your live business.
+			</p>
+			{action}
+		</div>
+	);
+}
+
+/** A small always-visible qualifier on the current context, e.g. `TEST`.
+ *
+ * Deliberately absent in the normal case. An indicator shown for both states is
+ * read as decoration and stops being read at all, which is the one thing a
+ * test-mode marker may never become. */
+export function SidebarBadge({ label }: { label: string }) {
+	return (
+		<span className="shrink-0 rounded-[3px] bg-[#f5a623]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[#f5b44a] uppercase tracking-[0.09em]">
+			{label}
+		</span>
+	);
+}
+
+export function SidebarName({
+	name,
+	badge,
+	currentId,
+	items,
+	onSelect,
+	onSearch,
+	onNotifications,
+	notificationCount = 0,
+	notificationsActive = false,
+	searchLabel,
+	createLabel,
+	createHref,
+	link: Link = AnchorLink,
+}: {
+	name: string;
+	/** Qualifier beside the name, e.g. the workspace's `test` environment. */
+	badge?: string | null;
+	currentId: string;
+	items: Array<{
+		id: string;
+		name: string;
+		/** Owning context, shown when two items could share a name. */
+		secondary?: string | null;
+		badge?: string | null;
+	}>;
+	onSelect: (id: string) => void;
+	onSearch?: () => void;
+	onNotifications?: () => void;
+	notificationCount?: number;
+	notificationsActive?: boolean;
+	searchLabel: string;
+	createLabel: string;
+	createHref: string;
+	link?: ConsoleLink;
+}) {
+	const [open, setOpen] = useState(false);
+	const [query, setQuery] = useState("");
+	const visibleItems = items.filter((item) =>
+		item.name.toLowerCase().includes(query.trim().toLowerCase()),
+	);
+
+	return (
+		<div className="h-full min-w-0">
+			<Popover open={open} onOpenChange={setOpen}>
+				<PopoverAnchor asChild>
+					<div className="flex h-full min-w-0 items-center gap-0.5 px-2.5">
+						<PopoverTrigger className="group flex h-full min-w-0 flex-1 items-center text-left outline-none">
+							<span className="flex h-9 min-w-0 max-w-full items-center gap-1.5 rounded-md bg-transparent px-2.5 transition-colors group-hover:bg-[rgb(var(--console-ink)/0.06)] group-focus-visible:bg-[rgb(var(--console-ink)/0.06)] group-data-[state=open]:bg-[rgb(var(--console-ink)/0.06)]">
+								<span className="truncate text-[15px] text-[var(--ink-90)]">
+									{name}
+								</span>
+								{badge ? <SidebarBadge label={badge} /> : null}
+								<CaretDownIcon
+									size={15}
+									className="shrink-0 text-[var(--ink-30)] transition-colors group-hover:text-[var(--ink-60)]"
+								/>
+							</span>
+						</PopoverTrigger>
+						<button
+							type="button"
+							aria-label="Search"
+							onClick={onSearch}
+							className="flex size-8 shrink-0 items-center justify-center rounded-md text-[var(--ink-30)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-70)]"
+						>
+							<MagnifyingGlassIcon size={15} />
+						</button>
+						<button
+							type="button"
+							aria-label={`Notifications${notificationCount > 0 ? " (new)" : ""}`}
+							onClick={onNotifications}
+							className={`flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-70)] ${notificationsActive ? "bg-[rgb(var(--console-ink)/0.06)] text-[var(--ink-70)]" : "text-[var(--ink-30)]"}`}
+						>
+							<span className="relative inline-flex">
+								<BellIcon size={15} />
+								{notificationCount > 0 ? (
+									<span
+										aria-hidden="true"
+										className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[#ff3b3b] shadow-[0_0_0_1px_var(--console-panel)]"
+									/>
+								) : null}
+							</span>
+						</button>
+					</div>
+				</PopoverAnchor>
+				<PopoverContent
+					side="bottom"
+					align="center"
+					sideOffset={-6}
+					aria-label="Switch context"
+					className="w-56 border-[var(--console-line)] bg-[var(--console-pop)] p-1.5 shadow-2xl"
+				>
+					<div className="flex h-8 items-center gap-2 border-[var(--console-line-soft)] border-b px-2 text-[var(--ink-35)] focus-within:text-[var(--ink-60)]">
+						<MagnifyingGlassIcon size={13} className="shrink-0" />
+						<input
+							value={query}
+							onChange={(event) => setQuery(event.target.value)}
+							placeholder={searchLabel}
+							className="min-w-0 flex-1 bg-transparent text-[11px] text-[var(--ink-80)] outline-none placeholder:text-[var(--ink-25)]"
+						/>
+					</div>
+					<div className="flex max-h-56 flex-col overflow-y-auto py-1">
+						{visibleItems.length > 0 ? (
+							visibleItems.map((item) => (
+								<button
+									key={item.id}
+									type="button"
+									onClick={() => {
+										onSelect(item.id);
+										setOpen(false);
+									}}
+									className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-[var(--ink-55)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-90)] focus-visible:bg-[rgb(var(--console-ink)/0.055)] focus-visible:text-[var(--ink-90)]"
+								>
+									<InitialsAvatar
+										label={item.name}
+										className="size-7 shrink-0 text-[10px]!"
+									/>
+									<span className="min-w-0 flex-1">
+										<span className="flex min-w-0 items-center gap-1.5">
+											<span className="min-w-0 truncate text-[12px]">
+												{item.name}
+											</span>
+											{item.badge ? <SidebarBadge label={item.badge} /> : null}
+										</span>
+										{item.secondary ? (
+											<span className="mt-px block truncate text-[10px] text-[var(--ink-30)]">
+												{item.secondary}
+											</span>
+										) : null}
+									</span>
+									{item.id === currentId ? (
+										<CheckIcon
+											size={13}
+											className="shrink-0 text-[var(--ink-45)]"
+										/>
+									) : null}
+								</button>
+							))
+						) : (
+							<p className="px-2 py-5 text-center text-[11px] text-[var(--ink-30)]">
+								Nothing found
+							</p>
+						)}
+					</div>
+					<div className="border-[var(--console-line-soft)] border-t pt-1">
+						<Link
+							href={createHref}
+							className="flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[11.5px] text-[var(--ink-40)] transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-85)]"
+						>
+							<PlusIcon size={13} />
+							<span>{createLabel}</span>
+						</Link>
+					</div>
+				</PopoverContent>
+			</Popover>
+		</div>
+	);
+}
+
+export function SidebarSwitcher({
+	kind,
+	name,
+}: {
+	kind: "organization" | "workspace";
+	name: string;
+}) {
+	const label = kind === "organization" ? "Organization" : "Workspace";
+
+	return (
+		<Popover>
+			<PopoverTrigger className="group flex h-full w-full min-w-0 items-center gap-2.5 px-3 text-left outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] focus-visible:bg-[rgb(var(--console-ink)/0.055)]">
+				<InitialsAvatar
+					label={name || label}
+					className="size-7 shrink-0 text-[10px]!"
+				/>
+				<div className="min-w-0 flex-1">
+					<p className="truncate text-[12px] text-[var(--ink-90)]">
+						{name || `Select ${label.toLowerCase()}`}
+					</p>
+					<p className="mt-px truncate text-[10px] text-[var(--ink-35)]">
+						{label}
+					</p>
+				</div>
+				<CaretUpDownIcon
+					size={17}
+					className="shrink-0 text-[var(--ink-25)] transition-colors group-hover:text-[var(--ink-50)]"
+				/>
+			</PopoverTrigger>
+			<PopoverContent
+				side="right"
+				align="start"
+				sideOffset={8}
+				aria-label={`${label} switcher`}
+				className="h-16 w-[13.75rem] border-[var(--console-line)] bg-[var(--console-pop)] p-0 shadow-2xl"
+			/>
+		</Popover>
+	);
+}
+
+export function SidebarAccount({
+	name,
+	planId,
+	accountUrl,
+	authUrl,
+	webUrl = "",
+	onFeedback,
+	onSignOut,
+	link: Link = AnchorLink,
+	settingsHref,
+	settingsLink,
+}: {
+	name: string;
+	planId: string | null;
+	accountUrl: string;
+	authUrl: string;
+	webUrl?: string;
+	onFeedback?: () => void;
+	onSignOut?: MouseEventHandler<HTMLAnchorElement>;
+	link?: ConsoleLink;
+	/**
+	 * Where "Settings" goes, when it is not the account's own.
+	 *
+	 * 🔑 Contextual on purpose. In Account this row means account settings; in
+	 * QuickDash the thing you are settling INTO is the workspace, so it means
+	 * workspace settings. One row that always means "settings for where I am"
+	 * beats two rows competing to be the settings row.
+	 */
+	settingsHref?: string;
+	/** Rendered for that row alone — the other entries stay cross-origin. */
+	settingsLink?: ConsoleLink;
+}) {
+	const SettingsLink = settingsLink ?? Link;
+	const [open, setOpen] = useState(false);
+	const plan = `${(planId || "free").replace(/[-_]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())} Plan`;
+	const accountHref = (path: string) => `${accountUrl}${path}`;
+	const signOutHref = `${authUrl}/signout?redirect=${encodeURIComponent(`${authUrl}/signin?signedout=1`)}`;
+	const menuRow =
+		"flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[12px] text-[var(--ink-50)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-90)] focus-visible:bg-[rgb(var(--console-ink)/0.055)] focus-visible:text-[var(--ink-90)]";
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger className="group flex w-full min-w-0 items-center gap-2.5 px-3 py-2.5 text-left outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] focus-visible:bg-[rgb(var(--console-ink)/0.055)]">
+				<InitialsAvatar
+					label={name || "Account"}
+					className="size-7 shrink-0 text-[10px]!"
+				/>
+				<div className="min-w-0 flex-1">
+					<p className="truncate text-[12px] text-[var(--ink-90)]">
+						{name || "Account"}
+					</p>
+					<p className="mt-px truncate text-[10px] text-[var(--ink-35)]">
+						{plan}
+					</p>
+				</div>
+				<CaretUpDownIcon
+					size={14}
+					className="shrink-0 text-[var(--ink-25)] transition-colors group-hover:text-[var(--ink-50)]"
+				/>
+			</PopoverTrigger>
+			<PopoverContent
+				side="top"
+				align="center"
+				sideOffset={8}
+				aria-label="Account menu"
+				className="flex w-56 flex-col gap-1 border-[var(--console-line)] bg-[var(--console-pop)] p-1.5 shadow-2xl"
+			>
+				<Link
+					href={accountHref("/settings/profile")}
+					className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-[var(--ink-85)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] focus-visible:bg-[rgb(var(--console-ink)/0.055)]"
+				>
+					<InitialsAvatar
+						label={name || "Account"}
+						className="size-7 shrink-0 text-[10px]!"
+					/>
+					<span className="min-w-0 truncate text-[12px]">
+						{name || "Account"}
+					</span>
+				</Link>
+				<div className="border-[var(--console-line-soft)] border-t" />
+				<SettingsLink
+					href={settingsHref ?? accountHref("/settings/security")}
+					className={menuRow}
+				>
+					<GearSixIcon size={14} />
+					<span>Settings</span>
+				</SettingsLink>
+				<Link href={accountHref("/usage")} className={menuRow}>
+					<GaugeIcon size={14} />
+					<span>Usage</span>
+				</Link>
+				<button
+					type="button"
+					onClick={() => {
+						setOpen(false);
+						onFeedback?.();
+					}}
+					className={menuRow}
+				>
+					<ChatCircleIcon size={14} />
+					<span>Feedback</span>
+				</button>
+				<Link href={accountHref("/support")} className={menuRow}>
+					<HeadsetIcon size={14} />
+					<span>Help & Support</span>
+				</Link>
+				<a href={`${webUrl}/docs`} className={menuRow}>
+					<BookOpenIcon size={14} />
+					<span>Docs</span>
+				</a>
+				<a href={`${webUrl}/changelog`} className={menuRow}>
+					<ClockCounterClockwiseIcon size={14} />
+					<span>Changelog</span>
+				</a>
+				<a href={signOutHref} onClick={onSignOut} className={menuRow}>
+					<SignOutIcon size={14} />
+					<span>Sign out</span>
+				</a>
+				<Link
+					href={accountHref("/billing")}
+					className="flex h-8 w-full items-center justify-center gap-2 rounded-md bg-[rgb(var(--console-ink))] px-2 text-[11.5px] text-[var(--console-pop)] transition-colors hover:bg-[rgb(var(--console-ink)/0.85)]"
+				>
+					<span>Upgrade</span>
+				</Link>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+/** Shared authenticated frame. Account and QuickDash supply different sidebar
+ * contents while retaining identical geometry and responsive behaviour. */
 export function ConsoleShell({
 	switcher,
-	breadcrumbs,
-	actions,
 	account,
 	navTop,
 	nav,
 	navBottom,
 	overlays,
+	banner,
 	children,
 }: {
-	/** Rail-width cluster: avatar plus org or workspace switcher. */
 	switcher: ReactNode;
-	/** Starts on the panel's left edge. */
 	breadcrumbs?: ReactNode;
-	/** Right of the band: upgrade, search. */
 	actions?: ReactNode;
-	/** The account control. One node, two placements — last in the desktop
-	    actions row, and the mobile drawer's footer. Kept out of `actions` so the
-	    shell can put it in both without either app passing it twice. */
 	account?: ReactNode;
-	/** Pinned above the scroll region — the places you return to constantly. */
 	navTop?: ReactNode;
-	/** The scrolling middle. */
 	nav?: ReactNode;
-	/** Pinned to the bottom — visited occasionally, never as part of a task. */
 	navBottom?: ReactNode;
-	/** Floating panels: tours, checklists. Rendered last, outside the frame. */
 	overlays?: ReactNode;
+	/**
+	 * A strip across the very top of the window, above the sidebar as well as the
+	 * content.
+	 *
+	 * 🔑 It PUSHES rather than overlays: the frame below becomes the remaining
+	 * height, so nothing is covered and nothing is squashed. A banner floating
+	 * over the console would hide the first row of whatever is under it, which on
+	 * a work queue is the most important row.
+	 */
+	banner?: ReactNode;
 	children: ReactNode;
 }) {
 	const [menuOpen, setMenuOpen] = useState(false);
 
-	// Navigation proper — the same nodes in the desktop rail and the mobile
-	// drawer, so the two can never present different routes.
-	const navigation = (
+	const sidebar = (
 		<>
-			{navTop}
-			{nav}
+			{switcher ? <div className="h-16 shrink-0">{switcher}</div> : null}
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+				{navTop}
+				{nav}
+				{navBottom ? (
+					<div className="mt-auto shrink-0 px-2 pb-3">{navBottom}</div>
+				) : null}
+			</div>
+			{account ? (
+				<div className="shrink-0 border-[var(--console-line-soft)] border-t">
+					{account}
+				</div>
+			) : null}
 		</>
 	);
 
-	return (
-		<SidebarProvider
-			open
-			onOpenChange={() => {
-				/* the desktop rail is permanent */
-			}}
-			className="relative h-svh overflow-hidden"
-			style={{ "--header-height": "2.75rem" } as React.CSSProperties}
+	// 🔴 `overscroll-none` on the frame and `overscroll-contain` on the scroller
+	// below. Without them the console's own scroll chains up to the document and
+	// the whole shell rubber-bands, showing the page behind it — the app looks
+	// like it is peeling off the window.
+	const frame = (
+		<div
+			className={`relative flex min-h-0 overflow-hidden overscroll-none bg-[var(--console-bg)] text-[var(--ink-90)] ${
+				// With a banner the console sits INSIDE the window rather than being
+				// the window, so its top corners round and the banner shows through
+				// behind them.
+				banner ? "flex-1 rounded-t-2xl" : "h-svh"
+			}`}
 		>
-			{/* `data-tauri-drag-region` makes the empty parts of the band grab the
-			    window, with an overlay title bar and no visible chrome there is
-			    otherwise nowhere else to drag from. Its children carry no such
-			    attribute, so clicking a control never starts a drag.
-
-			    🔴 The band must NOT be `pointer-events-none`. The drag region works by
-			    receiving a mousedown, and an element that takes no pointer events never
-			    gets one, the window simply could not be moved. It does not need to be
-			    transparent to clicks anyway: the frame below starts exactly at this
-			    band's bottom edge, so there is nothing underneath it to block.
-
-			    The inset class is a no-op in a browser; it only resolves in the shell. */}
-			<div
-				data-tauri-drag-region
-				className="native-titlebar-inset absolute inset-x-0 top-0 z-20 hidden h-[calc(2.75rem+var(--titlebar))] items-center pr-4 pl-4 md:flex"
+			<aside
+				className={`hidden w-60 shrink-0 flex-col border-[var(--console-line)] border-r bg-[var(--console-panel)] md:flex ${banner ? "rounded-tl-2xl" : ""}`}
 			>
-				<div className="flex w-[var(--sidebar-width)] items-center gap-2">
-					{switcher}
-				</div>
+				{sidebar}
+			</aside>
 
-				{/* The cluster above ends on the rail's right border, so this starts on
-				    the panel's left edge. */}
-				<div className="min-w-0 pl-4">{breadcrumbs}</div>
-
-				<div className="ml-auto flex items-center gap-2">
-					{actions}
-					{account}
-				</div>
-			</div>
-
-			{/* One window holding the rail and the content, rather than a rail beside
-			    a floating document. One border on all four sides is what makes it read
-			    as a single application surface.
-
-			    `--elevate` is a real shadow on light and almost nothing on dark: light
-			    themes get depth from shadow, dark themes from tone. */}
-			{/* Mobile bar. A real bar rather than the floating band: at this width the
-			    panel fills the screen, so a control hovering over it would sit on top
-			    of content instead of beside it.
-
-			    The menu control plus the current page. Without the name a phone gives
-			    no indication of where you are, the rail that carries the active state
-			    on desktop is behind a drawer here, so the header has to say it.
-
-			    `breadcrumbs` is reused rather than a separate prop: it already derives
-			    the page from the route, so the two surfaces cannot disagree about what
-			    this screen is called. */}
-			<div
-				data-tauri-drag-region
-				className="native-titlebar-inset absolute inset-x-0 top-0 z-20 flex h-[calc(3rem+var(--titlebar))] items-center bg-void px-3 md:hidden"
+			<button
+				type="button"
+				aria-label="Open navigation"
+				onClick={() => setMenuOpen(true)}
+				className="absolute top-3 left-3 z-30 flex size-9 items-center justify-center border border-[rgb(var(--console-ink)/0.10)] bg-[var(--console-bg)] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] md:hidden"
 			>
-				<button
-					type="button"
-					aria-label="Open menu"
-					onClick={() => setMenuOpen(true)}
-					className="-ml-1 shrink-0 p-1.5 text-ink"
-				>
-					<ListIcon size={22} />
-				</button>
+				<ListIcon size={18} />
+			</button>
 
-				{/* Absolutely centred on the BAR, not between its children — otherwise
-				    the title shifts left because the menu button only exists on one
-				    side. `pointer-events-none` so it never intercepts a tap meant for
-				    the button beneath it. */}
-				<div className="pointer-events-none absolute inset-x-12 flex justify-center">
-					<div className="min-w-0 truncate">{breadcrumbs}</div>
-				</div>
-			</div>
-
-			{/* Navigation drawer. The actions cluster lives in here too — search,
-			    upgrade and the account menu do not fit beside a switcher at 375px, and
-			    hiding them would make the phone a lesser product rather than a smaller
-			    one. */}
 			<Sheet open={menuOpen} onOpenChange={setMenuOpen}>
 				<SheetContent
 					side="left"
-					className="w-[17rem] gap-0 border-edge bg-void p-0 [&>button]:hidden"
+					className="w-60 gap-0 border-[var(--console-line)] bg-[var(--console-panel)] p-0 text-[var(--ink-90)] [&>button]:hidden"
 				>
-					<SheetTitle className="sr-only">Navigation</SheetTitle>
-
-					{/* The same switcher the desktop band carries — org in Account,
-					    workspace in QuickDash. It answers "what am I looking at" before
-					    any navigation, which is why it heads the drawer rather than
-					    sitting in it.
-
-					    ⚠️ The middle is still cleared for design. `railContent` holds
-					    every nav slot and the desktop rail renders it unchanged; the
-					    drawer simply is not laying it out yet. `actions` is likewise
-					    still passed by both apps and not yet placed. */}
-					<div className="flex h-12 shrink-0 items-center gap-2 px-3">
-						<div className="flex min-w-0 flex-1 items-center gap-2">
-							{switcher}
-						</div>
-						<button
-							type="button"
-							aria-label="Close menu"
-							onClick={() => setMenuOpen(false)}
-							className="p-1.5 text-dim transition-colors hover:text-ink"
-						>
-							<CaretDoubleLeftIcon size={16} />
-						</button>
-					</div>
-
-					{/* The same nav the desktop rail renders — modules in QuickDash,
-					    organisation in Account. `railContent` is one set of nodes used in
-					    both places, so the phone can never present different navigation
-					    from the desktop.
-
-					    Navigation only, the rail's bottom group lives in the account sheet
-					    on this breakpoint, not here.
-
-					    Closes on any click inside: everything in here navigates, and a
-					    drawer left open over the page you just asked for is a bug. */}
-					{/* biome-ignore lint/a11y/noStaticElementInteractions: a plain div, not a button — nesting links inside a button is invalid HTML. */}
-					{/* biome-ignore lint/a11y/useKeyWithClickEvents: no keyboard handler is needed. Every child is natively interactive, and keyboard-activating a link dispatches a click that bubbles here — adding one would create a second focusable control over the navigation. */}
+					<SheetTitle className="sr-only">Application navigation</SheetTitle>
+					<button
+						type="button"
+						aria-label="Close navigation"
+						onClick={() => setMenuOpen(false)}
+						className="absolute top-4 right-2 z-10 flex size-8 items-center justify-center text-[var(--ink-40)] transition-colors hover:text-[var(--ink-90)]"
+					>
+						<CaretDoubleLeftIcon size={15} />
+					</button>
+					{/* biome-ignore lint/a11y/noStaticElementInteractions: native child controls emit the click that closes the drawer. */}
+					{/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard activation of those native controls also emits click. */}
 					<div
 						onClick={() => setMenuOpen(false)}
-						className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+						className="flex min-h-0 flex-1 flex-col"
 					>
-						{navigation}
+						{sidebar}
 					</div>
-
-					{/* The account control, full width — its own trigger carries the name,
-					    tier and caret, and opens a bottom sheet holding everything the
-					    rail pinned at its foot. */}
-					{account ? <div className="shrink-0 p-2">{account}</div> : null}
 				</SheetContent>
 			</Sheet>
 
-			<div
-				style={{ boxShadow: "var(--elevate)" }}
-				className="mt-[calc(3rem+var(--titlebar))] flex min-h-0 flex-1 overflow-hidden border-edge bg-field md:m-4 md:mt-[calc(2.75rem+var(--titlebar))] md:rounded-xl md:border"
-			>
-				<Sidebar
-					variant="inset"
-					collapsible="none"
-					className="hidden w-64 shrink-0 border-edge border-r bg-void p-0 md:flex"
-				>
-					{navigation}
-					{/* Desktop only. On mobile these fold into the account sheet instead —
-					    rendering them here as well would list Feedback and Developers
-					    twice on the same screen. */}
-					{navBottom ? (
-						<div className="mt-auto flex flex-col gap-1 px-2 pt-6 pb-2">
-							{navBottom}
-						</div>
-					) : null}
-				</Sidebar>
-
-				<SidebarInset className="min-h-0 flex-1 overflow-hidden bg-field md:m-0! md:rounded-none! md:shadow-none!">
-					<div className="relative min-h-0 flex-1 overflow-y-auto">
-						{/* One measure for every route, applied here so a new page inherits
-						    it and none of them can drift. The scroller stays full width so
-						    the scrollbar sits on the panel edge, not the content's. */}
-						<div className="mx-auto w-full max-w-6xl">{children}</div>
-					</div>
-				</SidebarInset>
-			</div>
-
+			<main className="min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[var(--console-bg)]">
+				{children}
+			</main>
 			{overlays}
-		</SidebarProvider>
+		</div>
+	);
+
+	if (!banner) return frame;
+
+	return (
+		<div className="flex h-svh min-h-0 flex-col overflow-hidden bg-[var(--console-banner)]">
+			{banner}
+			{frame}
+		</div>
 	);
 }

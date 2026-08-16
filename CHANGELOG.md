@@ -8,6 +8,17 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A business moving from the old QuickDash keeps its work.** An import brings a workspace's
+  products, categories, website copy, FAQ, testimonials and discount codes across in one run.
+  Prices come over at what a shopper actually pays, so an item on sale stays on sale, and the
+  import can be run again safely if it is interrupted. The first real migration moved a live
+  store's 31 products and 117 pieces of site copy.
+
+- **Somewhere to put a picture.** Storage now separates files a business keeps private, like a
+  signed contract, from images it publishes on its own website. Public images get a permanent
+  web address instead of a link that expires, which is what a product photograph has needed all
+  along.
+
 - **Orders now carry the complete operating picture.** Opening an order in QuickDash shows its
   immutable purchased items and totals, delivery destination, payment and refund state, and
   shipment progress. Creating a shipment prefills the order's snapshotted destination instead

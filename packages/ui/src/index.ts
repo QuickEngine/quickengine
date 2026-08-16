@@ -12,9 +12,18 @@ export {
 } from "./components/auth-ui";
 export { Background } from "./components/background";
 export { ConnectionBanner } from "./components/connection-banner";
-export { ConsoleShell } from "./components/console-shell";
-export { GeneratedAvatar } from "./components/generated-avatar";
+export {
+	type ConsoleLink,
+	type ConsoleLinkProps,
+	ConsoleShell,
+	SandboxBanner,
+	SidebarAccount,
+	SidebarBadge,
+	SidebarName,
+	SidebarSwitcher,
+} from "./components/console-shell";
 export { GlobalErrorScreen } from "./components/global-error-screen";
+export { InitialsAvatar } from "./components/initials-avatar";
 export { Logo } from "./components/logo";
 export {
 	ActionableEmptyState,

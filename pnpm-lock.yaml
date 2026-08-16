@@ -806,6 +806,9 @@ importers:
       '@quickengine/config':
         specifier: workspace:*
         version: link:../config
+      '@vercel/blob':
+        specifier: ^2.6.1
+        version: 2.6.1
       dotenv:
         specifier: ^16
         version: 16.6.1

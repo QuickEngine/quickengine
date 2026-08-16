@@ -6,17 +6,6 @@
 		<meta name="robots" content="noindex, nofollow" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<title>Account — QuickEngine</title>
-		<script>
-			(() => {
-				const stored = localStorage.getItem("quickengine-theme") ?? "dark";
-				const dark =
-					stored === "dark" ||
-					(stored === "system" &&
-						window.matchMedia("(prefers-color-scheme: dark)").matches);
-				document.documentElement.classList.toggle("dark", dark);
-				document.documentElement.classList.toggle("light", !dark);
-			})();
-		</script>
 	</head>
 	<body>
 		<div id="root"></div>

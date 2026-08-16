@@ -86,7 +86,12 @@ import {
 	startSubscriptionSchema,
 	updateApiKeyOriginsSchema,
 } from "./account-routes";
-import { inviteMemberSchema } from "./account-team-routes";
+import {
+	accountRolePatchSchema,
+	accountRoleSchema,
+	changeMemberRoleSchema,
+	inviteMemberSchema,
+} from "./account-team-routes";
 import {
 	archiveWorkspaceSchema,
 	createWorkspaceSchema,
@@ -248,6 +253,9 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createWebhookEndpoint: webhookEndpointInputSchema,
 	updateWebhookEndpoint: webhookEndpointPatchSchema,
 	inviteMember: inviteMemberSchema,
+	changeMemberRole: changeMemberRoleSchema,
+	createAccountRole: accountRoleSchema,
+	updateAccountRole: accountRolePatchSchema,
 	createOrganization: createOrganizationSchema,
 	createApiKey: createApiKeySchema,
 	updateApiKeyOrigins: updateApiKeyOriginsSchema,

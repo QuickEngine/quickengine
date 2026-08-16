@@ -1,6 +1,10 @@
-import { GearSixIcon } from "@phosphor-icons/react";
 import { authClient } from "@quickengine/auth/client";
-import { ConsoleShell } from "@quickengine/ui";
+import {
+	type ConsoleLink,
+	ConsoleShell,
+	SidebarAccount,
+	SidebarName,
+} from "@quickengine/ui";
 import {
 	type QueryClient,
 	useQuery,
@@ -8,24 +12,21 @@ import {
 } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
+	Link,
 	Outlet,
 	redirect,
 	useRouterState,
 } from "@tanstack/react-router";
+import { useState } from "react";
 import {
 	ErrorScreen,
 	LoadingScreen,
 	NotFoundScreen,
 } from "@/components/status-screens";
-import { AccountNav, AccountNavTop } from "../components/account-nav";
-import { Breadcrumbs } from "../components/breadcrumbs";
-import { NotificationBell } from "../components/notification-bell";
-import { ProfileMenu } from "../components/profile-menu";
-import { SearchBar } from "../components/search-bar";
-import { SettingsDialog } from "../components/settings-dialog";
-import { TeamSwitcher } from "../components/team-switcher";
-import { ThemeProvider } from "../components/theme-provider";
-import { UpgradeButton } from "../components/upgrade-button";
+import { AccountNav } from "../components/account-nav";
+import { AccountNotifications } from "../components/account-notifications";
+import { AccountSearch } from "../components/account-search";
+import { FeedbackDialog } from "../components/feedback-dialog";
 import {
 	accountQueries,
 	activeOrganization,
@@ -110,101 +111,115 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 );
 
 function RootLayout() {
-	return (
-		<ThemeProvider>
-			<AccountShell />
-		</ThemeProvider>
-	);
+	return <AccountShell />;
 }
 
 function AccountShell() {
-	const queryClient = useQueryClient();
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
-	const { user } = Route.useRouteContext();
-	const { organizations, active } = useActiveOrganization();
-	const notifications = useQuery(accountQueries.notifications());
-	const plan = useQuery(accountQueries.plan(active?.id ?? ""));
 
-	if (organizations.isPending || notifications.isPending)
-		return <LoadingScreen />;
-	if (organizations.isError || notifications.isError) {
-		throw organizations.error ?? notifications.error;
-	}
-
+	// Onboarding and invitation joining only. Both happen before somebody has an
+	// account to frame, so the console would be chrome around nothing.
+	//
+	// ⚠️ Billing used to be excluded too, from when it was a full-page flow. That
+	// meant paying for the product dropped you out of the product — no sidebar, no
+	// way back except the browser's own button.
 	const outsideConsole =
 		pathname === "/onboarding" ||
-		pathname.startsWith("/join/") ||
-		pathname.startsWith("/billing");
+		// The onboarding redesign, reviewed before it replaces the live flow.
+		pathname === "/onboarding-preview" ||
+		pathname.startsWith("/join/");
 	if (outsideConsole) return <Outlet />;
+	return <AccountConsole />;
+}
 
-	const selectOrganization = (organizationId: string) => {
-		activeOrganization.write(organizationId);
-		queryClient.setQueryData(["account", "activeOrganization"], organizationId);
-	};
-	const inbox = notifications.data.items.map((item) => ({
-		...item,
-		unread: item.readAt === null,
-	}));
+/**
+ * Account's own links inside the shared shell.
+ *
+ * Everything the sidebar and the account popover point at lives in THIS app, so
+ * they must be router links. As plain anchors they reloaded the document, which
+ * is why the sidebar appeared to flash and rebuild on every click. QuickDash
+ * renders the same menu without this, because there those targets really are on
+ * another origin.
+ */
+const AccountLink: ConsoleLink = ({ href, className, children }) => (
+	<Link to={href} className={className}>
+		{children}
+	</Link>
+);
+
+function AccountConsole() {
+	const [searchOpen, setSearchOpen] = useState(false);
+	const [feedbackOpen, setFeedbackOpen] = useState(false);
+	const [sidebarContext, setSidebarContext] = useState<
+		"navigation" | "notifications"
+	>("navigation");
+	const { user } = Route.useRouteContext();
+	const queryClient = useQueryClient();
+	const { organizations, active } = useActiveOrganization();
+	const plan = useQuery(accountQueries.plan(active?.id ?? ""));
+	const notifications = useQuery(accountQueries.notifications());
 
 	return (
-		// The shared shell. QuickDash is master: every measurement in ConsoleShell
-		// came from it, and Account conforms rather than the reverse. Only content
-		// differs here — switcher, nav and actions.
 		<ConsoleShell
 			switcher={
-				<TeamSwitcher
-					orgs={organizations.data.items}
-					activeOrgId={active?.id ?? ""}
-					tier={plan.data?.planId ?? "Free"}
-					onSelect={selectOrganization}
+				<SidebarName
+					name={active?.name ?? ""}
+					currentId={active?.id ?? ""}
+					items={organizations.data?.items ?? []}
+					onSelect={(organizationId) => {
+						activeOrganization.write(organizationId);
+						queryClient.setQueryData(
+							["account", "activeOrganization"],
+							organizationId,
+						);
+					}}
+					searchLabel="Find organization"
+					createLabel="Create organization"
+					createHref="/organizations/new"
+					link={AccountLink}
+					onSearch={() => setSearchOpen(true)}
+					onNotifications={() =>
+						setSidebarContext((current) =>
+							current === "notifications" ? "navigation" : "notifications",
+						)
+					}
+					notificationCount={notifications.data?.unread ?? 0}
+					notificationsActive={sidebarContext === "notifications"}
 				/>
 			}
-			breadcrumbs={<Breadcrumbs />}
-			actions={
-				<>
-					<UpgradeButton />
-					<SearchBar />
-					<NotificationBell items={inbox} unread={notifications.data.unread} />
-				</>
+			nav={
+				sidebarContext === "notifications" ? (
+					<AccountNotifications
+						items={notifications.data?.items ?? []}
+						unread={notifications.data?.unread ?? 0}
+					/>
+				) : (
+					<AccountNav />
+				)
 			}
 			account={
-				<ProfileMenu
-					seed={user.id}
+				<SidebarAccount
 					name={user.name ?? ""}
-					email={user.email}
 					planId={plan.data?.planId ?? null}
-					// A route, not the dialog. The dialog is 960px wide with a 224px rail
-					// inside it — on a 375px phone that leaves 121px of content. These
-					// settings screens already exist at /settings/*, with a back button.
-					mobileItems={
-						<a
-							href="/settings/profile"
-							className="inline-flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[13px] text-ink"
-						>
-							<GearSixIcon size={14} className="shrink-0 text-dim" />
-							Settings
-						</a>
-					}
+					accountUrl=""
+					authUrl={clientEnv.AUTH_URL}
+					webUrl={clientEnv.WEB_URL}
+					link={AccountLink}
+					onFeedback={() => setFeedbackOpen(true)}
 				/>
 			}
-			navTop={<AccountNavTop />}
-			nav={<AccountNav />}
-			navBottom={
-				/* The real dialog — profile, security, billing, sessions, theme — not a
-				   link out. It already existed and I replaced it with a link when the
-				   shell was rebuilt; this restores it. Mirrors QuickDash's Developers
-				   dialog: same size, same rail. */
-				<SettingsDialog>
-					<button
-						type="button"
-						className="inline-flex h-8 items-center gap-2.5 rounded-md px-2 text-dim transition-colors hover:bg-field hover:text-ink"
-					>
-						<GearSixIcon size={16} className="shrink-0" />
-						<span className="font-body text-[13px]">Settings</span>
-					</button>
-				</SettingsDialog>
+			overlays={
+				<>
+					<AccountSearch open={searchOpen} onOpenChange={setSearchOpen} />
+					<FeedbackDialog
+						open={feedbackOpen}
+						onOpenChange={setFeedbackOpen}
+						name={user.name ?? user.email}
+						email={user.email}
+					/>
+				</>
 			}
 		>
 			<Outlet />

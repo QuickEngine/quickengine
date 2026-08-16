@@ -93,6 +93,7 @@ export type {
 export {
 	bookingConfirmationEmail,
 	orderConfirmationEmail,
+	organizationInviteEmail,
 	paymentReceiptEmail,
 	shippingNoticeEmail,
 	signInLinkEmail,

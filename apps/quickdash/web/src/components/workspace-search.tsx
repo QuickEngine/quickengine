@@ -1,4 +1,4 @@
-import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { HouseIcon, PlugsIcon } from "@phosphor-icons/react";
 import {
 	CommandDialog,
 	CommandEmpty,
@@ -9,182 +9,186 @@ import {
 } from "@quickengine/ui/components/ui/command";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-	searchWorkspaceAction,
-	type WorkspaceSearchHit,
-} from "../_lib/search-actions";
+import { workspaceApi } from "../lib/api";
+import type { QuickDashModule, QuickDashSearchHit } from "../lib/quickdash-api";
 import { ModuleIcon } from "./module-icon";
 
-const MODULE_LABELS: Readonly<Record<string, string>> = {
-	"client-records": "Client Records",
-	invoicing: "Invoicing",
-	payments: "Payments",
-	fulfillment: "Fulfillment",
-	files: "Files & Documents",
-	"products-services": "Products & Services",
-	orders: "Orders",
-	inventory: "Inventory",
-	shipping: "Shipping",
-	bookings: "Bookings",
-	"projects-tasks": "Projects & Tasks",
-	"time-tracking": "Time Tracking",
-	"quotes-estimates": "Quotes & Estimates",
-	"contracts-esign": "Contracts & E-sign",
-	"reporting-analytics": "Reporting & Analytics",
-};
-
 /**
- * Workspace search — the ⌘K palette and the header control that opens it.
+ * Search, scoped to one workspace.
  *
- * Scoped to ONE workspace, always. The server filters by `workspaceId` and the
- * destinations below are all built from it, so nothing from another workspace
- * can appear no matter what is typed.
+ * 🔴 Workspace-scoped on the SERVER, not by filtering here: `workspaceApi`
+ * carries the workspace header and `/quickdash/search` only ever returns that
+ * workspace's records. A client-side filter over a wider result set would be one
+ * bug away from showing another business's customers.
  *
- * ⚠️ Records are not fully searchable yet. Module and place results are computed
- * here and are complete. Record results come from `/v1/quickdash/search`, which
- * delegates to an Algolia index — so a record only appears if it was written to
- * that index, and nothing writes to it on create/update/delete. See TECH_DEBT 34.
+ * Records are debounced and fetched; modules come from the workspace's enabled
+ * set, so what you can search is exactly what this business has turned on.
  */
+
+const groupHeading =
+	"text-[var(--ink-90)] [&_[cmdk-group-heading]]:text-[9px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.14em] [&_[cmdk-group-heading]]:text-[var(--ink-25)]";
+
+const item =
+	"rounded-md text-[var(--ink-55)] data-[selected=true]:bg-[rgb(var(--console-ink)/0.07)] data-[selected=true]:text-[var(--ink-90)]";
+
 export function WorkspaceSearch({
+	open,
+	onOpenChange,
 	workspaceId,
-	moduleIds,
+	modules,
 }: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	workspaceId: string;
-	moduleIds: string[];
+	modules: QuickDashModule[];
 }) {
 	const navigate = useNavigate();
-	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
-	const [hits, setHits] = useState<WorkspaceSearchHit[]>([]);
+	const [hits, setHits] = useState<QuickDashSearchHit[]>([]);
 
 	useEffect(() => {
-		function onKey(event: KeyboardEvent) {
-			if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
-				event.preventDefault();
-				setOpen((prev) => !prev);
-			}
-		}
-		document.addEventListener("keydown", onKey);
-		return () => document.removeEventListener("keydown", onKey);
-	}, []);
+		const openSearch = (event: KeyboardEvent) => {
+			if (event.key.toLowerCase() !== "k" || (!event.metaKey && !event.ctrlKey))
+				return;
+			event.preventDefault();
+			onOpenChange(!open);
+		};
+		document.addEventListener("keydown", openSearch);
+		return () => document.removeEventListener("keydown", openSearch);
+	}, [onOpenChange, open]);
 
-	// Debounced, because this hits the network on every keystroke otherwise.
+	// 200ms, and cancelled on every keystroke: a request per character would
+	// spend the workspace's rate limit on prefixes nobody meant to search for.
 	useEffect(() => {
 		if (!open) return;
-		const q = query.trim();
-		if (!q) {
+		const trimmed = query.trim();
+		if (!trimmed) {
 			setHits([]);
 			return;
 		}
-		const timer = setTimeout(() => {
-			searchWorkspaceAction(workspaceId, q)
-				.then(setHits)
-				.catch(() => setHits([]));
-		}, 180);
-		return () => clearTimeout(timer);
-	}, [open, query, workspaceId]);
+		let cancelled = false;
+		const timer = setTimeout(async () => {
+			try {
+				const response = await workspaceApi(workspaceId).request<{
+					items: QuickDashSearchHit[];
+				}>(`/quickdash/search?q=${encodeURIComponent(trimmed)}`);
+				if (!cancelled) setHits(response.data.items);
+			} catch {
+				// A failed search shows nothing rather than a stale answer to a
+				// different question.
+				if (!cancelled) setHits([]);
+			}
+		}, 200);
+		return () => {
+			cancelled = true;
+			clearTimeout(timer);
+		};
+	}, [query, open, workspaceId]);
 
-	const go = (to: string) => {
-		setOpen(false);
+	const close = () => {
+		onOpenChange(false);
 		setQuery("");
-		navigate({ to });
 	};
 
-	// Places that are not modules. Built from the workspace id so they can only
-	// ever point inside it.
-	const places = [
-		{ label: "Workspace home", to: `/${workspaceId}` },
-		{ label: "Connect", to: `/${workspaceId}/connect` },
-	];
-
 	return (
-		<>
-			<button
-				type="button"
-				onClick={() => setOpen(true)}
-				className="btn btn-secondary pointer-events-auto inline-flex h-7 w-52 items-center gap-2 rounded-lg bg-void px-2.5 text-dim transition-colors hover:text-ink"
-			>
-				<MagnifyingGlassIcon size={14} />
-				<span className="font-body text-[13px]">Search your workspace</span>
-				<kbd className="ml-auto font-body text-[11px] text-dim">&#8984;K</kbd>
-			</button>
+		<CommandDialog
+			open={open}
+			onOpenChange={onOpenChange}
+			title="Search workspace"
+			description="Find records and modules in this workspace"
+			showCloseButton={false}
+			className="top-[18%] translate-y-0 border-[var(--console-line)] bg-[var(--console-pop)] text-[var(--ink-90)] shadow-2xl sm:max-w-2xl [&_[data-slot=command-input-wrapper]]:border-b-0"
+		>
+			<CommandInput
+				value={query}
+				onValueChange={setQuery}
+				placeholder="Search this workspace..."
+				className="text-[13px] text-[var(--ink-90)] placeholder:text-[var(--ink-25)]"
+			/>
+			<CommandList className="max-h-[25rem] py-1">
+				<CommandEmpty className="py-12 text-[12px] text-[var(--ink-35)]">
+					{query.trim() ? "Nothing found" : "Type to search records"}
+				</CommandEmpty>
 
-			{/* Overrides rather than edits to `command.tsx`, which Account and Auth
-			    also consume — restyling the shared component would restyle theirs.
-
-			      · `[&_[data-slot=command-input-wrapper]]:border-0` drops the rule under
-			        the search field; the outer dialog border is the only line in here
-			      · `gap-1` on the list and groups puts 4px between every row, so nothing
-			        ever sits flush against its neighbour
-			      · rows come down from the default `py-3` to a 32px control */}
-			<CommandDialog
-				open={open}
-				onOpenChange={setOpen}
-				className="max-w-lg [&_[data-slot=command-input-wrapper]]:border-0 [&_[cmdk-item]]:h-8 [&_[cmdk-item]]:rounded-md [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-0 [&_[cmdk-item]]:text-[13px] [&_[cmdk-group]]:px-2"
-			>
-				<CommandInput
-					value={query}
-					onValueChange={setQuery}
-					placeholder="Search modules, places and records…"
-				/>
-				<CommandList className="flex flex-col gap-1 px-1 pb-2 [&_[cmdk-group]]:flex [&_[cmdk-group]]:flex-col [&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col [&_[cmdk-group-items]]:gap-1">
-					<CommandEmpty>No matches in this workspace.</CommandEmpty>
-
-					{/* Records first when there are any — someone who typed a name wants
-					    the thing, not the module it lives in. */}
-					{/* `url` is optional on a hit, and a result you cannot navigate to is
-					    not a result — those are dropped rather than rendered as dead
-					    rows. */}
-					{hits.some((hit) => hit.url) ? (
-						<CommandGroup heading="Records">
-							{hits
-								.filter(
-									(hit): hit is WorkspaceSearchHit & { url: string } =>
-										typeof hit.url === "string",
-								)
-								.map((hit) => (
-									<CommandItem
-										key={hit.objectID}
-										value={`${hit.title} ${hit.description ?? ""}`}
-										onSelect={() => go(hit.url)}
-									>
-										<span className="truncate">{hit.title}</span>
-										{hit.description ? (
-											<span className="ml-2 truncate text-[12px] text-dim">
-												{hit.description}
-											</span>
-										) : null}
-									</CommandItem>
-								))}
-						</CommandGroup>
-					) : null}
-
-					<CommandGroup heading="Modules">
-						{moduleIds.map((id) => (
+				{hits.length > 0 ? (
+					<CommandGroup heading="Records" className={groupHeading}>
+						{hits.map((hit) => (
 							<CommandItem
-								key={id}
-								value={MODULE_LABELS[id] ?? id}
-								onSelect={() => go(`/${workspaceId}/${id}`)}
+								key={hit.objectID}
+								value={`${hit.title} ${hit.description ?? ""}`}
+								onSelect={() => {
+									close();
+									if (hit.url) void navigate({ to: hit.url });
+								}}
+								className={item}
 							>
-								<ModuleIcon id={id} className="size-4 shrink-0" />
-								{MODULE_LABELS[id] ?? id}
+								<p className="min-w-0 flex-1 truncate text-[12.5px]">
+									{hit.title}
+								</p>
+								{hit.description ? (
+									<span className="max-w-[55%] shrink-0 truncate text-[10.5px] text-[var(--ink-30)]">
+										{hit.description}
+									</span>
+								) : null}
 							</CommandItem>
 						))}
 					</CommandGroup>
+				) : null}
 
-					<CommandGroup heading="Places">
-						{places.map((place) => (
-							<CommandItem
-								key={place.to}
-								value={place.label}
-								onSelect={() => go(place.to)}
-							>
-								{place.label}
-							</CommandItem>
-						))}
-					</CommandGroup>
-				</CommandList>
-			</CommandDialog>
-		</>
+				<CommandGroup heading="Modules" className={groupHeading}>
+					{modules.map((module) => (
+						<CommandItem
+							key={module.id}
+							value={`${module.name} ${module.description}`}
+							onSelect={() => {
+								close();
+								void navigate({ to: `/${workspaceId}/${module.id}` });
+							}}
+							className={item}
+						>
+							<ModuleIcon
+								id={module.id}
+								className="size-[15px] text-[var(--ink-35)]"
+							/>
+							<p className="min-w-0 flex-1 truncate text-[12.5px]">
+								{module.name}
+							</p>
+							<span className="max-w-[55%] shrink-0 truncate text-[10.5px] text-[var(--ink-30)]">
+								{module.description}
+							</span>
+						</CommandItem>
+					))}
+				</CommandGroup>
+
+				<CommandGroup heading="Workspace" className={groupHeading}>
+					<CommandItem
+						value="Home overview"
+						onSelect={() => {
+							close();
+							void navigate({ to: `/${workspaceId}` });
+						}}
+						className={item}
+					>
+						<HouseIcon size={15} className="text-[var(--ink-35)]" />
+						<p className="min-w-0 flex-1 truncate text-[12.5px]">Home</p>
+					</CommandItem>
+					<CommandItem
+						value="Connect developers API keys webhooks"
+						onSelect={() => {
+							close();
+							void navigate({ to: `/${workspaceId}/connect` });
+						}}
+						className={item}
+					>
+						<PlugsIcon size={15} className="text-[var(--ink-35)]" />
+						<p className="min-w-0 flex-1 truncate text-[12.5px]">Connect</p>
+					</CommandItem>
+				</CommandGroup>
+			</CommandList>
+			<div className="flex h-8 items-center justify-between px-3 text-[9.5px] text-[var(--ink-25)]">
+				<span>Navigate with ↑ ↓</span>
+				<span>Open with ↵</span>
+			</div>
+		</CommandDialog>
 	);
 }

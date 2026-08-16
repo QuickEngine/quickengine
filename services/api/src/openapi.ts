@@ -2865,6 +2865,17 @@ function declaredDocument(config: ApiConfig) {
 				},
 			},
 			"/v1/account/members/{userId}": {
+				patch: {
+					operationId: "changeMemberRole",
+					summary: "Change a member's role",
+					description:
+						"Refuses a role the caller does not hold themselves, and refuses the organization owner — ownership is transferred deliberately, not edited.",
+					responses: {
+						"200": { description: "The member's new role." },
+						"403": { description: "The caller cannot grant that role." },
+						"409": { description: "The owner's role cannot be changed." },
+					},
+				},
 				delete: {
 					operationId: "removeMember",
 					summary: "Remove a member",
@@ -3617,6 +3628,122 @@ function declaredDocument(config: ApiConfig) {
 						},
 					],
 					responses: { "200": { description: "Revenue for the range." } },
+				},
+			},
+			"/v1/account/roles": {
+				get: {
+					operationId: "listAccountRoles",
+					summary: "The organization's custom roles",
+					responses: { "200": { description: "The roles." } },
+				},
+				post: {
+					operationId: "createAccountRole",
+					summary: "Define a custom role",
+					description:
+						"A role is a name plus a list of permissions; nothing branches on the name. Built-in role names are refused, and nobody may grant a permission they do not hold.",
+					responses: {
+						"201": { description: "The role." },
+						"403": { description: "You do not hold that permission." },
+						"409": { description: "That name is taken or built in." },
+					},
+				},
+			},
+			"/v1/account/roles/{id}": {
+				patch: {
+					operationId: "updateAccountRole",
+					summary: "Rename a role or change its permissions",
+					description:
+						"Renaming rewrites the role on every member holding it, so it reassigns people as well as relabelling.",
+					responses: {
+						"200": { description: "The role." },
+						"403": { description: "You do not hold that permission." },
+						"404": { description: "No such role." },
+					},
+				},
+				delete: {
+					operationId: "deleteAccountRole",
+					summary: "Delete a custom role",
+					description:
+						"Refused while anyone still holds it — they would resolve to no capabilities and lose access with nothing explaining why.",
+					responses: {
+						"200": { description: "The role was deleted." },
+						"409": { description: "Somebody still holds it." },
+					},
+				},
+			},
+			"/v1/account/capabilities": {
+				get: {
+					operationId: "listAccountCapabilities",
+					summary: "Every permission a role can carry",
+					responses: { "200": { description: "The capabilities." } },
+				},
+			},
+			"/v1/account/audit": {
+				get: {
+					operationId: "listControlPlaneAudit",
+					summary: "Who changed access, billing or workspaces",
+					description:
+						"The organization's control-plane audit log, newest first, with the actor resolved to a name and every entry carrying its request id.",
+					parameters: [
+						{
+							in: "query",
+							name: "limit",
+							schema: {
+								type: "integer",
+								minimum: 1,
+								maximum: 200,
+								default: 50,
+							},
+						},
+						{ in: "query", name: "action", schema: { type: "string" } },
+					],
+					responses: { "200": { description: "The audit entries." } },
+				},
+			},
+			"/v1/account/integrations": {
+				get: {
+					operationId: "listAccountIntegrations",
+					summary: "Connected services across the organization's workspaces",
+					description:
+						"Payment connections per workspace with the status the provider reports. `connected` means it will actually take a card, which is not the same as onboarding having completed.",
+					responses: { "200": { description: "The connections." } },
+				},
+			},
+			"/v1/account/activity": {
+				get: {
+					operationId: "listOrganizationActivity",
+					summary: "Everything that happened across the organization",
+					description:
+						"The workspace activity streams of every workspace the organization owns, newest first.",
+					parameters: [
+						{
+							in: "query",
+							name: "limit",
+							schema: {
+								type: "integer",
+								minimum: 1,
+								maximum: 100,
+								default: 20,
+							},
+						},
+					],
+					responses: { "200": { description: "The activity." } },
+				},
+			},
+			"/v1/account/settlements": {
+				get: {
+					operationId: "listOrganizationSettlements",
+					summary: "The organization's most recent settled payments",
+					description:
+						"The itemised evidence behind the revenue totals, newest first. Settled money only: a pending intent is not revenue.",
+					parameters: [
+						{
+							in: "query",
+							name: "limit",
+							schema: { type: "integer", minimum: 1, maximum: 50, default: 10 },
+						},
+					],
+					responses: { "200": { description: "The settlements." } },
 				},
 			},
 			"/v1/account/invitations/{token}": {

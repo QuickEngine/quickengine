@@ -68,6 +68,51 @@ export function signInLinkEmail(input: {
 	};
 }
 
+/**
+ * An invitation to join an organization.
+ *
+ * 🔴 The token appears here and nowhere else. It is stored hashed, so this email
+ * is the only copy that ever exists — if it is not sent, the invitation is
+ * unusable and the person waiting for it has no way to know why.
+ *
+ * Names the inviter and the organization, because an unexplained link asking you
+ * to sign in to a product you have never heard of is indistinguishable from
+ * phishing.
+ */
+export function organizationInviteEmail(input: {
+	brand: EmailBrand;
+	organizationName: string;
+	invitedByName: string | null;
+	role: string;
+	url: string;
+	expiresInDays: number;
+}): RenderedEmail {
+	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const inviter = input.invitedByName
+		? `${escapeHtml(input.invitedByName)} invited you`
+		: "You have been invited";
+	const body = [
+		heading(`Join ${escapeHtml(input.organizationName)}`),
+		paragraph(
+			`${inviter} to join <strong>${escapeHtml(input.organizationName)}</strong> on ${escapeHtml(input.brand.name)} as <strong>${escapeHtml(input.role)}</strong>.`,
+		),
+		button("Accept invitation", input.url, accent),
+		paragraph(
+			`<span style="color:#71717a;">This invitation expires in ${input.expiresInDays} day${input.expiresInDays === 1 ? "" : "s"} and can be used once. If you were not expecting it, you can ignore it.</span>`,
+		),
+	].join("\n");
+
+	return {
+		subject: `Join ${input.organizationName} on ${input.brand.name}`,
+		html: renderEmail({
+			brand: input.brand,
+			preheader: `${input.invitedByName ?? "Someone"} invited you to ${input.organizationName}.`,
+			body,
+		}),
+		text: `Join ${input.organizationName} on ${input.brand.name}\n\n${input.invitedByName ?? "Someone"} invited you as ${input.role}.\n\n${input.url}\n\nThis invitation expires in ${input.expiresInDays} day${input.expiresInDays === 1 ? "" : "s"} and can be used once.`,
+	};
+}
+
 /** Sent the moment an order is recorded. Silence after payment reads as failure. */
 export function orderConfirmationEmail(input: {
 	brand: EmailBrand;

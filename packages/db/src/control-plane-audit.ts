@@ -1,6 +1,7 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { db } from "./client";
 import { apiAuditEvents } from "./schema/api-platform";
+import { quickengineUsers } from "./schema/quickengine";
 
 /**
  * Record something that happened to an ORGANIZATION rather than a workspace.
@@ -63,11 +64,19 @@ export async function recordControlPlaneAudit(input: {
 }
 
 export type ControlPlaneAuditEntry = {
+	id: string;
 	action: string;
 	actorId: string;
 	actorType: string;
+	/** 🔑 Resolved here, not in the browser. A user id in a log is only useful to
+	 * whoever can look it up, which is the opposite of what an audit trail is
+	 * for. Null when the actor was an API key rather than a person. */
+	actorName: string | null;
+	actorEmail: string | null;
 	resourceType: string;
 	resourceId: string;
+	/** Ties the entry to every other record of the same request. */
+	requestId: string;
 	occurredAt: Date;
 	metadata: Record<string, string | number | boolean | null>;
 };
@@ -80,27 +89,57 @@ export type ControlPlaneAuditEntry = {
  */
 export async function listControlPlaneAudit(
 	organizationId: string,
-	limit = 100,
+	options: { limit?: number; action?: string } = {},
 ): Promise<ControlPlaneAuditEntry[]> {
-	return db
-		.select({
-			action: apiAuditEvents.action,
-			actorId: apiAuditEvents.actorId,
-			actorType: apiAuditEvents.actorType,
-			resourceType: apiAuditEvents.resourceType,
-			resourceId: apiAuditEvents.resourceId,
-			occurredAt: apiAuditEvents.occurredAt,
-			metadata: apiAuditEvents.metadata,
-		})
+	const filters = [
+		eq(apiAuditEvents.organizationId, organizationId),
+		// Control-plane rows only. A workspace's module writes belong to the
+		// workspace activity feed, not to the account's security log.
+		isNull(apiAuditEvents.workspaceId),
+	];
+	if (options.action) filters.push(eq(apiAuditEvents.action, options.action));
+
+	return (
+		db
+			.select({
+				id: apiAuditEvents.id,
+				action: apiAuditEvents.action,
+				actorId: apiAuditEvents.actorId,
+				actorType: apiAuditEvents.actorType,
+				actorName: quickengineUsers.name,
+				actorEmail: quickengineUsers.email,
+				resourceType: apiAuditEvents.resourceType,
+				resourceId: apiAuditEvents.resourceId,
+				requestId: apiAuditEvents.requestId,
+				occurredAt: apiAuditEvents.occurredAt,
+				metadata: apiAuditEvents.metadata,
+			})
+			.from(apiAuditEvents)
+			// Left: an API key actor has no user row, and dropping those rows would
+			// hide exactly the actions nobody watched a person perform.
+			.leftJoin(
+				quickengineUsers,
+				eq(quickengineUsers.id, apiAuditEvents.actorId),
+			)
+			.where(and(...filters))
+			.orderBy(desc(apiAuditEvents.occurredAt))
+			.limit(Math.min(Math.max(options.limit ?? 50, 1), 200))
+	);
+}
+
+/** Every distinct action recorded, for the filter. */
+export async function listControlPlaneAuditActions(
+	organizationId: string,
+): Promise<string[]> {
+	const rows = await db
+		.selectDistinct({ action: apiAuditEvents.action })
 		.from(apiAuditEvents)
 		.where(
 			and(
 				eq(apiAuditEvents.organizationId, organizationId),
-				// Control-plane rows only. A workspace's module writes belong to the
-				// workspace activity feed, not to the account's security log.
 				isNull(apiAuditEvents.workspaceId),
 			),
 		)
-		.orderBy(desc(apiAuditEvents.occurredAt))
-		.limit(limit);
+		.orderBy(asc(apiAuditEvents.action));
+	return rows.map((row) => row.action);
 }

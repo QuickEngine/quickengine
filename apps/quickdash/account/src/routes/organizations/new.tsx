@@ -1,54 +1,106 @@
-import { Button } from "@quickengine/ui/components/ui/button";
-import { Input } from "@quickengine/ui/components/ui/input";
-import { Label } from "@quickengine/ui/components/ui/label";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import { activeOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
+
+/**
+ * Creating an organization.
+ *
+ * 🔑 An organization is an ownership boundary, not a folder. Its members can
+ * reach every workspace inside it, so the reason to make a second one is that
+ * different people should see different businesses — which is the one thing the
+ * page has to say, because nothing else on screen implies it.
+ *
+ * The new organization becomes active on success: creating something and being
+ * left looking at the old one is how people create three by accident.
+ */
+
+const primaryAction =
+	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85 disabled:pointer-events-none disabled:opacity-40";
+
+const quietAction =
+	"inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--console-line-strong)] px-4 text-[12.5px] text-[var(--ink-60)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)] disabled:pointer-events-none disabled:opacity-40";
+
+const field =
+	"h-9 w-full rounded-full border border-[var(--console-line-strong)] bg-transparent px-3.5 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-30)] focus:border-[rgb(var(--console-ink)/0.18)]";
 
 function NewOrganizationPage() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const [error, setError] = useState<string | null>(null);
+	const [name, setName] = useState("");
+	const [failure, setFailure] = useState<string | null>(null);
+
 	const create = useMutation({
-		mutationFn: (name: string) =>
+		mutationFn: async () =>
 			api.request<{ id: string }>("/account/organizations", {
 				method: "POST",
-				body: { name },
+				body: { name: name.trim() },
 			}),
-		onSuccess: async ({ data }) => {
+		onSuccess: ({ data }) => {
 			activeOrganization.write(data.id);
 			queryClient.setQueryData(["account", "activeOrganization"], data.id);
-			await queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: ["account", "organizations"],
 			});
-			await navigate({ to: "/" });
+			void navigate({ to: "/workspaces" });
 		},
-		onError: (cause) =>
-			setError(cause instanceof Error ? cause.message : "Creation failed."),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That organization could not be created."),
 	});
-	const submit = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		create.mutate(String(new FormData(event.currentTarget).get("name") ?? ""));
-	};
+
 	return (
-		<form onSubmit={submit} className="mx-auto max-w-lg space-y-6 p-6">
-			<div>
-				<h1 className="font-semibold text-2xl">Create organization</h1>
-				<p className="mt-1 text-muted-foreground text-sm">
-					Group workspaces, teammates, and billing under one organization.
+		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
+			<form
+				onSubmit={(event) => {
+					event.preventDefault();
+					if (name.trim()) create.mutate();
+				}}
+				className="max-w-xl"
+			>
+				{failure ? (
+					<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				) : null}
+
+				<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">
+					New organization
 				</p>
-			</div>
-			<div className="space-y-2">
-				<Label htmlFor="organization-name">Name</Label>
-				<Input id="organization-name" name="name" required autoFocus />
-			</div>
-			{error && <p className="text-destructive text-sm">{error}</p>}
-			<Button disabled={create.isPending}>
-				{create.isPending ? "Creating…" : "Create organization"}
-			</Button>
-		</form>
+				<div className="border-[var(--console-line-soft)] border-t py-4">
+					<input
+						value={name}
+						onChange={(event) => setName(event.target.value)}
+						placeholder="Northwind Trading"
+						aria-label="Organization name"
+						className={field}
+					/>
+
+					{/* 🔴 The fact that decides whether somebody needs one at all. */}
+					<p className="mt-3 max-w-lg text-[11.5px] text-[var(--ink-35)] leading-5">
+						An organization owns workspaces, people and billing. Everyone you
+						invite to it can open every workspace inside it, so keep unrelated
+						businesses in separate organizations — that separation is the only
+						thing keeping one team out of another&rsquo;s records.
+					</p>
+
+					<div className="mt-5 flex items-center gap-2">
+						<button
+							type="submit"
+							disabled={!name.trim() || create.isPending}
+							className={primaryAction}
+						>
+							{create.isPending ? "Creating…" : "Create organization"}
+						</button>
+						<button
+							type="button"
+							onClick={() => void navigate({ to: "/workspaces" })}
+							className={quietAction}
+						>
+							Cancel
+						</button>
+					</div>
+				</div>
+			</form>
+		</main>
 	);
 }
 

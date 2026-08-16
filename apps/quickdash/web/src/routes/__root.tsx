@@ -3,7 +3,6 @@ import {
 	LoadingScreen,
 	RequestErrorScreen,
 	StatusScreen,
-	ThemeProvider,
 	textLink,
 } from "@quickengine/ui";
 import type { QueryClient } from "@tanstack/react-query";
@@ -69,11 +68,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 			}
 			throw redirect({ href: target.toString() });
 		},
-		component: () => (
-			<ThemeProvider>
-				<Outlet />
-			</ThemeProvider>
-		),
+		component: () => <Outlet />,
 		errorComponent: ErrorScreen,
 		notFoundComponent: NotFoundScreen,
 		pendingComponent: LoadingScreen,

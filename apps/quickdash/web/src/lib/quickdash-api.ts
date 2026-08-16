@@ -8,12 +8,22 @@ export type QuickDashWorkspace = {
 	businessType: string;
 	environment: "test" | "live";
 	organizationId?: string | null;
+	organizationName?: string | null;
+};
+
+/** One enabled module, named by the registry rather than by the frontend. */
+export type QuickDashModule = {
+	id: string;
+	name: string;
+	description: string;
+	kind: "shared" | "domain";
+	settings: unknown;
 };
 
 export type QuickDashContext = {
 	workspace: QuickDashWorkspace;
 	workspaces: QuickDashWorkspace[];
-	modules: Array<{ id: string; settings: unknown }>;
+	modules: QuickDashModule[];
 	role: string | undefined;
 	checklist: {
 		collapsed: boolean;
@@ -24,7 +34,78 @@ export type QuickDashContext = {
 	orientation: { shouldOffer: boolean };
 };
 
+/** A person's notification inbox. Shared with Account, deliberately. */
+export type QuickDashNotification = {
+	id: string;
+	title: string;
+	body: string | null;
+	href: string | null;
+	readAt: string | null;
+	createdAt: string;
+};
+
+/** One record the workspace search proxy matched. */
+export type QuickDashSearchHit = {
+	objectID: string;
+	title: string;
+	description?: string;
+	url?: string;
+};
+
+/** One thing that needs a person, with enough of the records named to act on. */
+export type HomeEntry = {
+	id: string;
+	count: number;
+	samples: Array<{ id: string; label: string; detail?: string }>;
+};
+
+export type WorkspaceHome = {
+	needsYou: HomeEntry[];
+	today: HomeEntry[];
+};
+
 export const quickDashQueries = {
+	/**
+	 * What needs a person today.
+	 *
+	 * The browser's own time zone travels with the request: "today" is the
+	 * operator's day, not UTC's, and a 6pm booking should not appear tomorrow.
+	 */
+	home: (workspaceId: string) =>
+		queryOptions({
+			queryKey: ["quickdash", workspaceId, "home"],
+			queryFn: async () => {
+				const timeZone =
+					Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
+				return (
+					await workspaceApi(workspaceId).request<WorkspaceHome>(
+						`/quickdash/home?timeZone=${encodeURIComponent(timeZone)}`,
+					)
+				).data;
+			},
+		}),
+	/**
+	 * Notifications, read through the ACCOUNT boundary.
+	 *
+	 * 🔑 One inbox for the person, not one per workspace. Somebody working across
+	 * three businesses should not have to check three bells to learn one thing
+	 * happened — and the underlying table is user-scoped, so this is the same
+	 * list Account shows.
+	 *
+	 * ⚠️ Nothing emits notifications yet, so this is plumbing waiting on
+	 * publishers. The populated stream today is workspace activity.
+	 */
+	notifications: () =>
+		queryOptions({
+			queryKey: ["quickdash", "notifications"],
+			queryFn: async () =>
+				(
+					await sessionApi.request<{
+						items: QuickDashNotification[];
+						unread: number;
+					}>("/account/notifications")
+				).data,
+		}),
 	/**
 	 * The organisation's plan, for the tier badge in the header.
 	 *

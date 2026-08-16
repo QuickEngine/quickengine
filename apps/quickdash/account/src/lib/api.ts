@@ -1,3 +1,4 @@
+import { authClient } from "@quickengine/auth/client";
 import { createQuickBrowser } from "@quickengine/quick/browser";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { clientEnv } from "@/lib/env";
@@ -33,16 +34,61 @@ export const api = createQuickBrowser({
  */
 let redirecting = false;
 
-function sessionExpired() {
+/**
+ * A 401 from one request is a claim, not a verdict.
+ *
+ * 🔴 This used to redirect on the first 401 it saw anywhere. That was survivable
+ * while the console only fetched on navigation; it stopped being survivable the
+ * moment a page started POLLING. One endpoint answering 401 — for its own
+ * reasons, or once, transiently — threw the operator out to sign-in in the middle
+ * of what they were doing, and the poll made it happen again every 20 seconds.
+ *
+ * So ask the authority. `authClient.getSession()` is what actually knows whether
+ * the session is gone; if it still has one, the 401 belonged to that request and
+ * the person keeps their place. Only a confirmed absence signs anybody out.
+ */
+async function sessionExpired() {
 	if (redirecting) return;
 	redirecting = true;
+
+	// 🔴 The first seconds after sign-in are not evidence of anything.
+	//
+	// Arriving from the auth app, the cookie is still settling while the first
+	// page fires its queries — and the landing page fires nine of them. One 401
+	// in that window sent the operator back to sign-in, which saw a perfectly
+	// valid session and sent them straight back here: a loop that made the
+	// product impossible to log into. Early 401s are ignored outright.
+	if (performance.now() < 4000) {
+		redirecting = false;
+		return;
+	}
+
+	// Ask the authority, twice, a beat apart. `authClient.getSession()` is what
+	// actually knows whether the session is gone; a single negative can still be
+	// a request that raced a token refresh, and signing somebody out mid-work is
+	// not a mistake worth making twice.
+	for (const wait of [0, 1500]) {
+		if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+		try {
+			const { data } = await authClient.getSession();
+			if (data?.session) {
+				// The session is fine. Whatever answered 401 has a different problem,
+				// and throwing the user out would hide it behind a login screen.
+				redirecting = false;
+				return;
+			}
+		} catch {
+			// Unverifiable is not the same as absent — try again before acting.
+		}
+	}
+
 	window.location.href = `${clientEnv.AUTH_URL}/signin?reason=expired&redirect=${encodeURIComponent(window.location.href)}`;
 }
 
 export const queryClient = new QueryClient({
 	queryCache: new QueryCache({
 		onError: (error) => {
-			if ((error as { status?: number })?.status === 401) sessionExpired();
+			if ((error as { status?: number })?.status === 401) void sessionExpired();
 		},
 	}),
 	defaultOptions: {

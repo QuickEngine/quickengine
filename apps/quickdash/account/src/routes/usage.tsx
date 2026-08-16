@@ -1,93 +1,185 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Panel, PanelLabel } from "../components/surface";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { accountQueries, useActiveOrganization } from "../lib/account-api";
-import { PLANS } from "../lib/plans";
 
-const formatBytes = (value: number) => {
-	if (value >= 1e9) return `${(value / 1e9).toFixed(1)} GB`;
-	if (value >= 1e6) return `${(value / 1e6).toFixed(1)} MB`;
-	if (value >= 1e3) return `${(value / 1e3).toFixed(1)} KB`;
-	return `${value} B`;
-};
-const meters = [
-	["storageBytes", "Storage", formatBytes],
-	["seats", "Seats", (value: number) => value.toLocaleString()],
-	["workspaces", "Workspaces", (value: number) => value.toLocaleString()],
-	[
-		"apiRequests",
-		"API requests this period",
-		(value: number) => value.toLocaleString(),
-	],
-	[
-		"aiActions",
-		"AI actions this period",
-		(value: number) => value.toLocaleString(),
-	],
+/**
+ * Usage — what this organization has consumed against what its plan allows.
+ *
+ * 🔑 The question this page answers is "am I about to be stopped", so the meters
+ * that are close to their limit come FIRST and everything comfortable sinks
+ * below them. A fixed order looks tidier and buries the one line that matters.
+ *
+ * 🔴 An unlimited meter draws no bar. A full-width bar for "no limit" reads as
+ * "at capacity", which is the exact opposite of what it means.
+ */
+
+const primaryAction =
+	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85";
+
+/** What each meter actually costs when it runs out, in the operator's terms. */
+const METERS = [
+	{
+		key: "apiRequests",
+		label: "API requests",
+		format: "count",
+		consequence: "Your website and apps stop being answered.",
+	},
+	{
+		key: "storageBytes",
+		label: "Storage",
+		format: "bytes",
+		consequence: "New uploads are refused. Existing files stay.",
+	},
+	{
+		key: "seats",
+		label: "Seats",
+		format: "count",
+		consequence: "Nobody else can accept an invitation.",
+	},
+	{
+		key: "workspaces",
+		label: "Workspaces",
+		format: "count",
+		consequence: "No new workspace can be created.",
+	},
+	{
+		key: "aiActions",
+		label: "AI actions",
+		format: "count",
+		consequence: "AI features stop running until the period resets.",
+	},
+	{
+		key: "webhookDeliveries",
+		label: "Webhook deliveries",
+		format: "count",
+		consequence: "Outbound webhooks stop being delivered.",
+	},
 ] as const;
+
+const compact = new Intl.NumberFormat("en", { notation: "compact" });
+
+const bytes = (value: number) => {
+	const units = ["B", "KB", "MB", "GB", "TB"];
+	let size = value;
+	let unit = 0;
+	while (size >= 1024 && unit < units.length - 1) {
+		size /= 1024;
+		unit += 1;
+	}
+	return `${size < 10 && unit > 0 ? size.toFixed(1) : Math.round(size)} ${units[unit]}`;
+};
+
+const planName = (id: string | undefined) =>
+	(id ?? "free").replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 function UsagePage() {
 	const { active } = useActiveOrganization();
 	const plan = useQuery(accountQueries.plan(active?.id ?? ""));
-	if (plan.isPending) return <main className="p-6">Loading usage…</main>;
-	if (plan.isError) throw plan.error;
+
+	const usage = plan.data?.usage ?? {};
+	const rows = METERS.map((meter) => {
+		const row = usage[meter.key];
+		const used = row?.used ?? 0;
+		const limit = row?.limit ?? null;
+		return {
+			...meter,
+			used,
+			limit,
+			state: row?.state ?? ("ok" as const),
+			share: limit && limit > 0 ? Math.min(used / limit, 1) : null,
+		};
+	}).sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
+
+	const pressing = rows.filter((row) => row.state !== "ok");
+
 	return (
-		<div className="space-y-4 p-6">
-			<Panel>
-				<PanelLabel>Plan</PanelLabel>
-				<p className="mt-2 font-medium">
-					{PLANS.find((candidate) => candidate.id === plan.data.planId)?.name ??
-						"Free"}
-					<span className="ml-2 text-muted-foreground text-sm">
-						{active?.name}
-					</span>
+		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
+			<div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+				<p className="max-w-2xl text-[11.5px] text-[var(--ink-30)] leading-5">
+					This period, against the {planName(plan.data?.planId)} plan. Counters
+					reset each billing period; storage, seats and workspaces are what you
+					are using right now.
 				</p>
-			</Panel>
-			<section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-				{meters.map(([key, label, format]) => {
-					const usage = plan.data.usage[key] ?? {
-						used: 0,
-						limit: null,
-						state: "ok",
-					};
-					const percent =
-						usage.limit && usage.limit > 0
-							? Math.min(100, Math.round((usage.used / usage.limit) * 100))
-							: 0;
-					const color =
-						usage.state === "over"
-							? "bg-rose-400"
-							: usage.state === "warn"
-								? "bg-amber-400"
-								: "bg-emerald-400";
-					return (
-						<Panel key={key}>
-							<PanelLabel>{label}</PanelLabel>
-							<div className="mt-2 flex items-baseline justify-between gap-3">
-								<span className="font-display text-2xl">
-									{format(usage.used)}
-								</span>
-								<span className="text-muted-foreground text-sm">
-									of {usage.limit === null ? "Unlimited" : format(usage.limit)}
-								</span>
-							</div>
-							{usage.limit !== null && (
-								<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-foreground/10">
-									<div
-										className={`h-full ${color}`}
-										style={{ width: `${percent}%` }}
-									/>
+				<Link to="/billing" className={primaryAction}>
+					{pressing.length > 0 ? "Upgrade plan" : "View plan"}
+				</Link>
+			</div>
+
+			{/* 🔴 The reason somebody opened this page, stated once at the top rather
+			    than left to be spotted in a list of six bars. */}
+			{pressing.length > 0 ? (
+				<div className="mb-6 rounded-lg border border-[#f5a623]/30 bg-[#f5a623]/[0.06] p-4">
+					<p className="text-[12px] text-[#f5b44a]">
+						{pressing.some((row) => row.state === "over")
+							? "You have passed a limit."
+							: "You are close to a limit."}
+					</p>
+					<div className="mt-1.5 flex flex-col gap-0.5">
+						{pressing.map((row) => (
+							<p key={row.key} className="text-[11.5px] text-[var(--ink-45)]">
+								<span className="text-[var(--ink-75)]">{row.label}</span> —{" "}
+								{row.consequence}
+							</p>
+						))}
+					</div>
+				</div>
+			) : null}
+
+			{plan.isPending ? (
+				<p className="text-[12px] text-[var(--ink-30)]">Loading usage…</p>
+			) : plan.isError ? (
+				<p className="text-[12px] text-[var(--ink-45)]">Usage did not load.</p>
+			) : (
+				<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+					{rows.map((row) => {
+						const show = (value: number) =>
+							row.format === "bytes" ? bytes(value) : compact.format(value);
+						const tone =
+							row.state === "over"
+								? "text-[#ff6b6b]"
+								: row.state === "warn"
+									? "text-[#f5b44a]"
+									: "text-[var(--ink-85)]";
+						return (
+							<div key={row.key} className="py-3.5">
+								<div className="flex items-baseline gap-4">
+									<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-60)]">
+										{row.label}
+									</p>
+									<p className={`shrink-0 text-[12.5px] tabular-nums ${tone}`}>
+										{show(row.used)}
+										<span className="text-[var(--ink-25)]">
+											{row.limit === null
+												? " / no limit"
+												: ` / ${show(row.limit)}`}
+										</span>
+									</p>
 								</div>
-							)}
-						</Panel>
-					);
-				})}
-			</section>
-			<p className="text-muted-foreground text-xs">
-				Usage is tracked per organization against your plan's allowances.
-				Metering expands as AI, communications, and automation features ship.
-			</p>
-		</div>
+								{row.share === null ? null : (
+									<div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-[rgb(var(--console-ink)/0.07)]">
+										<div
+											className={`h-full rounded-full transition-[width] duration-500 ${
+												row.state === "over"
+													? "bg-[#ff6b6b]"
+													: row.state === "warn"
+														? "bg-[#f5b44a]"
+														: "bg-[var(--ink-45)]"
+											}`}
+											style={{ width: `${Math.max(row.share * 100, 1)}%` }}
+										/>
+									</div>
+								)}
+								{row.state !== "ok" ? (
+									<p className="mt-1.5 text-[11px] text-[var(--ink-35)]">
+										{row.consequence}
+									</p>
+								) : null}
+							</div>
+						);
+					})}
+				</div>
+			)}
+		</main>
 	);
 }
 

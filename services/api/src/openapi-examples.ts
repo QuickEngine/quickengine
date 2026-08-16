@@ -298,6 +298,17 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		email: "sam@northwind.example",
 		role: "Bookkeeper",
 	},
+	changeMemberRole: {
+		role: "Bookkeeper",
+	},
+	createAccountRole: {
+		name: "Bookkeeper",
+		description: "Reconciles invoices and payments, sees no customer data.",
+		capabilities: ["workspace.view", "records.write"],
+	},
+	updateAccountRole: {
+		capabilities: ["workspace.view", "records.write", "billing.manage"],
+	},
 	createWorkspace: {
 		name: "Northwind Trading",
 		businessType: "ecommerce",

@@ -142,6 +142,98 @@
 	--elevate: 0 1px 2px oklch(0 0 0 / 0.4);
 }
 
+/* ── Console chrome ───────────────────────────────────────────────────────
+   The authenticated shell — sidebar, switcher, account popover, command palette
+   — is drawn from these four values rather than from the shadcn remap above. It
+   is deliberately flatter and darker than a page surface: chrome that competes
+   with the records inside it is chrome you end up looking at.
+
+   🔴 These exist because the shell was written with the colours baked in
+   (`bg-black`, `text-white/42`), so the theme control toggled a class nothing
+   was reading and switching theme visibly did nothing at all.
+
+   **The `.dark` values are byte-identical to what was hardcoded.** Dark is the
+   design as drawn; light is the counterpart it never had.
+
+   `--console-ink` is an `r g b` TRIPLE, not a colour, so the shell's many
+   translucent steps (`text-white/42`, `bg-white/[0.055]`) survive the move as
+   `rgb(var(--console-ink)/0.42)` — one substitution per class, and every
+   carefully chosen alpha kept exactly. */
+/* 🔴 **No pure black and no pure white, in either theme.** `#000` behind a UI
+   reads as a hole rather than a surface — there is nothing below it, so every
+   panel above it floats with no depth to sit in — and `#fff` at full-screen size
+   glares and flattens the same way. Both themes therefore start one step in from
+   the end of the range, and the surfaces are separated by a real step plus a
+   visible hairline rather than by the extremes.
+
+   🔑 **The sidebar is the LIGHTER surface and the working area is the darker
+   one**, in both themes. The chrome is the frame; the records sit in the well.
+   Inverting that — a bright working area inside dark chrome — makes the
+   navigation advance and the work recede, which is backwards from what you are
+   actually looking at. A popover sits in front of everything. */
+:root {
+	/* 🔑 One surface. The sidebar and the working area are the same colour and the
+	   hairline between them does all the separating — a second grey next to the
+	   first reads as two panels bolted together, and at full-window size the eye
+	   never stops noticing the seam. Only a popover lifts off it. */
+	--console-panel: #0a0a0a;
+	--console-bg: #0a0a0a;
+	--console-pop: #1a1a1a; /* popovers and dialogs, the only raised surface */
+	/* Off-white, never pure: #fff glares at full-screen size. */
+	--console-ink: 237 237 237;
+	--console-line: #202020;
+	--console-line-soft: #191919;
+	/* Content borders match the chrome hairline: with a real surface step under
+	   the cards, the tone does the separating and a heavier outline just draws
+	   boxes around everything. */
+	--console-line-strong: #202020;
+	/* The strip behind the console's rounded top corners.
+	   ⚠️ ICE and its ink, copied from `colors.ts` — CSS cannot import the
+	   constants, so these two values must stay in step with `ICE` (#DCE7ED) and
+	   `GREY` (#3C4247) if the brand ever moves. */
+	/* GREY, with ICE on it. A full-width pale band glares at this size — the same
+	   halation that keeps the light theme off pure white. */
+	--console-banner: #3c4247;
+	--console-banner-ink: #dce7ed;
+}
+
+/* ── The ink scale ────────────────────────────────────────────────────────
+   Every text tone the console uses, one token per step.
+
+   🔑 **The alphas cannot be shared between the themes, and that is the whole
+   point of this block.** White at 30% on black is a legible dim label; black at
+   30% on white is `#b3b3b3`, which is not text, it is a smudge. Light surfaces
+   swallow low-contrast type far faster than dark ones do — `--text-dim` above
+   says the same thing — so light needs its own, consistently stronger curve.
+
+   Nothing is collapsed. Each step the shell already drew keeps its own token, so
+   the dark theme is exactly the design as authored and light is a parallel ramp
+   rather than an inversion of it.
+
+   Fills and borders keep using `--console-ink` directly: a translucent wash
+   behaves the same way in both directions, so those alphas DID survive the
+   flip. */
+
+:root {
+	--ink-90: rgb(var(--console-ink) / 0.9);
+	--ink-85: rgb(var(--console-ink) / 0.85);
+	--ink-80: rgb(var(--console-ink) / 0.8);
+	--ink-75: rgb(var(--console-ink) / 0.75);
+	--ink-70: rgb(var(--console-ink) / 0.7);
+	--ink-60: rgb(var(--console-ink) / 0.6);
+	--ink-55: rgb(var(--console-ink) / 0.55);
+	--ink-50: rgb(var(--console-ink) / 0.5);
+	--ink-45: rgb(var(--console-ink) / 0.45);
+	--ink-42: rgb(var(--console-ink) / 0.42);
+	--ink-40: rgb(var(--console-ink) / 0.4);
+	--ink-38: rgb(var(--console-ink) / 0.38);
+	--ink-35: rgb(var(--console-ink) / 0.35);
+	--ink-32: rgb(var(--console-ink) / 0.32);
+	--ink-30: rgb(var(--console-ink) / 0.3);
+	--ink-25: rgb(var(--console-ink) / 0.25);
+	--ink-20: rgb(var(--console-ink) / 0.2);
+}
+
 /* ── shadcn remap ─────────────────────────────────────────────────────────
    The reason opting in was not enough on its own: every existing component uses
    `bg-background`, `bg-sidebar`, `text-muted-foreground` and friends, which

@@ -101,4 +101,59 @@ describe("storage providers", () => {
 			expect.objectContaining({ token: "test-token" }),
 		);
 	});
+
+	it("returns a durable public url for an asset, namespaced by workspace", async () => {
+		vi.mocked(put).mockResolvedValue({
+			url: "https://public-blob.example/assets/workspace-a/catalog/item/0.jpg",
+			downloadUrl:
+				"https://public-blob.example/assets/workspace-a/catalog/item/0.jpg?download=1",
+			pathname: "assets/workspace-a/catalog/item/0.jpg",
+			contentType: "image/jpeg",
+			contentDisposition: "inline",
+			etag: "etag",
+		});
+
+		const provider = createVercelBlobStorageProvider({ token: "test-token" });
+		const asset = await provider.putPublicAsset({
+			workspaceId: "workspace-a",
+			key: "catalog/item/0.jpg",
+			body: "hello",
+			contentType: "image/jpeg",
+		});
+
+		// The url is the whole point: an <img src> cannot re-authorize itself.
+		expect(asset.url).toBe(
+			"https://public-blob.example/assets/workspace-a/catalog/item/0.jpg",
+		);
+		expect(asset.bucket).toBe("assets");
+		expect(put).toHaveBeenCalledWith(
+			"assets/workspace-a/catalog/item/0.jpg",
+			expect.any(ArrayBuffer),
+			expect.objectContaining({ access: "public", addRandomSuffix: false }),
+		);
+	});
+
+	it("refuses a public key that climbs into another workspace", async () => {
+		const local = createLocalStorageProvider();
+		const vercel = createVercelBlobStorageProvider({ token: "test-token" });
+
+		for (const provider of [local, vercel]) {
+			await expect(
+				provider.putPublicAsset({
+					workspaceId: "workspace-a",
+					key: "../workspace-b/logo.png",
+					body: "hello",
+				}),
+			).rejects.toThrow("STORAGE_KEY_INVALID");
+			await expect(
+				provider.putPublicAsset({
+					workspaceId: "workspace-a/../workspace-b",
+					key: "logo.png",
+					body: "hello",
+				}),
+			).rejects.toThrow("STORAGE_WORKSPACE_INVALID");
+		}
+		// Nothing reached the provider.
+		expect(put).not.toHaveBeenCalled();
+	});
 });

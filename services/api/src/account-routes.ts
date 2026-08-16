@@ -23,6 +23,11 @@ import {
 	deleteUserAccount,
 	getOrganizationRevenue,
 	getUserOnboardingState,
+	listControlPlaneAudit,
+	listControlPlaneAuditActions,
+	listOrganizationActivity,
+	listOrganizationIntegrations,
+	listOrganizationSettlements,
 	listOrganizationsForUser,
 	markAllNotificationsRead,
 	markNotificationRead,
@@ -399,6 +404,12 @@ export function registerAccountRoutes(
 	const keys = authorizeAccount(options.platform, {
 		capability: "apikeys.manage",
 	});
+	const view = authorizeAccount(options.platform, {
+		capability: "workspace.view",
+	});
+	const manageMembers = authorizeAccount(options.platform, {
+		capability: "members.manage",
+	});
 	/**
 	 * Revenue across every workspace the organization owns.
 	 *
@@ -435,6 +446,79 @@ export function registerAccountRoutes(
 			}),
 		);
 	});
+
+	/**
+	 * The organization's most recent settlements.
+	 *
+	 * Same `billing.manage` gate as the revenue totals it sits under: this is the
+	 * itemised version of the same commercially sensitive number.
+	 */
+	app.get("/v1/account/settlements", billing, async (c) => {
+		const limit = Number(c.req.query("limit") ?? 10);
+		return respond(c, {
+			items: await listOrganizationSettlements(
+				c.get("account").organizationId,
+				{
+					limit: Number.isFinite(limit) ? limit : 10,
+				},
+			),
+		});
+	});
+
+	/**
+	 * Everything that happened across the organization, newest first.
+	 *
+	 * `view` rather than `billing`: what an operator did is not commercially
+	 * sensitive the way revenue is, and hiding it from members would leave the
+	 * people doing the work unable to see their own activity.
+	 */
+	app.get("/v1/account/activity", view, async (c) => {
+		const limit = Number(c.req.query("limit") ?? 20);
+		return respond(c, {
+			items: await listOrganizationActivity(
+				c.get("account").organizationId,
+				Number.isFinite(limit) ? limit : 20,
+			),
+		});
+	});
+
+	/**
+	 * Every service this organization has connected, and whether it works.
+	 *
+	 * Payment connections are per workspace, but "can this company take money" is
+	 * an organization question — asking it one workspace at a time is how a broken
+	 * connection survives a week unnoticed.
+	 *
+	 * `view`, not `billing`: knowing whether the storefront can charge a card is
+	 * operational, and the people running the shop are the ones who need it.
+	 */
+	/**
+	 * The control-plane audit log: who changed access, billing or workspaces.
+	 *
+	 * 🔴 Behind `members.manage`. An audit trail names people and what they did to
+	 * each other's access; it is not a feed for everybody in the organization.
+	 */
+	app.get("/v1/account/audit", manageMembers, async (c) => {
+		const { organizationId } = c.get("account");
+		const limit = Number(c.req.query("limit") ?? 50);
+		const action = c.req.query("action") || undefined;
+		const [items, actions] = await Promise.all([
+			listControlPlaneAudit(organizationId, {
+				limit: Number.isFinite(limit) ? limit : 50,
+				action,
+			}),
+			listControlPlaneAuditActions(organizationId),
+		]);
+		return respond(c, { items, actions });
+	});
+
+	app.get("/v1/account/integrations", view, async (c) =>
+		respond(c, {
+			items: await listOrganizationIntegrations(
+				c.get("account").organizationId,
+			),
+		}),
+	);
 
 	app.get("/v1/account/billing/pricing", billing, async (c) =>
 		respond(c, {

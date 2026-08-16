@@ -220,6 +220,45 @@ export async function removeOrganizationMember(
 }
 
 /**
+ * Change a member's role.
+ *
+ * 🔴 **Refuses on the organization owner**, exactly as removal does. Demoting the
+ * owner leaves nobody who can manage billing or appoint a replacement, and there
+ * is no way back from it — the owner has to be transferred first, which is a
+ * separate deliberate act rather than a side effect of editing a dropdown.
+ *
+ * Returns false when the member is not in this organization or is its owner. The
+ * route turns that into a refusal the operator can read; whether the ROLE itself
+ * is one they are allowed to hand out is decided above this layer, where the
+ * caller's own capabilities are known.
+ */
+export async function updateOrganizationMemberRole(
+	organizationId: string,
+	userId: string,
+	role: string,
+): Promise<boolean> {
+	const [org] = await db
+		.select({ ownerId: quickengineOrganizations.ownerId })
+		.from(quickengineOrganizations)
+		.where(eq(quickengineOrganizations.id, organizationId))
+		.limit(1);
+	if (!org || org.ownerId === userId) {
+		return false;
+	}
+	const [updated] = await db
+		.update(quickengineOrganizationMembers)
+		.set({ role })
+		.where(
+			and(
+				eq(quickengineOrganizationMembers.organizationId, organizationId),
+				eq(quickengineOrganizationMembers.userId, userId),
+			),
+		)
+		.returning({ userId: quickengineOrganizationMembers.userId });
+	return Boolean(updated);
+}
+
+/**
  * Permanently delete a user and everything they own.
  *
  * **Refuses while any owned workspace still holds stored files.** Deleting the

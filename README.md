@@ -107,7 +107,7 @@ always finishes** — limits stop the next request, never the one in progress.
 
 TypeScript (strict) · **Hono** (the canonical API) · **Vite + TanStack Router/Query** ·
 Tailwind + shadcn/ui · Drizzle + Postgres (Neon) · Better Auth · Redis · Stripe + PayPal ·
-Resend · Cloudinary + Vercel Blob · Algolia · Sentry · Pusher · Inngest · **Biome** ·
+Resend · Vercel Blob · Algolia · Sentry · Pusher · Inngest · **Biome** ·
 pnpm + Turborepo · Vercel
 
 ```txt

@@ -28,6 +28,52 @@ export type DownloadAccess = {
 };
 
 /**
+ * The one bucket whose objects are world-readable.
+ *
+ * 🔴 Deliberately NOT a member of `StorageBucket`, and public writes go through
+ * their own method. A product photo and a signed contract are both "a file the
+ * workspace uploaded", and the only thing standing between them is that a caller
+ * cannot reach the public path without naming it — there is no `access` flag to
+ * pass wrongly, and no bucket string that can be swapped for another.
+ *
+ * A public asset is something the business has chosen to put on its own website:
+ * catalog images, a logo, a favicon. Everything else stays private and is read
+ * through short-lived signed URLs after authorization.
+ */
+export type PublicAssetBucket = "assets";
+
+export type PutPublicAssetInput = {
+	/**
+	 * Whose asset this is.
+	 *
+	 * 🔴 Prefixed into the key rather than trusted from it. Public objects share
+	 * one flat namespace, so without this one workspace could overwrite another's
+	 * product photograph by choosing the same key.
+	 */
+	workspaceId: string;
+	key: string;
+	body: Blob | Uint8Array | string;
+	contentType?: string;
+};
+
+/**
+ * A stored public asset.
+ *
+ * Unlike `StoredObject` this carries a `url`, because a durable public URL is
+ * the entire reason the bucket exists — an `<img src>` cannot re-authorize
+ * itself every five minutes.
+ */
+export type PublicAsset = {
+	provider: string;
+	bucket: PublicAssetBucket;
+	key: string;
+	url: string;
+	contentType?: string;
+	size: number;
+	checksumSha256: string;
+};
+
+/**
  * The storage seam.
  *
  * Three methods. Two implementations today (local, Vercel Blob) and only three
@@ -64,6 +110,17 @@ export type DownloadAccess = {
 export type StorageProvider = {
 	readonly name: string;
 	put(input: PutObjectInput): Promise<StoredObject>;
+	/**
+	 * Write something the public web is meant to read.
+	 *
+	 * Separate from `put` on purpose — see `PublicAssetBucket`. Returns the
+	 * durable URL that `put` deliberately discards.
+	 */
+	putPublicAsset(input: PutPublicAssetInput): Promise<PublicAsset>;
+	/** Safe to repeat, for the same reason `delete` is. */
+	deletePublicAsset(
+		asset: Pick<PublicAsset, "provider" | "key">,
+	): Promise<void>;
 	// Deletion must be safe to repeat so durable cleanup jobs can retry after an
 	// interrupted run without leaving database metadata or provider objects behind.
 	delete(locator: StorageObjectLocator): Promise<void>;
@@ -112,6 +169,36 @@ function blobPath(locator: Pick<StorageObjectLocator, "bucket" | "key">) {
 	return `${locator.bucket}/${locator.key}`;
 }
 
+const PUBLIC_BUCKET: PublicAssetBucket = "assets";
+
+/**
+ * Where a public asset lives: `assets/<workspaceId>/<key>`.
+ *
+ * 🔴 The workspace segment is built here from the validated id, never taken from
+ * the caller's key — a key of `../other-workspace/logo.png` must not be able to
+ * climb out, which is why the same segment rules as `assertLocator` apply and a
+ * workspace id containing a slash is refused outright.
+ */
+function publicAssetPath(workspaceId: string, key: string) {
+	if (
+		workspaceId.length === 0 ||
+		workspaceId.includes("/") ||
+		workspaceId === ".." ||
+		workspaceId === "."
+	) {
+		throw new Error("STORAGE_WORKSPACE_INVALID");
+	}
+	const segments = key.split("/");
+	if (
+		key.length === 0 ||
+		key.startsWith("/") ||
+		segments.some((segment) => segment.length === 0 || segment === "..")
+	) {
+		throw new Error("STORAGE_KEY_INVALID");
+	}
+	return `${PUBLIC_BUCKET}/${workspaceId}/${key}`;
+}
+
 export const createLocalStorageProvider = (baseUrl = "http://localhost:3001") =>
 	({
 		name: "local",
@@ -125,6 +212,27 @@ export const createLocalStorageProvider = (baseUrl = "http://localhost:3001") =>
 				size: bytes.byteLength,
 				checksumSha256: await sha256(bytes),
 			};
+		},
+		async putPublicAsset(input) {
+			const path = publicAssetPath(input.workspaceId, input.key);
+			const bytes = await bodyBytes(input.body);
+			return {
+				provider: this.name,
+				bucket: PUBLIC_BUCKET,
+				key: `${input.workspaceId}/${input.key}`,
+				// Local development serves these from the account app, the same way
+				// `createDownloadAccess` does. Durable in the only sense that matters
+				// here: stable for as long as the dev server runs.
+				url: `${baseUrl}/${path}`,
+				contentType: input.contentType,
+				size: bytes.byteLength,
+				checksumSha256: await sha256(bytes),
+			};
+		},
+		async deletePublicAsset(asset) {
+			if (asset.provider !== this.name) {
+				throw new Error("STORAGE_PROVIDER_MISMATCH");
+			}
 		},
 		async delete(locator) {
 			assertLocator(locator, this.name);
@@ -197,6 +305,43 @@ export function createVercelBlobStorageProvider(
 				size: bytes.byteLength,
 				checksumSha256: await sha256(bytes),
 			};
+		},
+		async putPublicAsset(input) {
+			const path = publicAssetPath(input.workspaceId, input.key);
+			const bytes = await bodyBytes(input.body);
+			const uploadBody = new ArrayBuffer(bytes.byteLength);
+			new Uint8Array(uploadBody).set(bytes);
+			const stored = await put(path, uploadBody, {
+				...credentials,
+				access: "public",
+				// 🔴 The URL is written into a catalog item's metadata and served from
+				// a customer's own website. A random suffix would mint a NEW url on
+				// every re-upload and silently orphan the one already published, so
+				// re-uploading a corrected photograph must overwrite in place.
+				addRandomSuffix: false,
+				allowOverwrite: true,
+				contentType: input.contentType,
+				maximumSizeInBytes: bytes.byteLength,
+				multipart: bytes.byteLength >= 5 * 1024 * 1024,
+			});
+			if (stored.pathname !== path) {
+				throw new Error("STORAGE_PATH_MISMATCH");
+			}
+			return {
+				provider: name,
+				bucket: PUBLIC_BUCKET,
+				key: `${input.workspaceId}/${input.key}`,
+				url: stored.url,
+				contentType: stored.contentType,
+				size: bytes.byteLength,
+				checksumSha256: await sha256(bytes),
+			};
+		},
+		async deletePublicAsset(asset) {
+			if (asset.provider !== name) {
+				throw new Error("STORAGE_PROVIDER_MISMATCH");
+			}
+			await del(`${PUBLIC_BUCKET}/${asset.key}`, credentials);
 		},
 		async delete(locator) {
 			assertLocator(locator, name);

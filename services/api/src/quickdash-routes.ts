@@ -4,6 +4,7 @@ import {
 	completeFirstActionChecklistState,
 	getFirstActionChecklistState,
 	getQuickDashOrientationState,
+	getWorkspaceHome,
 	listAccessibleWorkspaces,
 	releaseIdempotencyKey,
 	restartQuickDashOrientation,
@@ -102,6 +103,27 @@ export function registerQuickDashRoutes(
 			items: await listAccessibleWorkspaces(c.get("account").userId),
 		}),
 	);
+
+	/**
+	 * What needs a person today, in this workspace.
+	 *
+	 * 🔑 Assembled server-side from the ENABLED modules, so the response never
+	 * mentions a module this business does not have — and the page is one request
+	 * rather than nine whose answer depends on which of them failed.
+	 */
+	app.get("/v1/quickdash/home", view, async (c) => {
+		const { workspaceId } = c.get("authorized");
+		const modules = (await getWorkspaceModules(workspaceId))
+			.filter((module) => module.enabled)
+			.map((module) => module.id);
+		return respond(
+			c,
+			await getWorkspaceHome(workspaceId, {
+				modules,
+				timeZone: c.req.query("timeZone") ?? "UTC",
+			}),
+		);
+	});
 
 	app.get("/v1/quickdash/context", view, async (c) => {
 		const userId = sessionIdentity(c);
@@ -204,10 +226,17 @@ export function registerQuickDashRoutes(
 				hasStoredState: checklist.hasStoredState,
 				items: checklistItems,
 			},
+			// Display metadata travels with the enabled set so QuickDash's navigation
+			// never keeps its own copy of the module names. A hand-maintained list in
+			// the frontend is how the onboarding catalog drifted into offering 5 of 15
+			// modules; the registry is the only place a module's name should live.
 			modules: modules
 				.filter((module) => module.enabled)
 				.map((module) => ({
 					id: module.id,
+					name: module.name,
+					description: module.description,
+					kind: module.kind,
 					settings: module.settings,
 				})),
 			orientation,

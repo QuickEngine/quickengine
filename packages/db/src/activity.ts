@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { db } from "./client";
 import { workspaceActivity } from "./schema/activity";
+import { quickengineWorkspaces } from "./schema/quickengine";
 
 // A committed domain event, as the activity store needs it. Structurally the same as
 // the event bus's DomainEvent, but defined here so the db layer doesn't depend on the
@@ -38,6 +39,42 @@ export async function recordActivity(event: ActivityInput): Promise<void> {
 			occurredAt: event.occurredAt,
 		})
 		.onConflictDoNothing({ target: workspaceActivity.id });
+}
+
+/**
+ * The same feed across every workspace an organization owns.
+ *
+ * 🔑 This is what makes the control plane feel like a business rather than a
+ * settings screen: an order placed in one workspace and a payment settled in
+ * another are the same stream to the person who owns both.
+ *
+ * Joined rather than fanned out per workspace — N requests would produce a feed
+ * whose contents depend on which of them happened to succeed.
+ */
+export async function listOrganizationActivity(
+	organizationId: string,
+	limit = 20,
+): Promise<Array<ActivityRow & { workspaceName: string }>> {
+	const rows = await db
+		.select({
+			seq: workspaceActivity.seq,
+			id: workspaceActivity.id,
+			workspaceId: workspaceActivity.workspaceId,
+			workspaceName: quickengineWorkspaces.name,
+			name: workspaceActivity.name,
+			recordId: workspaceActivity.recordId,
+			actorId: workspaceActivity.actorId,
+			occurredAt: workspaceActivity.occurredAt,
+		})
+		.from(workspaceActivity)
+		.innerJoin(
+			quickengineWorkspaces,
+			eq(quickengineWorkspaces.id, workspaceActivity.workspaceId),
+		)
+		.where(eq(quickengineWorkspaces.organizationId, organizationId))
+		.orderBy(desc(workspaceActivity.seq))
+		.limit(Math.min(Math.max(limit, 1), 100));
+	return rows;
 }
 
 // The workspace activity feed: most recent first, bounded.

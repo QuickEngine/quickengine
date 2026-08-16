@@ -110,6 +110,39 @@ describe("organization revenue", () => {
 		expect(revenue.totals[0]?.netCents).toBe(-10_000);
 	});
 
+	/**
+	 * The daily buckets exist to draw a trend line, and a trend line that
+	 * disagrees with the figure printed beside it is worse than no trend line.
+	 * They are computed from the same payment rows, so they have to add up.
+	 */
+	it("buckets by day, and the days add up to the totals", async () => {
+		await payment(workspaceA, 10_000, "USD", "2026-07-10T12:00:00Z");
+		await payment(workspaceA, 2_500, "USD", "2026-07-10T18:00:00Z");
+		await payment(workspaceB, 5_000, "USD", "2026-07-11T12:00:00Z");
+		await payment(
+			workspaceA,
+			1_000,
+			"USD",
+			"2026-07-12T12:00:00Z",
+			"2026-07-20T12:00:00Z",
+		);
+
+		const revenue = await getOrganizationRevenue(orgId, window);
+
+		// Two payments on the same day in the same workspace are one bucket.
+		const tenth = revenue.daily.filter((row) => row.day === "2026-07-10");
+		expect(tenth).toHaveLength(1);
+		expect(tenth[0]?.collectedCents).toBe(12_500);
+
+		// The refund lands on the day it was refunded, not the day it was taken.
+		const refundDay = revenue.daily.find((row) => row.day === "2026-07-20");
+		expect(refundDay?.refundedCents).toBe(1_000);
+		expect(refundDay?.collectedCents).toBe(0);
+
+		const summed = revenue.daily.reduce((sum, row) => sum + row.netCents, 0);
+		expect(summed).toBe(revenue.totals[0]?.netCents);
+	});
+
 	it("returns an empty answer for an organization with no workspaces", async () => {
 		const sql = testDbClient();
 		const emptyOrg = "00000000-0000-4000-8000-0000000f0099";

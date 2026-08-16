@@ -8,6 +8,18 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Product photographs can be uploaded.** A business can add images to a catalog item, reorder
+  them and remove them, and the pictures are served from a permanent web address so a storefront
+  can show them. Images are kept apart from private documents like signed contracts, which are
+  still only ever shared through a link that expires.
+
+### Fixed
+
+- **A single missing field no longer empties the account overview.** One chart expecting data an
+  older server had not started sending took the whole page down with it, which could leave
+  somebody unable to get into their account. A part of the page that cannot load now fails on its
+  own.
+
 - **A business moving from the old QuickDash keeps its work.** An import brings a workspace's
   products, categories, website copy, FAQ, testimonials and discount codes across in one run.
   Prices come over at what a shopper actually pays, so an item on sale stays on sale, and the

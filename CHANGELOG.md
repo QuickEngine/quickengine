@@ -17,6 +17,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **Where you get paid is now a page.** Payments shows every supported provider, whether each one
   can actually take money rather than merely being connected, and which one checkout will use.
 
+- **Connect says whether your site has ever reached this workspace, and remembers it.** It also
+  lists the addresses each key allows, which is the first thing worth checking when a site is being
+  refused. Refreshing the page no longer loses the answer, because it is read from what actually
+  happened rather than noticed only while the page was open.
+
 - **Products have a page again.** QuickDash lists what a business sells, with search, a status
   filter and a choice of cards or a table. Opening a product shows its photographs, where they can
   be added by dragging them in or picking files, removed, and put in order. The first photograph is

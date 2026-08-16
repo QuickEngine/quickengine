@@ -18,6 +18,66 @@ import {
 
 const trackingPrefix = "tracking:";
 const merchantPrefix = "merchant:";
+/**
+ * A business connected with its OWN PayPal app.
+ *
+ * The supported path. `merchant:` and `tracking:` belong to partner onboarding,
+ * which QuickEngine does not use — they remain readable so an account connected
+ * before this change keeps working rather than breaking at its next refund.
+ */
+const appPrefix = "app:";
+
+/**
+ * The credentials to call PayPal with, for a business we act as.
+ *
+ * 🔴 Loaded from the connected account row and decrypted per call rather than
+ * cached. A cache here would keep a payment secret resident in memory for the
+ * life of the process, and the call it saves is already making a network round
+ * trip to PayPal.
+ */
+async function authForAccount(
+	connectedAccountId: string,
+	environment: PaymentEnvironment,
+): Promise<PayPalConfig> {
+	const { getPaymentAccountByExternalId } = await import("../payments");
+	const account = await getPaymentAccountByExternalId(
+		connectedAccountId,
+		"paypal",
+		environment,
+	);
+	if (!account?.credentials) {
+		throw new Error("PAYMENT_ACCOUNT_NOT_FOUND");
+	}
+	const { decryptProviderCredentials } = await import(
+		"../provider-credentials"
+	);
+	const credentials = decryptProviderCredentials(account.credentials);
+	return {
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret,
+		webhookId: credentials.webhookId,
+		environment: environment === "test" ? "sandbox" : "live",
+	};
+}
+
+/**
+ * Which way round we are talking to PayPal for this account.
+ *
+ * `app:` means we authenticate AS the business, so there is no seller to name.
+ * Anything else is the legacy partner shape, which still names one.
+ */
+async function callFor(
+	connectedAccountId: string,
+	environment: PaymentEnvironment,
+): Promise<{ config: PayPalConfig; sellerMerchantId?: string }> {
+	if (connectedAccountId.startsWith(appPrefix)) {
+		return { config: await authForAccount(connectedAccountId, environment) };
+	}
+	return {
+		config: await config(environment),
+		sellerMerchantId: sellerId(connectedAccountId),
+	};
+}
 
 async function config(environment: PaymentEnvironment): Promise<PayPalConfig> {
 	const { serverEnv } = await import("@quickengine/env/server");
@@ -119,6 +179,24 @@ export const paypalPaymentProvider: PaymentProvider = {
 	},
 
 	async getAccount(externalAccountId, environment) {
+		// 🔴 A business we authenticate AS has no partner status to look up — the
+		// partner endpoints answer questions about somebody ELSE's seller account.
+		// Its credentials were proven against PayPal at connect time, so re-reading
+		// them is the check: if they still authenticate, it can still take money.
+		if (externalAccountId.startsWith(appPrefix)) {
+			const { getPayPalAccessToken } = await import("./paypal-client");
+			try {
+				await getPayPalAccessToken(
+					await authForAccount(externalAccountId, environment),
+				);
+				return account(externalAccountId, true);
+			} catch {
+				// Revoked or rotated at PayPal. Reported as not chargeable rather than
+				// thrown, so the Payments page can say "connect again" instead of
+				// failing to load.
+				return account(externalAccountId, false);
+			}
+		}
 		const paypal = await config(environment);
 		if (externalAccountId.startsWith(trackingPrefix)) {
 			const status = await getPayPalSellerByTrackingId(
@@ -141,10 +219,16 @@ export const paypalPaymentProvider: PaymentProvider = {
 	},
 
 	async createCharge(params) {
-		const created = await createPayPalOrder(await config(params.environment), {
-			sellerMerchantId: sellerId(params.connectedAccountId),
+		const call = await callFor(params.connectedAccountId, params.environment);
+		const created = await createPayPalOrder(call.config, {
+			sellerMerchantId: call.sellerMerchantId,
 			amountCents: params.amountCents,
-			applicationFeeCents: params.applicationFeeCents,
+			// 🔴 Zero when we authenticate as the business: QuickEngine takes no cut
+			// of what a business earns, and a platform fee is only expressible at all
+			// through a partner relationship it does not have.
+			applicationFeeCents: call.sellerMerchantId
+				? params.applicationFeeCents
+				: 0,
 			currency: params.currency,
 			metadata: params.metadata,
 		});
@@ -155,13 +239,11 @@ export const paypalPaymentProvider: PaymentProvider = {
 	},
 
 	async captureCharge(params) {
-		const captured = await capturePayPalOrder(
-			await config(params.environment),
-			{
-				sellerMerchantId: sellerId(params.connectedAccountId),
-				orderId: params.externalPaymentId,
-			},
-		);
+		const call = await callFor(params.connectedAccountId, params.environment);
+		const captured = await capturePayPalOrder(call.config, {
+			sellerMerchantId: call.sellerMerchantId,
+			orderId: params.externalPaymentId,
+		});
 		return {
 			externalCaptureId: captured.captureId,
 			settled: captured.settled,
@@ -178,14 +260,13 @@ export const paypalPaymentProvider: PaymentProvider = {
 	},
 
 	async refund(params) {
-		const paypal = await config(params.environment);
-		const merchantId = sellerId(params.connectedAccountId);
-		const capture = await getPayPalOrderCapture(paypal, {
-			sellerMerchantId: merchantId,
+		const call = await callFor(params.connectedAccountId, params.environment);
+		const capture = await getPayPalOrderCapture(call.config, {
+			sellerMerchantId: call.sellerMerchantId,
 			orderId: params.externalPaymentId,
 		});
-		const refund = await refundPayPalCapture(paypal, {
-			sellerMerchantId: merchantId,
+		const refund = await refundPayPalCapture(call.config, {
+			sellerMerchantId: call.sellerMerchantId,
 			captureId: capture.captureId,
 			amountCents: params.amountCents,
 			currency: capture.currency,
@@ -193,8 +274,29 @@ export const paypalPaymentProvider: PaymentProvider = {
 		return { externalRefundId: refund.refundId, settled: refund.settled };
 	},
 
-	async verifyWebhook(request, environment) {
-		const paypal = await config(environment);
+	/**
+	 * 🔴 Verified against the BUSINESS's own webhook id, supplied by the caller.
+	 *
+	 * Each business registers its webhook against its own PayPal app, so there is
+	 * no platform-wide id that could check the signature. The caller resolves
+	 * which business from the request PATH before calling this — never from the
+	 * unverified body, which is exactly what an attacker would control.
+	 *
+	 * Without credentials this falls back to platform configuration, which is the
+	 * legacy partner path. If neither can verify, `verifyPayPalWebhook` returns
+	 * false and the event is refused: unverified is never treated as authentic.
+	 */
+	async verifyWebhook(request, environment, credentials) {
+		const paypal = credentials
+			? {
+					clientId: credentials.clientId,
+					clientSecret: credentials.clientSecret,
+					webhookId: credentials.webhookId,
+					environment: (environment === "test" ? "sandbox" : "live") as
+						| "sandbox"
+						| "live",
+				}
+			: await config(environment);
 		if (!(await verifyPayPalWebhook(paypal, request))) return null;
 		return parsePayPalWebhookEvent(JSON.parse(request.rawBody));
 	},

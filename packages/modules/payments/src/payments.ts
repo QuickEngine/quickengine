@@ -89,6 +89,33 @@ export async function getPaymentAccount(
 	return account;
 }
 
+/**
+ * The account a provider event or charge belongs to, found by provider identity.
+ *
+ * 🔑 Needed by providers a business connects with its OWN credentials: the only
+ * thing a charge or refund carries is the connected account id, and the secrets
+ * to make that call live on the row. Scoped by provider AND environment so a
+ * sandbox identity can never resolve a live account.
+ */
+export async function getPaymentAccountByExternalId(
+	externalAccountId: string,
+	provider: string,
+	environment: "test" | "live",
+) {
+	const [account] = await db
+		.select()
+		.from(paymentAccounts)
+		.where(
+			and(
+				eq(paymentAccounts.externalAccountId, externalAccountId),
+				eq(paymentAccounts.provider, provider),
+				eq(paymentAccounts.environment, environment),
+			),
+		)
+		.limit(1);
+	return account;
+}
+
 export type PaymentAccountPatch = {
 	environment?: "test" | "live";
 	externalAccountId?: string | null;
@@ -96,6 +123,14 @@ export type PaymentAccountPatch = {
 	status?: "pending" | "active" | "restricted" | "disabled";
 	chargesEnabled?: boolean;
 	payoutsEnabled?: boolean;
+	/**
+	 * Already-encrypted credentials. Never plaintext.
+	 *
+	 * 🔴 The ciphertext is produced by `encryptProviderCredentials` before it
+	 * reaches this layer, so no persistence path can accidentally write a raw
+	 * secret — there is no code path here that could.
+	 */
+	credentials?: string | null;
 };
 
 export async function upsertPaymentAccount(

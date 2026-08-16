@@ -64,6 +64,15 @@ const FRIENDLY: Record<string, string> = {
 		"That payment provider is already connected.",
 	PAYMENT_ENVIRONMENT_MISMATCH:
 		"That payment provider belongs to a different workspace environment.",
+	PROVIDER_CREDENTIALS_REJECTED:
+		"That payment provider did not accept those credentials. Check they are from the right app and environment.",
+	PROVIDER_DOES_NOT_TAKE_CREDENTIALS:
+		"That payment provider is connected through its own hosted setup, not by supplying credentials.",
+	// The stored credentials cannot be read back. Real after the application
+	// secret is rotated, and the only fix is for the business to enter them
+	// again — so the message says that rather than describing encryption.
+	PROVIDER_CREDENTIALS_MALFORMED:
+		"That payment provider needs connecting again.",
 	CLIENT_NOT_FOUND: "The client on this payment was not found.",
 	INVOICE_NOT_PAYABLE:
 		"That invoice can't take a payment in its current status.",
@@ -95,6 +104,16 @@ function mapPaymentError(error: unknown): never {
 			)
 		) {
 			throw new DomainError("CONFLICT", message);
+		}
+		// Credentials a business supplied that the provider refused, or a provider
+		// that does not take credentials at all. Both are the caller's input being
+		// wrong, so they are a validation failure rather than a server fault.
+		if (
+			/PROVIDER_(CREDENTIALS_REJECTED|CREDENTIALS_MALFORMED|DOES_NOT_TAKE_CREDENTIALS)/.test(
+				error.message,
+			)
+		) {
+			throw new DomainError("VALIDATION_ERROR", message);
 		}
 	}
 	throw error;

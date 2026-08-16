@@ -3,11 +3,13 @@ import type { MutationUnitOfWork } from "@quickengine/api-contracts/mutations";
 import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
 import {
+	connectProviderCredentials,
 	getPaymentDto,
 	listPaymentsPage,
 	PAYMENT_STATUSES,
 	paymentOnboardingInputSchema,
 	paymentProviderInputSchema,
+	providerCredentialsInputSchema,
 	readPaymentAccount,
 	recordPaymentCommand,
 	refreshPaymentAccount,
@@ -264,6 +266,72 @@ export function registerPaymentsRoutes(
 				// server fault — answering 500 would send them to look at our logs.
 				if (error instanceof UnsupportedPaymentProviderError) {
 					return respondError(c, "VALIDATION_ERROR", error.message, 400);
+				}
+				throw error;
+			}
+		},
+	);
+
+	/**
+	 * Connect a provider the business owns outright, by supplying its own app
+	 * credentials.
+	 *
+	 * 🔴 The only request in this API whose body is a payment credential.
+	 * Consequences, all deliberate:
+	 *
+	 * · A POST body, never a query string — URLs reach referrers, history and
+	 *   proxy logs in a way bodies do not.
+	 * · No `mutationContext`, so the payload never becomes a `canonicalInput` in
+	 *   `api_audit_events`. An audit row saying credentials were replaced is
+	 *   useful; one containing the secret is a second copy of it in a table
+	 *   people read.
+	 * · The response is a status. Nothing supplied here is ever returned.
+	 * · Validation failures do not forward the provider's message, which can
+	 *   echo parts of what was sent.
+	 */
+	app.post(
+		"/v1/payments/connect/credentials",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			const parsed = providerCredentialsInputSchema.safeParse(
+				await c.req.json(),
+			);
+			if (!parsed.success) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"A client id and secret are required.",
+					400,
+					// 🔴 Zod issues carry the failing PATH, never the value, so this is
+					// safe to return. Echoing the input here would defeat the point.
+					parsed.error.issues,
+				);
+			}
+			try {
+				return respond(
+					c,
+					await connectProviderCredentials({
+						workspaceId: c.get("authorized").workspaceId,
+						...parsed.data,
+					}),
+				);
+			} catch (error) {
+				if (/PROVIDER_CREDENTIALS_REJECTED/.test(String(error))) {
+					return respondError(
+						c,
+						"VALIDATION_ERROR",
+						"PayPal did not accept those credentials. Check that they are from the right app and environment.",
+						400,
+					);
+				}
+				if (/PROVIDER_DOES_NOT_TAKE_CREDENTIALS/.test(String(error))) {
+					return respondError(
+						c,
+						"VALIDATION_ERROR",
+						"That provider is connected through its own hosted setup, not by supplying credentials.",
+						400,
+					);
 				}
 				throw error;
 			}

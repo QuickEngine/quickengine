@@ -49,7 +49,13 @@ export const settlePaidCheckout: PaidCheckoutCoordinator = async (input) =>
 				reason === "ORDER_STATUS_UNCHANGED" ||
 				reason === "ORDER_ILLEGAL_TRANSITION"
 			) {
-				return { applied: false, reason: "order was not awaiting payment" };
+				// Expected: a redelivery finding the order already moved on is the
+				// normal shape of at-least-once webhook delivery, not a divergence.
+				return {
+					applied: false,
+					reason: "order was not awaiting payment",
+					expected: true,
+				};
 			}
 			throw error;
 		}

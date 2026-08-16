@@ -56,6 +56,17 @@ export type ConnectStatus = {
 	chargesEnabled: boolean;
 	payoutsEnabled: boolean;
 	status: "pending" | "active" | "restricted" | "disabled";
+	/**
+	 * How this provider was connected, for providers a business owns outright.
+	 *
+	 * 🔴 Carries the client id and nothing else. The client id publicly
+	 * identifies the app and lets somebody confirm they connected the right one;
+	 * the secret is never described, never returned, and never logged.
+	 */
+	credentials?: {
+		clientId: string | null;
+		webhookConfigured: boolean;
+	};
 };
 
 const notConnected = (
@@ -69,6 +80,96 @@ const notConnected = (
 	payoutsEnabled: false,
 	status: "pending",
 });
+
+/**
+ * What a business pastes in to connect a provider it owns outright.
+ *
+ * PayPal only. Stripe has Connect, so it never needs this — and accepting a
+ * Stripe secret key here would mean holding a credential that can do far more
+ * than take payments for one business.
+ */
+export const providerCredentialsInputSchema = z.object({
+	provider: z.literal("paypal"),
+	clientId: z.string().trim().min(1).max(255),
+	clientSecret: z.string().trim().min(1).max(512),
+	/**
+	 * Optional at connect time, required before refunds and settlement can be
+	 * trusted — a business can create the app first and add its webhook after.
+	 * The page says which of the two states it is in rather than pretending a
+	 * half-configured connection is finished.
+	 */
+	webhookId: z.string().trim().max(255).optional(),
+});
+
+/**
+ * Connect a business's own provider app.
+ *
+ * 🔴 The credentials are VALIDATED against the provider before anything is
+ * stored. A typo must fail here, in a form the operator is looking at, and not
+ * silently at their first sale — which is exactly what storing first and
+ * discovering later would produce.
+ *
+ * ⚠️ Nothing here is ever returned to the caller. The response is a status, and
+ * `readPaymentAccount` describes only the client id and whether a webhook is
+ * configured. The secret goes in and never comes back out.
+ */
+export async function connectProviderCredentials(input: {
+	workspaceId: string;
+	provider: string;
+	clientId: string;
+	clientSecret: string;
+	webhookId?: string;
+}): Promise<ConnectStatus> {
+	if (input.provider !== "paypal") {
+		throw new Error("PROVIDER_DOES_NOT_TAKE_CREDENTIALS");
+	}
+	const environment = await workspaceEnvironment(input.workspaceId);
+
+	// Lazily imported: this file is reachable from route registration, and the
+	// PayPal client must not enter that module graph. Hard rule 12.
+	const { getPayPalAccessToken } = await import("./providers/paypal-client");
+	const { encryptProviderCredentials } = await import("./provider-credentials");
+
+	try {
+		await getPayPalAccessToken({
+			clientId: input.clientId,
+			clientSecret: input.clientSecret,
+			environment: environment === "test" ? "sandbox" : "live",
+		});
+	} catch {
+		// 🔴 Deliberately does not forward the provider's message. A failed
+		// authentication reply can echo parts of what was sent, and this is the one
+		// request in the system whose body is a payment credential.
+		throw new Error("PROVIDER_CREDENTIALS_REJECTED");
+	}
+
+	await upsertPaymentAccount(input.workspaceId, input.provider, {
+		environment,
+		credentials: encryptProviderCredentials({
+			clientId: input.clientId,
+			clientSecret: input.clientSecret,
+			webhookId: input.webhookId,
+		}),
+		// The credentials authenticate, so the account can take money. Unlike
+		// Stripe there is no asynchronous capability review to wait on — the
+		// business already completed that with PayPal before it had an app.
+		externalAccountId: `app:${input.clientId}`,
+		status: "active",
+		chargesEnabled: true,
+		// PayPal pays out to the business's own PayPal balance, which is theirs to
+		// withdraw. There is no separate payout enablement for us to track.
+		payoutsEnabled: true,
+	});
+
+	return {
+		environment,
+		provider: input.provider,
+		connected: true,
+		chargesEnabled: true,
+		payoutsEnabled: true,
+		status: "active",
+	};
+}
 
 /**
  * Begin connecting an account, returning where to send the operator.
@@ -154,6 +255,10 @@ export async function readPaymentAccount(
 	if (!existing?.externalAccountId) return notConnected(environment, provider);
 	if (existing.environment !== environment)
 		throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
+	const { describeProviderCredentials } = await import(
+		"./provider-credentials"
+	);
+	const described = describeProviderCredentials(existing.credentials ?? null);
 	return {
 		environment,
 		provider: existing.provider ?? "stripe",
@@ -161,6 +266,16 @@ export async function readPaymentAccount(
 		chargesEnabled: existing.chargesEnabled,
 		payoutsEnabled: existing.payoutsEnabled,
 		status: existing.status,
+		// Only present for a provider connected with its own credentials. Stripe
+		// leaves it undefined, which is how the page knows which control to show.
+		...(described.present
+			? {
+					credentials: {
+						clientId: described.clientId,
+						webhookConfigured: described.webhookConfigured,
+					},
+				}
+			: {}),
 	};
 }
 

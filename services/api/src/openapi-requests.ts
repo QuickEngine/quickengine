@@ -33,6 +33,7 @@ import {
 import {
 	paymentOnboardingInputSchema,
 	paymentProviderInputSchema,
+	providerCredentialsInputSchema,
 	recordPaymentInputSchema,
 	refundPaymentInputSchema,
 } from "@quickengine/mod-payments";
@@ -268,6 +269,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	setWorkspaceEnvironment: workspaceEnvironmentSchema,
 	setWorkspaceModuleEnabled: workspaceModuleSchema,
 	startPaymentOnboarding: paymentOnboardingInputSchema,
+	connectProviderCredentials: providerCredentialsInputSchema,
 	setDefaultPaymentProvider: paymentProviderInputSchema,
 	createCheckout: checkoutInputSchema,
 	// ⚠️ Declared inline rather than imported from a module package: contact is

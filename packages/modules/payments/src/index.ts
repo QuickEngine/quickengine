@@ -5,6 +5,7 @@ export * from "./fees";
 export * from "./module";
 export * from "./payments";
 export * from "./provider";
+export * from "./provider-credentials";
 export * from "./providers";
 export * from "./refund-provider";
 export * from "./status";

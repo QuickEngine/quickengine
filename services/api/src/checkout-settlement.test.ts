@@ -108,6 +108,9 @@ describe("provider-confirmed checkout settlement", () => {
 		await expect(settlePaidCheckout(input)).resolves.toEqual({
 			applied: false,
 			reason: "order was not awaiting payment",
+			// A redelivery finding the order already moved on is the normal shape of
+			// at-least-once delivery, so it must NOT raise a dropped-settlement alert.
+			expected: true,
 		});
 		expect(mocks.auditValues).not.toHaveBeenCalled();
 		expect(mocks.outboxValues).not.toHaveBeenCalled();

@@ -9,7 +9,7 @@ import {
 	installLine,
 	suggestedKeyName,
 } from "../_lib/connect-config";
-import { workspaceApi } from "../lib/api";
+import { sessionApi, workspaceApi } from "../lib/api";
 import { clientEnv } from "../lib/env";
 import { quickDashQueries } from "../lib/quickdash-api";
 import { webhookQueries } from "../lib/webhooks-api";
@@ -94,6 +94,64 @@ function ConnectPage() {
 	const deliveries = useQuery(
 		webhookQueries.deliveries(workspace, selectedEndpoint),
 	);
+	/**
+	 * The keys pointed at this workspace, and whether anything has used them.
+	 *
+	 * 🔴 `lastUsedAt` is a DATABASE FACT, written on every authenticated request.
+	 * It is not session state, so it survives a refresh, a different browser and
+	 * a different machine — which is the whole point. The previous version showed
+	 * a checkmark only because the tab happened to be open when the first request
+	 * landed, so refreshing wiped it and made a connected site look unconnected.
+	 * People refresh precisely when something appears to hang.
+	 *
+	 * `allowedOrigins` was already stored and already returned; it was simply
+	 * never rendered, so nobody could see which addresses were wired up.
+	 */
+	const keys = useQuery({
+		queryKey: ["quickdash", workspace, "api-keys"],
+		queryFn: async () =>
+			(
+				await sessionApi.request<{
+					items: Array<{
+						id: string;
+						name: string;
+						type: string;
+						prefix: string;
+						allowedOrigins: string[];
+						lastUsedAt: string | null;
+						revokedAt: string | null;
+					}>;
+				}>(`/account/api-keys?workspaceId=${encodeURIComponent(workspace)}`)
+			).data,
+		// Held across refetches so the panel never flickers back to "waiting" for
+		// a beat before the answer arrives — that flash is the same bug in
+		// miniature.
+		placeholderData: (previous) => previous,
+		/**
+		 * Polled ONLY while nothing has called yet.
+		 *
+		 * Somebody watching this panel is mid-setup and wants it to turn over
+		 * without touching anything. Once a key has been used the answer can never
+		 * revert, so continuing to poll would be a request every few seconds,
+		 * forever, on a page people leave open.
+		 */
+		refetchInterval: (query) =>
+			(query.state.data?.items ?? []).some(
+				(key) => !key.revokedAt && key.lastUsedAt,
+			)
+				? false
+				: 5_000,
+	});
+
+	const liveKeys = (keys.data?.items ?? []).filter((key) => !key.revokedAt);
+	const firstContact = liveKeys.reduce<string | null>(
+		(earliest, key) =>
+			key.lastUsedAt && (!earliest || key.lastUsedAt < earliest)
+				? key.lastUsedAt
+				: earliest,
+		null,
+	);
+
 	const health = useQuery({
 		queryKey: ["quickdash", workspace, "integration-health"],
 		queryFn: async () =>
@@ -335,6 +393,78 @@ function ConnectPage() {
 							{lookup.body}
 						</pre>
 					) : null}
+				</div>
+
+				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">
+					This workspace's connection
+				</p>
+				<div className="border-[var(--console-line-soft)] border-t py-4">
+					{keys.isPending && !keys.data ? (
+						<p className="text-[12px] text-[var(--ink-30)]">Checking…</p>
+					) : liveKeys.length === 0 ? (
+						<p className="text-[11.5px] text-[var(--ink-45)]">
+							No keys yet. Create one in Account, then paste it into your site.
+						</p>
+					) : (
+						<>
+							{firstContact ? (
+								<p className="flex items-center gap-2 text-[11.5px] text-[var(--ink-45)]">
+									<CheckIcon size={12} className="text-[#3fb950]" />
+									Your site first reached this workspace on{" "}
+									{new Date(firstContact).toLocaleString()}.
+								</p>
+							) : (
+								<p className="flex items-center gap-2 text-[11.5px] text-[#f5b44a]">
+									{/* Says what it is waiting FOR and that leaving is safe, because
+									    a spinner with no explanation is what makes people refresh. */}
+									<span className="size-1.5 animate-pulse rounded-full bg-[#f5b44a]" />
+									Waiting for the first call from your site. Deploy it and load
+									a page; this updates on its own, and it is safe to leave.
+								</p>
+							)}
+
+							<div className="mt-3.5 divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+								{liveKeys.map((key) => (
+									<div key={key.id} className="py-2.5">
+										<div className="flex items-center gap-2">
+											<p className="text-[12px] text-[var(--ink-85)]">
+												{key.name}
+											</p>
+											<span className="rounded-full bg-[rgb(var(--console-ink)/0.06)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--ink-45)]">
+												{key.prefix}
+											</span>
+											<span className="ml-auto text-[10.5px] text-[var(--ink-30)]">
+												{key.lastUsedAt
+													? `Last used ${new Date(key.lastUsedAt).toLocaleString()}`
+													: "Never used"}
+											</span>
+										</div>
+										{/* 🔴 Stored all along and never shown. A site refused at
+										    preflight looks broken with no way to see WHICH addresses
+										    were allowed — and origins are matched exactly, so a
+										    missing `www.` is invisible until it is printed. */}
+										{key.allowedOrigins.length > 0 ? (
+											<div className="mt-1.5 flex flex-wrap gap-1.5">
+												{key.allowedOrigins.map((origin) => (
+													<span
+														key={origin}
+														className="rounded-full border border-[var(--console-line-strong)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--ink-60)]"
+													>
+														{origin}
+													</span>
+												))}
+											</div>
+										) : (
+											<p className="mt-1.5 text-[10.5px] text-[var(--ink-30)]">
+												No addresses allowed yet, so a browser cannot use this
+												key. Add your site's address in Account.
+											</p>
+										)}
+									</div>
+								))}
+							</div>
+						</>
+					)}
 				</div>
 
 				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">

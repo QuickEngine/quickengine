@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, rowBusy } from "./page-state";
 
 /**
@@ -56,6 +58,7 @@ const isOverdue = (fulfillment: Fulfillment) =>
 	);
 
 export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
@@ -75,7 +78,13 @@ export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 		mutationFn: async (input: { id: string; status: string }) => {
 			await workspaceApi(workspaceId).request(
 				`/fulfillments/${input.id}/status`,
-				{ method: "POST", body: { status: input.status } },
+				{
+					method: "POST",
+					// Required: this route commits through `mutationContext`, which
+					// refuses a mutation carrying no `Idempotency-Key`.
+					idempotencyKey: crypto.randomUUID(),
+					body: { status: input.status },
+				},
 			);
 		},
 		onMutate: () => setFailure(null),
@@ -90,6 +99,7 @@ export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search work by title or customer"
@@ -155,37 +165,62 @@ export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 					}
 
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((item) => {
-								const next = NEXT_STATUS[item.status];
-								const overdue = isOverdue(item);
-								return (
-									<div key={item.id} className="flex items-center gap-3 py-2.5">
-										<span className="w-24 shrink-0 text-[12px] text-[var(--ink-60)] capitalize">
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Work to fulfil"
+							rows={rows}
+							columns={[
+								{ key: "title", header: "Work", render: (item) => item.title },
+								{
+									key: "customer",
+									header: "Customer",
+									render: (item) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{item.clientName ?? "No customer named"}
+											{item.kind ? ` · ${readable(item.kind)}` : ""}
+										</span>
+									),
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-24",
+									tight: true,
+									render: (item) => (
+										<span className="text-[12px] text-[var(--ink-60)] capitalize">
 											{readable(item.status)}
 										</span>
-										<div className="min-w-0 flex-1">
-											<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-												{item.title}
-											</p>
-											<p className="truncate text-[11px] text-[var(--ink-30)]">
-												{item.clientName ?? "No customer named"}
-												{item.kind ? ` · ${readable(item.kind)}` : ""}
-											</p>
-										</div>
-
-										{item.dueAt ? (
+									),
+								},
+								{
+									key: "due",
+									header: "Due",
+									width: "w-32",
+									align: "right",
+									tight: true,
+									render: (item) =>
+										item.dueAt ? (
 											<span
-												className={`shrink-0 text-[11px] ${
-													overdue ? "text-[#f5b44a]" : "text-[var(--ink-30)]"
+												className={`text-[11px] ${
+													isOverdue(item)
+														? "text-[var(--signal-attention)]"
+														: "text-[var(--ink-30)]"
 												}`}
 											>
-												{overdue ? "Overdue " : "Due "}
+												{isOverdue(item) ? "Overdue " : ""}
 												{new Date(item.dueAt).toLocaleDateString()}
 											</span>
-										) : null}
-
-										{next ? (
+										) : null,
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (item) => {
+										const next = NEXT_STATUS[item.status];
+										return next ? (
 											<button
 												type="button"
 												className={quiet}
@@ -196,11 +231,11 @@ export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 											>
 												{next.label}
 											</button>
-										) : null}
-									</div>
-								);
-							})}
-						</div>
+										) : null;
+									},
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>

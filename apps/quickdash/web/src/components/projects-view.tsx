@@ -1,8 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
+import { CreatePanel } from "./create-panel";
+import { useHeaderAction } from "./header-action";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { ProjectPanel } from "./module-panels";
 import { EmptyState, PageState } from "./page-state";
+// ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
+// if the import is ever dropped, and the error that produces names React
+// internals rather than the missing import.
+import { Text as TextField } from "./product-fields";
 
 /**
  * Projects — work with a beginning and an end.
@@ -31,13 +41,13 @@ type Project = {
 	archivedAt: string | null;
 };
 
-const pill =
+const _pill =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40";
 
-const quiet =
+const _quiet =
 	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
 
-const field =
+const _field =
 	"h-9 rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
 
 const readable = (value: string) => value.replace(/_/g, " ");
@@ -51,7 +61,11 @@ const isOverdue = (project: Project) =>
 	);
 
 export function ProjectsView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
+	const [creating, setCreating] = useState(false);
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [name, setName] = useState("");
@@ -84,12 +98,22 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 		onError: (error: { message?: string }) =>
 			setFailure(error?.message ?? "That project could not be created."),
 		onSuccess: () => {
+			setCreating(false);
 			setName("");
 			refresh();
 		},
 	});
 
-	const archive = useMutation({
+	// Every page's create lives in the header, in the same place. It REVEALS
+	// the form rather than submitting it: the fields belong together, and a
+	// submit button parted from its inputs is a button that does nothing
+	// visible.
+	useHeaderAction({
+		label: "New project",
+		onClick: () => setCreating((open) => !open),
+	});
+
+	const _archive = useMutation({
 		mutationFn: async (id: string) => {
 			await workspaceApi(workspaceId).request(`/projects/${id}/archive`, {
 				method: "POST",
@@ -104,29 +128,27 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			<form
-				className="mb-4 flex items-center gap-2"
-				onSubmit={(event) => {
-					event.preventDefault();
-					if (name.trim()) create.mutate();
-				}}
-			>
-				<input
-					value={name}
-					onChange={(event) => setName(event.target.value)}
-					placeholder="New project name"
-					className={`${field} w-72`}
-				/>
-				<button
-					type="submit"
-					className={pill}
-					disabled={create.isPending || !name.trim()}
+			{creating ? (
+				<CreatePanel
+					title="New project"
+					submitLabel="Create project"
+					busy={create.isPending}
+					valid={name.trim().length > 0}
+					failure={failure}
+					onClose={() => setCreating(false)}
+					onSubmit={() => create.mutate()}
 				>
-					{create.isPending ? "Creating…" : "Create project"}
-				</button>
-			</form>
+					<TextField
+						label="Name"
+						value={name}
+						onChange={setName}
+						placeholder="Autumn blend launch"
+					/>
+				</CreatePanel>
+			) : null}
 
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search projects"
@@ -188,54 +210,72 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((project) => {
-								const late = isOverdue(project);
-								return (
-									<div
-										key={project.id}
-										className="flex items-center gap-3 py-2.5"
-									>
-										<div className="min-w-0 flex-1">
-											<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-												{project.name}
-											</p>
-											{project.description ? (
-												<p className="truncate text-[11px] text-[var(--ink-30)]">
-													{project.description}
-												</p>
-											) : null}
-										</div>
-										<span className="w-24 shrink-0 text-[11px] text-[var(--ink-30)] capitalize">
+						<PagedTable
+							rowSignal={rowSignal}
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Projects"
+							rows={rows}
+							selectedId={selectedId}
+							onOpen={(project) => setSelectedId(project.id)}
+							columns={[
+								{
+									key: "name",
+									header: "Project",
+									render: (project) => project.name,
+								},
+								{
+									key: "description",
+									header: "Description",
+									render: (project) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{project.description ?? ""}
+										</span>
+									),
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-24",
+									tight: true,
+									render: (project) => (
+										<span className="text-[11px] text-[var(--ink-30)] capitalize">
 											{readable(project.status)}
 										</span>
-										{project.dueDate ? (
+									),
+								},
+								{
+									key: "due",
+									header: "Due",
+									width: "w-32",
+									align: "right",
+									tight: true,
+									render: (project) =>
+										project.dueDate ? (
 											<span
-												className={`w-32 shrink-0 text-right text-[11px] ${
-													late ? "text-[#f5b44a]" : "text-[var(--ink-30)]"
+												className={`text-[11px] ${
+													isOverdue(project)
+														? "text-[var(--signal-attention)]"
+														: "text-[var(--ink-30)]"
 												}`}
 											>
-												{late ? "Overdue " : "Due "}
+												{isOverdue(project) ? "Overdue " : ""}
 												{new Date(project.dueDate).toLocaleDateString()}
 											</span>
-										) : (
-											<span className="w-32 shrink-0" />
-										)}
-										<button
-											type="button"
-											className={quiet}
-											disabled={archive.isPending}
-											onClick={() => archive.mutate(project.id)}
-										>
-											Archive
-										</button>
-									</div>
-								);
-							})}
-						</div>
+										) : null,
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>
+			{selectedId ? (
+				<ProjectPanel
+					workspaceId={workspaceId}
+					id={selectedId}
+					onClose={() => setSelectedId(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

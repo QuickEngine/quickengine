@@ -145,7 +145,7 @@ function TeamPage() {
 	const [role, setRole] = useState<string>("member");
 	const [failure, setFailure] = useState<string | null>(null);
 	const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-	const [emailed, setEmailed] = useState<{
+	const [_emailed, setEmailed] = useState<{
 		sent: boolean;
 		reason: string | null;
 	} | null>(null);

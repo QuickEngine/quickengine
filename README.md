@@ -203,6 +203,10 @@ build another website. Proven on a freshly created account against a real storef
 Every operator page now says what it is doing: a skeleton in the shape of the page while it
 loads, a plain explanation and a retry when a request fails, and a short line saying what a list
 is for when it is empty. Workspaces are addressed by name rather than by an internal identifier.
+Lists are real tables that can be switched to cards, paged, and dragged into whatever order suits
+the person reading them; every record opens in a panel over the list, and creating one uses the
+same panel. A catalog can be built from the console: products with pricing, stock, photographs and
+categories, and a detail page for every other record a business keeps.
 QuickDash also tells you when something needs you: a paid order, a customer waiting on a reply, a
 disputed payment, a flagged shipment or stock running low reaches the bell, marks the sidebar row
 it belongs to, and appears briefly in the corner if you are watching.

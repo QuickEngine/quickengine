@@ -36,6 +36,14 @@ type Notice = {
 	/** Where to land. Relative to QuickDash, resolved against the workspace. */
 	path?: string;
 	/**
+	 * Which record this is about, when the list can mark it.
+	 *
+	 * 🔑 Usually the event's own `aggregateId`, but not always: low stock is
+	 * raised from an `inventory-item.adjusted` event whose aggregate is the
+	 * ADJUSTMENT, while the row a person sees is the inventory item.
+	 */
+	recordId?: string;
+	/**
 	 * Overrides the outbox event id as the idempotency key.
 	 *
 	 * 🔑 Only for notices where the EVENT is not the thing you want to be told
@@ -153,7 +161,7 @@ async function lowStockNotice(
 		.where(eq(inventoryItems.id, itemId))
 		.limit(1);
 
-	if (!item || item.status !== "active") return null;
+	if (item?.status !== "active") return null;
 	if (item.threshold <= 0 || onHand > item.threshold) return null;
 
 	return {
@@ -165,6 +173,8 @@ async function lowStockNotice(
 				? "It is still listed, so it can be ordered and then not shipped."
 				: `${onHand} left, against a threshold of ${item.threshold}.`,
 		path: "/inventory",
+		// The stocked item, not the adjustment that triggered this.
+		recordId: itemId,
 		// 🔑 Once per item per day. The next sale of the same low item is the same
 		// fact, and being told it eleven times is how a bell gets ignored.
 		sourceKey: `low-stock:${itemId}:${new Date().toISOString().slice(0, 10)}`,
@@ -222,6 +232,9 @@ export function operatorNotificationHandler(): OutboxHandler {
 					// 🔴 The outbox row id by default. Delivery is at-least-once, so this
 					// is what makes a redelivery a no-op instead of a second "New order".
 					sourceKey: notice.sourceKey ?? event.id,
+					// Defaults to the aggregate the event was about, which is the record
+					// the operator sees in the list.
+					recordId: notice.recordId ?? event.aggregateId,
 				});
 			}
 		},

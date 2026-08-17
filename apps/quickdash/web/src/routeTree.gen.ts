@@ -15,6 +15,7 @@ import { Route as NativeSigninRouteImport } from './routes/native-signin'
 import { Route as WorkspaceIndexRouteImport } from './routes/$workspace.index'
 import { Route as WorkspaceModuleRouteImport } from './routes/$workspace.$module'
 import { Route as WorkspaceConnectRouteImport } from './routes/$workspace.connect'
+import { Route as WorkspaceMediaRouteImport } from './routes/$workspace.media'
 import { Route as WorkspaceSettingsRouteImport } from './routes/$workspace.settings'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as WorkspaceModuleIndexRouteImport } from './routes/$workspace.$module.index'
@@ -50,6 +51,11 @@ const WorkspaceConnectRoute = WorkspaceConnectRouteImport.update({
   path: '/connect',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceMediaRoute = WorkspaceMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceSettingsRoute = WorkspaceSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/native-signin': typeof NativeSigninRoute
   '/$workspace/$module': typeof WorkspaceModuleRouteWithChildren
   '/$workspace/connect': typeof WorkspaceConnectRoute
+  '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/native-signin': typeof NativeSigninRoute
   '/$workspace/connect': typeof WorkspaceConnectRoute
+  '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace': typeof WorkspaceIndexRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/native-signin': typeof NativeSigninRoute
   '/$workspace/$module': typeof WorkspaceModuleRouteWithChildren
   '/$workspace/connect': typeof WorkspaceConnectRoute
+  '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/native-signin'
     | '/$workspace/$module'
     | '/$workspace/connect'
+    | '/$workspace/media'
     | '/$workspace/settings'
     | '/sign/$token'
     | '/$workspace/'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/'
     | '/native-signin'
     | '/$workspace/connect'
+    | '/$workspace/media'
     | '/$workspace/settings'
     | '/sign/$token'
     | '/$workspace'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/native-signin'
     | '/$workspace/$module'
     | '/$workspace/connect'
+    | '/$workspace/media'
     | '/$workspace/settings'
     | '/sign/$token'
     | '/$workspace/'
@@ -194,6 +206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceConnectRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/$workspace/media': {
+      id: '/$workspace/media'
+      path: '/media'
+      fullPath: '/$workspace/media'
+      preLoaderRoute: typeof WorkspaceMediaRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/$workspace/settings': {
       id: '/$workspace/settings'
       path: '/settings'
@@ -242,6 +261,7 @@ const WorkspaceModuleRouteWithChildren = WorkspaceModuleRoute._addFileChildren(
 interface WorkspaceRouteChildren {
   WorkspaceModuleRoute: typeof WorkspaceModuleRouteWithChildren
   WorkspaceConnectRoute: typeof WorkspaceConnectRoute
+  WorkspaceMediaRoute: typeof WorkspaceMediaRoute
   WorkspaceSettingsRoute: typeof WorkspaceSettingsRoute
   WorkspaceIndexRoute: typeof WorkspaceIndexRoute
 }
@@ -249,6 +269,7 @@ interface WorkspaceRouteChildren {
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceModuleRoute: WorkspaceModuleRouteWithChildren,
   WorkspaceConnectRoute: WorkspaceConnectRoute,
+  WorkspaceMediaRoute: WorkspaceMediaRoute,
   WorkspaceSettingsRoute: WorkspaceSettingsRoute,
   WorkspaceIndexRoute: WorkspaceIndexRoute,
 }

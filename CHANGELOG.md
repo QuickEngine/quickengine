@@ -8,6 +8,58 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Every list is a table you can read.** Columns have headings, they line up, and each list sits
+  in its own bordered panel instead of floating as loose rows. Every list can be switched between
+  a table and cards, and it remembers your choice for that page — products as cards, orders as a
+  table, if that is how you like them.
+
+- **Lists are paged, 25 at a time.** A business with fifty thousand records no longer tries to draw
+  fifty thousand rows. Narrowing a search takes you back to the first page rather than stranding
+  you on an empty one.
+
+- **Rows and cards can be dragged into whatever order suits you.** That arrangement is yours alone
+  and never changes the records, so nobody else's list moves because you rearranged yours.
+
+- **A dot marks the exact record that needs you.** It comes from the same notifications as the
+  bell, so reading a notification clears the mark on its row, and the two can never disagree.
+
+- **Every record opens in a floating panel** — half the screen, laid over the list so you keep
+  your place. Creating something new opens the same panel, so making a customer and editing one
+  finally look alike.
+
+- **A header across the top of every page**, carrying the page you are on, the record you have
+  open, and that page's one action. Help is now summoned from the account menu and stays put for
+  the session rather than sitting in the corner covering the page.
+
+- **You can build a catalog.** Products can be created and edited in full: pricing, sale price,
+  stock keeping unit, weight, web address, tags, photographs and which categories they belong to.
+  Categories can be edited rather than deleted and remade.
+
+- **Detail pages for everything else** — customers, invoices, quotes, payments, shipments, stock,
+  bookings, projects, contracts and documents.
+
+- **Stock warnings can be turned on.** An item's low stock level is editable for the first time,
+  which is what the low stock notification watches.
+
+### Fixed
+
+- **Uploading a product photograph works.** It had three separate faults, any one of which looked
+  identical from the outside: the request was refused for want of an idempotency key, the
+  development file store accepted images and threw them away, and a one megabyte request limit
+  rejected every real photograph before it arrived.
+
+- **Browsing the console no longer signs you out.** Checking who you are on every page change
+  exceeded the sign-in service's own rate limit, and the resulting refusal was read as "you are
+  not signed in" rather than "ask again in a moment".
+
+- **A page that breaks no longer claims you are offline.** Any ordinary fault was being reported
+  as a connection problem, which sent people to check their internet while the real error stayed
+  hidden.
+
+- **Marking a fulfillment or a shipment no longer fails silently**, for the same missing-key
+  reason as photographs.
+
+
 - **QuickDash tells you when something happens.** A paid order, a customer waiting on a reply, a
   disputed payment, a shipment somebody flagged, and stock running low all now reach the person
   running the business. They arrive in the bell and stay there until read, and if you are looking at

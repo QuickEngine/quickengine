@@ -91,9 +91,18 @@ export function AccountNotifications({
 									onClick={() => void openNotification(item)}
 									className={`group relative w-full rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] disabled:opacity-50 ${item.readAt ? "text-[var(--ink-38)]" : "bg-[rgb(var(--console-ink)/0.025)] text-[var(--ink-80)]"}`}
 								>
-									{!item.readAt ? (
-										<span className="absolute top-3 right-2 size-1.5 rounded-full bg-[rgb(var(--console-ink)/0.75)]" />
-									) : null}
+									{/* 🔑 The unread dot carries the SIGNAL, matching QuickDash.
+									    This is one inbox seen from two consoles, and a message
+									    that looks urgent in one and ordinary in the other is
+									    worse than no colour at all. */}
+									<span
+										className="absolute top-3 right-2 size-1.5 rounded-full"
+										style={{
+											background: item.readAt
+												? "rgb(var(--console-ink)/0.12)"
+												: ACCENT[item.signal],
+										}}
+									/>
 									<p className="pr-4 text-[11.5px] leading-4">{item.title}</p>
 									{item.body ? (
 										<p className="mt-1 line-clamp-3 text-[10.5px] leading-4 text-[var(--ink-30)]">

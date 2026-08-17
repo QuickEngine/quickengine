@@ -723,6 +723,15 @@ function declaredDocument(config: ApiConfig) {
 						schema: { type: "string", format: "uuid" },
 					},
 				],
+				get: {
+					operationId: "listItemCategories",
+					summary: "Which categories a catalog item belongs to",
+					description:
+						"The read half of the replace below. Includes hidden categories, because this answers an operator's question rather than a storefront's, and omitting a hidden one would make it impossible to take an item out of it.",
+					responses: {
+						"200": { description: "The category ids, in merchandising order." },
+					},
+				},
 				put: {
 					operationId: "setItemCategories",
 					summary: "Replace which categories a catalog item belongs to",

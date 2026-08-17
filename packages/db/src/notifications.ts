@@ -23,6 +23,8 @@ export type NotificationInput = {
 	 * which have no redelivery to guard against.
 	 */
 	sourceKey?: string | null;
+	/** The record this is about, so a list can mark the row it belongs to. */
+	recordId?: string | null;
 };
 
 export type NotificationRow = {
@@ -60,6 +62,7 @@ export async function createNotification(
 			body: input.body ?? null,
 			href: input.href ?? null,
 			sourceKey: input.sourceKey ?? null,
+			recordId: input.recordId ?? null,
 		})
 		// 🔴 Silently does nothing on a repeat. The outbox delivers at least once,
 		// so this WILL happen — and telling somebody twice that they got one order

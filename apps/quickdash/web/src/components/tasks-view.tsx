@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, rowBusy } from "./page-state";
 
 /**
@@ -52,6 +54,7 @@ const priorityTone = (priority: string) =>
 		: "text-[var(--ink-30)]";
 
 export function TasksView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
@@ -94,6 +97,7 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search tasks"
@@ -164,55 +168,82 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 									<p className="mb-1 text-[11px] text-[var(--ink-45)]">
 										{data.projects.get(projectId) ?? "Unknown project"}
 									</p>
-									<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-										{rows
-											.filter((task) => task.projectId === projectId)
-											.map((task) => {
-												const next = NEXT_STATUS[task.status];
-												return (
-													<div
-														key={task.id}
-														className="flex items-center gap-3 py-2.5"
+									<PagedTable
+										workspaceId={workspaceId}
+										layout={layout}
+										caption="Tasks"
+										rows={rows.filter((task) => task.projectId === projectId)}
+										columns={[
+											{
+												key: "title",
+												header: "Task",
+												render: (task) => task.title,
+											},
+											{
+												key: "status",
+												header: "Status",
+												width: "w-24",
+												tight: true,
+												render: (task) => (
+													<span className="text-[11px] text-[var(--ink-30)] capitalize">
+														{readable(task.status)}
+													</span>
+												),
+											},
+											{
+												key: "priority",
+												header: "Priority",
+												width: "w-20",
+												tight: true,
+												render: (task) => (
+													<span
+														className={`text-[11px] capitalize ${priorityTone(
+															task.priority,
+														)}`}
 													>
-														<span className="w-24 shrink-0 text-[11px] text-[var(--ink-30)] capitalize">
-															{readable(task.status)}
+														{task.priority === "normal" ? "" : task.priority}
+													</span>
+												),
+											},
+											{
+												key: "due",
+												header: "Due",
+												width: "w-24",
+												align: "right",
+												tight: true,
+												render: (task) =>
+													task.dueDate ? (
+														<span className="text-[10.5px] text-[var(--ink-30)]">
+															{new Date(task.dueDate).toLocaleDateString()}
 														</span>
-														<span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-															{task.title}
-														</span>
-														<span
-															className={`w-16 shrink-0 text-[11px] capitalize ${priorityTone(
-																task.priority,
-															)}`}
+													) : null,
+											},
+											{
+												key: "actions",
+												header: "",
+												align: "right",
+												tight: true,
+												render: (task) => {
+													const next = NEXT_STATUS[task.status];
+													return next ? (
+														<button
+															type="button"
+															className={quiet}
+															disabled={rowBusy(advance, task.id)}
+															onClick={() =>
+																advance.mutate({
+																	id: task.id,
+																	status: next.status,
+																})
+															}
 														>
-															{task.priority === "normal" ? "" : task.priority}
-														</span>
-														{task.dueDate ? (
-															<span className="w-24 shrink-0 text-right text-[10.5px] text-[var(--ink-30)]">
-																{new Date(task.dueDate).toLocaleDateString()}
-															</span>
-														) : (
-															<span className="w-24 shrink-0" />
-														)}
-														{next ? (
-															<button
-																type="button"
-																className={quiet}
-																disabled={rowBusy(advance, task.id)}
-																onClick={() =>
-																	advance.mutate({
-																		id: task.id,
-																		status: next.status,
-																	})
-																}
-															>
-																{next.label}
-															</button>
-														) : null}
-													</div>
-												);
-											})}
-									</div>
+															{next.label}
+														</button>
+													) : null;
+												},
+											},
+										]}
+									/>
 								</section>
 							))}
 						</div>

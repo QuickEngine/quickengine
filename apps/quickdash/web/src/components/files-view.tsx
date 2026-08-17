@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { DocumentPanel } from "./module-panels";
 import { EmptyState, PageState, rowBusy } from "./page-state";
 
 /**
@@ -37,8 +41,11 @@ const quiet =
 	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
 
 export function FilesView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
 	const fileInput = useRef<HTMLInputElement>(null);
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -127,6 +134,7 @@ export function FilesView({ workspaceId }: { workspaceId: string }) {
 			</div>
 
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search files by name"
@@ -192,60 +200,115 @@ export function FilesView({ workspaceId }: { workspaceId: string }) {
 					}
 
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((document) => (
-								<div
-									key={document.id}
-									className="flex items-center gap-3 py-2.5"
-								>
-									<div className="min-w-0 flex-1">
-										<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-											{document.title}
-										</p>
-										<p className="truncate text-[11px] text-[var(--ink-30)]">
+						<PagedTable
+							rowSignal={rowSignal}
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Documents"
+							rows={rows}
+							selectedId={selectedId}
+							onOpen={(document) => setSelectedId(document.id)}
+							columns={[
+								{
+									key: "title",
+									header: "Document",
+									render: (document) => document.title,
+								},
+								{
+									key: "folder",
+									header: "Folder",
+									width: "w-48",
+									render: (document) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
 											{document.folderId
 												? (data.folders.get(document.folderId) ?? "Folder")
 												: "No folder"}
-											{document.currentVersionNumber
-												? ` · version ${document.currentVersionNumber}`
-												: ""}
-										</p>
-									</div>
-									<span className="w-20 shrink-0 text-[11px] text-[var(--ink-30)] capitalize">
-										{document.status}
-									</span>
-									<span className="w-24 shrink-0 text-right text-[10.5px] text-[var(--ink-30)]">
-										{new Date(document.updatedAt).toLocaleDateString()}
-									</span>
-									{document.status === "trashed" ? (
-										<button
-											type="button"
-											className={quiet}
-											disabled={rowBusy(setStatus, document.id)}
-											onClick={() =>
-												setStatus.mutate({ id: document.id, status: "active" })
-											}
-										>
-											Restore
-										</button>
-									) : (
-										<button
-											type="button"
-											className={quiet}
-											disabled={rowBusy(setStatus, document.id)}
-											onClick={() =>
-												setStatus.mutate({ id: document.id, status: "trashed" })
-											}
-										>
-											Trash
-										</button>
-									)}
-								</div>
-							))}
-						</div>
+										</span>
+									),
+								},
+								{
+									key: "version",
+									header: "Version",
+									width: "w-20",
+									align: "right",
+									tight: true,
+									render: (document) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{document.currentVersionNumber ?? ""}
+										</span>
+									),
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-20",
+									tight: true,
+									render: (document) => (
+										<span className="text-[11px] text-[var(--ink-30)] capitalize">
+											{document.status}
+										</span>
+									),
+								},
+								{
+									key: "updated",
+									header: "Updated",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									render: (document) => (
+										<span className="text-[10.5px] text-[var(--ink-30)]">
+											{new Date(document.updatedAt).toLocaleDateString()}
+										</span>
+									),
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (document) =>
+										document.status === "trashed" ? (
+											<button
+												type="button"
+												className={quiet}
+												disabled={rowBusy(setStatus, document.id)}
+												onClick={() =>
+													setStatus.mutate({
+														id: document.id,
+														status: "active",
+													})
+												}
+											>
+												Restore
+											</button>
+										) : (
+											<button
+												type="button"
+												className={quiet}
+												disabled={rowBusy(setStatus, document.id)}
+												onClick={() =>
+													setStatus.mutate({
+														id: document.id,
+														status: "trashed",
+													})
+												}
+											>
+												Trash
+											</button>
+										),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>
+			{selectedId ? (
+				<DocumentPanel
+					workspaceId={workspaceId}
+					id={selectedId}
+					onClose={() => setSelectedId(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

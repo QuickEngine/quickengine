@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { BookingPanel } from "./module-panels";
 import { EmptyState, PageState, rowBusy } from "./page-state";
 
 /**
@@ -73,7 +77,10 @@ const timeRange = (booking: Booking) =>
 	})}`;
 
 export function BookingsView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -108,6 +115,7 @@ export function BookingsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search bookings by customer or title"
@@ -185,58 +193,95 @@ export function BookingsView({ workspaceId }: { workspaceId: string }) {
 												?.startsAt ?? day,
 										)}
 									</p>
-									<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-										{rows
-											.filter((row) => dayKey(row.startsAt) === day)
-											.map((booking) => {
-												const next = NEXT_STATUS[booking.status];
-												return (
-													<div
-														key={booking.id}
-														className="flex items-center gap-3 py-2.5"
-													>
-														<span className="w-32 shrink-0 text-[12px] text-[var(--ink-60)]">
-															{timeRange(booking)}
-														</span>
-														<div className="min-w-0 flex-1">
-															<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-																{booking.title}
-															</p>
-															<p className="truncate text-[11px] text-[var(--ink-30)]">
-																{booking.clientName ?? "No customer named"}
-																{booking.location
-																	? ` · ${booking.location}`
-																	: ` · ${readable(booking.locationKind)}`}
-															</p>
-														</div>
-														<span className="w-24 shrink-0 text-[11px] text-[var(--ink-30)] capitalize">
-															{readable(booking.status)}
-														</span>
-														{next ? (
-															<button
-																type="button"
-																className={quiet}
-																disabled={rowBusy(advance, booking.id)}
-																onClick={() =>
-																	advance.mutate({
-																		id: booking.id,
-																		status: next.status,
-																	})
-																}
-															>
-																{next.label}
-															</button>
-														) : null}
-													</div>
-												);
-											})}
-									</div>
+									{/* One table per day, so a day heading stays attached to the
+									    bookings under it rather than floating above one long list. */}
+									<PagedTable
+										rowSignal={rowSignal}
+										workspaceId={workspaceId}
+										layout={layout}
+										caption={`Bookings on ${day}`}
+										rows={rows.filter((row) => dayKey(row.startsAt) === day)}
+										selectedId={selectedId}
+										onOpen={(booking) => setSelectedId(booking.id)}
+										columns={[
+											{
+												key: "title",
+												header: "Booking",
+												render: (booking) => booking.title,
+											},
+											{
+												key: "who",
+												header: "Customer",
+												render: (booking) => (
+													<span className="text-[11px] text-[var(--ink-30)]">
+														{booking.clientName ?? "No customer named"}
+														{booking.location
+															? ` · ${booking.location}`
+															: ` · ${readable(booking.locationKind)}`}
+													</span>
+												),
+											},
+											{
+												key: "time",
+												header: "Time",
+												width: "w-32",
+												tight: true,
+												render: (booking) => (
+													<span className="text-[12px] text-[var(--ink-60)]">
+														{timeRange(booking)}
+													</span>
+												),
+											},
+											{
+												key: "status",
+												header: "Status",
+												width: "w-24",
+												tight: true,
+												render: (booking) => (
+													<span className="text-[11px] text-[var(--ink-30)] capitalize">
+														{readable(booking.status)}
+													</span>
+												),
+											},
+											{
+												key: "actions",
+												header: "",
+												align: "right",
+												tight: true,
+												render: (booking) => {
+													const next = NEXT_STATUS[booking.status];
+													return next ? (
+														<button
+															type="button"
+															className={quiet}
+															disabled={rowBusy(advance, booking.id)}
+															onClick={() =>
+																advance.mutate({
+																	id: booking.id,
+																	status: next.status,
+																})
+															}
+														>
+															{next.label}
+														</button>
+													) : null;
+												},
+											},
+										]}
+									/>
 								</section>
 							))}
 						</div>
 					);
 				}}
 			</PageState>
+			{selectedId ? (
+				<BookingPanel
+					workspaceId={workspaceId}
+					id={selectedId}
+					onClose={() => setSelectedId(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

@@ -512,6 +512,13 @@
 			"when": 1786925997828,
 			"tag": "0072_tense_agent_brand",
 			"breakpoints": true
+		},
+		{
+			"idx": 73,
+			"version": "7",
+			"when": 1786993353100,
+			"tag": "0073_neat_cable",
+			"breakpoints": true
 		}
 	]
 }

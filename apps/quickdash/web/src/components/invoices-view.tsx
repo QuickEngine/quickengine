@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { InvoicePanel } from "./module-panels";
 import { EmptyState, PageState, rowBusy } from "./page-state";
 
 /**
@@ -55,7 +59,10 @@ const isOverdue = (invoice: Invoice) =>
 	);
 
 export function InvoicesView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -90,6 +97,7 @@ export function InvoicesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search invoices by number or customer"
@@ -154,76 +162,113 @@ export function InvoicesView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 
-					const overdue = rows.filter(isOverdue).length;
+					const _overdue = rows.filter(isOverdue).length;
 
 					return (
-						<>
-							{overdue > 0 ? (
-								<p className="mb-3 text-[11.5px] text-[#f5b44a]">
-									{overdue} {overdue === 1 ? "invoice is" : "invoices are"} past
-									due.
-								</p>
-							) : null}
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-								{rows.map((invoice) => {
-									const late = isOverdue(invoice);
-									const moves = NEXT_STATUSES[invoice.status] ?? [];
-									return (
-										<div
-											key={invoice.id}
-											className="flex items-center gap-3 py-2.5"
-										>
-											<span className="w-24 shrink-0 font-mono text-[11.5px] text-[var(--ink-60)]">
-												{invoice.number}
+						<PagedTable
+							rowSignal={rowSignal}
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Invoices"
+							rows={rows}
+							selectedId={selectedId}
+							onOpen={(invoice) => setSelectedId(invoice.id)}
+							columns={[
+								{
+									key: "number",
+									header: "Invoice",
+									width: "w-24",
+									tight: true,
+									render: (invoice) => (
+										<span className="font-mono text-[11.5px] text-[var(--ink-60)]">
+											{invoice.number}
+										</span>
+									),
+								},
+								{
+									key: "customer",
+									header: "Customer",
+									render: (invoice) => invoice.clientName ?? "No customer",
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-20",
+									tight: true,
+									render: (invoice) => (
+										<span className="text-[11px] text-[var(--ink-30)] capitalize">
+											{invoice.status}
+										</span>
+									),
+								},
+								{
+									key: "due",
+									header: "Due",
+									width: "w-32",
+									align: "right",
+									tight: true,
+									render: (invoice) =>
+										invoice.dueAt ? (
+											<span
+												className={`text-[11px] ${
+													isOverdue(invoice)
+														? "text-[var(--signal-attention)]"
+														: "text-[var(--ink-30)]"
+												}`}
+											>
+												{isOverdue(invoice) ? "Overdue " : ""}
+												{new Date(invoice.dueAt).toLocaleDateString()}
 											</span>
-											<span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-												{invoice.clientName ?? "No customer"}
-											</span>
-											<span className="w-20 shrink-0 text-[11px] text-[var(--ink-30)] capitalize">
-												{invoice.status}
-											</span>
-											{invoice.dueAt ? (
-												<span
-													className={`w-32 shrink-0 text-right text-[11px] ${
-														late ? "text-[#f5b44a]" : "text-[var(--ink-30)]"
-													}`}
+										) : null,
+								},
+								{
+									key: "total",
+									header: "Total",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									render: (invoice) =>
+										money(invoice.totalCents, invoice.currency),
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (invoice) => (
+										<div className="flex items-center justify-end gap-1.5">
+											{(NEXT_STATUSES[invoice.status] ?? []).map((status) => (
+												<button
+													key={status}
+													type="button"
+													className={quiet}
+													disabled={rowBusy(setStatus, invoice.id)}
+													onClick={() =>
+														setStatus.mutate({ id: invoice.id, status })
+													}
 												>
-													{late ? "Overdue " : "Due "}
-													{new Date(invoice.dueAt).toLocaleDateString()}
-												</span>
-											) : (
-												<span className="w-32 shrink-0" />
-											)}
-											<span className="w-24 shrink-0 text-right text-[12.5px] text-[var(--ink-85)]">
-												{money(invoice.totalCents, invoice.currency)}
-											</span>
-											<div className="flex shrink-0 items-center gap-1.5">
-												{moves.map((status) => (
-													<button
-														key={status}
-														type="button"
-														className={quiet}
-														disabled={rowBusy(setStatus, invoice.id)}
-														onClick={() =>
-															setStatus.mutate({ id: invoice.id, status })
-														}
-													>
-														{status === "sent"
-															? "Mark sent"
-															: status === "paid"
-																? "Mark paid"
-																: "Void"}
-													</button>
-												))}
-											</div>
+													{status === "sent"
+														? "Mark sent"
+														: status === "paid"
+															? "Mark paid"
+															: "Void"}
+												</button>
+											))}
 										</div>
-									);
-								})}
-							</div>
-						</>
+									),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>
+			{selectedId ? (
+				<InvoicePanel
+					workspaceId={workspaceId}
+					id={selectedId}
+					onClose={() => setSelectedId(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

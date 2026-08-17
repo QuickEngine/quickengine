@@ -1,13 +1,11 @@
-import { FunnelIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
-import {
-	Popover,
-	PopoverAnchor,
-	PopoverContent,
-	PopoverTrigger,
-} from "@quickengine/ui/components/ui/popover";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
+import { detailCard } from "./detail-panel";
+import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -135,7 +133,7 @@ function OrderPanel({
 	});
 
 	return (
-		<aside className="fixed inset-y-0 right-0 z-30 flex w-[28rem] max-w-full flex-col border-[var(--console-line-strong)] border-l bg-[var(--console-panel)]">
+		<aside className={detailCard}>
 			<header className="flex items-center gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
 				<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
 					{detail.data ? `Order ${detail.data.number}` : "Order"}
@@ -291,6 +289,10 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 
+	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears
+	// the row it pointed at.
+	const rowSignal = useRecordSignals();
 	const orders = useQuery({
 		queryKey: ["quickdash", workspaceId, "orders"],
 		queryFn: async () =>
@@ -301,7 +303,7 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 			).data,
 	});
 
-	const filtered = (orders.data?.items ?? [])
+	const filteredOrders: OrderRow[] = (orders.data?.items ?? [])
 		.filter((order) =>
 			statuses.length === 0 ? true : statuses.includes(order.status),
 		)
@@ -315,78 +317,40 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 			);
 		});
 
-	const waiting = (orders.data?.items ?? []).filter((order) =>
+	const _waiting = (orders.data?.items ?? []).filter((order) =>
 		NEEDS_ACTION.has(order.status),
 	).length;
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			<div className="mb-3 flex items-center gap-2">
-				<div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--console-line-strong)] px-3 transition-colors focus-within:border-[rgb(var(--console-ink)/0.18)]">
-					<MagnifyingGlassIcon
-						size={14}
-						className="shrink-0 text-[var(--ink-30)]"
-					/>
-					<input
-						value={query}
-						onChange={(event) => setQuery(event.target.value)}
-						placeholder="Search by order number, name or email"
-						className="min-w-0 flex-1 bg-transparent text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-30)]"
-					/>
-				</div>
-
-				<Popover>
-					<PopoverAnchor asChild>
-						<div className="flex shrink-0 items-center gap-2">
-							<PopoverTrigger className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[var(--console-line-strong)] px-3 text-[12.5px] text-[var(--ink-50)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.04)] hover:text-[var(--ink-85)] data-[state=open]:bg-[rgb(var(--console-ink)/0.04)]">
-								<FunnelIcon size={14} />
-								Filter
-								{statuses.length > 0 ? (
-									<span className={chip}>{statuses.length}</span>
-								) : null}
-							</PopoverTrigger>
-						</div>
-					</PopoverAnchor>
-					<PopoverContent
-						align="end"
-						sideOffset={8}
-						className="w-64 rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-3"
-					>
+			<ListControls
+				query={query}
+				onQueryChange={setQuery}
+				placeholder="Search by order number, name or email"
+				filterCount={statuses.length}
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
+				filter={
+					<>
 						<p className="mb-2 text-[11px] text-[var(--ink-45)]">Status</p>
 						<div className="flex flex-wrap gap-1.5">
-							{STATUSES.map((status) => {
-								const on = statuses.includes(status);
-								return (
-									<button
-										key={status}
-										type="button"
-										onClick={() =>
-											setStatuses(
-												on
-													? statuses.filter((value) => value !== status)
-													: [...statuses, status],
-											)
-										}
-										className={`h-7 rounded-full border px-3 text-[11px] capitalize transition-colors ${
-											on
-												? "border-transparent bg-[rgb(var(--console-ink))] text-[var(--console-pop)]"
-												: "border-[var(--console-line-strong)] text-[var(--ink-60)] hover:text-[var(--ink-90)]"
-										}`}
-									>
-										{status}
-									</button>
-								);
-							})}
+							{STATUSES.map((status) => (
+								<FilterChip
+									key={status}
+									label={status}
+									active={statuses.includes(status)}
+									onToggle={() =>
+										setStatuses(
+											statuses.includes(status)
+												? statuses.filter((value) => value !== status)
+												: [...statuses, status],
+										)
+									}
+								/>
+							))}
 						</div>
-					</PopoverContent>
-				</Popover>
-			</div>
-
-			{waiting > 0 ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-30)]">
-					{waiting} {waiting === 1 ? "order needs" : "orders need"} attention.
-				</p>
-			) : null}
+					</>
+				}
+			/>
 
 			<PageState
 				query={orders}
@@ -400,36 +364,68 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 				}
 			>
 				{() =>
-					filtered.length === 0 ? (
+					filteredOrders.length === 0 ? (
 						<EmptyState
 							title="Nothing matches"
 							detail="Try a different search, or clear the status filter."
 						/>
 					) : (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{filtered.map((order) => (
-								<button
-									type="button"
-									key={order.id}
-									onClick={() => setSelectedId(order.id)}
-									className="flex w-full items-center gap-3 py-2.5 text-left transition-opacity hover:opacity-80"
-								>
-									<span className="w-24 shrink-0 font-mono text-[11.5px] text-[var(--ink-60)]">
-										{order.number}
-									</span>
-									<span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-										{order.clientName}
-									</span>
-									<span className={chip}>{order.status}</span>
-									<span className="w-24 shrink-0 text-right text-[11px] text-[var(--ink-30)]">
-										{when(order.createdAt)}
-									</span>
-									<span className="w-24 shrink-0 text-right text-[12.5px] text-[var(--ink-85)]">
-										{money(order.totalCents, order.currency)}
-									</span>
-								</button>
-							))}
-						</div>
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Orders"
+							rowSignal={rowSignal}
+							rows={filteredOrders}
+							selectedId={selectedId}
+							onOpen={(order) => setSelectedId(order.id)}
+							columns={[
+								{
+									key: "number",
+									header: "Order",
+									width: "w-28",
+									tight: true,
+									render: (order) => (
+										<span className="font-mono text-[11.5px] text-[var(--ink-60)]">
+											{order.number}
+										</span>
+									),
+								},
+								{
+									key: "customer",
+									header: "Customer",
+									render: (order) => order.clientName,
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-28",
+									tight: true,
+									render: (order) => (
+										<span className={chip}>{order.status}</span>
+									),
+								},
+								{
+									key: "placed",
+									header: "Placed",
+									width: "w-28",
+									align: "right",
+									tight: true,
+									render: (order) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{when(order.createdAt)}
+										</span>
+									),
+								},
+								{
+									key: "total",
+									header: "Total",
+									width: "w-28",
+									align: "right",
+									tight: true,
+									render: (order) => money(order.totalCents, order.currency),
+								},
+							]}
+						/>
 					)
 				}
 			</PageState>

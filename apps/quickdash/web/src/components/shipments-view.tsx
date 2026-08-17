@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { ShipmentPanel } from "./module-panels";
 import { EmptyState, PageState, rowBusy } from "./page-state";
 
 /**
@@ -49,7 +53,10 @@ const NEXT_STATUS: Record<string, { label: string; status: string }> = {
 const readable = (status: string) => status.replace(/_/g, " ");
 
 export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -68,6 +75,9 @@ export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
 		mutationFn: async (input: { id: string; status: string }) => {
 			await workspaceApi(workspaceId).request(`/shipments/${input.id}/status`, {
 				method: "POST",
+				// Required: this route commits through `mutationContext`, which
+				// refuses a mutation carrying no `Idempotency-Key`.
+				idempotencyKey: crypto.randomUUID(),
 				body: { status: input.status },
 			});
 		},
@@ -83,6 +93,7 @@ export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search by tracking number or carrier"
@@ -150,56 +161,83 @@ export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
 					}
 
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((shipment) => {
-								const next = NEXT_STATUS[shipment.status];
-								return (
-									<div
-										key={shipment.id}
-										className="flex items-center gap-3 py-2.5"
-									>
-										<span className="w-28 shrink-0 text-[12px] text-[var(--ink-60)] capitalize">
+						<PagedTable
+							rowSignal={rowSignal}
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Shipments"
+							rows={rows}
+							selectedId={selectedId}
+							onOpen={(shipment) => setSelectedId(shipment.id)}
+							columns={[
+								{
+									key: "carrier",
+									header: "Carrier",
+									render: (shipment) =>
+										`${shipment.carrier ?? "No carrier set"}${
+											shipment.serviceLevel ? ` · ${shipment.serviceLevel}` : ""
+										}`,
+								},
+								{
+									key: "tracking",
+									header: "Tracking",
+									width: "w-56",
+									render: (shipment) =>
+										shipment.trackingNumber ? (
+											// Linked when the carrier gave a url, because copying a
+											// tracking number into a search engine is a chore
+											// somebody does several times a day.
+											shipment.trackingUrl ? (
+												<a
+													href={shipment.trackingUrl}
+													target="_blank"
+													rel="noreferrer"
+													className="font-mono text-[10.5px] text-[var(--ink-45)] underline underline-offset-2"
+												>
+													{shipment.trackingNumber}
+												</a>
+											) : (
+												<span className="font-mono text-[10.5px] text-[var(--ink-30)]">
+													{shipment.trackingNumber}
+												</span>
+											)
+										) : (
+											<span className="text-[10.5px] text-[var(--ink-30)]">
+												No tracking number
+											</span>
+										),
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-28",
+									tight: true,
+									render: (shipment) => (
+										<span className="text-[12px] text-[var(--ink-60)] capitalize">
 											{readable(shipment.status)}
 										</span>
-										<div className="min-w-0 flex-1">
-											<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-												{shipment.carrier ?? "No carrier set"}
-												{shipment.serviceLevel
-													? ` · ${shipment.serviceLevel}`
-													: ""}
-											</p>
-											{shipment.trackingNumber ? (
-												// Linked when the carrier gave a url, because copying a
-												// tracking number into a search engine is a chore
-												// somebody does several times a day.
-												shipment.trackingUrl ? (
-													<a
-														href={shipment.trackingUrl}
-														target="_blank"
-														rel="noreferrer"
-														className="truncate font-mono text-[10.5px] text-[var(--ink-45)] underline underline-offset-2"
-													>
-														{shipment.trackingNumber}
-													</a>
-												) : (
-													<p className="truncate font-mono text-[10.5px] text-[var(--ink-30)]">
-														{shipment.trackingNumber}
-													</p>
-												)
-											) : (
-												<p className="text-[10.5px] text-[var(--ink-30)]">
-													No tracking number
-												</p>
-											)}
-										</div>
-
-										<span className="w-24 shrink-0 text-right text-[10.5px] text-[var(--ink-30)]">
-											{new Date(
-												shipment.shippedAt ?? shipment.createdAt,
-											).toLocaleDateString()}
+									),
+								},
+								{
+									key: "created",
+									header: "Created",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									render: (shipment) => (
+										<span className="text-[10.5px] text-[var(--ink-30)]">
+											{new Date(shipment.createdAt).toLocaleDateString()}
 										</span>
-
-										{next ? (
+									),
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (shipment) => {
+										const next = NEXT_STATUS[shipment.status];
+										return next ? (
 											<button
 												type="button"
 												className={quiet}
@@ -213,14 +251,21 @@ export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
 											>
 												{next.label}
 											</button>
-										) : null}
-									</div>
-								);
-							})}
-						</div>
+										) : null;
+									},
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>
+			{selectedId ? (
+				<ShipmentPanel
+					workspaceId={workspaceId}
+					id={selectedId}
+					onClose={() => setSelectedId(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

@@ -14,7 +14,7 @@ import { quickDashQueries } from "../lib/quickdash-api";
  * one setting is two places to disagree about it.
  */
 
-const primaryAction =
+const _primaryAction =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85 disabled:pointer-events-none disabled:opacity-40";
 
 const quietAction =

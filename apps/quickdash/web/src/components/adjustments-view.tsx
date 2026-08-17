@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
 import { ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -42,6 +44,7 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 export function AdjustmentsView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
 	const [search, setSearch] = useState("");
 
 	const history = useQuery({
@@ -87,6 +90,7 @@ export function AdjustmentsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search movements by product"
@@ -117,39 +121,78 @@ export function AdjustmentsView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map(({ adjustment, name }) => (
-								<div
-									key={adjustment.id}
-									className="flex items-center gap-3 py-2.5"
-								>
-									<span className="w-40 shrink-0 truncate text-[12px] text-[var(--ink-60)]">
-										{KIND_LABELS[adjustment.kind] ?? adjustment.kind}
-									</span>
-									<span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-										{name}
-									</span>
-									{/* Signed, because direction is the whole point. A movement
-									    of "5" tells you nothing without knowing which way. */}
-									<span
-										className={`w-16 shrink-0 text-right text-[12px] ${
-											adjustment.onHandDelta < 0
-												? "text-[var(--ink-45)]"
-												: "text-[var(--ink-85)]"
-										}`}
-									>
-										{adjustment.onHandDelta > 0 ? "+" : ""}
-										{adjustment.onHandDelta}
-									</span>
-									<span className="w-24 shrink-0 text-right text-[11px] text-[var(--ink-30)]">
-										{adjustment.resultingOnHand} left
-									</span>
-									<span className="w-28 shrink-0 text-right text-[10.5px] text-[var(--ink-30)]">
-										{new Date(adjustment.createdAt).toLocaleDateString()}
-									</span>
-								</div>
-							))}
-						</div>
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Stock movements"
+							rows={rows.map(({ adjustment, name }) => ({
+								...adjustment,
+								name,
+							}))}
+							columns={[
+								{
+									key: "product",
+									header: "Product",
+									render: (row) => row.name,
+								},
+								{
+									key: "kind",
+									header: "Movement",
+									width: "w-40",
+									tight: true,
+									render: (row) => (
+										<span className="text-[12px] text-[var(--ink-60)]">
+											{KIND_LABELS[row.kind] ?? row.kind}
+										</span>
+									),
+								},
+								{
+									key: "delta",
+									header: "Change",
+									width: "w-20",
+									align: "right",
+									tight: true,
+									// Signed, because direction is the whole point. A movement of
+									// "5" tells you nothing without knowing which way.
+									render: (row) => (
+										<span
+											className={
+												row.onHandDelta < 0
+													? "text-[var(--ink-45)]"
+													: "text-[var(--ink-85)]"
+											}
+										>
+											{row.onHandDelta > 0 ? "+" : ""}
+											{row.onHandDelta}
+										</span>
+									),
+								},
+								{
+									key: "left",
+									header: "Left",
+									width: "w-20",
+									align: "right",
+									tight: true,
+									render: (row) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{row.resultingOnHand}
+										</span>
+									),
+								},
+								{
+									key: "when",
+									header: "When",
+									width: "w-28",
+									align: "right",
+									tight: true,
+									render: (row) => (
+										<span className="text-[10.5px] text-[var(--ink-30)]">
+											{new Date(row.createdAt).toLocaleDateString()}
+										</span>
+									),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>

@@ -26,6 +26,7 @@ import { registerInngestRoutes } from "./inngest-routes";
 import { registerIntegrationHealthRoutes } from "./integration-health-routes";
 import { registerInventoryRoutes } from "./inventory-routes";
 import { registerInvoicesRoutes } from "./invoices-routes";
+import { registerLocalAssetRoutes } from "./local-asset-routes";
 import type { ApiLogger } from "./logger";
 import { registerOrdersRoutes } from "./orders-routes";
 import { registerPaymentsRoutes } from "./payments-routes";
@@ -68,6 +69,8 @@ export function registerAllRoutes(
 		uow: mutationUnitOfWork,
 	};
 	const logger = options.logger;
+	// Development only, and a no-op once a public Blob store is configured.
+	registerLocalAssetRoutes(app);
 	registerClientRecordRoutes(app, dependencies);
 	registerProductsServicesRoutes(app, dependencies);
 	registerQuotesRoutes(app, dependencies);

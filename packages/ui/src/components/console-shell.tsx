@@ -296,6 +296,7 @@ export function SidebarAccount({
 	authUrl,
 	webUrl = "",
 	onFeedback,
+	onHelp,
 	onSignOut,
 	link: Link = AnchorLink,
 	settingsHref,
@@ -307,6 +308,14 @@ export function SidebarAccount({
 	authUrl: string;
 	webUrl?: string;
 	onFeedback?: () => void;
+	/**
+	 * Summons help in place, rather than navigating to it.
+	 *
+	 * 🔑 Needing help happens in the middle of something. A console that can
+	 * open help WITHOUT abandoning the page passes this; one that cannot (the
+	 * account app) leaves it out and the row stays an ordinary link.
+	 */
+	onHelp?: () => void;
 	onSignOut?: MouseEventHandler<HTMLAnchorElement>;
 	link?: ConsoleLink;
 	/**
@@ -405,10 +414,24 @@ export function SidebarAccount({
 					<GaugeIcon size={14} />
 					<span>Usage</span>
 				</Link>
-				<Link href={accountHref("/support")} className={menuRow}>
-					<HeadsetIcon size={14} />
-					<span>Help & Support</span>
-				</Link>
+				{onHelp ? (
+					<button
+						type="button"
+						onClick={() => {
+							setOpen(false);
+							onHelp();
+						}}
+						className={menuRow}
+					>
+						<HeadsetIcon size={14} />
+						<span>Help & Support</span>
+					</button>
+				) : (
+					<Link href={accountHref("/support")} className={menuRow}>
+						<HeadsetIcon size={14} />
+						<span>Help & Support</span>
+					</Link>
+				)}
 				<a href={`${webUrl}/docs`} className={menuRow}>
 					<BookOpenIcon size={14} />
 					<span>Docs</span>
@@ -442,11 +465,10 @@ export function ConsoleShell({
 	navBottom,
 	overlays,
 	banner,
+	header,
 	children,
 }: {
 	switcher: ReactNode;
-	breadcrumbs?: ReactNode;
-	actions?: ReactNode;
 	account?: ReactNode;
 	navTop?: ReactNode;
 	nav?: ReactNode;
@@ -462,6 +484,22 @@ export function ConsoleShell({
 	 * a work queue is the most important row.
 	 */
 	banner?: ReactNode;
+	/**
+	 * The bar across the top of the CONTENT, beside the sidebar rather than above
+	 * it.
+	 *
+	 * 🔑 Aligned with the workspace switcher, so the two read as one line across
+	 * the window. Spanning the whole width instead would put page actions above
+	 * the workspace name, which inverts what belongs to what: the sidebar says
+	 * WHERE you are, the header says what you can do HERE.
+	 *
+	 * ⚠️ Outside the scroll container, so it stays put. The actions in it are the
+	 * ones somebody reaches for repeatedly, and a header that scrolls away is a
+	 * header they have to scroll back for.
+	 *
+	 * Deliberately borderless — it sits ON the content rather than above it.
+	 */
+	header?: ReactNode;
 	children: ReactNode;
 }) {
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -538,8 +576,18 @@ export function ConsoleShell({
 			</Sheet>
 
 			<main className="min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[var(--console-bg)]">
+				{header ? (
+					/**
+					 * Sticky inside the scroll container, so it stays put while a long
+					 * list moves under it.
+					 */
+					<div className="sticky top-0 z-20 flex h-16 shrink-0 items-center bg-[var(--console-bg)] px-5">
+						{header}
+					</div>
+				) : null}
 				{children}
 			</main>
+
 			{overlays}
 		</div>
 	);

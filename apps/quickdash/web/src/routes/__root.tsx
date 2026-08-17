@@ -1,4 +1,4 @@
-import { authClient } from "@quickengine/auth/client";
+import { resolveSession } from "@quickengine/auth/session";
 import { RequestErrorScreen, StatusScreen, textLink } from "@quickengine/ui";
 import type { QueryClient } from "@tanstack/react-query";
 import {
@@ -40,31 +40,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 			 * once the attempts are exhausted, an unverifiable session sees no
 			 * workspace data.
 			 */
-			// ⚠️ Backoff spanning ~6 seconds, not one 600ms retry. A development
-			// server restarting, or a cold serverless start, routinely takes several
-			// seconds — a retry that gives up sooner than the server takes to return
-			// is the same bug with extra steps, which is exactly what the first
-			// attempt at this fix shipped.
+			/**
+			 * 🔴 Asked through `resolveSession`, which caches briefly and separates
+			 * "no session" from "could not ask". Calling Better Auth directly on
+			 * every navigation exceeded its 100-per-minute limit during ordinary
+			 * clicking, and the 429 that came back was read as a sign-out — which
+			 * is why browsing the sidebar kept throwing people to the login page.
+			 *
+			 * Retries remain, spanning ~6 seconds, for the case the service is
+			 * genuinely restarting: a development server or a cold serverless start
+			 * routinely takes several seconds, and giving up sooner than the server
+			 * takes to answer is the same bug with extra steps.
+			 */
 			for (const wait of [0, 400, 1200, 2200, 2500]) {
 				if (wait > 0) {
 					await new Promise((resolve) => setTimeout(resolve, wait));
 				}
-				try {
-					// The shell has no cookie — its sign-in happened in the system
-					// browser, a different process — so it carries the session token
-					// explicitly. Empty in a browser, where the cookie is enough.
-					const { data } = await authClient.getSession({
-						fetchOptions: { headers: nativeAuthHeaders() },
-					});
-					if (data?.session && data.user) {
-						markHadSession();
-						return { user: data.user };
-					}
-					// A clean answer of "not signed in". Retrying cannot change it.
-					break;
-				} catch {
-					// Could not ask. Fall through to the retry; only give up after it.
+				const session = await resolveSession(nativeAuthHeaders);
+				if (session.status === "signed-in") {
+					markHadSession();
+					return { user: session.user };
 				}
+				// A definite answer. Retrying cannot change it.
+				if (session.status === "signed-out") break;
+				// `unknown` — the service did not answer usefully. Try again.
 			}
 
 			// 🔴 The shell must NOT be sent to `auth.quickdash.xyz`. Signing in there

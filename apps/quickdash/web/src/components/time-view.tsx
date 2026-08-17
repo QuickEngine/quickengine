@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -44,6 +46,7 @@ const duration = (seconds: number) => {
 };
 
 export function TimeView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
@@ -109,6 +112,7 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search time by description"
@@ -174,54 +178,83 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 
 					const running = rows.filter((entry) => entry.status === "running");
 					const rest = rows.filter((entry) => entry.status !== "running");
-					const billable = rest
+					const _billable = rest
 						.filter((entry) => entry.billable && entry.status !== "void")
 						.reduce((total, entry) => total + entry.durationSeconds, 0);
 
-					const row = (entry: TimeEntry) => (
-						<div key={entry.id} className="flex items-center gap-3 py-2.5">
-							<span className="w-20 shrink-0 text-[12.5px] text-[var(--ink-85)]">
-								{duration(entry.durationSeconds)}
-							</span>
-							<div className="min-w-0 flex-1">
-								<p className="truncate text-[12px] text-[var(--ink-85)]">
-									{entry.description ?? "No description"}
-								</p>
-								<p className="truncate text-[11px] text-[var(--ink-30)]">
+					const columns = [
+						{
+							key: "description",
+							header: "Work",
+							render: (entry: TimeEntry) =>
+								entry.description ?? "No description",
+						},
+						{
+							key: "project",
+							header: "Project",
+							render: (entry: TimeEntry) => (
+								<span className="text-[11px] text-[var(--ink-30)]">
 									{data.projects.get(entry.projectId) ?? "Unknown project"}
-								</p>
-							</div>
-							<span className="w-20 shrink-0 text-[11px] text-[var(--ink-30)] capitalize">
-								{entry.status}
-							</span>
-							<span className="w-20 shrink-0 text-[11px] text-[var(--ink-30)]">
-								{entry.billable ? "Billable" : "Not billable"}
-							</span>
-							{entry.status === "running" ? (
-								<button
-									type="button"
-									className={quiet}
-									disabled={stop.isPending}
-									onClick={() => stop.mutate(entry.id)}
-								>
-									Stop
-								</button>
-							) : entry.status === "draft" || entry.status === "approved" ? (
-								<button
-									type="button"
-									className={quiet}
-									disabled={voidEntry.isPending}
-									onClick={() => voidEntry.mutate(entry.id)}
-								>
-									Void
-								</button>
-							) : (
-								// Invoiced or already void: nothing to offer, and an action
-								// that would be refused is worse than no action.
-								<span className="w-14 shrink-0" />
-							)}
-						</div>
-					);
+								</span>
+							),
+						},
+						{
+							key: "duration",
+							header: "Time",
+							width: "w-20",
+							align: "right" as const,
+							tight: true,
+							render: (entry: TimeEntry) => duration(entry.durationSeconds),
+						},
+						{
+							key: "status",
+							header: "Status",
+							width: "w-20",
+							tight: true,
+							render: (entry: TimeEntry) => (
+								<span className="text-[11px] text-[var(--ink-30)] capitalize">
+									{entry.status}
+								</span>
+							),
+						},
+						{
+							key: "billable",
+							header: "Billable",
+							width: "w-24",
+							tight: true,
+							render: (entry: TimeEntry) => (
+								<span className="text-[11px] text-[var(--ink-30)]">
+									{entry.billable ? "Billable" : "Not billable"}
+								</span>
+							),
+						},
+						{
+							key: "actions",
+							header: "",
+							align: "right" as const,
+							tight: true,
+							render: (entry: TimeEntry) =>
+								entry.status === "running" ? (
+									<button
+										type="button"
+										className={quiet}
+										disabled={stop.isPending}
+										onClick={() => stop.mutate(entry.id)}
+									>
+										Stop
+									</button>
+								) : entry.status === "draft" || entry.status === "approved" ? (
+									<button
+										type="button"
+										className={quiet}
+										disabled={voidEntry.isPending}
+										onClick={() => voidEntry.mutate(entry.id)}
+									>
+										Void
+									</button>
+								) : null,
+						},
+					];
 
 					return (
 						<>
@@ -231,21 +264,23 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 										<span className="size-1.5 animate-pulse rounded-full bg-[#f5b44a]" />
 										Running now
 									</p>
-									<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-										{running.map(row)}
-									</div>
+									<PagedTable
+										workspaceId={workspaceId}
+										layout={layout}
+										caption="Timers running"
+										rows={running}
+										columns={columns}
+									/>
 								</section>
 							) : null}
 
-							{billable > 0 ? (
-								<p className="mb-3 text-[11.5px] text-[var(--ink-30)]">
-									{duration(billable)} billable and not yet invoiced.
-								</p>
-							) : null}
-
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-								{rest.map(row)}
-							</div>
+							<PagedTable
+								workspaceId={workspaceId}
+								layout={layout}
+								caption="Time entries"
+								rows={rest}
+								columns={columns}
+							/>
 						</>
 					);
 				}}

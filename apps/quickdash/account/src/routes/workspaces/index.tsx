@@ -15,6 +15,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../../components/page-state";
+import { SkeletonRows } from "../../components/skeletons";
 import { accountQueries, useActiveOrganization } from "../../lib/account-api";
 import { clientEnv } from "../../lib/env";
 import { getBusinessType } from "../../lib/workspace-catalog";
@@ -229,11 +231,14 @@ function WorkspacesPage() {
 			</div>
 
 			{workspaces.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading workspaces…</p>
+				<SkeletonRows rows={4} />
 			) : workspaces.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">
-					Workspaces did not load.
-				</p>
+				<RequestFailure
+					error={workspaces.error}
+					onRetry={() => {
+						void workspaces.refetch();
+					}}
+				/>
 			) : items.length === 0 ? (
 				<p className="text-[12px] text-[var(--ink-30)]">
 					{needle ? "No workspaces match that." : "No workspaces yet."}
@@ -319,7 +324,7 @@ function WorkspacesPage() {
 											) : null}
 											{workspace.archivedAt ? null : (
 												<a
-													href={`${clientEnv.DASH_URL}/${workspace.id}`}
+													href={`${clientEnv.DASH_URL}/${workspace.slug ?? workspace.id}`}
 													className={openAction}
 												>
 													Open
@@ -422,7 +427,7 @@ function WorkspacesPage() {
 										) : null}
 										{workspace.archivedAt ? null : (
 											<a
-												href={`${clientEnv.DASH_URL}/${workspace.id}`}
+												href={`${clientEnv.DASH_URL}/${workspace.slug ?? workspace.id}`}
 												className={openAction}
 											>
 												Open

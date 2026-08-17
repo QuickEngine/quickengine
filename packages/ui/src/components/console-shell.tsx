@@ -326,6 +326,12 @@ export function SidebarAccount({
 	const plan = `${(planId || "free").replace(/[-_]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())} Plan`;
 	const accountHref = (path: string) => `${accountUrl}${path}`;
 	const signOutHref = `${authUrl}/signout?redirect=${encodeURIComponent(`${authUrl}/signin?signedout=1`)}`;
+	const MenuHeading = ({ children }: { children: string }) => (
+		<p className="px-2 pt-2 pb-0.5 text-[8.5px] text-[var(--ink-20)] uppercase tracking-[0.14em]">
+			{children}
+		</p>
+	);
+
 	const menuRow =
 		"flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[12px] text-[var(--ink-50)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-90)] focus-visible:bg-[rgb(var(--console-ink)/0.055)] focus-visible:text-[var(--ink-90)]";
 
@@ -369,6 +375,12 @@ export function SidebarAccount({
 					</span>
 				</Link>
 				<div className="border-[var(--console-line-soft)] border-t" />
+
+				{/* 🔑 Grouped so LEAVING is a decision rather than a surprise.
+				    Everything above the "Your account" heading stays where you are;
+				    everything below changes surface. Somebody deep in a workspace
+				    should never be thrown to another app by a menu row that looked
+				    identical to the one above it. */}
 				<SettingsLink
 					href={settingsHref ?? accountHref("/settings/security")}
 					className={menuRow}
@@ -376,10 +388,6 @@ export function SidebarAccount({
 					<GearSixIcon size={14} />
 					<span>Settings</span>
 				</SettingsLink>
-				<Link href={accountHref("/usage")} className={menuRow}>
-					<GaugeIcon size={14} />
-					<span>Usage</span>
-				</Link>
 				<button
 					type="button"
 					onClick={() => {
@@ -391,6 +399,12 @@ export function SidebarAccount({
 					<ChatCircleIcon size={14} />
 					<span>Feedback</span>
 				</button>
+
+				<MenuHeading>Your account</MenuHeading>
+				<Link href={accountHref("/usage")} className={menuRow}>
+					<GaugeIcon size={14} />
+					<span>Usage</span>
+				</Link>
 				<Link href={accountHref("/support")} className={menuRow}>
 					<HeadsetIcon size={14} />
 					<span>Help & Support</span>

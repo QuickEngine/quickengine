@@ -49,6 +49,11 @@ describe("notifications inbox", () => {
 		const first = await createNotification({ userId, type: "t", title: "One" });
 		await createNotification({ userId, type: "t", title: "Two" });
 
+		// `createNotification` returns null only when a `sourceKey` matched an
+		// existing row. These carry none, so an insert always happens; narrowing
+		// here rather than asserting keeps that reasoning visible.
+		if (!first) throw new Error("Expected a notification row.");
+
 		// A different user can't mark this user's notification read.
 		await markNotificationRead(otherUserId, first.id);
 		expect(await countUnreadNotifications(userId)).toBe(2);

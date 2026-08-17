@@ -8,6 +8,7 @@ import {
 } from "@quickengine/realtime";
 import { getSearchProvider, type SearchProvider } from "@quickengine/search";
 import { customerNotificationHandler } from "./customer-notifications";
+import { operatorNotificationHandler } from "./operator-notifications";
 import { webhookFanoutHandler } from "./webhooks";
 
 /**
@@ -124,6 +125,9 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 		// fan-out because a receipt matters more than a third-party integration,
 		// and it swallows its own failures so a mail outage cannot stall the rest.
 		customerNotificationHandler(),
+		// The bell. Tells the people who RUN the business what happened in it,
+		// where `customerNotificationHandler` above tells their shopper.
+		operatorNotificationHandler(),
 		webhookFanoutHandler(),
 	];
 }

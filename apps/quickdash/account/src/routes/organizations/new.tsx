@@ -86,7 +86,7 @@ function NewOrganizationPage() {
 						<button
 							type="submit"
 							disabled={!name.trim() || create.isPending}
-							className={primaryAction}
+							className={`${primaryAction} ${create.isPending ? "shimmer-busy" : ""}`}
 						>
 							{create.isPending ? "Creating…" : "Create organization"}
 						</button>

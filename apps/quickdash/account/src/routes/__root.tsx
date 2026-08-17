@@ -18,15 +18,12 @@ import {
 	useRouterState,
 } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-	ErrorScreen,
-	LoadingScreen,
-	NotFoundScreen,
-} from "@/components/status-screens";
+import { ErrorScreen, NotFoundScreen } from "@/components/status-screens";
 import { AccountNav } from "../components/account-nav";
 import { AccountNotifications } from "../components/account-notifications";
 import { AccountSearch } from "../components/account-search";
 import { FeedbackDialog } from "../components/feedback-dialog";
+import { SkeletonScreen } from "../components/skeletons";
 import {
 	accountQueries,
 	activeOrganization,
@@ -64,11 +61,32 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 			let authenticated:
 				| { user: { id: string; name: string; email: string } }
 				| undefined;
-			try {
-				const { data } = await authClient.getSession();
-				if (data?.session && data.user) authenticated = { user: data.user };
-			} catch {
-				// An unverifiable session is not a session.
+			/**
+			 * 🔴 A thrown request is NOT the same as "not signed in", and conflating
+			 * them signs people out at random — a restarting API in development, a
+			 * cold start in production, one dropped connection. They then sign in
+			 * successfully, come back, and meet the next blip identically.
+			 *
+			 * A clean refusal goes to sign-in at once. A failure to ask is retried
+			 * before concluding anything.
+			 */
+			// ⚠️ Backoff spanning ~6 seconds, not one 600ms retry. A development
+			// server restarting, or a cold serverless start, routinely takes several
+			// seconds — a retry that gives up sooner than the server takes to return
+			// is the same bug with extra steps, which is exactly what the first
+			// attempt at this fix shipped.
+			for (const wait of [0, 400, 1200, 2200, 2500]) {
+				if (wait > 0) {
+					await new Promise((resolve) => setTimeout(resolve, wait));
+				}
+				try {
+					const { data } = await authClient.getSession();
+					if (data?.session && data.user) authenticated = { user: data.user };
+					// A clean answer either way. Retrying cannot change it.
+					break;
+				} catch {
+					// Could not ask. Retry once, then give up.
+				}
 			}
 			if (!authenticated) throw signIn();
 
@@ -106,7 +124,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 		component: RootLayout,
 		errorComponent: ErrorScreen,
 		notFoundComponent: NotFoundScreen,
-		pendingComponent: LoadingScreen,
+		// The same mark QuickDash shows while a route resolves. The two consoles
+		// share their chrome, so they share this too.
+		pendingComponent: SkeletonScreen,
 	},
 );
 

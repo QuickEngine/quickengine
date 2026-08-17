@@ -139,7 +139,7 @@ function ProfilePage() {
 					<button
 						type="submit"
 						disabled={!dirty || !currentName.trim() || save.isPending}
-						className={primaryAction}
+						className={`${primaryAction} ${save.isPending ? "shimmer-busy" : ""}`}
 					>
 						{save.isPending ? "Saving…" : "Save"}
 					</button>

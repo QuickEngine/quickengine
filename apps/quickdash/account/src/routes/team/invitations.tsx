@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../../components/page-state";
+import { SkeletonRows } from "../../components/skeletons";
 import { accountQueries, useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
 
@@ -68,11 +70,14 @@ function InvitationsPage() {
 			</p>
 
 			{invitations.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading invitations…</p>
+				<SkeletonRows rows={4} />
 			) : invitations.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">
-					Invitations did not load.
-				</p>
+				<RequestFailure
+					error={invitations.error}
+					onRetry={() => {
+						void invitations.refetch();
+					}}
+				/>
 			) : pending.length === 0 ? (
 				<p className="py-6 text-[12px] text-[var(--ink-30)]">
 					Nobody is waiting. Invite someone from Members.

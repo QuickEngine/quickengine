@@ -200,6 +200,12 @@ Connect: sign up, create a workspace, tell it where your site lives, paste three
 configuration, and the page confirms itself the moment your site makes its first request. A key
 is locked to the addresses you name, so one copied out of your page source cannot be used to
 build another website. Proven on a freshly created account against a real storefront.
+Every operator page now says what it is doing: a skeleton in the shape of the page while it
+loads, a plain explanation and a retry when a request fails, and a short line saying what a list
+is for when it is empty. Workspaces are addressed by name rather than by an internal identifier.
+QuickDash also tells you when something needs you: a paid order, a customer waiting on a reply, a
+disputed payment, a flagged shipment or stock running low reaches the bell, marks the sidebar row
+it belongs to, and appears briefly in the corner if you are watching.
 The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and workflow
 orchestration stay deliberately out of the current delivery path — the goal is one complete,
 truthful business workflow before the ecosystem widens.

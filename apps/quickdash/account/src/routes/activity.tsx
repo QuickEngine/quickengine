@@ -7,6 +7,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet, useMatches } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../components/page-state";
+import { SkeletonRows } from "../components/skeletons";
 import type { AuditEntry } from "../lib/account-api";
 import { accountQueries, useActiveOrganization } from "../lib/account-api";
 
@@ -124,11 +126,14 @@ function ActivityPage() {
 			</div>
 
 			{audit.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading activity…</p>
+				<SkeletonRows rows={4} />
 			) : audit.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">
-					Activity did not load.
-				</p>
+				<RequestFailure
+					error={audit.error}
+					onRetry={() => {
+						void audit.refetch();
+					}}
+				/>
 			) : entries.length === 0 ? (
 				<p className="py-6 text-[12px] text-[var(--ink-30)]">
 					{action

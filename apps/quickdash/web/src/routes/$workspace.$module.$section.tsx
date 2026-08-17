@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AdjustmentsView } from "../components/adjustments-view";
+import { CategoriesView } from "../components/categories-view";
+import { DiscountsView } from "../components/discounts-view";
+import { FoldersView } from "../components/folders-view";
+import { MessagesView } from "../components/messages-view";
 import { PaymentsView } from "../components/payments-view";
+import { RatesView } from "../components/rates-view";
+import { ReviewsView } from "../components/reviews-view";
+import { TasksView } from "../components/tasks-view";
+import { ZonesView } from "../components/zones-view";
 
 /**
  * `/$workspace/$module/$section` — a module's secondary capabilities.
@@ -13,11 +22,39 @@ import { PaymentsView } from "../components/payments-view";
  * placeholder, because an empty page is honest about being unbuilt.
  */
 function Page() {
-	const { workspace, module, section } = Route.useParams();
+	const { module, section } = Route.useParams();
+	const { workspaceId } = Route.useRouteContext();
 	// Connecting a provider lives under Payments → Providers, where somebody
 	// looking for it would go. The module root is the payments themselves.
 	if (module === "payments" && section === "providers") {
-		return <PaymentsView workspaceId={workspace} />;
+		return <PaymentsView workspaceId={workspaceId} />;
+	}
+	if (module === "files" && section === "folders") {
+		return <FoldersView workspaceId={workspaceId} />;
+	}
+	if (module === "projects-tasks" && section === "tasks") {
+		return <TasksView workspaceId={workspaceId} />;
+	}
+	if (module === "client-records" && section === "messages") {
+		return <MessagesView workspaceId={workspaceId} />;
+	}
+	if (module === "shipping" && section === "zones") {
+		return <ZonesView workspaceId={workspaceId} />;
+	}
+	if (module === "shipping" && section === "rates") {
+		return <RatesView workspaceId={workspaceId} />;
+	}
+	if (module === "inventory" && section === "adjustments") {
+		return <AdjustmentsView workspaceId={workspaceId} />;
+	}
+	if (module === "orders" && section === "discounts") {
+		return <DiscountsView workspaceId={workspaceId} />;
+	}
+	if (module === "products-services" && section === "categories") {
+		return <CategoriesView workspaceId={workspaceId} />;
+	}
+	if (module === "products-services" && section === "reviews") {
+		return <ReviewsView workspaceId={workspaceId} />;
 	}
 	return <main className="min-h-full bg-[var(--console-bg)]" />;
 }

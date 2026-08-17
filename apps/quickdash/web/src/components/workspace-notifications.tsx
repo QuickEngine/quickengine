@@ -1,7 +1,20 @@
 import { CheckIcon } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { sessionApi } from "../lib/api";
-import type { QuickDashNotification } from "../lib/quickdash-api";
+import type {
+	NotificationSignal,
+	QuickDashNotification,
+} from "../lib/quickdash-api";
+
+/**
+ * The same three colours the toasts use, so a notification looks identical
+ * whether it arrived in the corner or is being read back an hour later.
+ */
+const ACCENT: Record<NotificationSignal, string> = {
+	news: "var(--signal-news)",
+	attention: "var(--signal-attention)",
+	failure: "var(--signal-failure)",
+};
 
 /**
  * The notification panel, in the sidebar's navigation slot.
@@ -59,10 +72,11 @@ export function WorkspaceNotifications({
 
 	return (
 		<section className="flex min-h-0 flex-1 flex-col">
-			<header className="flex h-10 shrink-0 items-center gap-2 px-3">
-				<h2 className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-					Notifications
-				</h2>
+			{/* No heading. You got here by pressing the bell, so a label saying
+			    "Notifications" is the panel telling you what you just clicked.
+			    The row survives only to hold "mark all read", and only while
+			    there is something to mark. */}
+			<header className="flex shrink-0 items-center justify-end gap-2 px-3 pt-1">
 				{unread > 0 ? (
 					<button
 						type="button"
@@ -96,9 +110,19 @@ export function WorkspaceNotifications({
 									onClick={() => void open(item)}
 									className={`group relative w-full rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] disabled:opacity-50 ${item.readAt ? "text-[var(--ink-38)]" : "bg-[rgb(var(--console-ink)/0.025)] text-[var(--ink-80)]"}`}
 								>
-									{item.readAt ? null : (
-										<span className="absolute top-3 right-2 size-1.5 rounded-full bg-[var(--ink-75)]" />
-									)}
+									{/* 🔑 The unread dot carries the SIGNAL rather than a neutral
+									    grey. Scanning a stacked inbox, colour is what separates
+									    "you made a sale" from "a payment was disputed" before a
+									    single word has been read. Read rows drop to the muted
+									    dot: the severity mattered when it needed acting on. */}
+									<span
+										className="absolute top-3 right-2 size-1.5 rounded-full"
+										style={{
+											background: item.readAt
+												? "rgb(var(--console-ink)/0.12)"
+												: ACCENT[item.signal],
+										}}
+									/>
 									<p className="pr-4 text-[11.5px] leading-4">{item.title}</p>
 									{item.body ? (
 										<p className="mt-1 line-clamp-3 text-[10.5px] text-[var(--ink-30)] leading-4">

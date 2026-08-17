@@ -267,7 +267,7 @@ function ImagePanel({
 							upload.mutate(event.dataTransfer.files);
 						}
 					}}
-					className={`flex h-24 w-full items-center justify-center rounded-xl border border-dashed text-[11.5px] transition-colors ${
+					className={`${upload.isPending ? "shimmer-busy" : ""} flex h-24 w-full items-center justify-center rounded-xl border border-dashed text-[11.5px] transition-colors ${
 						dragging
 							? "border-[rgb(var(--console-ink)/0.4)] bg-[rgb(var(--console-ink)/0.05)] text-[var(--ink-85)]"
 							: "border-[var(--console-line-strong)] text-[var(--ink-30)] hover:text-[var(--ink-60)]"

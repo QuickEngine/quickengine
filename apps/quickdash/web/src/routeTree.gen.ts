@@ -17,6 +17,7 @@ import { Route as WorkspaceModuleRouteImport } from './routes/$workspace.$module
 import { Route as WorkspaceConnectRouteImport } from './routes/$workspace.connect'
 import { Route as WorkspaceSettingsRouteImport } from './routes/$workspace.settings'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
+import { Route as WorkspaceModuleIndexRouteImport } from './routes/$workspace.$module.index'
 import { Route as WorkspaceModuleSectionRouteImport } from './routes/$workspace.$module.$section'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,11 @@ const SignTokenRoute = SignTokenRouteImport.update({
   path: '/sign/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkspaceModuleIndexRoute = WorkspaceModuleIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WorkspaceModuleRoute,
+} as any)
 const WorkspaceModuleSectionRoute = WorkspaceModuleSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
@@ -75,16 +81,17 @@ export interface FileRoutesByFullPath {
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
+  '/$workspace/$module/': typeof WorkspaceModuleIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/native-signin': typeof NativeSigninRoute
-  '/$workspace/$module': typeof WorkspaceModuleRouteWithChildren
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
+  '/$workspace/$module': typeof WorkspaceModuleIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -97,6 +104,7 @@ export interface FileRoutesById {
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
+  '/$workspace/$module/': typeof WorkspaceModuleIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -110,16 +118,17 @@ export interface FileRouteTypes {
     | '/sign/$token'
     | '/$workspace/'
     | '/$workspace/$module/$section'
+    | '/$workspace/$module/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/native-signin'
-    | '/$workspace/$module'
     | '/$workspace/connect'
     | '/$workspace/settings'
     | '/sign/$token'
     | '/$workspace'
     | '/$workspace/$module/$section'
+    | '/$workspace/$module'
   id:
     | '__root__'
     | '/'
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/sign/$token'
     | '/$workspace/'
     | '/$workspace/$module/$section'
+    | '/$workspace/$module/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -198,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$workspace/$module/': {
+      id: '/$workspace/$module/'
+      path: '/'
+      fullPath: '/$workspace/$module/'
+      preLoaderRoute: typeof WorkspaceModuleIndexRouteImport
+      parentRoute: typeof WorkspaceModuleRoute
+    }
     '/$workspace/$module/$section': {
       id: '/$workspace/$module/$section'
       path: '/$section'
@@ -210,10 +227,12 @@ declare module '@tanstack/react-router' {
 
 interface WorkspaceModuleRouteChildren {
   WorkspaceModuleSectionRoute: typeof WorkspaceModuleSectionRoute
+  WorkspaceModuleIndexRoute: typeof WorkspaceModuleIndexRoute
 }
 
 const WorkspaceModuleRouteChildren: WorkspaceModuleRouteChildren = {
   WorkspaceModuleSectionRoute: WorkspaceModuleSectionRoute,
+  WorkspaceModuleIndexRoute: WorkspaceModuleIndexRoute,
 }
 
 const WorkspaceModuleRouteWithChildren = WorkspaceModuleRoute._addFileChildren(

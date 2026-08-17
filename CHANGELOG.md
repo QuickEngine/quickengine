@@ -8,6 +8,30 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **QuickDash tells you when something happens.** A paid order, a customer waiting on a reply, a
+  disputed payment, a shipment somebody flagged, and stock running low all now reach the person
+  running the business. They arrive in the bell and stay there until read, and if you are looking at
+  the dashboard when one lands it also appears briefly in the bottom corner, where it can be
+  clicked, dismissed or dragged away. Deliberately a short list: a notification for everything is a
+  notification nobody reads.
+
+- **The sidebar shows you where the problem is.** A disputed payment puts a red dot on Payments, a
+  new order a blue one on Orders, a flagged shipment an amber one on Shipping. A closed group shows
+  the most urgent thing hiding inside it, so nothing waits unseen behind a collapsed heading.
+
+- **A disputed payment now reaches QuickDash at all.** Previously a customer disputing a charge
+  changed nothing anywhere: the payment still read as succeeded and nobody was told. Disputes are
+  recorded against the payment and raised immediately, because they carry a deadline and an
+  unanswered one loses the money by default.
+
+- **Notifications say how urgent they are, by colour.** Blue for something new, amber for something
+  that needs a decision, red for something that failed. The same three colours mean the same three
+  things in QuickDash and in your account, because it is one inbox.
+
+- **Being told twice is no longer possible.** However many times the system retries delivering an
+  event, each person is told once. Low stock is reported once a day per product rather than on
+  every sale of it.
+
 - **A business can collect payments through its own PayPal.** Connect it from Payments, and
   checkout, captures and refunds all run through that business's own PayPal account. The money is
   theirs and goes straight to them; QuickEngine never stands in the middle and takes nothing from

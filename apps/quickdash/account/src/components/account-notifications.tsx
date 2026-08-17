@@ -1,7 +1,14 @@
 import { CheckIcon } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Notification } from "../lib/account-api";
+import type { Notification, NotificationSignal } from "../lib/account-api";
 import { api } from "../lib/api";
+
+/** The same three colours QuickDash uses, for the same one inbox. */
+const ACCENT: Record<NotificationSignal, string> = {
+	news: "var(--signal-news)",
+	attention: "var(--signal-attention)",
+	failure: "var(--signal-failure)",
+};
 
 const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
@@ -49,10 +56,8 @@ export function AccountNotifications({
 
 	return (
 		<section className="flex min-h-0 flex-1 flex-col">
-			<header className="flex h-10 shrink-0 items-center gap-2 px-3">
-				<h2 className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-					Notifications
-				</h2>
+			{/* No heading — you got here by pressing the bell. Same as QuickDash. */}
+			<header className="flex shrink-0 items-center justify-end gap-2 px-3 pt-1">
 				{unread > 0 ? (
 					<button
 						type="button"

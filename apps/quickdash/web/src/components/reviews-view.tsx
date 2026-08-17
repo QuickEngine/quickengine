@@ -1,0 +1,231 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { workspaceApi } from "../lib/api";
+import { ListControls } from "./list-controls";
+import { EmptyState, PageState, rowBusy } from "./page-state";
+
+/**
+ * Reviews — deciding what a shop says about itself.
+ *
+ * 🔴 A customer's review arrives `pending` and is invisible until somebody
+ * publishes it. That is the whole point of this screen: nothing a stranger
+ * writes appears on a business's storefront without a person agreeing to it.
+ *
+ * ⚠️ Rejecting is not deleting. The review stays, attributable, with who decided
+ * — so "why was mine taken down" has an answer.
+ */
+
+const STATUSES = ["pending", "published", "rejected"] as const;
+type Status = (typeof STATUSES)[number];
+
+type Review = {
+	id: string;
+	catalogItemId: string | null;
+	authorName: string | null;
+	rating: number;
+	title: string | null;
+	body: string | null;
+	status: string;
+	createdAt: string;
+};
+
+const quiet =
+	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
+
+const solid =
+	"inline-flex h-7 shrink-0 items-center rounded-full bg-[rgb(var(--console-ink))] px-2.5 text-[11px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40";
+
+/** Rating as it reads to a person, not as a number they have to interpret. */
+const stars = (rating: number) =>
+	"★".repeat(Math.max(0, Math.min(5, Math.round(rating)))).padEnd(5, "☆");
+
+export function ReviewsView({ workspaceId }: { workspaceId: string }) {
+	const queryClient = useQueryClient();
+	const [status, setStatus] = useState<Status>("pending");
+	const [failure, setFailure] = useState<string | null>(null);
+	const [search, setSearch] = useState("");
+
+	const reviews = useQuery({
+		queryKey: ["quickdash", workspaceId, "reviews", status],
+		queryFn: async () =>
+			(
+				await workspaceApi(workspaceId).request<{ items: Review[] }>(
+					`/reviews/moderation?status=${status}&limit=100`,
+				)
+			).data,
+	});
+
+	const moderate = useMutation({
+		mutationFn: async (input: {
+			id: string;
+			status: "published" | "rejected";
+		}) => {
+			await workspaceApi(workspaceId).request(`/reviews/${input.id}/moderate`, {
+				method: "POST",
+				body: { status: input.status },
+			});
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That decision did not save."),
+		onSuccess: () =>
+			queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspaceId, "reviews"],
+			}),
+	});
+
+	return (
+		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
+			<ListControls
+				query={search}
+				onQueryChange={setSearch}
+				placeholder="Search reviews by author or words"
+			/>
+
+			<div className="mb-4 flex h-9 w-fit items-center rounded-full bg-[rgb(var(--console-ink)/0.07)] p-0.5">
+				{STATUSES.map((option) => (
+					<button
+						key={option}
+						type="button"
+						onClick={() => setStatus(option)}
+						className={`h-8 rounded-full px-3.5 text-[11.5px] capitalize transition-colors ${
+							status === option
+								? "bg-[var(--console-pop)] text-[var(--ink-90)]"
+								: "text-[var(--ink-30)] hover:text-[var(--ink-60)]"
+						}`}
+					>
+						{option}
+					</button>
+				))}
+			</div>
+
+			{failure ? (
+				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
+			) : null}
+
+			<PageState
+				query={reviews}
+				loadingLabel="Loading reviews…"
+				isEmpty={(data) => data.items.length === 0}
+				empty={
+					<EmptyState
+						title={
+							status === "pending"
+								? "Nothing waiting on you"
+								: `No ${status} reviews`
+						}
+						detail={
+							status === "pending"
+								? "Reviews customers write appear here first. Nothing reaches your shop until you publish it."
+								: undefined
+						}
+					/>
+				}
+			>
+				{(data) => {
+					const needle = search.trim().toLowerCase();
+					const rows = data.items.filter(
+						(review) =>
+							!needle ||
+							(review.authorName ?? "").toLowerCase().includes(needle) ||
+							(review.title ?? "").toLowerCase().includes(needle) ||
+							(review.body ?? "").toLowerCase().includes(needle),
+					);
+					if (rows.length === 0) {
+						return (
+							<EmptyState
+								title="Nothing matches"
+								detail="Try a different search."
+							/>
+						);
+					}
+					return (
+						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+							{rows.map((review) => (
+								<div key={review.id} className="py-3">
+									<div className="flex items-center gap-2">
+										{/* role="img" so the label is honoured: the stars are a picture
+									    of the rating, and a screen reader should hear "4 out of 5"
+									    rather than spell out four star characters. */}
+										<span
+											role="img"
+											className="font-mono text-[12px] text-[var(--ink-85)]"
+											aria-label={`${review.rating} out of 5`}
+										>
+											{stars(review.rating)}
+										</span>
+										<span className="text-[12px] text-[var(--ink-60)]">
+											{review.authorName ?? "Anonymous"}
+										</span>
+										<span className="text-[10.5px] text-[var(--ink-30)]">
+											{new Date(review.createdAt).toLocaleDateString()}
+										</span>
+
+										{status === "pending" ? (
+											<div className="ml-auto flex items-center gap-1.5">
+												<button
+													type="button"
+													className={solid}
+													disabled={rowBusy(moderate, review.id)}
+													onClick={() =>
+														moderate.mutate({
+															id: review.id,
+															status: "published",
+														})
+													}
+												>
+													Publish
+												</button>
+												<button
+													type="button"
+													className={quiet}
+													disabled={rowBusy(moderate, review.id)}
+													onClick={() =>
+														moderate.mutate({
+															id: review.id,
+															status: "rejected",
+														})
+													}
+												>
+													Reject
+												</button>
+											</div>
+										) : (
+											// A decision already made can be changed. Publishing
+											// something rejected in haste should not require support.
+											<button
+												type="button"
+												className={`${quiet} ml-auto`}
+												disabled={rowBusy(moderate, review.id)}
+												onClick={() =>
+													moderate.mutate({
+														id: review.id,
+														status:
+															status === "published" ? "rejected" : "published",
+													})
+												}
+											>
+												{status === "published" ? "Unpublish" : "Publish"}
+											</button>
+										)}
+									</div>
+
+									{review.title ? (
+										<p className="mt-1.5 text-[12.5px] text-[var(--ink-85)]">
+											{review.title}
+										</p>
+									) : null}
+									{review.body ? (
+										<p className="mt-1 text-[11.5px] text-[var(--ink-60)] leading-5">
+											{review.body}
+										</p>
+									) : null}
+								</div>
+							))}
+						</div>
+					);
+				}}
+			</PageState>
+		</main>
+	);
+}

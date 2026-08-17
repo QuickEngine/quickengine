@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { RequestFailure } from "../components/page-state";
+import { SkeletonRows } from "../components/skeletons";
 import { accountQueries, useActiveOrganization } from "../lib/account-api";
 
 /**
@@ -126,9 +128,14 @@ function UsagePage() {
 			) : null}
 
 			{plan.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading usage…</p>
+				<SkeletonRows rows={4} />
 			) : plan.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">Usage did not load.</p>
+				<RequestFailure
+					error={plan.error}
+					onRetry={() => {
+						void plan.refetch();
+					}}
+				/>
 			) : (
 				<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
 					{rows.map((row) => {

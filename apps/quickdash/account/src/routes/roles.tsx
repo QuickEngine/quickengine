@@ -2,6 +2,8 @@ import { CheckIcon, PlusIcon } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../components/page-state";
+import { SkeletonRows } from "../components/skeletons";
 import {
 	accountQueries,
 	type OrganizationRole,
@@ -247,7 +249,7 @@ function RolesPage() {
 						<button
 							type="submit"
 							disabled={!name.trim() || save.isPending}
-							className={primaryAction}
+							className={`${primaryAction} ${save.isPending ? "shimmer-busy" : ""}`}
 						>
 							{save.isPending
 								? "Saving…"
@@ -264,9 +266,14 @@ function RolesPage() {
 
 			<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Custom roles</p>
 			{roles.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading roles…</p>
+				<SkeletonRows rows={4} />
 			) : roles.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">Roles did not load.</p>
+				<RequestFailure
+					error={roles.error}
+					onRetry={() => {
+						void roles.refetch();
+					}}
+				/>
 			) : roles.data.items.length === 0 ? (
 				<p className="py-6 text-[12px] text-[var(--ink-30)]">
 					No custom roles yet. The three built-in ones below cover most

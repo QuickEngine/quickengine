@@ -121,8 +121,16 @@ export type Settlement = {
 	settledAt: string;
 };
 
+export type NotificationSignal = "news" | "attention" | "failure";
+
 export type Notification = {
 	id: string;
+	type: string;
+	/**
+	 * How loudly to say it, decided by whatever produced the notification. The
+	 * same field QuickDash reads — one inbox, one severity, two consoles.
+	 */
+	signal: NotificationSignal;
 	title: string;
 	body: string | null;
 	href: string | null;

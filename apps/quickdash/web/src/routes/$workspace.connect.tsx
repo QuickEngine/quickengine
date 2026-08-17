@@ -9,6 +9,8 @@ import {
 	installLine,
 	suggestedKeyName,
 } from "../_lib/connect-config";
+import { SkeletonRows } from "../components/skeletons";
+import { WorkingSpinner } from "../components/working-spinner";
 import { sessionApi, workspaceApi } from "../lib/api";
 import { clientEnv } from "../lib/env";
 import { quickDashQueries } from "../lib/quickdash-api";
@@ -80,7 +82,7 @@ function Snippet({ label, value }: { label: string; value: string }) {
 }
 
 function ConnectPage() {
-	const { workspace } = Route.useParams();
+	const { workspaceId: workspace } = Route.useRouteContext();
 	const context = useQuery(quickDashQueries.context(workspace));
 	const endpoints = useQuery(webhookQueries.endpoints(workspace));
 	const [target, setTarget] = useState<ConnectTarget>("selling-storefront");
@@ -278,7 +280,7 @@ function ConnectPage() {
 				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">Webhooks</p>
 				<div className="border-[var(--console-line-soft)] border-t py-4">
 					{endpoints.isPending ? (
-						<p className="text-[12px] text-[var(--ink-30)]">Loading…</p>
+						<SkeletonRows rows={3} />
 					) : (endpoints.data ?? []).length === 0 ? (
 						<p className="max-w-xl text-[11.5px] text-[var(--ink-35)] leading-5">
 							No endpoints yet. Register one and this workspace will post every
@@ -323,7 +325,7 @@ function ConnectPage() {
 								Recent deliveries
 							</p>
 							{deliveries.isPending ? (
-								<p className="text-[12px] text-[var(--ink-30)]">Loading…</p>
+								<SkeletonRows rows={3} />
 							) : (deliveries.data ?? []).length === 0 ? (
 								<p className="text-[11.5px] text-[var(--ink-30)]">
 									Nothing delivered yet.
@@ -415,9 +417,10 @@ function ConnectPage() {
 								</p>
 							) : (
 								<p className="flex items-center gap-2 text-[11.5px] text-[#f5b44a]">
-									{/* Says what it is waiting FOR and that leaving is safe, because
-									    a spinner with no explanation is what makes people refresh. */}
-									<span className="size-1.5 animate-pulse rounded-full bg-[#f5b44a]" />
+									{/* The same ring the sidebar shows, resolving to the checkmark
+									    above once contact lands — so waiting and done are the same
+									    control in two states rather than two different marks. */}
+									<WorkingSpinner label="Waiting for your site to connect" />
 									Waiting for the first call from your site. Deploy it and load
 									a page; this updates on its own, and it is safe to leave.
 								</p>

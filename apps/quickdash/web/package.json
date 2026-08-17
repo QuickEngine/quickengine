@@ -27,6 +27,7 @@
 		"@tanstack/react-router": "^1.95.0",
 		"@tauri-apps/plugin-deep-link": "^2.4.9",
 		"@tauri-apps/plugin-opener": "^2.5.4",
+		"ldrs": "^1.1.9",
 		"react": "19.2.8",
 		"react-dom": "19.2.8"
 	},

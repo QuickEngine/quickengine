@@ -105,7 +105,7 @@ function OnboardingPreview() {
 						<input
 							value={name}
 							onChange={(event) => setName(event.target.value)}
-							placeholder="Caffeinate"
+							placeholder="Your business name"
 							aria-label="Business name"
 							className={`${field} mt-6`}
 						/>

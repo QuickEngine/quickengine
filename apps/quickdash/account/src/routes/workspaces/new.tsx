@@ -94,7 +94,7 @@ function NewWorkspacePage() {
 					<input
 						value={name}
 						onChange={(event) => setName(event.target.value)}
-						placeholder="Caffeinate"
+						placeholder="Your business name"
 						aria-label="Workspace name"
 						className={field}
 					/>

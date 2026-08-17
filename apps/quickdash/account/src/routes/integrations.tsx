@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { RequestFailure } from "../components/page-state";
+import { SkeletonRows } from "../components/skeletons";
 import type { Integration } from "../lib/account-api";
 import { accountQueries, useActiveOrganization } from "../lib/account-api";
 import { clientEnv } from "../lib/env";
@@ -73,11 +75,14 @@ function IntegrationsPage() {
 			<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Payments</p>
 
 			{integrations.isPending || workspaces.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading connections…</p>
+				<SkeletonRows rows={3} />
 			) : integrations.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">
-					Connections did not load.
-				</p>
+				<RequestFailure
+					error={integrations.error}
+					onRetry={() => {
+						void integrations.refetch();
+					}}
+				/>
 			) : activeWorkspaces.length === 0 ? (
 				<p className="py-6 text-[12px] text-[var(--ink-30)]">
 					No workspaces to connect anything to yet.
@@ -98,7 +103,7 @@ function IntegrationsPage() {
 										</span>
 									) : null}
 									<a
-										href={`${clientEnv.DASH_URL}/${workspace.id}/payments`}
+										href={`${clientEnv.DASH_URL}/${workspace.slug ?? workspace.id}/payments`}
 										className={openAction}
 									>
 										Manage

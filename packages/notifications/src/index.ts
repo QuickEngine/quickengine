@@ -13,7 +13,19 @@ export type NotifyInput = NotificationInput & {
 	email?: SendEmailInput;
 };
 
-export async function notify(input: NotifyInput): Promise<NotificationRow> {
+/**
+ * Returns null when the notification was already in the inbox.
+ *
+ * 🔑 That happens when the caller supplied a `sourceKey` and this exact fact has
+ * been recorded before — a redelivered event, usually. The email still sends: a
+ * caller reaching for `notify` with an email attached wants the person told, and
+ * suppressing it here would silently drop the first email if the row happened to
+ * be written by another path first. Callers that must not repeat an email should
+ * check the result.
+ */
+export async function notify(
+	input: NotifyInput,
+): Promise<NotificationRow | null> {
 	const { email, ...notification } = input;
 	const row = await createNotification(notification);
 

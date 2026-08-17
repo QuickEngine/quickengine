@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
+import { detailCard } from "./detail-panel";
 import { ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -92,7 +96,7 @@ function Thread({
 	});
 
 	return (
-		<aside className="fixed inset-y-0 right-0 z-30 flex w-[28rem] max-w-full flex-col border-[var(--console-line-strong)] border-l bg-[var(--console-panel)]">
+		<aside className={detailCard}>
 			<header className="flex items-center gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
 				<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
 					{thread.data?.conversation.customerName ?? "Conversation"}
@@ -162,6 +166,8 @@ function Thread({
 }
 
 export function MessagesView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const [search, setSearch] = useState("");
 	const [openId, setOpenId] = useState<string | null>(null);
 
@@ -178,6 +184,7 @@ export function MessagesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search conversations by customer or subject"
@@ -213,40 +220,69 @@ export function MessagesView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((conversation) => (
-								<button
-									type="button"
-									key={conversation.id}
-									onClick={() => setOpenId(conversation.id)}
-									className="flex w-full items-center gap-3 py-2.5 text-left transition-opacity hover:opacity-80"
-								>
-									{/* Unread leads the row, because it is the only reason to
-									    open one thing before another. */}
-									{conversation.unreadForOperator ? (
-										<span className="size-1.5 shrink-0 rounded-full bg-[var(--signal-news)]" />
-									) : (
-										<span className="size-1.5 shrink-0" />
-									)}
-									<span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-										{conversation.customerName ?? "Someone"}
-										{conversation.subject ? (
-											<span className="ml-2 text-[11px] text-[var(--ink-30)]">
-												{conversation.subject}
+						<PagedTable
+							rowSignal={rowSignal}
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Conversations"
+							rows={rows}
+							selectedId={openId}
+							onOpen={(conversation) => setOpenId(conversation.id)}
+							columns={[
+								{
+									key: "customer",
+									header: "Customer",
+									render: (conversation) => (
+										<span className="flex items-center gap-2">
+											{/* Unread leads the row, because it is the only reason
+											    to open one thing before another. */}
+											{conversation.unreadForOperator ? (
+												<span className="size-1.5 shrink-0 rounded-full bg-[var(--signal-news)]" />
+											) : (
+												<span className="size-1.5 shrink-0" />
+											)}
+											<span className="truncate">
+												{conversation.customerName ?? "Someone"}
 											</span>
-										) : null}
-									</span>
-									<span className="w-20 shrink-0 text-[11px] text-[var(--ink-30)] capitalize">
-										{conversation.status}
-									</span>
-									<span className="w-28 shrink-0 text-right text-[10.5px] text-[var(--ink-30)]">
-										{new Date(
-											conversation.lastMessageAt ?? conversation.createdAt,
-										).toLocaleDateString()}
-									</span>
-								</button>
-							))}
-						</div>
+										</span>
+									),
+								},
+								{
+									key: "subject",
+									header: "Subject",
+									render: (conversation) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{conversation.subject ?? ""}
+										</span>
+									),
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-20",
+									tight: true,
+									render: (conversation) => (
+										<span className="text-[11px] text-[var(--ink-30)] capitalize">
+											{conversation.status}
+										</span>
+									),
+								},
+								{
+									key: "last",
+									header: "Last message",
+									width: "w-28",
+									align: "right",
+									tight: true,
+									render: (conversation) => (
+										<span className="text-[10.5px] text-[var(--ink-30)]">
+											{new Date(
+												conversation.lastMessageAt ?? conversation.createdAt,
+											).toLocaleDateString()}
+										</span>
+									),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>

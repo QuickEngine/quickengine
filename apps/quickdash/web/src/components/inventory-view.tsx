@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
+import { InventoryPanel } from "./inventory-panel";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -41,7 +45,14 @@ const field =
 const available = (item: InventoryItem) => item.onHand - item.reserved;
 
 export function InventoryView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
+	// The panel needs the product NAME, which the inventory row does not carry.
+	const [selected, setSelected] = useState<{
+		id: string;
+		name: string;
+	} | null>(null);
 	const [search, setSearch] = useState("");
 	const [lowOnly, setLowOnly] = useState(false);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -95,6 +106,7 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search stock by product"
@@ -152,90 +164,146 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 					}
 
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((item) => {
-								const sellable = available(item);
-								const low = sellable <= item.lowStockThreshold;
-								const draft = drafts[item.id] ?? "";
-								const amount = Number(draft);
-								const canAdjust = Number.isFinite(amount) && amount > 0;
-								return (
-									<div key={item.id} className="flex items-center gap-3 py-2.5">
-										<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
+						<PagedTable
+							rowSignal={rowSignal}
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Stock levels"
+							rows={rows}
+							selectedId={selected?.id ?? null}
+							onOpen={(item) =>
+								setSelected({
+									id: item.id,
+									name: data.names.get(item.catalogItemId) ?? "Unnamed product",
+								})
+							}
+							columns={[
+								{
+									key: "product",
+									header: "Product",
+									render: (item) => (
+										<>
 											{data.names.get(item.catalogItemId) ?? "Unnamed product"}
 											{item.catalogItemVariantId ? (
 												<span className="ml-2 text-[11px] text-[var(--ink-30)]">
 													variant
 												</span>
 											) : null}
-										</p>
-
+										</>
+									),
+								},
+								{
+									key: "sellable",
+									header: "Sellable",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									render: (item) => (
 										<span
-											className={`shrink-0 text-[12.5px] ${
-												low ? "text-[#f5b44a]" : "text-[var(--ink-85)]"
-											}`}
+											className={
+												available(item) <= item.lowStockThreshold
+													? "text-[var(--signal-attention)]"
+													: "text-[var(--ink-85)]"
+											}
 										>
-											{sellable} sellable
+											{available(item)}
 										</span>
-										{/* Shown only when it is non-zero: "0 reserved" on every row
-										    is noise that hides the rows where it matters. */}
-										{item.reserved > 0 ? (
-											<span className="shrink-0 text-[11px] text-[var(--ink-30)]">
-												{item.onHand} on hand · {item.reserved} reserved
-											</span>
-										) : null}
-
-										<input
-											value={draft}
-											onChange={(event) =>
-												setDrafts((current) => ({
-													...current,
-													[item.id]: event.target.value,
-												}))
-											}
-											placeholder="Qty"
-											inputMode="numeric"
-											className={field}
-										/>
-										<button
-											type="button"
-											className={quiet}
-											disabled={!canAdjust || adjust.isPending}
-											onClick={() =>
-												adjust.mutate({
-													id: item.id,
-													kind: "receive",
-													quantity: amount,
-												})
-											}
-										>
-											Receive
-										</button>
-										{/* 🔴 A correction, not a sale. Selling reduces stock through
-										    checkout; typing a number here is somebody reconciling
-										    against a shelf, and recording it as a sale would invent
-										    revenue that never happened. */}
-										<button
-											type="button"
-											className={quiet}
-											disabled={!canAdjust || adjust.isPending}
-											onClick={() =>
-												adjust.mutate({
-													id: item.id,
-													kind: "correction_out",
-													quantity: amount,
-												})
-											}
-										>
-											Remove
-										</button>
-									</div>
-								);
-							})}
-						</div>
+									),
+								},
+								{
+									key: "onHand",
+									header: "On hand",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									render: (item) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{item.onHand}
+										</span>
+									),
+								},
+								{
+									key: "reserved",
+									header: "Reserved",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									// Blank rather than "0": a zero on every row hides the rows
+									// where it matters.
+									render: (item) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{item.reserved > 0 ? item.reserved : ""}
+										</span>
+									),
+								},
+								{
+									key: "adjust",
+									header: "Adjust",
+									align: "right",
+									tight: true,
+									render: (item) => {
+										const draft = drafts[item.id] ?? "";
+										const amount = Number(draft);
+										const canAdjust = Number.isFinite(amount) && amount > 0;
+										return (
+											<div className="flex items-center justify-end gap-1.5">
+												<input
+													value={draft}
+													onChange={(event) =>
+														setDrafts((current) => ({
+															...current,
+															[item.id]: event.target.value,
+														}))
+													}
+													placeholder="Qty"
+													inputMode="numeric"
+													className={field}
+												/>
+												<button
+													type="button"
+													className={quiet}
+													disabled={!canAdjust || adjust.isPending}
+													onClick={() =>
+														adjust.mutate({
+															id: item.id,
+															kind: "receive",
+															quantity: amount,
+														})
+													}
+												>
+													Receive
+												</button>
+												<button
+													type="button"
+													className={quiet}
+													disabled={!canAdjust || adjust.isPending}
+													onClick={() =>
+														adjust.mutate({
+															id: item.id,
+															kind: "correction_out",
+															quantity: amount,
+														})
+													}
+												>
+													Remove
+												</button>
+											</div>
+										);
+									},
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>
+			{selected ? (
+				<InventoryPanel
+					workspaceId={workspaceId}
+					id={selected.id}
+					name={selected.name}
+					onClose={() => setSelected(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

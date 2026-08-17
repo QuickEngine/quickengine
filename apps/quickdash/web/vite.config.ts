@@ -50,6 +50,15 @@ export default defineConfig(({ mode }) => {
 					target: process.env.API_URL ?? "http://127.0.0.1:3020",
 					changeOrigin: false,
 				},
+				// 🔴 Uploaded images are stored with the API's own origin, which in
+				// development is this dev server (the proxy keeps the Host header).
+				// Without this the browser asks Vite for `/assets/...`, gets the SPA
+				// fallback instead of a photograph, and every uploaded image renders
+				// blank — indistinguishable from an upload that never happened.
+				"/assets": {
+					target: process.env.API_URL ?? "http://127.0.0.1:3020",
+					changeOrigin: false,
+				},
 				"/api/auth": {
 					target: process.env.API_URL ?? "http://127.0.0.1:3020",
 					changeOrigin: false,

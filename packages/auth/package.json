@@ -9,7 +9,8 @@
 		"./api-keys": "./src/api-keys.ts",
 		"./client": "./src/client.ts",
 		"./rbac": "./src/rbac.ts",
-		"./server": "./src/server.ts"
+		"./server": "./src/server.ts",
+		"./session": "./src/session.ts"
 	},
 	"scripts": {
 		"lint": "biome lint .",

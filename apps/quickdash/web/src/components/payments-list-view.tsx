@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { PaymentPanel } from "./module-panels";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -62,7 +66,10 @@ const refundedCents = (payment: Payment) =>
 	);
 
 export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [refunding, setRefunding] = useState<string | null>(null);
@@ -102,6 +109,7 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search payments by reference or provider"
@@ -167,45 +175,118 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 					}
 
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((payment) => {
-								const returned = refundedCents(payment);
-								const remaining = payment.amountCents - returned;
-								const canRefund =
-									payment.status === "succeeded" && remaining > 0;
-								const open = refunding === payment.id;
-								const entered = Math.round(Number(amount) * 100);
-								const validAmount =
-									Number.isFinite(entered) &&
-									entered > 0 &&
-									entered <= remaining;
-
-								return (
-									<div key={payment.id} className="py-2.5">
-										<div className="flex items-center gap-3">
-											<span className="w-24 shrink-0 text-[12px] text-[var(--ink-60)] capitalize">
-												{payment.status}
+						<PagedTable
+							rowSignal={rowSignal}
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Payments"
+							rows={rows}
+							selectedId={selectedId}
+							onOpen={(payment) => setSelectedId(payment.id)}
+							columns={[
+								{
+									key: "amount",
+									header: "Amount",
+									render: (payment) => (
+										<>
+											{money(payment.amountCents, payment.currency)}
+											<span className="ml-2 text-[11px] text-[var(--ink-30)] capitalize">
+												{payment.provider}
 											</span>
-											<div className="min-w-0 flex-1">
-												<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-													{money(payment.amountCents, payment.currency)}
-													<span className="ml-2 text-[11px] text-[var(--ink-30)] capitalize">
-														{payment.provider}
-													</span>
-												</p>
-												{returned > 0 ? (
-													<p className="text-[11px] text-[var(--ink-45)]">
-														{money(returned, payment.currency)} refunded ·{" "}
-														{money(remaining, payment.currency)} kept
-													</p>
+										</>
+									),
+								},
+								{
+									key: "refunded",
+									header: "Refunded",
+									width: "w-40",
+									render: (payment) => {
+										const returned = refundedCents(payment);
+										return returned > 0 ? (
+											<span className="text-[11px] text-[var(--ink-45)]">
+												{money(returned, payment.currency)} back ·{" "}
+												{money(
+													payment.amountCents - returned,
+													payment.currency,
+												)}{" "}
+												kept
+											</span>
+										) : null;
+									},
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-24",
+									tight: true,
+									render: (payment) => (
+										<span className="text-[12px] text-[var(--ink-60)] capitalize">
+											{payment.status}
+										</span>
+									),
+								},
+								{
+									key: "taken",
+									header: "Taken",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									render: (payment) => (
+										<span className="text-[10.5px] text-[var(--ink-30)]">
+											{new Date(payment.createdAt).toLocaleDateString()}
+										</span>
+									),
+								},
+								{
+									key: "refund",
+									header: "",
+									align: "right",
+									tight: true,
+									/**
+									 * 🔴 The refund form lives IN the row, on one line, rather
+									 * than expanding a second line beneath it. A row that grows
+									 * when opened shifts every row under it, which is how
+									 * somebody clicks refund on the wrong payment.
+									 */
+									render: (payment) => {
+										const returned = refundedCents(payment);
+										const remaining = payment.amountCents - returned;
+										const canRefund =
+											payment.status === "succeeded" && remaining > 0;
+										if (!canRefund) return null;
+										const open = refunding === payment.id;
+										const entered = Math.round(Number(amount) * 100);
+										const validAmount =
+											Number.isFinite(entered) &&
+											entered > 0 &&
+											entered <= remaining;
+										return (
+											<div className="flex items-center justify-end gap-1.5">
+												{open ? (
+													<>
+														<input
+															value={amount}
+															onChange={(event) =>
+																setAmount(event.target.value)
+															}
+															inputMode="decimal"
+															className={field}
+														/>
+														<button
+															type="button"
+															className={`${solid} ${refund.isPending ? "shimmer-busy" : ""}`}
+															disabled={!validAmount || refund.isPending}
+															onClick={() =>
+																refund.mutate({
+																	id: payment.id,
+																	amountCents: entered,
+																})
+															}
+														>
+															{refund.isPending ? "Refunding…" : "Send back"}
+														</button>
+													</>
 												) : null}
-											</div>
-
-											<span className="w-24 shrink-0 text-right text-[10.5px] text-[var(--ink-30)]">
-												{new Date(payment.createdAt).toLocaleDateString()}
-											</span>
-
-											{canRefund ? (
 												<button
 													type="button"
 													className={quiet}
@@ -220,44 +301,22 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 												>
 													{open ? "Cancel" : "Refund"}
 												</button>
-											) : null}
-										</div>
-
-										{open ? (
-											<div className="mt-2 flex items-center gap-2 pl-24">
-												<input
-													value={amount}
-													onChange={(event) => setAmount(event.target.value)}
-													inputMode="decimal"
-													className={field}
-												/>
-												<span className="text-[11px] text-[var(--ink-30)]">
-													of {money(remaining, payment.currency)} refundable
-												</span>
-												<button
-													type="button"
-													className={`${solid} ${refund.isPending ? "shimmer-busy" : ""}`}
-													disabled={!validAmount || refund.isPending}
-													onClick={() =>
-														refund.mutate({
-															id: payment.id,
-															amountCents: entered,
-														})
-													}
-												>
-													{refund.isPending
-														? "Refunding…"
-														: `Send ${money(entered || 0, payment.currency)} back`}
-												</button>
 											</div>
-										) : null}
-									</div>
-								);
-							})}
-						</div>
+										);
+									},
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>
+			{selectedId ? (
+				<PaymentPanel
+					workspaceId={workspaceId}
+					id={selectedId}
+					onClose={() => setSelectedId(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

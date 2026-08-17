@@ -102,8 +102,28 @@ export function presentRequestError(error: unknown): RequestErrorPresentation {
 			kind: "rate-limit",
 		};
 	}
+	/**
+	 * 🔴 A TypeError is NOT automatically a network failure.
+	 *
+	 * `fetch` rejects with a TypeError when it cannot reach the server — but so
+	 * does every ordinary programming mistake, and this branch used to catch all
+	 * of them. A panel that read `data.items` on an array crashed, and the
+	 * console told the operator to check their internet connection. They then
+	 * check their connection, find it fine, and report the wrong bug.
+	 *
+	 * So a TypeError only counts as offline when it actually looks like a failed
+	 * fetch. The messages differ per browser and none is standardised, hence
+	 * matching several: Chrome "Failed to fetch", Firefox "NetworkError when
+	 * attempting to fetch resource", Safari "Load failed".
+	 */
+	const looksLikeFetchFailure =
+		candidate instanceof TypeError &&
+		/failed to fetch|networkerror|load failed|fetch/i.test(
+			candidate.message ?? "",
+		);
+
 	if (
-		candidate instanceof TypeError ||
+		looksLikeFetchFailure ||
 		candidate?.code === "NETWORK_ERROR" ||
 		candidate?.code === "ERR_NETWORK"
 	) {

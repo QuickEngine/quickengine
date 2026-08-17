@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { CreatePanel } from "./create-panel";
+import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
+// ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
+// if the import is ever dropped, and the error that produces names React
+// internals rather than the missing import.
+import { Text as TextField } from "./product-fields";
 
 /**
  * Shipping zones — where a business will send things.
@@ -34,17 +42,19 @@ type Zone = {
 	rates: Rate[];
 };
 
-const pill =
+const _pill =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40";
 
 const quiet =
 	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
 
-const field =
+const _field =
 	"h-9 rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
 
 export function ZonesView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
 	const queryClient = useQueryClient();
+	const [creating, setCreating] = useState(false);
 	const [search, setSearch] = useState("");
 	const [name, setName] = useState("");
 	const [countries, setCountries] = useState("");
@@ -85,10 +95,20 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 		onError: (error: { message?: string }) =>
 			setFailure(error?.message ?? "That zone could not be created."),
 		onSuccess: () => {
+			setCreating(false);
 			setName("");
 			setCountries("");
 			refresh();
 		},
+	});
+
+	// Every page's create lives in the header, in the same place. It REVEALS
+	// the form rather than submitting it: the fields belong together, and a
+	// submit button parted from its inputs is a button that does nothing
+	// visible.
+	useHeaderAction({
+		label: "New zone",
+		onClick: () => setCreating((open) => !open),
 	});
 
 	const remove = useMutation({
@@ -105,35 +125,34 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			<form
-				className="mb-4 flex flex-wrap items-center gap-2"
-				onSubmit={(event) => {
-					event.preventDefault();
-					if (name.trim()) create.mutate();
-				}}
-			>
-				<input
-					value={name}
-					onChange={(event) => setName(event.target.value)}
-					placeholder="Zone name, e.g. Canada"
-					className={`${field} w-56`}
-				/>
-				<input
-					value={countries}
-					onChange={(event) => setCountries(event.target.value)}
-					placeholder="CA, US"
-					className={`${field} w-40 uppercase`}
-				/>
-				<button
-					type="submit"
-					className={pill}
-					disabled={create.isPending || !name.trim()}
+			{creating ? (
+				<CreatePanel
+					title="New zone"
+					submitLabel="Add zone"
+					busy={create.isPending}
+					valid={name.trim().length > 0}
+					failure={failure}
+					onClose={() => setCreating(false)}
+					onSubmit={() => create.mutate()}
 				>
-					{create.isPending ? "Adding…" : "Add zone"}
-				</button>
-			</form>
+					<TextField
+						label="Name"
+						value={name}
+						onChange={setName}
+						placeholder="Canada"
+					/>
+					<TextField
+						label="Countries"
+						hint="two letter codes, comma separated"
+						value={countries}
+						onChange={setCountries}
+						placeholder="CA, US"
+					/>
+				</CreatePanel>
+			) : null}
 
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search zones"
@@ -168,42 +187,58 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((zone) => (
-								<div key={zone.id} className="flex items-center gap-3 py-2.5">
-									<div className="min-w-0 flex-1">
-										<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-											{zone.name}
-										</p>
-										<p className="truncate text-[11px] text-[var(--ink-30)]">
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Shipping zones"
+							rows={rows}
+							columns={[
+								{ key: "name", header: "Zone", render: (zone) => zone.name },
+								{
+									key: "countries",
+									header: "Countries",
+									render: (zone) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
 											{(zone.countryCodes ?? []).join(", ") ||
 												"No countries set"}
-										</p>
-									</div>
-
-									{/* 🔴 The state that silently breaks checkout. */}
-									{zone.rates.length === 0 ? (
-										<span className="shrink-0 rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[#f5b44a]">
-											No rates — cannot quote
 										</span>
-									) : (
-										<span className="shrink-0 text-[11px] text-[var(--ink-30)]">
-											{zone.rates.length}{" "}
-											{zone.rates.length === 1 ? "rate" : "rates"}
-										</span>
-									)}
-
-									<button
-										type="button"
-										className={quiet}
-										disabled={remove.isPending}
-										onClick={() => remove.mutate(zone.id)}
-									>
-										Remove
-									</button>
-								</div>
-							))}
-						</div>
+									),
+								},
+								{
+									key: "rates",
+									header: "Rates",
+									width: "w-48",
+									tight: true,
+									render: (zone) =>
+										// 🔴 The state that silently breaks checkout.
+										zone.rates.length === 0 ? (
+											<span className="rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention)]">
+												No rates, cannot quote
+											</span>
+										) : (
+											<span className="text-[11px] text-[var(--ink-30)]">
+												{zone.rates.length}
+											</span>
+										),
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (zone) => (
+										<button
+											type="button"
+											className={quiet}
+											disabled={remove.isPending}
+											onClick={() => remove.mutate(zone.id)}
+										>
+											Delete
+										</button>
+									),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>

@@ -35,6 +35,34 @@ describe("presentRequestError", () => {
 		);
 	});
 
+	/**
+	 * 🔴 A programming mistake must not be reported as a connection problem.
+	 *
+	 * Every `fetch` failure is a TypeError, but so is `undefined.length`. Treating
+	 * the whole class as "offline" sent an operator to check their internet after
+	 * a panel crashed on a mis-shaped response — and hid the real bug behind a
+	 * message that was simply untrue.
+	 */
+	it("does not blame the network for an ordinary crash", () => {
+		expect(
+			presentRequestError(
+				new TypeError("Cannot read properties of undefined (reading 'length')"),
+			),
+		).toMatchObject({ code: "ERROR", kind: "server" });
+	});
+
+	it("still recognises the other browsers' wordings", () => {
+		for (const message of [
+			"NetworkError when attempting to fetch resource.",
+			"Load failed",
+		]) {
+			expect(presentRequestError(new TypeError(message))).toMatchObject({
+				code: "OFFLINE",
+				kind: "network",
+			});
+		}
+	});
+
 	it("does not trust malformed request identifiers", () => {
 		const error = Object.assign(new Error("no"), {
 			status: 500,

@@ -1,4 +1,10 @@
-import { CaretRightIcon, HouseIcon, PlugsIcon } from "@phosphor-icons/react";
+import {
+	CaretRightIcon,
+	CaretUpIcon,
+	HouseIcon,
+	ImagesIcon,
+	PlugsIcon,
+} from "@phosphor-icons/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NavSignal } from "../lib/nav-signals";
@@ -41,7 +47,7 @@ const SIGNAL_RANK: Record<NavSignal["signal"], number> = {
 
 /** Capabilities with their own operator surface, by module id. `""` is the
  * module's own page and always comes first. */
-const MODULE_CHILDREN: Readonly<
+export const MODULE_CHILDREN: Readonly<
 	Record<string, ReadonlyArray<readonly [string, string]>>
 > = {
 	"products-services": [
@@ -88,7 +94,21 @@ const MODULE_CHILDREN: Readonly<
  * group rather than vanishing — a new module appears in the sidebar the day it
  * ships, without being routed through this file first.
  */
-const GROUPS: ReadonlyArray<{ label: string; ids: readonly string[] }> = [
+/**
+ * A row in a group that is NOT a module.
+ *
+ * 🔑 Some capabilities every workspace has regardless of what it bought — Media
+ * is the first. They still belong in a named group rather than pinned to the
+ * bottom strip, which is reserved for "do this or nothing works" (Connect). A
+ * bottom strip that accumulates stops reading as a starting point.
+ */
+type NavExtra = { id: string; label: string; path: string };
+
+const GROUPS: ReadonlyArray<{
+	label: string;
+	ids: readonly string[];
+	extras?: readonly NavExtra[];
+}> = [
 	/**
 	 * Ordered by the day, not by the data model.
 	 *
@@ -124,7 +144,15 @@ const GROUPS: ReadonlyArray<{ label: string; ids: readonly string[] }> = [
 
 	// Above Documents deliberately: the words on a business's own site change
 	// far more often than anybody opens a signed contract.
-	{ label: "Website", ids: ["content"] },
+	//
+	// Content is the words, Media is the pictures — both are what appears on the
+	// customer's own site, which is what makes this the right home for Media
+	// rather than the bottom strip.
+	{
+		label: "Website",
+		ids: ["content"],
+		extras: [{ id: "media", label: "Media", path: "media" }],
+	},
 
 	{ label: "Documents", ids: ["files", "contracts-esign"] },
 ];
@@ -143,8 +171,24 @@ const GROUPS: ReadonlyArray<{ label: string; ids: readonly string[] }> = [
  */
 const HIDDEN_FROM_NAV = new Set(["reporting-analytics"]);
 
-const row =
-	"group flex h-8 w-full shrink-0 items-center gap-2.5 rounded-md px-2 text-[12.5px] outline-none transition-colors";
+/**
+ * How many open groups before tidying is worth offering.
+ *
+ * 🔑 A "collapse all" beside one open group is a control that does almost
+ * nothing, and every permanent button costs attention whether or not it is
+ * used. Three is where the sidebar starts needing a scroll to see the bottom.
+ */
+const COLLAPSE_THRESHOLD = 3;
+
+/**
+ * ⚠️ Width is NOT baked in. `row` carries `w-full shrink-0`, which is right for
+ * a stacked list and wrong beside anything: a row that fills its parent and
+ * refuses to shrink pushes a sibling clean out of the container. `rowBase` is
+ * for rows that share a line.
+ */
+const rowBase =
+	"group flex h-8 shrink-0 items-center gap-2.5 rounded-md px-2 text-[12.5px] outline-none transition-colors";
+const row = `${rowBase} w-full`;
 const idle =
 	"text-[var(--ink-42)] hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-85)]";
 const active = "bg-[rgb(var(--console-ink)/0.07)] text-[var(--ink-90)]";
@@ -162,12 +206,17 @@ function ModuleItem({
 	module,
 	pathname,
 	childBadges,
+	open,
+	onToggle,
 }: {
 	workspaceId: string;
 	module: QuickDashModule;
 	pathname: string;
 	/** Keyed `moduleId/section`; a truthy value shows a dot on that row. */
 	childBadges?: Record<string, NavSignal>;
+	/** Remembered open state, owned by the nav so "collapse all" can reach it. */
+	open: boolean;
+	onToggle: (open: boolean) => void;
 }) {
 	const base = `/${workspaceId}/${module.id}`;
 	const children = MODULE_CHILDREN[module.id];
@@ -179,10 +228,11 @@ function ModuleItem({
 	 * never be collapsed, whatever was stored. The remembered half is what
 	 * survives a refresh — previously the URL was the only input, so reloading
 	 * shut every other group you had opened.
+	 *
+	 * ⚠️ `within` also means "collapse all" cannot shut the section you are
+	 * standing in, which is correct: hiding the page you are on is not tidying.
 	 */
-	const [open, setOpen] = useState(
-		() => within || readOpenModules(workspaceId).has(module.id),
-	);
+	const expanded = within || open;
 	// Only while COLLAPSED: once open, each child shows its own, and two dots for
 	// one fact reads as two problems.
 	//
@@ -226,21 +276,14 @@ function ModuleItem({
 		<div className="shrink-0">
 			<button
 				type="button"
-				onClick={() => {
-					const next = !open;
-					setOpen(next);
-					const remembered = readOpenModules(workspaceId);
-					if (next) remembered.add(module.id);
-					else remembered.delete(module.id);
-					writeOpenModules(workspaceId, remembered);
-				}}
-				aria-expanded={open}
+				onClick={() => onToggle(!expanded)}
+				aria-expanded={expanded}
 				title={module.description}
 				className={`${row} ${within ? active : idle}`}
 			>
 				<ModuleIcon id={module.id} className="size-[15px] shrink-0" />
 				<span className="min-w-0 flex-1 truncate text-left">{module.name}</span>
-				{!open && rolledUp ? (
+				{!expanded && rolledUp ? (
 					<span
 						aria-hidden="true"
 						className="size-1.5 shrink-0 rounded-full"
@@ -249,10 +292,10 @@ function ModuleItem({
 				) : null}
 				<CaretRightIcon
 					size={11}
-					className={`shrink-0 text-[var(--ink-25)] transition-transform ${open ? "rotate-90" : ""}`}
+					className={`shrink-0 text-[var(--ink-25)] transition-transform ${expanded ? "rotate-90" : ""}`}
 				/>
 			</button>
-			{open ? (
+			{expanded ? (
 				<div className="my-1 flex shrink-0 flex-col gap-1">
 					{children.map(([segment, label]) => {
 						const href = segment ? `${base}/${segment}` : base;
@@ -346,6 +389,35 @@ export function WorkspaceNav({
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
+
+	/**
+	 * Which modules are open, owned HERE rather than by each row.
+	 *
+	 * 🔑 Lifted so one control can shut them all. While each row held its own
+	 * state there was nothing a "collapse all" could talk to.
+	 */
+	const [openModules, setOpenModules] = useState<Set<string>>(() =>
+		readOpenModules(workspaceId),
+	);
+
+	const toggleModule = useCallback(
+		(moduleId: string, next: boolean) => {
+			setOpenModules((current) => {
+				const updated = new Set(current);
+				if (next) updated.add(moduleId);
+				else updated.delete(moduleId);
+				writeOpenModules(workspaceId, updated);
+				return updated;
+			});
+		},
+		[workspaceId],
+	);
+
+	const collapseAll = useCallback(() => {
+		const empty = new Set<string>();
+		writeOpenModules(workspaceId, empty);
+		setOpenModules(empty);
+	}, [workspaceId]);
 	// Both edges of the scrolling list, measured the same way: the header's rule
 	// appears once there is content above, the footer's once there is content
 	// below. A permanent divider claims the list is cut off even when it is not.
@@ -372,6 +444,7 @@ export function WorkspaceNav({
 	);
 	const grouped = GROUPS.map((group) => ({
 		label: group.label,
+		extras: group.extras ?? [],
 		modules: group.ids.flatMap((id) => {
 			const module = byId.get(id);
 			if (module) byId.delete(id);
@@ -386,18 +459,45 @@ export function WorkspaceNav({
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<nav
-				className={`flex shrink-0 flex-col gap-1 border-b px-2 pb-1 transition-colors ${scrolled ? "border-[var(--console-line-soft)]" : "border-transparent"}`}
-			>
-				<Link
-					to="/$workspace"
-					params={{ workspace: workspaceId }}
-					className={`${row} ${pathname === `/${workspaceId}` ? active : idle}`}
+			{/* `relative` so the collapse handle can straddle the divider below. */}
+			<div className="group/collapse relative shrink-0">
+				<nav
+					className={`flex flex-col gap-1 border-b px-2 pb-1 transition-colors ${scrolled ? "border-[var(--console-line-soft)]" : "border-transparent"}`}
 				>
-					<HouseIcon size={15} className="shrink-0" />
-					<span className="truncate">Home</span>
-				</Link>
-			</nav>
+					<Link
+						to="/$workspace"
+						params={{ workspace: workspaceId }}
+						className={`${row} ${pathname === `/${workspaceId}` ? active : idle}`}
+					>
+						<HouseIcon size={15} className="shrink-0" />
+						<span className="truncate">Home</span>
+					</Link>
+				</nav>
+
+				{/*
+				  🔑 A handle ON the divider, revealed by hovering the header.
+				  Sitting in the rule itself says what it does without a label: it
+				  is the line the groups fold up to. Hidden until wanted, so the
+				  sidebar carries no permanent button for an occasional act.
+
+				  ⚠️ The strip is `pointer-events-none` and only the circle takes
+				  clicks — a full-width invisible bar across the divider would
+				  swallow presses meant for the list underneath.
+				*/}
+				{openModules.size >= COLLAPSE_THRESHOLD ? (
+					<div className="pointer-events-none absolute inset-x-0 -bottom-2.5 z-10 flex justify-center">
+						<button
+							type="button"
+							onClick={collapseAll}
+							title="Collapse all"
+							aria-label="Collapse all groups"
+							className="pointer-events-auto flex size-5 items-center justify-center rounded-full border border-[var(--console-line-strong)] bg-[var(--console-panel)] text-[var(--ink-45)] opacity-0 transition-opacity hover:text-[var(--ink-85)] focus-visible:opacity-100 group-hover/collapse:opacity-100"
+						>
+							<CaretUpIcon size={10} weight="bold" />
+						</button>
+					</div>
+				) : null}
+			</div>
 
 			<nav
 				ref={listRef}
@@ -410,7 +510,12 @@ export function WorkspaceNav({
 					</p>
 				) : (
 					grouped
-						.filter((group) => group.modules.length > 0)
+						// ⚠️ `|| extras` matters: Website would otherwise disappear when the
+						// Content module is off, taking Media — which every workspace has —
+						// with it.
+						.filter(
+							(group) => group.modules.length > 0 || group.extras.length > 0,
+						)
 						.map((group) => (
 							<div key={group.label} className="flex shrink-0 flex-col gap-1">
 								<SectionLabel>{group.label}</SectionLabel>
@@ -421,7 +526,28 @@ export function WorkspaceNav({
 										module={module}
 										pathname={pathname}
 										childBadges={childBadges}
+										open={openModules.has(module.id)}
+										onToggle={(next) => toggleModule(module.id, next)}
 									/>
+								))}
+								{/* Always-present rows that are not modules. Media is the
+								    first; see `NavExtra`. */}
+								{group.extras.map((extra) => (
+									<Link
+										key={extra.id}
+										to="/$workspace/media"
+										params={{ workspace: workspaceId }}
+										className={`${row} ${
+											pathname === `/${workspaceId}/${extra.path}`
+												? active
+												: idle
+										}`}
+									>
+										<ImagesIcon size={15} className="shrink-0" />
+										<span className="min-w-0 flex-1 truncate">
+											{extra.label}
+										</span>
+									</Link>
 								))}
 							</div>
 						))

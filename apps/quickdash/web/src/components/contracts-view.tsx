@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { ContractPanel } from "./module-panels";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -54,7 +58,10 @@ const isLapsed = (contract: Contract) =>
 	);
 
 export function ContractsView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -91,6 +98,7 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search contracts by title, number or customer"
@@ -156,97 +164,131 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 
-					const awaiting = rows.filter(
+					const _awaiting = rows.filter(
 						(contract) =>
 							contract.status === "sent" ||
 							contract.status === "partially_signed",
 					).length;
 
 					return (
-						<>
-							{awaiting > 0 ? (
-								<p className="mb-3 text-[11.5px] text-[var(--ink-30)]">
-									{awaiting} waiting on a signature.
-								</p>
-							) : null}
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-								{rows.map((contract) => {
-									const lapsed = isLapsed(contract);
-									return (
-										<div
-											key={contract.id}
-											className="flex items-center gap-3 py-2.5"
+						<PagedTable
+							rowSignal={rowSignal}
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Contracts"
+							rows={rows}
+							selectedId={selectedId}
+							onOpen={(contract) => setSelectedId(contract.id)}
+							columns={[
+								{
+									key: "number",
+									header: "Contract",
+									width: "w-24",
+									tight: true,
+									render: (contract) => (
+										<span className="font-mono text-[11.5px] text-[var(--ink-60)]">
+											{contract.number}
+										</span>
+									),
+								},
+								{
+									key: "title",
+									header: "Title",
+									render: (contract) => contract.title,
+								},
+								{
+									key: "customer",
+									header: "Customer",
+									width: "w-48",
+									render: (contract) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{contract.clientName}
+										</span>
+									),
+								},
+								{
+									key: "status",
+									header: "Status",
+									width: "w-32",
+									tight: true,
+									render: (contract) => (
+										<span
+											className={`text-[11px] capitalize ${
+												isLapsed(contract)
+													? "text-[var(--signal-attention)]"
+													: "text-[var(--ink-30)]"
+											}`}
 										>
-											<span className="w-24 shrink-0 font-mono text-[11.5px] text-[var(--ink-60)]">
-												{contract.number}
-											</span>
-											<div className="min-w-0 flex-1">
-												<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-													{contract.title}
-												</p>
-												<p className="truncate text-[11px] text-[var(--ink-30)]">
-													{contract.clientName}
-												</p>
-											</div>
-											<span
-												className={`w-32 shrink-0 text-[11px] capitalize ${
-													lapsed ? "text-[#f5b44a]" : "text-[var(--ink-30)]"
-												}`}
-											>
-												{lapsed ? "expired" : readable(contract.status)}
-											</span>
-											<div className="flex shrink-0 items-center gap-1.5">
-												{contract.status === "draft" ? (
+											{isLapsed(contract)
+												? "expired"
+												: readable(contract.status)}
+										</span>
+									),
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (contract) => (
+										<div className="flex items-center justify-end gap-1.5">
+											{contract.status === "draft" ? (
+												<button
+													type="button"
+													className={quiet}
+													disabled={act.isPending}
+													onClick={() =>
+														act.mutate({ id: contract.id, action: "send" })
+													}
+												>
+													Send
+												</button>
+											) : null}
+											{contract.status === "sent" ||
+											contract.status === "partially_signed" ? (
+												<>
+													{/* Revise rather than edit: the old version is
+														    superseded and stays on the record. */}
 													<button
 														type="button"
 														className={quiet}
 														disabled={act.isPending}
 														onClick={() =>
-															act.mutate({ id: contract.id, action: "send" })
+															act.mutate({
+																id: contract.id,
+																action: "revise",
+															})
 														}
 													>
-														Send
+														Revise
 													</button>
-												) : null}
-												{contract.status === "sent" ||
-												contract.status === "partially_signed" ? (
-													<>
-														{/* Revise rather than edit: the old version is
-														    superseded and stays on the record. */}
-														<button
-															type="button"
-															className={quiet}
-															disabled={act.isPending}
-															onClick={() =>
-																act.mutate({
-																	id: contract.id,
-																	action: "revise",
-																})
-															}
-														>
-															Revise
-														</button>
-														<button
-															type="button"
-															className={quiet}
-															disabled={act.isPending}
-															onClick={() =>
-																act.mutate({ id: contract.id, action: "void" })
-															}
-														>
-															Void
-														</button>
-													</>
-												) : null}
-											</div>
+													<button
+														type="button"
+														className={quiet}
+														disabled={act.isPending}
+														onClick={() =>
+															act.mutate({ id: contract.id, action: "void" })
+														}
+													>
+														Void
+													</button>
+												</>
+											) : null}
 										</div>
-									);
-								})}
-							</div>
-						</>
+									),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>
+			{selectedId ? (
+				<ContractPanel
+					workspaceId={workspaceId}
+					id={selectedId}
+					onClose={() => setSelectedId(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { CreatePanel } from "./create-panel";
+import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, rowBusy } from "./page-state";
+// ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
+// if the import is ever dropped, and the error that produces names React
+// internals rather than the missing import.
+import { Choice, Text as TextField } from "./product-fields";
 
 /**
  * Discount codes — money deliberately given away.
@@ -28,13 +36,13 @@ type Discount = {
 	active: boolean;
 };
 
-const pill =
+const _pill =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40";
 
 const quiet =
 	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
 
-const field =
+const _field =
 	"h-9 rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
 
 /** What a person reads. 2000 basis points is "20% off"; 500 minor units is "$5 off". */
@@ -73,7 +81,9 @@ function liveness(discount: Discount): { label: string; muted: boolean } {
 }
 
 export function DiscountsView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
 	const queryClient = useQueryClient();
+	const [creating, setCreating] = useState(false);
 	const [code, setCode] = useState("");
 	const [amount, setAmount] = useState("");
 	const [valueType, setValueType] = useState<"percentage" | "fixed">(
@@ -119,10 +129,20 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 		onError: (error: { message?: string }) =>
 			setFailure(error?.message ?? "That code could not be created."),
 		onSuccess: () => {
+			setCreating(false);
 			setCode("");
 			setAmount("");
 			refresh();
 		},
+	});
+
+	// Every page's create lives in the header, in the same place. It REVEALS
+	// the form rather than submitting it: the fields belong together, and a
+	// submit button parted from its inputs is a button that does nothing
+	// visible.
+	useHeaderAction({
+		label: "New discount",
+		onClick: () => setCreating((open) => !open),
 	});
 
 	const setActive = useMutation({
@@ -142,62 +162,42 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			<form
-				className="mb-4 flex flex-wrap items-center gap-2"
-				onSubmit={(event) => {
-					event.preventDefault();
-					if (valid) create.mutate();
-				}}
-			>
-				<input
-					value={code}
-					onChange={(event) => setCode(event.target.value)}
-					placeholder="CODE"
-					className={`${field} w-40 font-mono uppercase`}
-				/>
-				<div className="flex h-9 shrink-0 items-center rounded-full bg-[rgb(var(--console-ink)/0.07)] p-0.5">
-					{(
-						[
-							["percentage", "%"],
-							["fixed", "$"],
-						] as const
-					).map(([option, glyph]) => (
-						<button
-							key={option}
-							type="button"
-							onClick={() => setValueType(option)}
-							className={`h-8 w-10 rounded-full text-[12px] transition-colors ${
-								valueType === option
-									? "bg-[var(--console-pop)] text-[var(--ink-90)]"
-									: "text-[var(--ink-30)] hover:text-[var(--ink-60)]"
-							}`}
-						>
-							{glyph}
-						</button>
-					))}
-				</div>
-				<input
-					value={amount}
-					onChange={(event) => setAmount(event.target.value)}
-					placeholder={valueType === "percentage" ? "20" : "5.00"}
-					inputMode="decimal"
-					className={`${field} w-28`}
-				/>
-				<button
-					type="submit"
-					className={pill}
-					disabled={create.isPending || !valid}
+			{creating ? (
+				<CreatePanel
+					title="New discount"
+					submitLabel="Create code"
+					busy={create.isPending}
+					valid={Boolean(valid)}
+					failure={failure}
+					onClose={() => setCreating(false)}
+					onSubmit={() => create.mutate()}
 				>
-					{create.isPending ? "Creating…" : "Create code"}
-				</button>
-				<p className="text-[11px] text-[var(--ink-30)]">
-					{valueType === "percentage"
-						? "A percentage off the cart."
-						: "A fixed amount off the cart."}
-				</p>
-			</form>
+					<TextField
+						label="Code"
+						hint="what a shopper types at checkout"
+						value={code}
+						onChange={(value) => setCode(value.toUpperCase())}
+						placeholder="WELCOME10"
+					/>
+					<Choice
+						label="Kind"
+						options={["percentage", "fixed"]}
+						value={valueType}
+						onChange={(value) => setValueType(value as "percentage" | "fixed")}
+					/>
+					<TextField
+						label="Amount"
+						hint={valueType === "percentage" ? "percent off" : "off the total"}
+						value={amount}
+						onChange={setAmount}
+						placeholder={valueType === "percentage" ? "20" : "5.00"}
+						inputMode="decimal"
+					/>
+				</CreatePanel>
+			) : null}
 
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search codes"
@@ -235,18 +235,28 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((discount) => {
-								const state = liveness(discount);
-								return (
-									<div
-										key={discount.id}
-										className="flex items-center gap-3 py-2.5"
-									>
-										<span className="w-32 shrink-0 font-mono text-[12px] text-[var(--ink-85)]">
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Discount codes"
+							rows={rows}
+							columns={[
+								{
+									key: "code",
+									header: "Code",
+									width: "w-32",
+									tight: true,
+									render: (discount) => (
+										<span className="font-mono text-[12px] text-[var(--ink-85)]">
 											{discount.code}
 										</span>
-										<span className="min-w-0 flex-1 text-[12px] text-[var(--ink-60)]">
+									),
+								},
+								{
+									key: "offer",
+									header: "Offer",
+									render: (discount) => (
+										<span className="text-[12px] text-[var(--ink-60)]">
 											{describe(discount)}
 											{discount.minimumSubtotalCents > 0
 												? ` · over ${new Intl.NumberFormat(undefined, {
@@ -255,22 +265,49 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 													}).format(discount.minimumSubtotalCents / 100)}`
 												: ""}
 										</span>
-										<span className="shrink-0 text-[11px] text-[var(--ink-30)]">
+									),
+								},
+								{
+									key: "used",
+									header: "Used",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									render: (discount) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
 											{discount.timesRedeemed}
 											{discount.maxRedemptions !== null
 												? ` / ${discount.maxRedemptions}`
-												: ""}{" "}
-											used
+												: ""}
 										</span>
-										<span
-											className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] ${
-												state.muted
-													? "bg-[rgb(var(--console-ink)/0.04)] text-[var(--ink-30)]"
-													: "bg-[rgb(var(--console-ink)/0.08)] text-[var(--ink-70)]"
-											}`}
-										>
-											{state.label}
-										</span>
+									),
+								},
+								{
+									key: "state",
+									header: "State",
+									width: "w-28",
+									tight: true,
+									render: (discount) => {
+										const state = liveness(discount);
+										return (
+											<span
+												className={`rounded-full px-2 py-0.5 text-[10.5px] ${
+													state.muted
+														? "bg-[rgb(var(--console-ink)/0.04)] text-[var(--ink-30)]"
+														: "bg-[rgb(var(--console-ink)/0.08)] text-[var(--ink-70)]"
+												}`}
+											>
+												{state.label}
+											</span>
+										);
+									},
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (discount) => (
 										<button
 											type="button"
 											className={quiet}
@@ -284,10 +321,10 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 										>
 											{discount.active ? "Turn off" : "Turn on"}
 										</button>
-									</div>
-								);
-							})}
-						</div>
+									),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>

@@ -71,9 +71,21 @@ export function ListControls({
 						</div>
 					</PopoverAnchor>
 					<PopoverContent
-						align="start"
+						// Right-aligned so its edge meets the page's right margin, which
+						// is where the control group ends. Opening from the left edge left
+						// it floating short of the margin on every page.
+						align="end"
 						sideOffset={8}
-						className="w-[var(--radix-popover-trigger-width)] rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-3"
+						/**
+						 * 🔴 A FLOOR on the width, not just the anchor's.
+						 *
+						 * `--radix-popover-trigger-width` measures the control group, which
+						 * is the filter button ALONE on a page with no create action — so
+						 * those pages opened a popover barely wider than the word "Filter"
+						 * and wrapped every chip onto its own line. Matching the group is
+						 * right when the group is wide; below that the content decides.
+						 */
+						className="w-[max(var(--radix-popover-trigger-width),18rem)] rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-3"
 					>
 						{filter}
 					</PopoverContent>

@@ -199,6 +199,20 @@ function publicAssetPath(workspaceId: string, key: string) {
 	return `${PUBLIC_BUCKET}/${workspaceId}/${key}`;
 }
 
+/**
+ * Where local development keeps public assets on disk.
+ *
+ * 🔴 Outside the repository by default. These are real uploaded files — a
+ * customer's product photographs while testing — and writing them under the
+ * working tree invites them into a commit.
+ */
+export function localAssetRoot(): string {
+	return (
+		process.env.LOCAL_ASSET_DIR ??
+		`${process.env.TMPDIR?.replace(/\/$/, "") ?? "/tmp"}/quickengine-assets`
+	);
+}
+
 export const createLocalStorageProvider = (baseUrl = "http://localhost:3001") =>
 	({
 		name: "local",
@@ -216,13 +230,29 @@ export const createLocalStorageProvider = (baseUrl = "http://localhost:3001") =>
 		async putPublicAsset(input) {
 			const path = publicAssetPath(input.workspaceId, input.key);
 			const bytes = await bodyBytes(input.body);
+
+			/**
+			 * 🔴 The bytes are actually WRITTEN. This used to hash them, return a
+			 * URL and discard the file, so every local upload reported success and
+			 * produced a permanently broken image — and nothing served the returned
+			 * address either. A development stub that silently loses the thing it
+			 * was given is worse than one that refuses.
+			 *
+			 * Imported inside the function so `node:fs` never enters the module
+			 * graph of route registration or of any browser bundle.
+			 */
+			const { mkdir, writeFile } = await import("node:fs/promises");
+			const { dirname, join } = await import("node:path");
+			const file = join(localAssetRoot(), path);
+			await mkdir(dirname(file), { recursive: true });
+			await writeFile(file, bytes);
+
 			return {
 				provider: this.name,
 				bucket: PUBLIC_BUCKET,
 				key: `${input.workspaceId}/${input.key}`,
-				// Local development serves these from the account app, the same way
-				// `createDownloadAccess` does. Durable in the only sense that matters
-				// here: stable for as long as the dev server runs.
+				// Served back by the API's own development asset route, which reads
+				// the same directory.
 				url: `${baseUrl}/${path}`,
 				contentType: input.contentType,
 				size: bytes.byteLength,
@@ -233,6 +263,12 @@ export const createLocalStorageProvider = (baseUrl = "http://localhost:3001") =>
 			if (asset.provider !== this.name) {
 				throw new Error("STORAGE_PROVIDER_MISMATCH");
 			}
+			const { rm } = await import("node:fs/promises");
+			const { join } = await import("node:path");
+			// Missing is success: the caller wants it gone, and it is.
+			await rm(join(localAssetRoot(), PUBLIC_BUCKET, asset.key), {
+				force: true,
+			});
 		},
 		async delete(locator) {
 			assertLocator(locator, this.name);

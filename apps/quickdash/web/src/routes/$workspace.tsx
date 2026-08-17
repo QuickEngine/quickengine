@@ -6,12 +6,26 @@ import {
 	SidebarName,
 } from "@quickengine/ui";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	Outlet,
+	useRouterState,
+} from "@tanstack/react-router";
 import { type MouseEventHandler, useState } from "react";
 import { FeedbackDialog } from "../components/feedback-dialog";
+import {
+	HeaderActionProvider,
+	useHeaderSlots,
+} from "../components/header-action";
 import { NotificationToasts } from "../components/notification-toasts";
-import { SupportBubble } from "../components/support-bubble";
-import { WorkspaceNav } from "../components/workspace-nav";
+import {
+	helpWasOpen,
+	rememberHelpOpen,
+	SupportBubble,
+} from "../components/support-bubble";
+import { WorkspaceHeader } from "../components/workspace-header";
+import { MODULE_CHILDREN, WorkspaceNav } from "../components/workspace-nav";
 import { WorkspaceNotifications } from "../components/workspace-notifications";
 import { WorkspaceSearch } from "../components/workspace-search";
 import { sessionApi, workspaceApi } from "../lib/api";
@@ -25,7 +39,20 @@ import { navSignals, withCount } from "../lib/nav-signals";
 import { quickDashQueries } from "../lib/quickdash-api";
 
 function WorkspaceShell() {
+	return (
+		<HeaderActionProvider>
+			<WorkspaceFrame />
+		</HeaderActionProvider>
+	);
+}
+
+function WorkspaceFrame() {
 	const { workspace } = Route.useParams();
+	// Whatever the page on screen has published for the header.
+	const header = useHeaderSlots();
+	const pathname = useRouterState({
+		select: (state) => state.location.pathname,
+	});
 	const { user, workspaceId } = Route.useRouteContext();
 	const context = useQuery(quickDashQueries.context(workspaceId));
 	const plan = useQuery(
@@ -81,6 +108,34 @@ function WorkspaceShell() {
 		0,
 	);
 
+	/**
+	 * What to call the page you are on.
+	 *
+	 * 🔑 Derived from the address and the module registry rather than each page
+	 * declaring its own title. A page that names itself is a page that can
+	 * disagree with the sidebar row that led to it.
+	 */
+	const segments = pathname.split("/").filter(Boolean).slice(1);
+	const currentModule = (context.data?.modules ?? []).find(
+		(module) => module.id === segments[0],
+	);
+	const sectionLabel = currentModule
+		? (MODULE_CHILDREN[currentModule.id] ?? []).find(
+				([segment]) => segment === (segments[1] ?? ""),
+			)?.[1]
+		: undefined;
+	const pageTitle = currentModule
+		? (sectionLabel ?? currentModule.name)
+		: segments.length === 0
+			? "Home"
+			: segments[0] === "media"
+				? "Media"
+				: segments[0] === "connect"
+					? "Connect"
+					: segments[0] === "settings"
+						? "Settings"
+						: undefined;
+
 	const liveKeys = (keys.data?.items ?? []).filter((key) => !key.revokedAt);
 	// Waiting only counts once a key EXISTS. A workspace with no keys has not
 	// started connecting, so a spinner there would be waiting on nothing.
@@ -88,6 +143,15 @@ function WorkspaceShell() {
 		liveKeys.length > 0 && liveKeys.every((key) => !key.lastUsedAt);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [feedbackOpen, setFeedbackOpen] = useState(false);
+	// Summoned, and remembered for the session so navigating does not close it.
+	// Becomes a chat window, and a chat that shuts on every page change is not
+	// a conversation.
+	const [helpOpen, setHelpOpen] = useState(helpWasOpen);
+
+	const showHelp = (open: boolean) => {
+		setHelpOpen(open);
+		rememberHelpOpen(open);
+	};
 	// The bell swaps what the sidebar's navigation slot renders rather than
 	// opening a popover over it — same pattern as Account, so the two consoles
 	// behave identically.
@@ -114,6 +178,13 @@ function WorkspaceShell() {
 
 	return (
 		<ConsoleShell
+			header={
+				<WorkspaceHeader
+					title={pageTitle}
+					crumb={header.crumb}
+					actions={header.action}
+				/>
+			}
 			// Driven by the workspace's own environment, so it cannot disagree with
 			// what the API will actually do with a payment.
 			banner={
@@ -200,6 +271,9 @@ function WorkspaceShell() {
 					// Opens in place. The account menu used to have no handler here, so
 					// QuickDash simply had no way to send feedback without leaving.
 					onFeedback={() => setFeedbackOpen(true)}
+					// Summons help in place rather than navigating to Account, so
+					// whatever the person was doing survives asking for help.
+					onHelp={() => showHelp(true)}
 				/>
 			}
 			overlays={
@@ -218,6 +292,8 @@ function WorkspaceShell() {
 						workspaceName={context.data?.workspace.name}
 					/>
 					<SupportBubble
+						open={helpOpen}
+						onClose={() => showHelp(false)}
 						workspaceName={context.data?.workspace.name}
 						onFeedback={() => setFeedbackOpen(true)}
 					/>

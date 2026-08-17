@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
 import { ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, rowBusy } from "./page-state";
 
 /**
@@ -40,6 +42,7 @@ const stars = (rating: number) =>
 	"★".repeat(Math.max(0, Math.min(5, Math.round(rating)))).padEnd(5, "☆");
 
 export function ReviewsView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
 	const queryClient = useQueryClient();
 	const [status, setStatus] = useState<Status>("pending");
 	const [failure, setFailure] = useState<string | null>(null);
@@ -77,6 +80,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search reviews by author or words"
@@ -140,13 +144,21 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 					return (
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-							{rows.map((review) => (
-								<div key={review.id} className="py-3">
-									<div className="flex items-center gap-2">
-										{/* role="img" so the label is honoured: the stars are a picture
-									    of the rating, and a screen reader should hear "4 out of 5"
-									    rather than spell out four star characters. */}
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Reviews"
+							rows={rows}
+							columns={[
+								{
+									key: "rating",
+									header: "Rating",
+									width: "w-24",
+									tight: true,
+									// role="img" so the label is honoured: the stars are a picture
+									// of the rating, and a screen reader should hear "4 out of 5"
+									// rather than spell out four star characters.
+									render: (review) => (
 										<span
 											role="img"
 											className="font-mono text-[12px] text-[var(--ink-85)]"
@@ -154,15 +166,60 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 										>
 											{stars(review.rating)}
 										</span>
+									),
+								},
+								{
+									key: "review",
+									header: "Review",
+									// ⚠️ Title and body on ONE line. A review can run to a
+									// paragraph, and a table whose rows grow to fit loses the
+									// alignment that makes it a table; the full text is one
+									// click away on the product.
+									render: (review) => (
+										<>
+											{review.title ? (
+												<span className="text-[var(--ink-85)]">
+													{review.title}
+												</span>
+											) : null}
+											{review.body ? (
+												<span className="ml-2 text-[11.5px] text-[var(--ink-60)]">
+													{review.body}
+												</span>
+											) : null}
+										</>
+									),
+								},
+								{
+									key: "author",
+									header: "Author",
+									width: "w-40",
+									render: (review) => (
 										<span className="text-[12px] text-[var(--ink-60)]">
 											{review.authorName ?? "Anonymous"}
 										</span>
+									),
+								},
+								{
+									key: "when",
+									header: "When",
+									width: "w-24",
+									align: "right",
+									tight: true,
+									render: (review) => (
 										<span className="text-[10.5px] text-[var(--ink-30)]">
 											{new Date(review.createdAt).toLocaleDateString()}
 										</span>
-
-										{status === "pending" ? (
-											<div className="ml-auto flex items-center gap-1.5">
+									),
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (review) =>
+										status === "pending" ? (
+											<div className="flex items-center justify-end gap-1.5">
 												<button
 													type="button"
 													className={solid}
@@ -195,7 +252,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 											// something rejected in haste should not require support.
 											<button
 												type="button"
-												className={`${quiet} ml-auto`}
+												className={quiet}
 												disabled={rowBusy(moderate, review.id)}
 												onClick={() =>
 													moderate.mutate({
@@ -207,22 +264,10 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 											>
 												{status === "published" ? "Unpublish" : "Publish"}
 											</button>
-										)}
-									</div>
-
-									{review.title ? (
-										<p className="mt-1.5 text-[12.5px] text-[var(--ink-85)]">
-											{review.title}
-										</p>
-									) : null}
-									{review.body ? (
-										<p className="mt-1 text-[11.5px] text-[var(--ink-60)] leading-5">
-											{review.body}
-										</p>
-									) : null}
-								</div>
-							))}
-						</div>
+										),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>

@@ -1,4 +1,4 @@
-import { authClient } from "@quickengine/auth/client";
+import { resolveSession } from "@quickengine/auth/session";
 import {
 	type ConsoleLink,
 	ConsoleShell,
@@ -79,14 +79,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 				if (wait > 0) {
 					await new Promise((resolve) => setTimeout(resolve, wait));
 				}
-				try {
-					const { data } = await authClient.getSession();
-					if (data?.session && data.user) authenticated = { user: data.user };
-					// A clean answer either way. Retrying cannot change it.
+				/**
+				 * 🔴 `resolveSession` separates "no session" from "could not ask",
+				 * and caches briefly. Calling Better Auth on every navigation
+				 * exceeded its 100-per-minute limit during ordinary clicking, and
+				 * the 429 that came back was indistinguishable from a sign-out —
+				 * so browsing the console threw people to the login page.
+				 */
+				const session = await resolveSession();
+				if (session.status === "signed-in") {
+					authenticated = { user: session.user };
 					break;
-				} catch {
-					// Could not ask. Retry once, then give up.
 				}
+				// A definite "no session". Retrying cannot change it.
+				if (session.status === "signed-out") break;
+				// `unknown` — nobody answered usefully. Try again.
 			}
 			if (!authenticated) throw signIn();
 

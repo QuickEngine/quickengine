@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { QuotePanel } from "./module-panels";
 import { EmptyState, PageState, rowBusy } from "./page-state";
 
 /**
@@ -56,7 +60,10 @@ const isLapsed = (quote: Quote) =>
 	);
 
 export function QuotesView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const rowSignal = useRecordSignals();
 	const queryClient = useQueryClient();
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -93,6 +100,7 @@ export function QuotesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search quotes by number or customer"
@@ -169,31 +177,63 @@ export function QuotesView({ workspaceId }: { workspaceId: string }) {
 									waiting to become work.
 								</p>
 							) : null}
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-								{rows.map((quote) => {
-									const lapsed = isLapsed(quote);
-									return (
-										<div
-											key={quote.id}
-											className="flex items-center gap-3 py-2.5"
-										>
-											<span className="w-24 shrink-0 font-mono text-[11.5px] text-[var(--ink-60)]">
+							<PagedTable
+								rowSignal={rowSignal}
+								workspaceId={workspaceId}
+								layout={layout}
+								caption="Quotes"
+								rows={rows}
+								selectedId={selectedId}
+								onOpen={(quote) => setSelectedId(quote.id)}
+								columns={[
+									{
+										key: "number",
+										header: "Quote",
+										width: "w-24",
+										tight: true,
+										render: (quote) => (
+											<span className="font-mono text-[11.5px] text-[var(--ink-60)]">
 												{quote.number}
 											</span>
-											<span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-												{quote.clientName ?? "No customer"}
-											</span>
+										),
+									},
+									{
+										key: "customer",
+										header: "Customer",
+										render: (quote) => quote.clientName ?? "No customer",
+									},
+									{
+										key: "status",
+										header: "Status",
+										width: "w-24",
+										tight: true,
+										render: (quote) => (
 											<span
-												className={`w-24 shrink-0 text-[11px] capitalize ${
-													lapsed ? "text-[#f5b44a]" : "text-[var(--ink-30)]"
+												className={`text-[11px] capitalize ${
+													isLapsed(quote)
+														? "text-[var(--signal-attention)]"
+														: "text-[var(--ink-30)]"
 												}`}
 											>
-												{lapsed ? "expired" : quote.status}
+												{isLapsed(quote) ? "expired" : quote.status}
 											</span>
-											<span className="w-24 shrink-0 text-right text-[12.5px] text-[var(--ink-85)]">
-												{money(quote.totalCents, quote.currency)}
-											</span>
-											<div className="flex shrink-0 items-center gap-1.5">
+										),
+									},
+									{
+										key: "total",
+										header: "Total",
+										width: "w-24",
+										align: "right",
+										tight: true,
+										render: (quote) => money(quote.totalCents, quote.currency),
+									},
+									{
+										key: "actions",
+										header: "",
+										align: "right",
+										tight: true,
+										render: (quote) => (
+											<div className="flex items-center justify-end gap-1.5">
 												{quote.status === "draft" ? (
 													<button
 														type="button"
@@ -231,14 +271,21 @@ export function QuotesView({ workspaceId }: { workspaceId: string }) {
 													</>
 												) : null}
 											</div>
-										</div>
-									);
-								})}
-							</div>
+										),
+									},
+								]}
+							/>
 						</>
 					);
 				}}
 			</PageState>
+			{selectedId ? (
+				<QuotePanel
+					workspaceId={workspaceId}
+					id={selectedId}
+					onClose={() => setSelectedId(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

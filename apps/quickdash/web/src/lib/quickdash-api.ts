@@ -46,6 +46,8 @@ export type QuickDashNotification = {
 	 * still arrives with the right colour.
 	 */
 	signal: NotificationSignal;
+	/** The record this is about, when it is about one. */
+	recordId: string | null;
 	title: string;
 	body: string | null;
 	href: string | null;

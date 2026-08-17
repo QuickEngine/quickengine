@@ -58,6 +58,17 @@ export const notifications = pgTable(
 		 * have no redelivery to guard against.
 		 */
 		sourceKey: text("source_key"),
+		/**
+		 * The record this is about, when it is about one.
+		 *
+		 * 🔑 `href` says which PAGE to open; this says which ROW on it. Without
+		 * it a list can only be told "something here needs you" and not which
+		 * line — so the dot on a row could never come from the bell, and the two
+		 * would drift into disagreeing about the same fact.
+		 *
+		 * Null for anything not about a single record (a plan change, a digest).
+		 */
+		recordId: text("record_id"),
 		readAt: timestamp("read_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()

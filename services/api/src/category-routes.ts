@@ -5,6 +5,7 @@ import {
 	deleteCategory,
 	listCategoryItemIds,
 	listCategoryTree,
+	listItemCategoryIds,
 	setItemCategories,
 	updateCategory,
 } from "@quickengine/mod-products-services";
@@ -73,6 +74,21 @@ export function registerCategoryRoutes(
 			itemIds: await listCategoryItemIds(
 				c.get("authorized").workspaceId,
 				c.req.param("slug"),
+			),
+		}),
+	);
+
+	/**
+	 * Which categories one item is filed under.
+	 *
+	 * The read half of `PUT /v1/catalog/:id/categories`, which could replace an
+	 * item's categories without any way to see them first.
+	 */
+	app.get("/v1/catalog/:id/categories", read, async (c) =>
+		respond(c, {
+			categoryIds: await listItemCategoryIds(
+				c.get("authorized").workspaceId,
+				uuid.parse(c.req.param("id")),
 			),
 		}),
 	);

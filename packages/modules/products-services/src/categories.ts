@@ -431,6 +431,43 @@ export async function listCategoryItemIds(
 	return rows.map((row) => row.id);
 }
 
+/**
+ * Which categories one item is filed under.
+ *
+ * 🔴 The read that `setItemCategories` never had. Membership could be REPLACED
+ * but never read back, so the only way to learn where an item sat was to walk
+ * every category asking for its items and invert the result — which no operator
+ * screen can reasonably do. An editor that cannot show current state before
+ * changing it is an editor that silently discards what it did not know about.
+ *
+ * ⚠️ Unlike `listCategoryItemIds`, this does NOT filter to visible categories.
+ * That one answers a storefront's question; this one answers the operator's,
+ * and hiding a hidden category here would make it invisible in the very screen
+ * used to take an item out of it.
+ */
+export async function listItemCategoryIds(
+	workspaceId: string,
+	catalogItemId: string,
+): Promise<string[]> {
+	const rows = await db
+		.select({ id: catalogItemCategories.categoryId })
+		.from(catalogItemCategories)
+		.innerJoin(
+			catalogCategories,
+			eq(catalogItemCategories.categoryId, catalogCategories.id),
+		)
+		.where(
+			and(
+				// Scoped by workspace through the category, so an id guessed from
+				// another shop returns nothing rather than leaking that it exists.
+				eq(catalogCategories.workspaceId, workspaceId),
+				eq(catalogItemCategories.catalogItemId, catalogItemId),
+			),
+		)
+		.orderBy(asc(catalogItemCategories.sortOrder));
+	return rows.map((row) => row.id);
+}
+
 /** Partial update. Every field optional; absent means "leave it alone". */
 export const categoryPatchSchema = categoryInputSchema.partial();
 

@@ -5,6 +5,7 @@ import {
 	orders,
 	paymentAccounts,
 	payments,
+	recordOutboxEvent,
 } from "@quickengine/db";
 import { setPaymentStatus } from "./payments";
 import type {
@@ -28,7 +29,7 @@ import { getPaymentProvider } from "./providers";
 async function settlePaymentRow(
 	workspaceId: string,
 	paymentId: string,
-	status: "succeeded" | "refunded",
+	status: "succeeded" | "refunded" | "disputed",
 ) {
 	try {
 		await setPaymentStatus(workspaceId, paymentId, status);
@@ -64,6 +65,11 @@ const SETTLEMENT_EVENTS = new Set([
 	"payment_intent.succeeded",
 	"payment_intent.payment_failed",
 	"charge.refunded",
+	// 🔴 A dispute is the one provider event with a DEADLINE on it. The money is
+	// already gone from the business's balance and there is a window to respond;
+	// missing it loses the money by default. Everything else here can be
+	// discovered late without cost.
+	"charge.dispute.created",
 ]);
 
 export function isSettlementEvent(type: string): boolean {
@@ -284,10 +290,45 @@ export async function applyCheckoutSettlement(
 		};
 	}
 
+	if (event.type === "charge.dispute.created") {
+		// The money is already gone from the business's balance and a response
+		// window has started. Recording it is what puts it in front of a person;
+		// until this existed, a dispute reached QuickDash nowhere at all.
+		//
+		// `disputed` is a non-terminal status — a won dispute goes back to
+		// `succeeded` — so this does not strand the payment the way marking it
+		// failed would.
+		await settlePaymentRow(workspaceId, payment.id, "disputed");
+		await recordOutboxEvent({
+			workspaceId,
+			aggregateType: "payment",
+			aggregateId: payment.id,
+			eventName: "payment.status-changed",
+			payload: { paymentId: payment.id, status: "disputed" },
+			// 🔑 The PROVIDER's event id, so a redelivered dispute is the same
+			// notification rather than a second one.
+			requestId: event.id,
+			actorType: "payment_provider",
+		});
+
+		// The ORDER is untouched, as with a refund. Whether a disputed order still
+		// ships is the operator's decision.
+		return {
+			applied: false,
+			reason: "dispute recorded against the payment",
+			expected: true,
+		};
+	}
+
 	if (event.type === "payment_intent.payment_failed") {
 		// Deliberately NOT cancelled. A failed card is usually retried moments
 		// later on the same intent, and cancelling would destroy the basket in
 		// front of a customer who is about to succeed.
+		//
+		// ⚠️ And deliberately NOT announced. A declined card is ordinary traffic in
+		// a shop — wrong CVC, insufficient funds — and the customer almost always
+		// retries within seconds. Notifying on each one is how the bell becomes
+		// something nobody reads, which then hides the dispute above it.
 		return {
 			applied: false,
 			reason: "payment failed; order left as draft",

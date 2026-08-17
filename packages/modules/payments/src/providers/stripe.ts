@@ -247,10 +247,15 @@ export const stripePaymentProvider: PaymentProvider = {
 			// carries no payment id" before any handler saw it. Found 2026-08-11,
 			// after the refund handler itself was already written and could never
 			// fire. The charge carries the intent it belongs to; use that.
+			// ⚠️ A DISPUTE is a third object shape. Its `id` is a `dp_...`, matching
+			// no payment row, and it carries the intent it disputes — the same trap
+			// the refund defect fell into, one object type over. Both `charge` and
+			// `dispute` are handled by the same branch because both name their
+			// `payment_intent`.
 			const externalPaymentId =
 				object.object === "payment_intent"
 					? (object.id ?? null)
-					: object.object === "charge" &&
+					: (object.object === "charge" || object.object === "dispute") &&
 							typeof object.payment_intent === "string"
 						? object.payment_intent
 						: null;

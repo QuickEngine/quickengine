@@ -1,7 +1,8 @@
-import { CheckIcon, WarningIcon } from "@phosphor-icons/react";
+import { WarningIcon } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { SkeletonRows } from "../../components/skeletons";
 import { accountQueries, useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
 import { clientEnv } from "../../lib/env";
@@ -129,7 +130,7 @@ function WorkspaceDetailPage() {
 	if (workspaces.isPending) {
 		return (
 			<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-				<p className="text-[12px] text-[var(--ink-30)]">Loading workspace…</p>
+				<SkeletonRows rows={4} />
 			</main>
 		);
 	}
@@ -202,7 +203,7 @@ function WorkspaceDetailPage() {
 				<button
 					type="submit"
 					disabled={!dirty || !currentName.trim() || rename.isPending}
-					className={primaryAction}
+					className={`${primaryAction} ${rename.isPending ? "shimmer-busy" : ""}`}
 				>
 					{rename.isPending ? "Saving…" : "Save"}
 				</button>

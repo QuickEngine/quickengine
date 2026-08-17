@@ -203,3 +203,92 @@ body {
 ::-webkit-scrollbar-button {
 	display: none;
 }
+
+/* ── Loading ─────────────────────────────────────────────────────────────────
+   One definition for every placeholder in the console. A gradient travelling
+   across the block, not an opacity fade: motion in one direction reads as
+   progress, where a pulse reads as a heartbeat.
+
+   ⚠️ Stopped under `prefers-reduced-motion`. A repeating sweep is exactly the
+   motion that setting exists to suppress, and a still placeholder loses
+   nothing. */
+@keyframes quickdash-shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
+}
+
+.shimmer {
+	background-image: linear-gradient(
+		90deg,
+		rgb(var(--console-ink) / 0.07) 0%,
+		rgb(var(--console-ink) / 0.07) 35%,
+		rgb(var(--console-ink) / 0.16) 50%,
+		rgb(var(--console-ink) / 0.07) 65%,
+		rgb(var(--console-ink) / 0.07) 100%
+	);
+	background-size: 200% 100%;
+	animation: quickdash-shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.shimmer {
+		animation: none;
+	}
+}
+
+/* A control that is working, with its label still readable.
+   ⚠️ An OVERLAY, not a background swap: the button keeps its own fill and text,
+   and the sweep passes over the top. Replacing the background would make a
+   filled button flash to grey mid-action, which reads as the button breaking.
+   The label carries the meaning ("Saving…"), so the motion only has to say
+   "still going" — which is why this needs no spinner beside it. */
+.shimmer-busy {
+	position: relative;
+	overflow: hidden;
+}
+
+.shimmer-busy::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background-image: linear-gradient(
+		90deg,
+		transparent 0%,
+		transparent 35%,
+		rgb(255 255 255 / 0.22) 50%,
+		transparent 65%,
+		transparent 100%
+	);
+	background-size: 200% 100%;
+	animation: quickdash-shimmer 1.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.shimmer-busy::after {
+		animation: none;
+	}
+}
+
+/* ── Signals ─────────────────────────────────────────────────────────────────
+   Colour carries MEANING here, not decoration, so each has exactly one job:
+
+   · news      — something new for you. An unread message, a new order. Nothing
+                 is wrong; there is simply something you have not seen.
+   · attention — something is wrong or at risk. Overdue, low stock, expired, a
+                 zone that cannot quote.
+   · failure   — something failed or is destructive. A declined payment, a
+                 dispute.
+
+   ⚠️ Reaching for "the nearest colour that stands out" is how an unread message
+   ends up looking like an overdue invoice. If a new signal does not fit one of
+   these three, the signal is probably wrong, not the palette. */
+:root {
+	--signal-news: #4d8df6;
+	--signal-attention: #f5b44a;
+	--signal-failure: #ff6b6b;
+}

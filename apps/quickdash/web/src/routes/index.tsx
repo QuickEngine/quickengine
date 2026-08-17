@@ -2,6 +2,8 @@ import { MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../components/page-state";
+import { SkeletonRows } from "../components/skeletons";
 import { clientEnv } from "../lib/env";
 import { quickDashQueries } from "../lib/quickdash-api";
 
@@ -66,13 +68,14 @@ function WorkspacePicker() {
 
 				<div className="mt-5">
 					{workspaces.isPending ? (
-						<p className="text-[12px] text-[var(--ink-30)]">
-							Loading workspaces…
-						</p>
+						<SkeletonRows rows={3} />
 					) : workspaces.isError ? (
-						<p className="text-[12px] text-[var(--ink-45)]">
-							Your workspaces did not load.
-						</p>
+						<RequestFailure
+							error={workspaces.error}
+							onRetry={() => {
+								void workspaces.refetch();
+							}}
+						/>
 					) : all.length === 0 ? (
 						<div className="rounded-lg border border-[var(--console-line-strong)] p-5">
 							<p className="text-[12.5px] text-[var(--ink-85)]">
@@ -99,7 +102,9 @@ function WorkspacePicker() {
 								<Link
 									key={workspace.id}
 									to="/$workspace"
-									params={{ workspace: workspace.id }}
+									// Slug where there is one; the id remains a valid address for a
+									// workspace that never got one.
+									params={{ workspace: workspace.slug ?? workspace.id }}
 									className="group flex items-center gap-3 rounded-lg border border-[var(--console-line-strong)] bg-[var(--console-panel)] p-3.5 outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.04)]"
 								>
 									<span

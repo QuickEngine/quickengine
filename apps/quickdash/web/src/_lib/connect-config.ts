@@ -31,7 +31,7 @@ const KEY_PLACEHOLDER = "…create the key below";
 /**
  * Framework-neutral `NEXT_PUBLIC_` naming.
  *
- * ⚠️ These exact names are what the proven Gemsutopia integration reads, so they
+ * ⚠️ These exact names are what a proven storefront integration reads, so they
  * are a contract, not a preference. A site on Vite or Nuxt renames the prefix;
  * the suffix must match what its own code looks for.
  */

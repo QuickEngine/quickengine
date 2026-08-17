@@ -21,7 +21,7 @@ const quietAction =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--console-line-strong)] px-4 text-[12.5px] text-[var(--ink-60)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)] disabled:pointer-events-none disabled:opacity-40";
 
 function SettingsPage() {
-	const { workspace } = Route.useParams();
+	const { workspaceId: workspace } = Route.useRouteContext();
 	const context = useQuery(quickDashQueries.context(workspace));
 	const queryClient = useQueryClient();
 	const [failure, setFailure] = useState<string | null>(null);

@@ -2,6 +2,8 @@ import { CheckIcon } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../../components/page-state";
+import { SkeletonRows } from "../../components/skeletons";
 import type { Notification } from "../../lib/account-api";
 import { accountQueries } from "../../lib/account-api";
 import { api } from "../../lib/api";
@@ -125,13 +127,14 @@ function NotificationsPage() {
 			) : null}
 
 			{notifications.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">
-					Loading notifications…
-				</p>
+				<SkeletonRows rows={4} />
 			) : notifications.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">
-					Notifications did not load.
-				</p>
+				<RequestFailure
+					error={notifications.error}
+					onRetry={() => {
+						void notifications.refetch();
+					}}
+				/>
 			) : visible.length === 0 ? (
 				<p className="py-6 text-[12px] text-[var(--ink-30)]">
 					{filter === "unread"

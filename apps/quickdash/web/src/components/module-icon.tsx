@@ -1,5 +1,6 @@
 import {
 	AddressBook,
+	Article,
 	CalendarBlank,
 	ChartLineUp,
 	Clock,
@@ -32,6 +33,8 @@ const icons: Readonly<Record<string, Icon>> = {
 	"time-tracking": Clock,
 	"quotes-estimates": Package,
 	"contracts-esign": PenNib,
+	// The words on a customer's own website.
+	content: Article,
 	"reporting-analytics": ChartLineUp,
 };
 

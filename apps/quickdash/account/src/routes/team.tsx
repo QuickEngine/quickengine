@@ -11,6 +11,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../components/page-state";
+import { SkeletonRows } from "../components/skeletons";
 import { accountQueries, useActiveOrganization } from "../lib/account-api";
 import { api } from "../lib/api";
 
@@ -263,7 +265,7 @@ function TeamPage() {
 				<button
 					type="submit"
 					disabled={!email.trim() || invite.isPending}
-					className={primaryAction}
+					className={`${primaryAction} ${invite.isPending ? "shimmer-busy" : ""}`}
 				>
 					{invite.isPending ? "Inviting…" : "Invite"}
 				</button>
@@ -321,9 +323,14 @@ function TeamPage() {
 			</p>
 
 			{members.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading people…</p>
+				<SkeletonRows rows={4} />
 			) : members.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">People did not load.</p>
+				<RequestFailure
+					error={members.error}
+					onRetry={() => {
+						void members.refetch();
+					}}
+				/>
 			) : people.length === 0 ? (
 				<p className="py-6 text-[12px] text-[var(--ink-30)]">
 					{needle ? "Nobody matches that." : "Nobody here yet."}

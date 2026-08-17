@@ -7,6 +7,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../../components/page-state";
+import { SkeletonRows } from "../../components/skeletons";
 import { accountQueries, useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
 
@@ -260,7 +262,7 @@ function ApiKeysPage() {
 					<input
 						value={name}
 						onChange={(event) => setName(event.target.value)}
-						placeholder="What is it for? e.g. Caffeinate storefront"
+						placeholder="What is it for? e.g. our storefront"
 						aria-label="Key name"
 						className={`${field} min-w-64 flex-1`}
 					/>
@@ -304,7 +306,7 @@ function ApiKeysPage() {
 					<button
 						type="submit"
 						disabled={!name.trim() || !chosen || create.isPending}
-						className={primaryAction}
+						className={`${primaryAction} ${create.isPending ? "shimmer-busy" : ""}`}
 					>
 						{create.isPending ? "Issuing…" : "Issue key"}
 					</button>
@@ -341,9 +343,14 @@ function ApiKeysPage() {
 				) : null}
 			</p>
 			{keys.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading keys…</p>
+				<SkeletonRows rows={4} />
 			) : keys.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">Keys did not load.</p>
+				<RequestFailure
+					error={keys.error}
+					onRetry={() => {
+						void keys.refetch();
+					}}
+				/>
 			) : rows.length === 0 ? (
 				<p className="py-6 text-[12px] text-[var(--ink-30)]">
 					No keys yet. A website or server needs one to reach this workspace.

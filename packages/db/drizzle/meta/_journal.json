@@ -498,6 +498,20 @@
 			"when": 1786908257738,
 			"tag": "0070_fixed_scream",
 			"breakpoints": true
+		},
+		{
+			"idx": 71,
+			"version": "7",
+			"when": 1786925349902,
+			"tag": "0071_faulty_bullseye",
+			"breakpoints": true
+		},
+		{
+			"idx": 72,
+			"version": "7",
+			"when": 1786925997828,
+			"tag": "0072_tense_agent_brand",
+			"breakpoints": true
 		}
 	]
 }

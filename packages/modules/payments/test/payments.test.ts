@@ -25,6 +25,7 @@ const workspaceId = "00000000-0000-4000-8000-000000000801";
 const otherWorkspaceId = "00000000-0000-4000-8000-000000000802";
 const clientId = "00000000-0000-4000-8000-000000000803";
 const settlementOrderId = "00000000-0000-4000-8000-000000000804";
+const disputeOrderId = "00000000-0000-4000-8000-000000000805";
 
 beforeEach(async () => {
 	const sql = testDbClient();
@@ -334,6 +335,94 @@ describe("Connected payment providers", () => {
 			applyCheckoutSettlement(
 				refunded,
 				refunded.externalAccountId,
+				"stripe",
+				"live",
+			),
+		).resolves.toMatchObject({ applied: false });
+	});
+
+	/**
+	 * 🔴 A dispute reached QuickDash NOWHERE before this. `charge.dispute.created`
+	 * was not a settlement event, and the dispute object is a third shape whose
+	 * own id (`dp_...`) matches no payment row — the same trap that left every
+	 * refund invisible until 2026-08-11, one object type over.
+	 *
+	 * It is also the only provider event with a deadline attached: the money is
+	 * already out of the business's balance and an unanswered dispute is lost by
+	 * default. Silence here costs real money.
+	 */
+	it("records a dispute and announces it, keeping the payment refundable", async () => {
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_dispute_webhook",
+		});
+		const sql = testDbClient();
+		await sql`insert into orders (id, workspace_id, client_id, client_name, sequence, number, currency, subtotal_cents, total_cents, status) values (${disputeOrderId}, ${workspaceId}, ${clientId}, 'Grace Client', 2, 'ORD-0002', 'CAD', 2400, 3600, 'draft')`;
+		await recordPendingCheckoutPayment({
+			workspaceId,
+			orderId: disputeOrderId,
+			clientId,
+			clientEmail: "grace@example.com",
+			externalPaymentId: "pi_dispute_webhook",
+			provider: "stripe",
+			amountCents: 3600,
+			currency: "CAD",
+			environment: "live",
+		});
+		const paid = {
+			id: "evt_dispute_paid",
+			type: "payment_intent.succeeded",
+			externalPaymentId: "pi_dispute_webhook",
+			externalAccountId: "acct_dispute_webhook",
+			payload: {},
+		};
+		await applyCheckoutSettlement(
+			paid,
+			paid.externalAccountId,
+			"stripe",
+			"live",
+		);
+
+		// The intent id is what `verifyWebhook` extracts from the dispute object;
+		// a `dp_...` would match nothing, which is the defect this guards.
+		const disputed = {
+			id: "evt_disputed",
+			type: "charge.dispute.created",
+			externalPaymentId: "pi_dispute_webhook",
+			externalAccountId: "acct_dispute_webhook",
+			payload: {},
+		};
+		await expect(
+			applyCheckoutSettlement(
+				disputed,
+				disputed.externalAccountId,
+				"stripe",
+				"live",
+			),
+		).resolves.toMatchObject({ applied: false, expected: true });
+
+		const row = (await listPayments(workspaceId)).find(
+			(p) => p.externalPaymentId === "pi_dispute_webhook",
+		);
+		expect(row?.status).toBe("disputed");
+
+		// 🔑 The outbox event is what makes the bell ring. Without it the status
+		// changes in a table nobody is looking at.
+		const events = await sql`
+			select payload from api_outbox_events
+			where workspace_id = ${workspaceId} and event_name = 'payment.status-changed'
+		`;
+		expect(
+			events.some(
+				(row: { payload: { status?: string } }) =>
+					row.payload?.status === "disputed",
+			),
+		).toBe(true);
+
+		// A redelivery must not throw, or Stripe retries forever.
+		await expect(
+			applyCheckoutSettlement(
+				disputed,
+				disputed.externalAccountId,
 				"stripe",
 				"live",
 			),

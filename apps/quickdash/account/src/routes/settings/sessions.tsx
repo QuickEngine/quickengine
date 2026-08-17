@@ -2,6 +2,8 @@ import { authClient, useSession } from "@quickengine/auth/client";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { RequestFailure } from "../../components/page-state";
+import { SkeletonRows } from "../../components/skeletons";
 
 /**
  * Security → Sessions. Every browser currently signed in as you.
@@ -134,11 +136,14 @@ function SessionsPage() {
 			) : null}
 
 			{sessions.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading sessions…</p>
+				<SkeletonRows rows={4} />
 			) : sessions.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">
-					Sessions did not load.
-				</p>
+				<RequestFailure
+					error={sessions.error}
+					onRetry={() => {
+						void sessions.refetch();
+					}}
+				/>
 			) : (
 				<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
 					{rows.map((row) => {

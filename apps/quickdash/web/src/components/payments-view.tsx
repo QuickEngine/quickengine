@@ -5,11 +5,11 @@ import { workspaceApi } from "../lib/api";
 /**
  * Connecting somewhere to get paid.
  *
- * 🔴 Both providers are shown ALWAYS, connected or not. Gemsutopia and
- * Woolenlillies take PayPal while Caffeinate takes Stripe, and a page that
- * surfaced only the connected one would leave a business unable to find the
- * provider it actually uses. The API has been provider-neutral the whole time;
- * only this screen was Stripe-shaped.
+ * 🔴 Both providers are shown ALWAYS, connected or not. Businesses differ in
+ * which one they use, and a page that surfaced only the connected provider
+ * would leave somebody unable to find the one they actually take money with.
+ * The API has been provider-neutral the whole time; only this screen was
+ * Stripe-shaped.
  */
 const PROVIDERS = [
 	{
@@ -171,7 +171,7 @@ function CredentialForm({
 			<div className="mt-3 flex items-center gap-2">
 				<button
 					type="submit"
-					className={pill}
+					className={`${pill} ${busy ? "shimmer-busy" : ""}`}
 					disabled={busy || !clientId.trim() || !clientSecret.trim()}
 				>
 					{busy ? "Checking with PayPal…" : "Connect"}

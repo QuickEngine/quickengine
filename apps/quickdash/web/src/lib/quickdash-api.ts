@@ -35,8 +35,17 @@ export type QuickDashContext = {
 };
 
 /** A person's notification inbox. Shared with Account, deliberately. */
+export type NotificationSignal = "news" | "attention" | "failure";
+
 export type QuickDashNotification = {
 	id: string;
+	type: string;
+	/**
+	 * How loudly to say it, decided by whatever produced the notification rather
+	 * than by a lookup table in this app. A type this build has never heard of
+	 * still arrives with the right colour.
+	 */
+	signal: NotificationSignal;
 	title: string;
 	body: string | null;
 	href: string | null;
@@ -92,8 +101,10 @@ export const quickDashQueries = {
 	 * happened — and the underlying table is user-scoped, so this is the same
 	 * list Account shows.
 	 *
-	 * ⚠️ Nothing emits notifications yet, so this is plumbing waiting on
-	 * publishers. The populated stream today is workspace activity.
+	 * ⏱ Refetched on a timer, because this is the only thing on screen that
+	 * changes without the operator doing anything. A minute matches the outbox
+	 * drain's own cadence — polling faster cannot surface an event sooner, it
+	 * just asks a question the answer to which has not changed yet.
 	 */
 	notifications: () =>
 		queryOptions({
@@ -105,6 +116,10 @@ export const quickDashQueries = {
 						unread: number;
 					}>("/account/notifications")
 				).data,
+			refetchInterval: 60_000,
+			// Coming back to the tab is exactly when you want to know what you
+			// missed, and it costs one request.
+			refetchOnWindowFocus: true,
 		}),
 	/**
 	 * The organisation's plan, for the tier badge in the header.

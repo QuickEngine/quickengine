@@ -1,6 +1,8 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { RequestFailure } from "../components/page-state";
+import { SkeletonRows } from "../components/skeletons";
 import { workspaceApi } from "../lib/api";
 import type { HomeEntry } from "../lib/quickdash-api";
 import { quickDashQueries } from "../lib/quickdash-api";
@@ -180,7 +182,7 @@ function EntryRow({
 }
 
 function HomePage() {
-	const { workspace } = Route.useParams();
+	const { workspaceId: workspace } = Route.useRouteContext();
 	const context = useQuery(quickDashQueries.context(workspace));
 	const home = useQuery(quickDashQueries.home(workspace));
 	// Seven days of settled money, from the workspace's own reporting.
@@ -195,6 +197,35 @@ function HomePage() {
 					from,
 					to,
 					granularity: "day",
+					timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+				})
+			).data;
+		},
+	});
+
+	/**
+	 * How busy the site has been.
+	 *
+	 * 🔑 Lives on Home rather than in a section of its own. Everything else in
+	 * QuickDash is something a person OPERATES — orders to fulfil, stock to
+	 * count. Traffic and revenue are things they READ about the workspace as a
+	 * whole, which is what Home already is; a separate "Insight" group buried
+	 * the numbers an owner opens most below eight groups of chores.
+	 *
+	 * ⚠️ Traffic is self-reported by the customer's own site, so a workspace with
+	 * no site reporting has none. That is absence, not zero, and the section
+	 * simply does not render.
+	 */
+	const traffic = useQuery({
+		queryKey: ["quickdash", workspace, "traffic-summary"],
+		queryFn: async () => {
+			const to = new Date();
+			const from = new Date(to.getTime() - 6 * 86_400_000);
+			from.setHours(0, 0, 0, 0);
+			return (
+				await workspaceApi(workspace).reports.trafficSummary({
+					from,
+					to,
 					timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
 				})
 			).data;
@@ -297,11 +328,14 @@ function HomePage() {
 			) : null}
 
 			{home.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Looking for work…</p>
+				<SkeletonRows rows={4} />
 			) : home.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">
-					Today&rsquo;s work did not load.
-				</p>
+				<RequestFailure
+					error={home.error}
+					onRetry={() => {
+						void home.refetch();
+					}}
+				/>
 			) : (
 				<>
 					{needsYou.length > 0 ? (
@@ -354,6 +388,30 @@ function HomePage() {
 					) : null}
 				</>
 			)}
+
+			{traffic.data && (traffic.data.views ?? 0) > 0 ? (
+				<section className="mb-8">
+					<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">
+						Site traffic, last 7 days
+					</p>
+					<div className="flex gap-8 border-[var(--console-line-soft)] border-t py-3.5">
+						{(
+							[
+								["Visitors", traffic.data.visitors],
+								["Sessions", traffic.data.sessions],
+								["Page views", traffic.data.views],
+							] as const
+						).map(([label, value]) => (
+							<div key={label}>
+								<p className="text-[18px] text-[var(--ink-85)] tabular-nums">
+									{Number(value ?? 0).toLocaleString()}
+								</p>
+								<p className="text-[11px] text-[var(--ink-30)]">{label}</p>
+							</div>
+						))}
+					</div>
+				</section>
+			) : null}
 
 			{events.length > 0 ? (
 				<section>

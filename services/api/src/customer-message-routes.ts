@@ -42,6 +42,42 @@ export const customerMessageInputSchema = z.object({
 	body: z.string().trim().min(1).max(10_000),
 });
 
+/**
+ * Tell the workspace a customer is waiting.
+ *
+ * 🔴 The ONLY thing that makes the bell ring for a message. Until this existed,
+ * a customer could write in and nothing anywhere knew — the conversation
+ * appeared in a list somebody had to think to open.
+ *
+ * ⚠️ Failures are swallowed. A message that saved must not fail because the
+ * announcement did; the customer would be told their message did not send when
+ * it plainly did. The cost is a missed notification, which the Messages page
+ * still shows.
+ */
+async function announceCustomerMessage(
+	c: { get(name: "requestId"): string },
+	workspaceId: string,
+	conversation: { id: string },
+) {
+	try {
+		const { recordOutboxEvent } = await import("@quickengine/db");
+		await recordOutboxEvent({
+			workspaceId,
+			aggregateType: "customer-conversation",
+			aggregateId: conversation.id,
+			eventName: "customer.message.received",
+			// Identity only. The channel is a notification, not a data feed, and a
+			// customer's words do not belong in an event payload that fans out to
+			// third-party webhooks.
+			payload: { conversationId: conversation.id },
+			requestId: c.get("requestId"),
+			actorType: "customer",
+		});
+	} catch {
+		// Deliberately silent — see above.
+	}
+}
+
 export const conversationStatusInputSchema = z.object({
 	status: z.enum(["open", "closed"]),
 });
@@ -253,15 +289,13 @@ export function registerCustomerMessageRoutes(
 		const context = c.get("customer");
 		if (!context.customer)
 			return respondError(c, "AUTHENTICATION_REQUIRED", "Sign in.", 401);
-		return respond(
-			c,
-			await createCustomerConversation({
-				workspaceId: context.workspaceId,
-				workspaceCustomerId: context.customer.workspaceCustomerId,
-				...parsed.data,
-			}),
-			201,
-		);
+		const conversation = await createCustomerConversation({
+			workspaceId: context.workspaceId,
+			workspaceCustomerId: context.customer.workspaceCustomerId,
+			...parsed.data,
+		});
+		await announceCustomerMessage(c, context.workspaceId, conversation);
+		return respond(c, conversation, 201);
 	});
 
 	app.get("/v1/customer/messages/:id", customerRead, readLimit, async (c) => {
@@ -308,15 +342,17 @@ export function registerCustomerMessageRoutes(
 					"The conversation was not found.",
 					404,
 				);
-			return respond(
+			const message = await appendCustomerMessage({
+				conversationId: conversation.id,
+				sender: "customer",
+				body: parsed.data.body,
+			});
+			await announceCustomerMessage(
 				c,
-				await appendCustomerMessage({
-					conversationId: conversation.id,
-					sender: "customer",
-					body: parsed.data.body,
-				}),
-				201,
+				c.get("customer").workspaceId,
+				conversation,
 			);
+			return respond(c, message, 201);
 		},
 	);
 

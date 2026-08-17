@@ -1,8 +1,25 @@
 import { CaretRightIcon, HouseIcon, PlugsIcon } from "@phosphor-icons/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { NavSignal } from "../lib/nav-signals";
+import { readOpenModules, writeOpenModules } from "../lib/nav-state";
 import type { QuickDashModule } from "../lib/quickdash-api";
 import { ModuleIcon } from "./module-icon";
+import { WorkingSpinner } from "./working-spinner";
+
+/** Shared with the bell and the toasts; one meaning per colour, everywhere. */
+const SIGNAL_COLOR: Record<NavSignal["signal"], string> = {
+	news: "var(--signal-news)",
+	attention: "var(--signal-attention)",
+	failure: "var(--signal-failure)",
+};
+
+/** Loudest wins when a collapsed module hides several kinds at once. */
+const SIGNAL_RANK: Record<NavSignal["signal"], number> = {
+	news: 0,
+	attention: 1,
+	failure: 2,
+};
 
 /**
  * The QuickDash sidebar navigation.
@@ -61,10 +78,6 @@ const MODULE_CHILDREN: Readonly<
 		["", "Files"],
 		["folders", "Folders"],
 	],
-	"reporting-analytics": [
-		["", "Revenue"],
-		["traffic", "Traffic"],
-	],
 };
 
 /**
@@ -76,26 +89,59 @@ const MODULE_CHILDREN: Readonly<
  * ships, without being routed through this file first.
  */
 const GROUPS: ReadonlyArray<{ label: string; ids: readonly string[] }> = [
-	{
-		label: "Commerce",
-		ids: [
-			"products-services",
-			"orders",
-			"inventory",
-			"shipping",
-			"fulfillment",
-		],
-	},
-	{ label: "Money", ids: ["payments", "invoicing", "quotes-estimates"] },
+	/**
+	 * Ordered by the day, not by the data model.
+	 *
+	 * Three rules, applied in this order:
+	 *
+	 * 1. **Frequency first.** What somebody opens every morning sits at the top.
+	 *    Orders led by Products meant the busiest page in the console sat behind
+	 *    one people configure occasionally.
+	 * 2. **Cause before effect.** An order, its payment, the work of delivering
+	 *    it and the parcel that leaves are one sale seen four times. Splitting
+	 *    them across "Commerce" and "Money" meant following a single sale
+	 *    crossed groups.
+	 * 3. **Setup apart from operation.** A catalog is arranged, then revisited.
+	 *    Triage and configuration are different modes and mixing them makes both
+	 *    harder to scan.
+	 */
+
+	// Today's work, in the order one sale moves through it.
+	{ label: "Selling", ids: ["orders", "payments", "fulfillment", "shipping"] },
+
+	// What you sell, and how much is left. Arranged, then revisited.
+	{ label: "Catalog", ids: ["products-services", "inventory"] },
+
 	// A booking is a person's appointment, not a sale — grouping it with orders
-	// implies money changed hands.
-	{ label: "People", ids: ["client-records", "bookings"] },
+	// would imply money changed hands.
+	{ label: "Customers", ids: ["client-records", "bookings"] },
+
+	// Money you are OWED, which is a different mode from money already taken.
+	// A quote becomes an invoice, so it comes first.
+	{ label: "Billing", ids: ["quotes-estimates", "invoicing"] },
+
 	{ label: "Work", ids: ["projects-tasks", "time-tracking"] },
-	{ label: "Documents", ids: ["files", "contracts-esign"] },
+
+	// Above Documents deliberately: the words on a business's own site change
+	// far more often than anybody opens a signed contract.
 	{ label: "Website", ids: ["content"] },
-	{ label: "Insight", ids: ["reporting-analytics"] },
-	{ label: "More", ids: [] },
+
+	{ label: "Documents", ids: ["files", "contracts-esign"] },
 ];
+
+/**
+ * Enabled modules that get NO sidebar entry.
+ *
+ * 🔴 Must be explicit. Anything the groups do not claim falls into "More", so
+ * simply deleting a module from `GROUPS` does not remove it from the sidebar —
+ * it moves it somewhere worse.
+ *
+ * Reporting is here because revenue and traffic are things a person READS about
+ * the workspace as a whole, which is exactly what Home is. Everything else in
+ * QuickDash is something they OPERATE. A group of one buried the numbers an
+ * owner opens most underneath eight groups of chores.
+ */
+const HIDDEN_FROM_NAV = new Set(["reporting-analytics"]);
 
 const row =
 	"group flex h-8 w-full shrink-0 items-center gap-2.5 rounded-md px-2 text-[12.5px] outline-none transition-colors";
@@ -115,19 +161,44 @@ function ModuleItem({
 	workspaceId,
 	module,
 	pathname,
+	childBadges,
 }: {
 	workspaceId: string;
 	module: QuickDashModule;
 	pathname: string;
+	/** Keyed `moduleId/section`; a truthy value shows a dot on that row. */
+	childBadges?: Record<string, NavSignal>;
 }) {
 	const base = `/${workspaceId}/${module.id}`;
 	const children = MODULE_CHILDREN[module.id];
 	const within = pathname === base || pathname.startsWith(`${base}/`);
-	// Opens itself when you are inside it, so nothing is ever hidden from where
-	// you already are.
-	const [open, setOpen] = useState(within);
+	/**
+	 * Open because you are inside it, OR because you opened it and we remembered.
+	 *
+	 * 🔴 The `within` half is not optional: the section you are standing in must
+	 * never be collapsed, whatever was stored. The remembered half is what
+	 * survives a refresh — previously the URL was the only input, so reloading
+	 * shut every other group you had opened.
+	 */
+	const [open, setOpen] = useState(
+		() => within || readOpenModules(workspaceId).has(module.id),
+	);
+	// Only while COLLAPSED: once open, each child shows its own, and two dots for
+	// one fact reads as two problems.
+	//
+	// 🔑 The rolled-up dot takes the LOUDEST child's colour. A collapsed Payments
+	// hiding a dispute must not show the same calm blue as one hiding a new
+	// order — the colour is the only thing distinguishing them while shut.
+	const rolledUp = (children ?? [])
+		.map(([segment]) => childBadges?.[`${module.id}/${segment}`])
+		.filter((badge): badge is NavSignal => Boolean(badge))
+		.sort((a, b) => SIGNAL_RANK[b.signal] - SIGNAL_RANK[a.signal])[0];
 
 	if (!children) {
+		// A module with no sub-pages still has notifications pointing at it, and
+		// they key on the module's own path — the same `moduleId/` an expandable
+		// module's first child uses. Without this the dot silently goes nowhere.
+		const own = childBadges?.[`${module.id}/`];
 		return (
 			<Link
 				to="/$workspace/$module"
@@ -136,7 +207,17 @@ function ModuleItem({
 				className={`${row} ${within ? active : idle}`}
 			>
 				<ModuleIcon id={module.id} className="size-[15px] shrink-0" />
-				<span className="truncate">{module.name}</span>
+				<span className="min-w-0 flex-1 truncate">{module.name}</span>
+				{own ? (
+					<>
+						<span className="sr-only">{own.count} unread</span>
+						<span
+							aria-hidden="true"
+							className="size-1.5 shrink-0 rounded-full"
+							style={{ background: SIGNAL_COLOR[own.signal] }}
+						/>
+					</>
+				) : null}
 			</Link>
 		);
 	}
@@ -145,13 +226,27 @@ function ModuleItem({
 		<div className="shrink-0">
 			<button
 				type="button"
-				onClick={() => setOpen((value) => !value)}
+				onClick={() => {
+					const next = !open;
+					setOpen(next);
+					const remembered = readOpenModules(workspaceId);
+					if (next) remembered.add(module.id);
+					else remembered.delete(module.id);
+					writeOpenModules(workspaceId, remembered);
+				}}
 				aria-expanded={open}
 				title={module.description}
 				className={`${row} ${within ? active : idle}`}
 			>
 				<ModuleIcon id={module.id} className="size-[15px] shrink-0" />
 				<span className="min-w-0 flex-1 truncate text-left">{module.name}</span>
+				{!open && rolledUp ? (
+					<span
+						aria-hidden="true"
+						className="size-1.5 shrink-0 rounded-full"
+						style={{ background: SIGNAL_COLOR[rolledUp.signal] }}
+					/>
+				) : null}
 				<CaretRightIcon
 					size={11}
 					className={`shrink-0 text-[var(--ink-25)] transition-transform ${open ? "rotate-90" : ""}`}
@@ -192,7 +287,33 @@ function ModuleItem({
 										: "text-[var(--ink-32)] hover:bg-[rgb(var(--console-ink)/0.045)] hover:text-[var(--ink-75)]"
 								}`}
 							>
-								{label}
+								<span className="min-w-0 flex-1 truncate text-left">
+									{label}
+								</span>
+								{/* 🔑 A dot, not a count. On a collapsed-width row the number
+								    matters less than the fact that something is waiting — and a
+								    count that keeps changing draws the eye every time it moves.
+								    The page itself shows how many. */}
+								{childBadges?.[`${module.id}/${segment}`] ? (
+									// The dot is decorative; the count is announced as text so a
+									// screen reader hears "Messages, 3 unread" rather than a bare
+									// label with an unexplained mark beside it.
+									<>
+										<span className="sr-only">
+											{childBadges[`${module.id}/${segment}`].count} unread
+										</span>
+										<span
+											aria-hidden="true"
+											className="size-1.5 shrink-0 rounded-full"
+											style={{
+												background:
+													SIGNAL_COLOR[
+														childBadges[`${module.id}/${segment}`].signal
+													],
+											}}
+										/>
+									</>
+								) : null}
 							</Link>
 						);
 					})}
@@ -205,9 +326,22 @@ function ModuleItem({
 export function WorkspaceNav({
 	workspaceId,
 	modules,
+	connectPending,
+	childBadges,
 }: {
 	workspaceId: string;
 	modules: QuickDashModule[];
+	/** Attention markers for sub-pages, keyed `moduleId/section`. */
+	childBadges?: Record<string, NavSignal>;
+	/**
+	 * A site has been set up but has never called us yet.
+	 *
+	 * 🔑 Shown on the row rather than only on the Connect page, so somebody can
+	 * deploy their site and go and do something else. Watching a page for a
+	 * handshake is exactly the wait that made people refresh and lose their
+	 * place.
+	 */
+	connectPending?: boolean;
 }) {
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
@@ -231,7 +365,11 @@ export function WorkspaceNav({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: re-measuring when the module count changes is the point.
 	useEffect(measure, [measure, modules.length]);
 
-	const byId = new Map(modules.map((module) => [module.id, module]));
+	const byId = new Map(
+		modules
+			.filter((module) => !HIDDEN_FROM_NAV.has(module.id))
+			.map((module) => [module.id, module]),
+	);
 	const grouped = GROUPS.map((group) => ({
 		label: group.label,
 		modules: group.ids.flatMap((id) => {
@@ -240,10 +378,11 @@ export function WorkspaceNav({
 			return module ? [module] : [];
 		}),
 	}));
-	// Whatever the groups did not claim — a module that shipped after this file
-	// was last edited.
-	const last = grouped[grouped.length - 1];
-	if (last) last.modules = [...last.modules, ...byId.values()];
+	// 🔴 No catch-all. A "More" bucket meant a new module silently appeared in a
+	// group nobody chose, and deleting a module from `GROUPS` moved it there
+	// rather than removing it. Every module belongs to a named group or to
+	// `HIDDEN_FROM_NAV`, deliberately — an unlisted one simply does not appear,
+	// which is a visible, fixable mistake rather than a quiet wrong answer.
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
@@ -281,6 +420,7 @@ export function WorkspaceNav({
 										workspaceId={workspaceId}
 										module={module}
 										pathname={pathname}
+										childBadges={childBadges}
 									/>
 								))}
 							</div>
@@ -297,7 +437,10 @@ export function WorkspaceNav({
 					className={`${row} ${pathname === `/${workspaceId}/connect` ? active : idle}`}
 				>
 					<PlugsIcon size={15} className="shrink-0" />
-					<span className="truncate">Connect</span>
+					<span className="min-w-0 flex-1 truncate">Connect</span>
+					{connectPending ? (
+						<WorkingSpinner label="Waiting for your site to connect" />
+					) : null}
 				</Link>
 			</div>
 		</div>

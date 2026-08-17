@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { RequestFailure } from "../components/page-state";
+import { SkeletonRows } from "../components/skeletons";
 import {
 	accountQueries,
 	type OrganizationRevenue,
@@ -463,11 +465,14 @@ function OverviewPage() {
 			</div>
 
 			{revenue.isPending ? (
-				<p className="text-[12px] text-[var(--ink-30)]">Loading revenue…</p>
+				<SkeletonRows rows={4} />
 			) : revenue.isError ? (
-				<p className="text-[12px] text-[var(--ink-45)]">
-					Revenue did not load.
-				</p>
+				<RequestFailure
+					error={revenue.error}
+					onRetry={() => {
+						void revenue.refetch();
+					}}
+				/>
 			) : revenue.data.totals.length === 0 ? (
 				/* The real layout at zero, not a message where the page should be.
 				   Somebody who has not sold anything yet should be able to see exactly

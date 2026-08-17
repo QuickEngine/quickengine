@@ -6,9 +6,72 @@
 		<meta name="robots" content="noindex, nofollow" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<title>Sign in — QuickEngine</title>
+		<style>
+			/* 🔴 Inline, and BEFORE any stylesheet loads.
+
+			   Navigating between surfaces — QuickDash to Account — is a full
+			   document load across origins, so the browser paints a blank page
+			   before a single line of our CSS or JavaScript exists. Painting that
+			   blank page white is the flash; the fix has to be here, in the markup
+			   the browser gets first.
+
+			   The colour is hard-coded rather than a token for the same reason:
+			   `--console-bg` is defined in a stylesheet that has not arrived yet. It
+			   must stay in step with `theme.css`. */
+			html,
+			body {
+				margin: 0;
+				background: #0a0a0a;
+			}
+
+			/* The same mark React shows while a route resolves, so the handover from
+			   document load to app boot is invisible. Removed automatically: React
+			   clears the container on its first render. */
+			#boot {
+				position: fixed;
+				inset: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			#boot > span {
+				width: 10rem;
+				height: 2.5rem;
+				border-radius: 0.375rem;
+				transform: skewX(-12deg);
+				background-image: linear-gradient(
+					90deg,
+					rgb(237 237 237 / 0.10) 0%,
+					rgb(237 237 237 / 0.10) 35%,
+					rgb(237 237 237 / 0.30) 50%,
+					rgb(237 237 237 / 0.10) 65%,
+					rgb(237 237 237 / 0.10) 100%
+				);
+				background-size: 200% 100%;
+				animation: boot-shimmer 1s linear infinite;
+			}
+
+			@keyframes boot-shimmer {
+				from {
+					background-position: 200% 0;
+				}
+				to {
+					background-position: -200% 0;
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				#boot > span {
+					animation: none;
+				}
+			}
+		</style>
 	</head>
 	<body>
-		<div id="root"></div>
+		<div id="root">
+			<div id="boot"><span></span></div>
+		</div>
 		<script type="module" src="/src/main.tsx"></script>
 	</body>
 </html>

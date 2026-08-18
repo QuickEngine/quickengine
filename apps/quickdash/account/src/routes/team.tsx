@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { RequestFailure } from "../components/page-state";
+import { isPlanLimit, PlanLimitDialog } from "../components/plan-limit-dialog";
 import { SkeletonRows } from "../components/skeletons";
 import { accountQueries, useActiveOrganization } from "../lib/account-api";
 import { api } from "../lib/api";
@@ -144,6 +145,7 @@ function TeamPage() {
 	const [email, setEmail] = useState("");
 	const [role, setRole] = useState<string>("member");
 	const [failure, setFailure] = useState<string | null>(null);
+	const [planLimit, setPlanLimit] = useState<string | null>(null);
 	const [inviteUrl, setInviteUrl] = useState<string | null>(null);
 	const [_emailed, setEmailed] = useState<{
 		sent: boolean;
@@ -186,10 +188,22 @@ function TeamPage() {
 			setEmailed({ sent: data.emailed, reason: data.emailFailure });
 			refresh();
 		},
-		// The server refuses escalation and enforces the seat limit; both arrive
-		// here as a message worth reading rather than a generic failure.
-		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That invitation could not be sent."),
+		/**
+		 * 🔴 A seat limit is not an error, and is not shown as one.
+		 *
+		 * The server refuses escalation AND enforces the seat limit, and the two
+		 * arrive down the same path — but they mean opposite things. Escalation is
+		 * "you may not do that". A full plan is "you want more of this", which is
+		 * the best news a business gets. Rendering both as red failure text taught
+		 * people that growing was a mistake they had made.
+		 */
+		onError: (error: { code?: string; message?: string }) => {
+			if (isPlanLimit(error)) {
+				setPlanLimit(error.message);
+				return;
+			}
+			setFailure(error?.message ?? "That invitation could not be sent.");
+		},
 	});
 
 	const changeRole = useMutation({
@@ -421,6 +435,14 @@ function TeamPage() {
 					))}
 				</div>
 			)}
+
+			{planLimit ? (
+				<PlanLimitDialog
+					message={planLimit}
+					accountUrl=""
+					onClose={() => setPlanLimit(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

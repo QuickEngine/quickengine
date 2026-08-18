@@ -36,13 +36,24 @@ export function LayoutToggle({
 			aria-checked={layout === "cards"}
 			aria-label={`View: ${layout}. Switch to ${layout === "cards" ? "table" : "cards"}.`}
 			onClick={() => onChange(layout === "cards" ? "table" : "cards")}
-			className="relative flex h-9 w-[3.9rem] shrink-0 items-center rounded-full bg-[rgb(var(--console-ink)/0.07)] p-0.5 outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.1)] focus-visible:bg-[rgb(var(--console-ink)/0.1)]"
+			/**
+			 * 🔴 A SWITCH, not a toggle, and it is styled to say so.
+			 *
+			 * Table and cards are two equal choices — neither is "on" — so the
+			 * control must never take an on-colour like the module switches do.
+			 * What it needs instead is to be visible at all: the track was ink at
+			 * 7% on a near-black surface, which is to say invisible, and the only
+			 * thing marking the control was a thumb floating in a field of nothing.
+			 * A real border gives the track an edge, and the thumb reads as sitting
+			 * inside something.
+			 */
+			className="relative flex h-9 w-[3.9rem] shrink-0 items-center rounded-full border border-[var(--console-line-strong)] bg-[rgb(var(--console-ink)/0.04)] p-0.5 outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] focus-visible:bg-[rgb(var(--console-ink)/0.08)]"
 		>
 			{/* The thumb slides rather than the icons swapping colour alone, so the
 			    control reads as a switch at a glance. */}
 			<span
 				aria-hidden="true"
-				className={`absolute top-0.5 left-0.5 size-8 rounded-full bg-[var(--console-pop)] shadow-[0_1px_3px_rgb(0_0_0/0.28)] transition-transform duration-200 ease-out ${
+				className={`absolute top-0.5 left-0.5 size-8 rounded-full bg-[rgb(var(--console-ink)/0.14)] transition-transform duration-200 ease-out ${
 					layout === "cards" ? "translate-x-[1.55rem]" : "translate-x-0"
 				}`}
 			/>

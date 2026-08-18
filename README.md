@@ -23,7 +23,6 @@ into separate applications.
 | `account.quickdash.xyz` | Console — organizations, workspaces, team, billing, usage |
 | `auth.quickdash.xyz` | Identity — signup, login, passkeys, TOTP, sessions |
 | `api.quickdash.xyz` | The public API |
-| `portal.quickdash.xyz` | Undeployed reference implementation for customer account experiences |
 | `quickdash.statuspage.io` | **Status — live.** Incidents and uptime |
 | `docs.` · `help.` | Documentation and support — planned |
 
@@ -42,6 +41,11 @@ Contracts & E-sign · Files & Documents · Reporting & Analytics · Content
 Each owns a manifest, a configuration contract, its own schema and a service boundary. Workspace
 registry rows decide what QuickDash loads, and dependency resolution prevents broken
 configurations — enabling Shipping brings Orders and its prerequisites with it.
+
+Inventory covers where stock comes from as well as how much is left: a business that does not
+make what it sells records its suppliers, how orders are meant to reach them, and the code each
+product carries in the supplier's own system. Suppliers are recorded before any handoff is agreed,
+because a supplier relationship exists before its integration does.
 
 Shipping supports deterministic country and region zones, flat and weight-based delivery,
 order-value bands and free-shipping thresholds. Storefronts choose a quoted rate; QuickDash
@@ -72,7 +76,8 @@ enabled, everything in the workspace.
 publishable key and a session of their own. They see their own orders, bookings and invoices and
 nothing else, and they are a separate kind of identity: no seat, no team membership, no route
 into anybody's dashboard. The business embeds that experience in its own site, as Caffeinate
-does. The old hosted portal remains in the repository only as reference code for building those
+does. The old hosted portal is retired — its address no longer resolves — and survives in the
+repository only as reference code for building those
 customer-owned surfaces; it is not a deployed product surface.
 
 The two are separate namespaces with no foreign key between them, resolved by different
@@ -113,7 +118,7 @@ pnpm + Turborepo · Vercel
 ```txt
 apps/quickengine/{web,auth,account}   the frontends
 apps/quickdash/web                    the operator's workspace
-apps/quickdash/portal                 undeployed reference customer-account implementation
+apps/quickdash/portal                 retired; reference code only, no longer deployed
 services/api                          the canonical Hono boundary
 packages/
   modules/          16 isolated business capabilities
@@ -201,12 +206,14 @@ configuration, and the page confirms itself the moment your site makes its first
 is locked to the addresses you name, so one copied out of your page source cannot be used to
 build another website. Proven on a freshly created account against a real storefront.
 Every operator page now says what it is doing: a skeleton in the shape of the page while it
-loads, a plain explanation and a retry when a request fails, and a short line saying what a list
-is for when it is empty. Workspaces are addressed by name rather than by an internal identifier.
+loads, and a short line saying what a list is for when it is empty. Failures are told apart by
+what they mean rather than by how serious they sound: a list that could not load reports it on a
+single line and keeps its search and filters, while a page that cannot exist at all replaces the
+whole screen and withdraws the controls that would act on nothing. Workspaces are addressed by name rather than by an internal identifier.
 Lists are real tables that can be switched to cards, paged, and dragged into whatever order suits
 the person reading them; every record opens in a panel over the list, and creating one uses the
 same panel. A catalog can be built from the console: products with pricing, stock, photographs and
-categories, and a detail page for every other record a business keeps.
+categories, the suppliers behind them, and a detail page for every other record a business keeps.
 QuickDash also tells you when something needs you: a paid order, a customer waiting on a reply, a
 disputed payment, a flagged shipment or stock running low reaches the bell, marks the sidebar row
 it belongs to, and appears briefly in the corner if you are watching.

@@ -30,6 +30,8 @@ export * from "./reviews";
 export * from "./saved-views";
 export * from "./shipments";
 export * from "./shipping-rates";
+export * from "./subscriptions";
+export * from "./suppliers";
 export * from "./time-entries";
 export * from "./webhooks";
 export * from "./workspace-branding";

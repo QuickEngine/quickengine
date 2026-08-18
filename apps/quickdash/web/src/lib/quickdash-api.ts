@@ -135,7 +135,25 @@ export const quickDashQueries = {
 			queryKey: ["quickdash", "plan", organizationId],
 			queryFn: async () =>
 				(
-					await sessionApi.request<{ planId: string }>(
+					await sessionApi.request<{
+						planId: string;
+						/**
+						 * Every meter, with what the plan allows. The endpoint has always
+						 * returned this; the type simply never admitted it, so nothing
+						 * could read the one thing that makes an honest upgrade prompt
+						 * possible — how close this account is to a limit it paid for.
+						 */
+						usage: Record<
+							string,
+							{
+								meter: string;
+								used: number;
+								limit: number | null;
+								remaining: number | null;
+								exceeded: boolean;
+							}
+						>;
+					}>(
 						`/account/plan?organizationId=${encodeURIComponent(organizationId ?? "")}`,
 					)
 				).data,

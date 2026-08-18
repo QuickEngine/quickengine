@@ -38,10 +38,28 @@ const RANK: Record<NotificationSignal, number> = {
  */
 export function navSignals(
 	items: QuickDashNotification[] | undefined,
+	/**
+	 * 🔴 Which workspace is on screen. Required, and the reason is a real bug.
+	 *
+	 * The inbox is per PERSON, not per workspace — `notifications` has a
+	 * `user_id` and no `workspace_id` at all. This function then dropped the
+	 * workspace segment from each href and kept only `module/section`, so a
+	 * notification from ANY workspace lit up the matching row in whichever
+	 * workspace you happened to be looking at. An order paid in one business put
+	 * a dot on another business's Orders row, and following it landed on an empty
+	 * page.
+	 *
+	 * ⚠️ Matched against the href's own first segment, which may be the slug or
+	 * the id depending on when the link was written. Both are accepted; anything
+	 * that matches neither is ignored rather than guessed at.
+	 */
+	workspace: { id: string; slug: string | null | undefined },
 ): Record<string, NavSignal> {
 	const badges: Record<string, NavSignal> = {};
 	for (const item of items ?? []) {
 		if (item.readAt || !item.href) continue;
+		const [owner] = item.href.replace(/^\/+/, "").split("/");
+		if (owner !== workspace.id && owner !== workspace.slug) continue;
 		// Drop the leading workspace segment; what remains is module and section.
 		const [module, section = ""] = item.href
 			.replace(/^\/+/, "")

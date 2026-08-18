@@ -21,6 +21,7 @@ async function loadWorkspace(workspaceId: string) {
 			id: quickengineWorkspaces.id,
 			name: quickengineWorkspaces.name,
 			organizationId: quickengineWorkspaces.organizationId,
+			published: quickengineWorkspaces.published,
 			ownerId: quickengineWorkspaces.ownerId,
 			slug: quickengineWorkspaces.slug,
 		})
@@ -60,6 +61,7 @@ export const defaultPlatformDependencies: PlatformDependencies = {
 				environment: loaded.workspace.environment,
 				id: loaded.workspace.id,
 				name: loaded.workspace.name,
+				published: loaded.workspace.published,
 				slug: loaded.workspace.slug,
 			},
 		} satisfies WorkspaceResolution;
@@ -83,6 +85,7 @@ export const defaultPlatformDependencies: PlatformDependencies = {
 				environment: loaded.workspace.environment,
 				id: loaded.workspace.id,
 				name: loaded.workspace.name,
+				published: loaded.workspace.published,
 				slug: loaded.workspace.slug,
 			},
 		} satisfies WorkspaceResolution;

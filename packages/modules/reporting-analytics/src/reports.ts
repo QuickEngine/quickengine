@@ -50,7 +50,11 @@ export async function getWorkspaceReport(
 	const from = range.from.toISOString();
 	const to = range.to.toISOString();
 	const [workspace] = await db
-		.select({ id: quickengineWorkspaces.id, name: quickengineWorkspaces.name })
+		.select({
+			id: quickengineWorkspaces.id,
+			name: quickengineWorkspaces.name,
+			environment: quickengineWorkspaces.environment,
+		})
 		.from(quickengineWorkspaces)
 		.where(eq(quickengineWorkspaces.id, workspaceId))
 		.limit(1);
@@ -129,7 +133,20 @@ export async function getWorkspaceReport(
 						placedCents: sql<string>`coalesce(sum(${orders.totalCents}) filter (where ${orders.placedAt} >= ${from}::timestamptz and ${orders.placedAt} < ${to}::timestamptz and ${orders.status} <> 'cancelled'), 0)::text`,
 					})
 					.from(orders)
-					.where(eq(orders.workspaceId, workspaceId))
+					/**
+					 * 🔴 Only orders from the mode the workspace is in.
+					 *
+					 * This is the single worst place for the two to mix. A rehearsal
+					 * summed into revenue produces a number an owner will believe,
+					 * act on, and possibly report to somebody else — and nothing on
+					 * screen would suggest it were wrong.
+					 */
+					.where(
+						and(
+							eq(orders.workspaceId, workspaceId),
+							eq(orders.environment, workspace.environment),
+						),
+					)
 					.groupBy(orders.currency)
 			: Promise.resolve([]),
 		has(moduleIds.fulfillments)

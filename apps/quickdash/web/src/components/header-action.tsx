@@ -2,8 +2,10 @@ import { PlusIcon } from "@phosphor-icons/react";
 import {
 	createContext,
 	type ReactNode,
+	useCallback,
 	useContext,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -29,6 +31,14 @@ type Slot = {
 	/** The open record's name, shown after the page name. */
 	crumb: string | null;
 	setCrumb: (crumb: string | null) => void;
+	/**
+	 * How many page-level takeovers are on screen.
+	 *
+	 * A count, not a flag: a page can hold more than one `PageState`, and the
+	 * last to unmount must not clear a takeover another is still showing.
+	 */
+	takeovers: number;
+	declareTakeover: (active: boolean) => void;
 };
 
 const HeaderSlotContext = createContext<Slot | null>(null);
@@ -36,9 +46,14 @@ const HeaderSlotContext = createContext<Slot | null>(null);
 export function HeaderActionProvider({ children }: { children: ReactNode }) {
 	const [action, setAction] = useState<ReactNode>(null);
 	const [crumb, setCrumb] = useState<string | null>(null);
+	const [takeovers, setTakeovers] = useState(0);
+	const declareTakeover = useCallback(
+		(active: boolean) => setTakeovers((count) => count + (active ? 1 : -1)),
+		[],
+	);
 	const value = useMemo(
-		() => ({ action, setAction, crumb, setCrumb }),
-		[action, crumb],
+		() => ({ action, setAction, crumb, setCrumb, takeovers, declareTakeover }),
+		[action, crumb, takeovers, declareTakeover],
 	);
 	return (
 		<HeaderSlotContext.Provider value={value}>
@@ -50,7 +65,37 @@ export function HeaderActionProvider({ children }: { children: ReactNode }) {
 /** What the layout renders in the header. */
 export function useHeaderSlots() {
 	const slot = useContext(HeaderSlotContext);
-	return { action: slot?.action ?? null, crumb: slot?.crumb ?? null };
+	return {
+		/**
+		 * 🔴 Withheld during a takeover. "New product" above a page that says the
+		 * page does not exist offers to create something into a place you cannot
+		 * see, and above a 403 it offers an action the API will refuse.
+		 */
+		action: (slot?.takeovers ?? 0) > 0 ? null : (slot?.action ?? null),
+		crumb: slot?.crumb ?? null,
+	};
+}
+
+/** True while a page-level takeover is showing, so page chrome can stand down. */
+export function usePageTakenOver() {
+	return (useContext(HeaderSlotContext)?.takeovers ?? 0) > 0;
+}
+
+/**
+ * Announce that this page has nothing to operate on, so its own controls stop
+ * offering to operate on it.
+ *
+ * ⚠️ `useLayoutEffect`, not `useEffect`: the search box and filters render as
+ * earlier siblings of the failure, so clearing them a paint later would flash a
+ * working toolbar over a page that has already failed.
+ */
+export function useDeclareTakeover(active: boolean) {
+	const declare = useContext(HeaderSlotContext)?.declareTakeover;
+	useLayoutEffect(() => {
+		if (!active || !declare) return;
+		declare(true);
+		return () => declare(false);
+	}, [active, declare]);
 }
 
 /**

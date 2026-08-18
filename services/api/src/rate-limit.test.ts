@@ -43,6 +43,7 @@ function testApp(options: {
 				workspace: {
 					businessType: "other",
 					environment: "live",
+					published: true,
 					id: workspaceId,
 					name: "Example",
 					slug: null,

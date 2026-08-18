@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { money } from "../lib/catalog";
-import { Block, BlockEmpty, DetailPanel, Fact } from "./detail-panel";
+import {
+	Block,
+	BlockEmpty,
+	BlockFailure,
+	DetailPanel,
+	Fact,
+} from "./detail-panel";
 import { Area, Text } from "./product-fields";
 
 /**
@@ -209,7 +215,9 @@ export function ClientPanel({
 				title="Addresses"
 				aside={addresses.data ? `${addresses.data.length}` : undefined}
 			>
-				{addresses.isPending ? (
+				{addresses.isError ? (
+					<BlockFailure query={addresses} />
+				) : addresses.isPending ? (
 					<BlockEmpty>Loading…</BlockEmpty>
 				) : (addresses.data?.length ?? 0) === 0 ? (
 					<BlockEmpty>
@@ -233,7 +241,9 @@ export function ClientPanel({
 			</Block>
 
 			<Block title="Orders" aside={theirOrders.length || undefined}>
-				{orders.isPending ? (
+				{orders.isError ? (
+					<BlockFailure query={orders} />
+				) : orders.isPending ? (
 					<BlockEmpty>Loading…</BlockEmpty>
 				) : theirOrders.length === 0 ? (
 					<BlockEmpty>Nothing ordered yet.</BlockEmpty>

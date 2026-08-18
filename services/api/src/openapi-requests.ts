@@ -21,6 +21,10 @@ import {
 	catalogAvailabilityInputSchema,
 	inventoryAdjustmentInputSchema,
 	inventoryItemInputSchema,
+	supplierInputSchema,
+	supplierPatchSchema,
+	supplierSkuInputSchema,
+	supplierSkuPatchSchema,
 } from "@quickengine/mod-inventory";
 import { createInvoiceInputSchema } from "@quickengine/mod-invoicing";
 import {
@@ -29,6 +33,7 @@ import {
 	discountPatchSchema,
 	discountPreviewInputSchema,
 	orderInputSchema,
+	partnerLinkSchema,
 } from "@quickengine/mod-orders";
 import {
 	paymentOnboardingInputSchema,
@@ -99,6 +104,7 @@ import {
 	renameWorkspaceSchema,
 	workspaceEnvironmentSchema,
 	workspaceModuleSchema,
+	workspacePublishedSchema,
 } from "./account-workspace-routes";
 import {
 	conversationStatusInputSchema,
@@ -215,6 +221,10 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createFulfillment: createFulfillmentInputSchema,
 	createInventoryItem: inventoryItemInputSchema,
 	updateInventoryItem: inventoryItemInputSchema,
+	createSupplier: supplierInputSchema,
+	updateSupplier: supplierPatchSchema,
+	createSupplierSku: supplierSkuInputSchema,
+	updateSupplierSku: supplierSkuPatchSchema,
 	applyInventoryAdjustment: inventoryAdjustmentInputSchema,
 	createShipment: shipmentInputSchema,
 	updateDraftShipment: shipmentInputSchema,
@@ -267,6 +277,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	renameWorkspace: renameWorkspaceSchema,
 	setWorkspaceArchived: archiveWorkspaceSchema,
 	setWorkspaceEnvironment: workspaceEnvironmentSchema,
+	setWorkspacePublished: workspacePublishedSchema,
 	setWorkspaceModuleEnabled: workspaceModuleSchema,
 	startPaymentOnboarding: paymentOnboardingInputSchema,
 	connectProviderCredentials: providerCredentialsInputSchema,
@@ -284,6 +295,8 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 		website: z.string().max(0).optional(),
 	}),
 	// getCustomerOrder is a GET whose UUID lives in the path; it deliberately has no body.
+	issuePartnerLink: partnerLinkSchema,
+	setPartnerLinkActive: z.object({ active: z.boolean() }),
 	createDiscount: discountInputSchema,
 	updateDiscount: discountPatchSchema,
 	previewDiscount: discountPreviewInputSchema,

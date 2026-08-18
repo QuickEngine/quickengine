@@ -20,6 +20,20 @@ const SIGNAL_COLOR: Record<NavSignal["signal"], string> = {
 	failure: "var(--signal-failure)",
 };
 
+/**
+ * The trailing marker slot at the end of a nav row.
+ *
+ * 🔴 Exactly the caret glyph's width, and every trailing marker sits in one.
+ *
+ * Without it a dot and a caret on neighbouring rows are 2.5px out of line, and
+ * the arithmetic is why: both end at the same right padding, but the caret is
+ * 11px wide and the dot is 6px, so their centres land at `edge - 5.5` and
+ * `edge - 3`. Small enough to look like a rendering artefact and survive a dev
+ * server restart, which is precisely what makes it worth pinning down. Centring
+ * both in a fixed 11px box puts them on one axis by construction.
+ */
+const marker = "flex w-[11px] shrink-0 items-center justify-center";
+
 /** Loudest wins when a collapsed module hides several kinds at once. */
 const SIGNAL_RANK: Record<NavSignal["signal"], number> = {
 	news: 0,
@@ -58,10 +72,12 @@ export const MODULE_CHILDREN: Readonly<
 	orders: [
 		["", "Orders"],
 		["discounts", "Discounts"],
+		["partners", "Partners"],
 	],
 	inventory: [
 		["", "Levels"],
 		["adjustments", "Adjustments"],
+		["suppliers", "Suppliers"],
 	],
 	shipping: [
 		["", "Shipments"],
@@ -261,11 +277,15 @@ function ModuleItem({
 				{own ? (
 					<>
 						<span className="sr-only">{own.count} unread</span>
-						<span
-							aria-hidden="true"
-							className="size-1.5 shrink-0 rounded-full"
-							style={{ background: SIGNAL_COLOR[own.signal] }}
-						/>
+						{/* A module with no sub-pages has no caret, so the dot takes the
+						    slot the caret would have used and lands on its axis. */}
+						<span className={marker}>
+							<span
+								aria-hidden="true"
+								className="size-1.5 rounded-full"
+								style={{ background: SIGNAL_COLOR[own.signal] }}
+							/>
+						</span>
 					</>
 				) : null}
 			</Link>
@@ -283,17 +303,23 @@ function ModuleItem({
 			>
 				<ModuleIcon id={module.id} className="size-[15px] shrink-0" />
 				<span className="min-w-0 flex-1 truncate text-left">{module.name}</span>
+				{/* Bubbling preserved: collapsed, the loudest child's colour shows on
+				    the parent. Expanded, the children show their own. */}
 				{!expanded && rolledUp ? (
-					<span
-						aria-hidden="true"
-						className="size-1.5 shrink-0 rounded-full"
-						style={{ background: SIGNAL_COLOR[rolledUp.signal] }}
-					/>
+					<span className={marker}>
+						<span
+							aria-hidden="true"
+							className="size-1.5 rounded-full"
+							style={{ background: SIGNAL_COLOR[rolledUp.signal] }}
+						/>
+					</span>
 				) : null}
-				<CaretRightIcon
-					size={11}
-					className={`shrink-0 text-[var(--ink-25)] transition-transform ${expanded ? "rotate-90" : ""}`}
-				/>
+				<span className={marker}>
+					<CaretRightIcon
+						size={11}
+						className={`text-[var(--ink-25)] transition-transform ${expanded ? "rotate-90" : ""}`}
+					/>
+				</span>
 			</button>
 			{expanded ? (
 				<div className="my-1 flex shrink-0 flex-col gap-1">
@@ -345,16 +371,18 @@ function ModuleItem({
 										<span className="sr-only">
 											{childBadges[`${module.id}/${segment}`].count} unread
 										</span>
-										<span
-											aria-hidden="true"
-											className="size-1.5 shrink-0 rounded-full"
-											style={{
-												background:
-													SIGNAL_COLOR[
-														childBadges[`${module.id}/${segment}`].signal
-													],
-											}}
-										/>
+										<span className={marker}>
+											<span
+												aria-hidden="true"
+												className="size-1.5 rounded-full"
+												style={{
+													background:
+														SIGNAL_COLOR[
+															childBadges[`${module.id}/${segment}`].signal
+														],
+												}}
+											/>
+										</span>
 									</>
 								) : null}
 							</Link>

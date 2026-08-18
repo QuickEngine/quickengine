@@ -189,11 +189,13 @@ function WorkspacesPage() {
 								aria-checked={view === "table"}
 								aria-label={`View: ${view === "table" ? "table" : "cards"}. Switch to ${view === "table" ? "cards" : "table"}.`}
 								onClick={() => setView(view === "cards" ? "table" : "cards")}
-								className="relative flex h-9 w-[4.25rem] shrink-0 items-center rounded-full bg-[rgb(var(--console-ink)/0.07)] p-0.5 outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.1)] focus-visible:bg-[rgb(var(--console-ink)/0.1)]"
+								/* A switch between two equal views. Visible track, no on-colour —
+								   see the row/card switch in QuickDash for the same reasoning. */
+								className="relative flex h-9 w-[4.25rem] shrink-0 items-center rounded-full border border-[var(--console-line-strong)] bg-[rgb(var(--console-ink)/0.04)] p-0.5 outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] focus-visible:bg-[rgb(var(--console-ink)/0.08)]"
 							>
 								<span
 									aria-hidden="true"
-									className={`absolute top-0.5 left-0.5 size-8 rounded-full bg-[var(--console-pop)] shadow-[0_1px_3px_rgb(0_0_0/0.28)] transition-transform duration-200 ease-out ${
+									className={`absolute top-0.5 left-0.5 size-8 rounded-full bg-[rgb(var(--console-ink)/0.14)] transition-transform duration-200 ease-out ${
 										view === "table" ? "translate-x-8" : "translate-x-0"
 									}`}
 								/>

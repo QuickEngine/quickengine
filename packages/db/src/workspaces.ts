@@ -1,8 +1,15 @@
-import { and, asc, desc, eq, isNotNull, isNull, or } from "drizzle-orm";
+import {
+	and,
+	asc,
+	desc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	or,
+} from "drizzle-orm";
 import { db } from "./client";
 import { ensurePersonalOrg } from "./orgs";
-import { orders } from "./schema/orders";
-import { paymentAccounts, payments } from "./schema/payments";
 import {
 	quickengineOrganizationMembers,
 	quickengineUsers,
@@ -171,26 +178,25 @@ export async function setWorkspaceEnvironment(
 		if (!workspace) return null;
 		if (workspace.environment === environment) return workspace;
 
-		const [account, order, payment] = await Promise.all([
-			tx
-				.select({ id: paymentAccounts.id })
-				.from(paymentAccounts)
-				.where(eq(paymentAccounts.workspaceId, workspaceId))
-				.limit(1),
-			tx
-				.select({ id: orders.id })
-				.from(orders)
-				.where(eq(orders.workspaceId, workspaceId))
-				.limit(1),
-			tx
-				.select({ id: payments.id })
-				.from(payments)
-				.where(eq(payments.workspaceId, workspaceId))
-				.limit(1),
-		]);
-		if (account.length > 0 || order.length > 0 || payment.length > 0) {
-			throw new Error("WORKSPACE_ENVIRONMENT_LOCKED");
-		}
+		/**
+		 * 🔴 The lock is gone, and this is why.
+		 *
+		 * Switching used to be refused once a workspace held a connected payment
+		 * account, an order or a payment. The reasoning was sound — a rehearsal
+		 * and a real sale must never share a ledger — but the remedy made sandbox
+		 * a ONE-WAY DOOR: rehearse a single checkout, and that workspace could
+		 * never take real money again. On a plan that includes one workspace, that
+		 * meant deleting everything and starting over.
+		 *
+		 * Orders now carry the mode they were placed in, and payments always did,
+		 * so the two are separable rather than merely forbidden: the console shows
+		 * one mode at a time and a test order is invisible in live. Nothing mixes,
+		 * so nothing needs blocking, and a business can rehearse and trade in the
+		 * same workspace for as long as it likes.
+		 *
+		 * ⚠️ What this does NOT do is decide who can reach the shop. That is
+		 * `published`, deliberately separate — see the column's own note.
+		 */
 
 		const [updated] = await tx
 			.update(quickengineWorkspaces)
@@ -295,20 +301,66 @@ export async function setWorkspaceModuleEnabled(input: {
  * needs to offer restore, which is impossible if the list hides them.
  */
 export async function listWorkspacesForOrganization(organizationId: string) {
-	return db
+	const rows = await db
 		.select({
 			id: quickengineWorkspaces.id,
 			name: quickengineWorkspaces.name,
 			slug: quickengineWorkspaces.slug,
 			businessType: quickengineWorkspaces.businessType,
 			environment: quickengineWorkspaces.environment,
-			modules: quickengineWorkspaces.modules,
 			archivedAt: quickengineWorkspaces.archivedAt,
 			createdAt: quickengineWorkspaces.createdAt,
 		})
 		.from(quickengineWorkspaces)
 		.where(eq(quickengineWorkspaces.organizationId, organizationId))
 		.orderBy(desc(quickengineWorkspaces.createdAt));
+
+	if (rows.length === 0) return [];
+
+	/**
+	 * 🔴 Modules come from `workspace_modules`, NOT from the workspace's own
+	 * `modules` column.
+	 *
+	 * That column is written once, when the workspace is created, and never
+	 * again — enabling and disabling only ever touch the join table. So it is a
+	 * snapshot of the day the workspace was made, and every Account screen was
+	 * reading it as current truth.
+	 *
+	 * The damage was not cosmetic. On the workspace page the toggles reflected
+	 * the stale column, so switching a module off changed nothing on screen; a
+	 * person reasonably concluded the control was broken and clicked again, and
+	 * again, each click really disabling something. QuickDash, which reads the
+	 * join table, then showed a sidebar with modules missing that nobody meant
+	 * to turn off.
+	 *
+	 * ⚠️ Two queries and a merge, deliberately, rather than a grouped subquery:
+	 * `DB_RULES.md` records that raw SQL subqueries do not survive the drizzle
+	 * driver, and this path runs on every Account page load.
+	 */
+	const membership = await db
+		.select({
+			workspaceId: workspaceModules.workspaceId,
+			moduleId: workspaceModules.moduleId,
+		})
+		.from(workspaceModules)
+		.where(
+			inArray(
+				workspaceModules.workspaceId,
+				rows.map((row) => row.id),
+			),
+		);
+
+	const byWorkspace = new Map<string, string[]>();
+	for (const row of membership) {
+		const list = byWorkspace.get(row.workspaceId);
+		if (list) list.push(row.moduleId);
+		else byWorkspace.set(row.workspaceId, [row.moduleId]);
+	}
+
+	return rows.map((row) => ({
+		...row,
+		modules: byWorkspace.get(row.id) ?? [],
+	}));
 }
 
 /**
@@ -367,4 +419,27 @@ export async function workspaceBelongsToOrganization(
 		)
 		.limit(1);
 	return Boolean(workspace);
+}
+
+/**
+ * Open or close the shop to the public.
+ *
+ * ⚠️ Nothing to do with `environment`. Closing does not change whether money is
+ * real, and switching to test does not close the shop — a business can rehearse
+ * with its doors shut, or take real orders while quietly on test credentials,
+ * and those are two different mistakes to be able to make separately.
+ */
+export async function setWorkspacePublished(
+	workspaceId: string,
+	published: boolean,
+) {
+	const [row] = await db
+		.update(quickengineWorkspaces)
+		.set({ published, updatedAt: new Date() })
+		.where(eq(quickengineWorkspaces.id, workspaceId))
+		.returning({
+			id: quickengineWorkspaces.id,
+			published: quickengineWorkspaces.published,
+		});
+	return row ?? null;
 }

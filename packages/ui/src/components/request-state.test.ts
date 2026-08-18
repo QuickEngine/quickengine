@@ -63,6 +63,22 @@ describe("presentRequestError", () => {
 		}
 	});
 
+	it("gives a malformed request its own words, not a shrug", () => {
+		// 🔴 400 previously fell through to the generic "Something went wrong".
+		// The suppliers page shipped a routing bug that surfaced as exactly that,
+		// and the useless copy is part of why it needed a trace to find.
+		for (const status of [400, 422]) {
+			const presented = presentRequestError(
+				Object.assign(new Error("bad"), { status }),
+			);
+			expect(presented).toMatchObject({
+				code: String(status),
+				kind: "invalid",
+			});
+			expect(presented.title).not.toMatch(/something went wrong/i);
+		}
+	});
+
 	it("does not trust malformed request identifiers", () => {
 		const error = Object.assign(new Error("no"), {
 			status: 500,

@@ -18,6 +18,14 @@ export type WorkspaceIdentity = {
 	environment: "test" | "live";
 	id: string;
 	name: string;
+	/**
+	 * Is the shop open to the public?
+	 *
+	 * Carried here so a storefront can ask once and render a closed sign, rather
+	 * than discovering it by having a checkout refused after somebody has filled
+	 * in their address.
+	 */
+	published: boolean;
 	slug: string | null;
 };
 

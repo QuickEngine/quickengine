@@ -44,6 +44,38 @@ export const orders = pgTable(
 		workspaceId: uuid("workspace_id")
 			.notNull()
 			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
+		/**
+		 * Which mode the workspace was in when this order was placed.
+		 *
+		 * ── Why an order needs this and a shipment does not ──────────────────────
+		 *
+		 * 🔴 This is what makes test and live SEPARABLE rather than merely
+		 * forbidden. Previously a workspace could not leave test mode once it held
+		 * an order, because nothing distinguished a rehearsal from a real sale and
+		 * mixing them would corrupt the books. The lock protected the accounts by
+		 * making sandbox a one-way door: rehearse once, and you could never take a
+		 * real payment in that workspace again.
+		 *
+		 * Tagging the order instead means both can coexist and the console simply
+		 * shows one at a time — the model Stripe uses, and the only one where
+		 * "switch back and forth" is honestly true.
+		 *
+		 * 🔑 Everything downstream inherits through the order: fulfilments,
+		 * shipments, discount redemptions and referrals all hang off one, so none
+		 * of them needs its own copy and none of them can disagree with it.
+		 *
+		 * ⚠️ Customers deliberately do NOT carry this. A customer is a person, not
+		 * a transaction, and the same person may buy from a shop before and after
+		 * it goes live. Splitting them would give one human two records and break
+		 * their order history at the moment the business started trading.
+		 *
+		 * Defaults to `live` so every existing order — placed before this column
+		 * existed, in workspaces that were taking real money — is correctly a real
+		 * sale rather than being silently reclassified as a rehearsal.
+		 */
+		environment: text("environment", { enum: ["test", "live"] })
+			.notNull()
+			.default("live"),
 		clientId: uuid("client_id").references(() => clientRecords.id, {
 			onDelete: "set null",
 		}),

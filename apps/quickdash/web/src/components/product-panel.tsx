@@ -11,7 +11,7 @@ import {
 	money,
 	toCents,
 } from "../lib/catalog";
-import { detailCard } from "./detail-panel";
+import { BlockFailure, detailCard } from "./detail-panel";
 import {
 	Area,
 	CATALOG_ITEM_TYPES,
@@ -514,7 +514,9 @@ export function ProductPanel({
 					    a different kind of act from editing a description — it is how a
 					    shopper finds the thing — and making it wait behind Save is how
 					    somebody assigns a category, closes the panel and loses it. */}
-					{categories.isPending ? (
+					{categories.isError ? (
+						<BlockFailure query={categories} />
+					) : categories.isPending ? (
 						<p className="text-[11px] text-[var(--ink-30)]">Loading…</p>
 					) : (categories.data?.items.length ?? 0) === 0 ? (
 						<p className="text-[11px] text-[var(--ink-30)]">

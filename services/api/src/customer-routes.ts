@@ -292,6 +292,19 @@ export function registerCustomerRoutes(
 				workspace: {
 					name: workspace.workspace.name,
 					slug: workspace.workspace.slug,
+					/**
+					 * 🔑 So a storefront can say "we are closed" on the page rather
+					 * than letting somebody fill in an address and a card, then
+					 * refusing at the last step. The checkout guard is what actually
+					 * protects the business; this is what stops it being rude.
+					 */
+					published: workspace.workspace.published,
+					/**
+					 * ⚠️ Also exposed: a shop taking fake money should be able to say
+					 * so. A customer who pays nothing and receives a confirmation has
+					 * been misled, whoever's fault the configuration was.
+					 */
+					environment: workspace.workspace.environment,
 				},
 				modules: workspace.enabledModuleIds,
 				signedIn: customer !== null,

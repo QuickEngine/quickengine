@@ -1,7 +1,10 @@
 import { randomBytes } from "node:crypto";
 import {
 	and,
+	clientRecords,
 	db,
+	desc,
+	discounts,
 	eq,
 	inArray,
 	REFERRAL_REWARD_TYPES,
@@ -197,7 +200,15 @@ export async function evaluateReferral(input: {
 	settings: ReferralSettings;
 	orderSubtotalCents: number;
 }): Promise<ReferralEvaluation> {
-	if (!input.settings.enabled) return reject("DISABLED");
+	/**
+	 * 🔴 The workspace switch governs CUSTOMER referrals, not partner codes.
+	 *
+	 * A partner code is a commercial agreement with a named person — they were
+	 * promised a percentage and they are owed it. Letting a workspace-wide
+	 * "referrals: off" setting silently stop paying somebody the business has a
+	 * deal with is not a configuration choice, it is a missed payment. The check
+	 * therefore moves below, once the code is known to be a partner code or not.
+	 */
 
 	const code = input.code.trim().toUpperCase();
 	const [owner] = await db
@@ -212,33 +223,63 @@ export async function evaluateReferral(input: {
 		.limit(1);
 
 	if (!owner) return reject("NOT_FOUND");
+
+	/**
+	 * A partner code is one issued BY the business to a named partner, and it
+	 * carries its own commission. Everything below branches on this, because the
+	 * two kinds of code follow genuinely different rules.
+	 */
+	const isPartner =
+		owner.commissionBasisPoints !== null &&
+		owner.commissionBasisPoints !== undefined;
+
+	if (!isPartner && !input.settings.enabled) return reject("DISABLED");
+	if (isPartner && !owner.active) return reject("NOT_FOUND");
+
 	if (owner.ownerClientRecordId === input.referredClientRecordId) {
 		return reject("SELF_REFERRAL");
 	}
 
-	// One referral per person, ever. Checked here for a clear message and again
-	// by a unique index at write time, which is what actually guarantees it.
-	const [already] = await db
-		.select({ id: referrals.id })
-		.from(referrals)
-		.where(
-			and(
-				eq(referrals.workspaceId, input.workspaceId),
-				eq(referrals.referredClientRecordId, input.referredClientRecordId),
-			),
-		)
-		.limit(1);
-	if (already) return reject("ALREADY_REFERRED");
+	/**
+	 * 🔴 One referral per person applies to CUSTOMER referrals only.
+	 *
+	 * "You may be referred once, ever" is right when the reward is a thank-you
+	 * for introducing somebody new. It is wrong for a partner: a creator whose
+	 * audience buys coffee every month earns on every order, and applying the
+	 * customer rule would pay them for a subscriber's first box and nothing
+	 * after — quietly, with no error, for as long as the arrangement lasted.
+	 */
+	if (!isPartner) {
+		const [already] = await db
+			.select({ id: referrals.id })
+			.from(referrals)
+			.where(
+				and(
+					eq(referrals.workspaceId, input.workspaceId),
+					eq(referrals.referredClientRecordId, input.referredClientRecordId),
+				),
+			)
+			.limit(1);
+		if (already) return reject("ALREADY_REFERRED");
+	}
 
 	return {
 		ok: true,
 		referralCodeId: owner.id,
 		referrerClientRecordId: owner.ownerClientRecordId,
-		rewardType: input.settings.rewardType,
-		rewardAmountCents: referralRewardCents(
-			input.settings,
-			input.orderSubtotalCents,
-		),
+		rewardType: isPartner ? "percentage" : input.settings.rewardType,
+		/**
+		 * ⚠️ A partner's own rate wins over the workspace default. They negotiated
+		 * a number; reading the workspace setting instead would pay whatever
+		 * happened to be configured for ordinary customer referrals — which is
+		 * almost never what was agreed, and wrong in silence either way.
+		 */
+		rewardAmountCents: isPartner
+			? partnerCommissionCents(
+					input.orderSubtotalCents,
+					owner.commissionBasisPoints,
+				)
+			: referralRewardCents(input.settings, input.orderSubtotalCents),
 	};
 }
 
@@ -401,4 +442,189 @@ export async function getReferralSummary(input: {
 		)
 		.limit(1);
 	return row ?? null;
+}
+
+// ── Partner codes ───────────────────────────────────────────────────────────
+
+/**
+ * ⚠️ Basis points, so 7.5% is 750 and no float ever rounds a payout down.
+ *
+ * Lives here rather than in the route file because the OpenAPI request table
+ * documents it by reference, and a schema that exists in only one of those two
+ * places is how the published contract drifts from what the server accepts.
+ */
+export const partnerLinkSchema = z.object({
+	clientRecordId: z.uuid(),
+	code: z.string().trim().min(3).max(40),
+	commissionBasisPoints: z.number().int().min(0).max(10_000).nullish(),
+	discountId: z.uuid().nullish(),
+});
+
+/**
+ * A code issued BY the business TO a named partner, rather than claimed by a
+ * customer for themselves.
+ *
+ * ── Why this sits beside customer referrals rather than in its own module ────
+ *
+ * 🔑 Structurally they are the same thing: a client record owns a code, orders
+ * placed through it are attributed, and the owner accrues earnings. Building a
+ * separate "affiliates" concept would duplicate `referral_codes`, `referrals`,
+ * attribution at checkout and every report over them, and then the two would
+ * drift the first time one of them gained a feature.
+ *
+ * What differs is only who chose the code and whether money is owed on it:
+ *
+ * | | Customer referral | Partner code |
+ * |---|---|---|
+ * | Code | generated | chosen, and memorable — it becomes a URL |
+ * | Commission | none | `commissionBasisPoints` |
+ * | Visitor discount | settings-wide | its own `discountId` |
+ *
+ * ⚠️ The code is handed out as `yoursite.com/<code>`, so it is public by
+ * construction and lowercase-friendly. Stored uppercase and matched
+ * case-insensitively, exactly like a discount code, because somebody typing it
+ * off a screenshot must get the same answer as somebody clicking a link.
+ */
+export async function issuePartnerCode(input: {
+	workspaceId: string;
+	clientRecordId: string;
+	code: string;
+	commissionBasisPoints?: number | null;
+	discountId?: string | null;
+}) {
+	const code = input.code.trim().toUpperCase();
+	if (!/^[A-Z0-9][A-Z0-9-]{1,38}[A-Z0-9]$/.test(code)) {
+		// 🔴 Constrained because this becomes a path segment. Anything needing
+		// escaping produces a link that breaks when pasted into the one place it
+		// matters: somebody's bio.
+		throw new Error("REFERRAL_CODE_INVALID");
+	}
+	try {
+		const [row] = await db
+			.insert(referralCodes)
+			.values({
+				workspaceId: input.workspaceId,
+				ownerClientRecordId: input.clientRecordId,
+				code,
+				commissionBasisPoints: input.commissionBasisPoints ?? null,
+				discountId: input.discountId ?? null,
+			})
+			.returning();
+		return row;
+	} catch (error) {
+		if (error instanceof Error && /unique|duplicate/i.test(error.message)) {
+			throw new Error("REFERRAL_CODE_TAKEN");
+		}
+		throw error;
+	}
+}
+
+/**
+ * Resolve a code arriving from a public link.
+ *
+ * 🔴 Deliberately returns almost nothing: whether the code works, and the
+ * discount it carries. It must never expose who owns it, what they earn, or
+ * what they have earned so far — this endpoint is reachable by anybody who can
+ * guess a code, and a partner's commission is a commercial term between them
+ * and the business.
+ *
+ * ⚠️ An inactive or unknown code returns null rather than an error. A dead link
+ * should land somebody on the shop, not on a failure: they came to buy coffee
+ * and the state of an affiliate arrangement is not their problem.
+ */
+export async function resolvePartnerLink(input: {
+	workspaceId: string;
+	code: string;
+}): Promise<{ code: string; discountCode: string | null } | null> {
+	const [row] = await db
+		.select({
+			code: referralCodes.code,
+			active: referralCodes.active,
+			discountCode: discounts.code,
+			discountActive: discounts.active,
+		})
+		.from(referralCodes)
+		.leftJoin(discounts, eq(discounts.id, referralCodes.discountId))
+		.where(
+			and(
+				eq(referralCodes.workspaceId, input.workspaceId),
+				eq(referralCodes.code, input.code.trim().toUpperCase()),
+			),
+		)
+		.limit(1);
+
+	if (!row || !row.active) return null;
+	return {
+		code: row.code,
+		// A retired discount must not keep discounting. The link still attributes.
+		discountCode: row.discountActive ? row.discountCode : null,
+	};
+}
+
+/**
+ * What a partner earns on one order, in cents.
+ *
+ * ⚠️ Calculated on the SUBTOTAL, never the total. Paying commission on shipping
+ * and tax means paying a partner a share of money the business never earned —
+ * on a heavy parcel that can exceed the margin on the sale itself.
+ */
+export function partnerCommissionCents(
+	subtotalCents: number,
+	commissionBasisPoints: number | null | undefined,
+): number {
+	if (!commissionBasisPoints || commissionBasisPoints <= 0) return 0;
+	return Math.round((subtotalCents * commissionBasisPoints) / 10_000);
+}
+
+/**
+ * Every partner code in a workspace, with what it has earned.
+ *
+ * ⚠️ Operator-only, and deliberately the mirror image of `resolvePartnerLink`:
+ * that one hides the owner and the commission from the public, this one is
+ * mostly those two facts. Two functions rather than one with a flag, so no
+ * caller can accidentally hand the private half to a storefront.
+ */
+export async function listPartnerCodes(workspaceId: string) {
+	return db
+		.select({
+			id: referralCodes.id,
+			code: referralCodes.code,
+			ownerClientRecordId: referralCodes.ownerClientRecordId,
+			ownerName: clientRecords.name,
+			commissionBasisPoints: referralCodes.commissionBasisPoints,
+			discountId: referralCodes.discountId,
+			discountCode: discounts.code,
+			totalReferrals: referralCodes.totalReferrals,
+			totalEarnedCents: referralCodes.totalEarnedCents,
+			active: referralCodes.active,
+			createdAt: referralCodes.createdAt,
+		})
+		.from(referralCodes)
+		.innerJoin(
+			clientRecords,
+			eq(clientRecords.id, referralCodes.ownerClientRecordId),
+		)
+		.leftJoin(discounts, eq(discounts.id, referralCodes.discountId))
+		.where(eq(referralCodes.workspaceId, workspaceId))
+		.orderBy(desc(referralCodes.totalReferrals));
+}
+
+/** Retire or restore a code without erasing what it already earned. */
+export async function setPartnerCodeActive(input: {
+	workspaceId: string;
+	id: string;
+	active: boolean;
+}) {
+	const [row] = await db
+		.update(referralCodes)
+		.set({ active: input.active })
+		.where(
+			and(
+				eq(referralCodes.id, input.id),
+				eq(referralCodes.workspaceId, input.workspaceId),
+			),
+		)
+		.returning();
+	if (!row) throw new Error("REFERRAL_CODE_NOT_FOUND");
+	return row;
 }

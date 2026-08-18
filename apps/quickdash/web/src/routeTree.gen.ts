@@ -17,6 +17,7 @@ import { Route as WorkspaceModuleRouteImport } from './routes/$workspace.$module
 import { Route as WorkspaceConnectRouteImport } from './routes/$workspace.connect'
 import { Route as WorkspaceMediaRouteImport } from './routes/$workspace.media'
 import { Route as WorkspaceSettingsRouteImport } from './routes/$workspace.settings'
+import { Route as WorkspaceStatesRouteImport } from './routes/$workspace.states'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as WorkspaceModuleIndexRouteImport } from './routes/$workspace.$module.index'
 import { Route as WorkspaceModuleSectionRouteImport } from './routes/$workspace.$module.$section'
@@ -61,6 +62,11 @@ const WorkspaceSettingsRoute = WorkspaceSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceStatesRoute = WorkspaceStatesRouteImport.update({
+  id: '/states',
+  path: '/states',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const SignTokenRoute = SignTokenRouteImport.update({
   id: '/sign/$token',
   path: '/sign/$token',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
+  '/$workspace/states': typeof WorkspaceStatesRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
+  '/$workspace/states': typeof WorkspaceStatesRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
+  '/$workspace/states': typeof WorkspaceStatesRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/$workspace/connect'
     | '/$workspace/media'
     | '/$workspace/settings'
+    | '/$workspace/states'
     | '/sign/$token'
     | '/$workspace/'
     | '/$workspace/$module/$section'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/$workspace/connect'
     | '/$workspace/media'
     | '/$workspace/settings'
+    | '/$workspace/states'
     | '/sign/$token'
     | '/$workspace'
     | '/$workspace/$module/$section'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/$workspace/connect'
     | '/$workspace/media'
     | '/$workspace/settings'
+    | '/$workspace/states'
     | '/sign/$token'
     | '/$workspace/'
     | '/$workspace/$module/$section'
@@ -220,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceSettingsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/$workspace/states': {
+      id: '/$workspace/states'
+      path: '/states'
+      fullPath: '/$workspace/states'
+      preLoaderRoute: typeof WorkspaceStatesRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/sign/$token': {
       id: '/sign/$token'
       path: '/sign/$token'
@@ -263,6 +282,7 @@ interface WorkspaceRouteChildren {
   WorkspaceConnectRoute: typeof WorkspaceConnectRoute
   WorkspaceMediaRoute: typeof WorkspaceMediaRoute
   WorkspaceSettingsRoute: typeof WorkspaceSettingsRoute
+  WorkspaceStatesRoute: typeof WorkspaceStatesRoute
   WorkspaceIndexRoute: typeof WorkspaceIndexRoute
 }
 
@@ -271,6 +291,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceConnectRoute: WorkspaceConnectRoute,
   WorkspaceMediaRoute: WorkspaceMediaRoute,
   WorkspaceSettingsRoute: WorkspaceSettingsRoute,
+  WorkspaceStatesRoute: WorkspaceStatesRoute,
   WorkspaceIndexRoute: WorkspaceIndexRoute,
 }
 

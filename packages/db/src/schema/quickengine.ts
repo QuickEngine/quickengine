@@ -121,6 +121,28 @@ export const quickengineWorkspaces = pgTable(
 		environment: text("environment", { enum: ["test", "live"] })
 			.notNull()
 			.default("live"),
+		/**
+		 * Is the shop open to the public?
+		 *
+		 * ── Why this is separate from `environment` ──────────────────────────────
+		 *
+		 * 🔴 These answer different questions and conflating them creates the one
+		 * genuinely dangerous state.
+		 *
+		 * `environment` says whether MONEY is real. `published` says whether
+		 * STRANGERS can buy. A test-mode shop that is still reachable will happily
+		 * take a real customer's order and charge them nothing — they get a
+		 * confirmation, the business gets an order it was never paid for, and
+		 * nobody finds out until someone chases a delivery.
+		 *
+		 * Splitting them means a business can rehearse a full checkout (test money,
+		 * shop closed) and later take the shop down for maintenance without
+		 * touching its payment configuration at all.
+		 *
+		 * ⚠️ Defaults to published: every existing workspace is already trading,
+		 * and a migration that quietly closed live shops would be an outage.
+		 */
+		published: boolean("published").notNull().default(true),
 		modules: jsonb("modules").$type<string[]>().notNull().default([]),
 		// Archiving removes a workspace from normal operation without deleting any
 		// module data. Permanent deletion remains a separate explicit action.

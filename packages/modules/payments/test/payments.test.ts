@@ -88,18 +88,36 @@ describe("Connected payment providers", () => {
 		});
 	});
 
-	it("locks a workspace environment after a provider account exists", async () => {
+	/**
+	 * Replaces a test that asserted the OPPOSITE.
+	 *
+	 * 🔴 Switching used to be refused once a workspace held a provider account,
+	 * an order or a payment, and that made sandbox a one-way door: rehearse a
+	 * single checkout and the workspace could never take real money again. On a
+	 * plan including one workspace, the only remedy was deleting everything.
+	 *
+	 * Orders now carry the mode they were placed in and payments always did, so
+	 * the two are separable rather than forbidden. Switching is therefore free in
+	 * both directions, and this test pins that down so nobody reinstates the lock
+	 * believing they are fixing a leak.
+	 */
+	it("lets a workspace move between test and live in both directions", async () => {
+		await upsertPaymentAccount(workspaceId, "stripe", {
+			externalAccountId: "acct_test_switch",
+		});
+
 		await expect(
 			setWorkspaceEnvironment(workspaceId, "test"),
-		).resolves.toMatchObject({
-			environment: "test",
-		});
-		await upsertPaymentAccount(workspaceId, "stripe", {
-			externalAccountId: "acct_test_lock",
-		});
-		await expect(setWorkspaceEnvironment(workspaceId, "live")).rejects.toThrow(
-			"WORKSPACE_ENVIRONMENT_LOCKED",
-		);
+		).resolves.toMatchObject({ environment: "test" });
+
+		// The direction that used to be impossible.
+		await expect(
+			setWorkspaceEnvironment(workspaceId, "live"),
+		).resolves.toMatchObject({ environment: "live" });
+
+		await expect(
+			setWorkspaceEnvironment(workspaceId, "test"),
+		).resolves.toMatchObject({ environment: "test" });
 	});
 
 	it("never resolves a test connected account from the live webhook channel", async () => {

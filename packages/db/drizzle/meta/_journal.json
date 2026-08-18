@@ -519,6 +519,41 @@
 			"when": 1786993353100,
 			"tag": "0073_neat_cable",
 			"breakpoints": true
+		},
+		{
+			"idx": 74,
+			"version": "7",
+			"when": 1787022284945,
+			"tag": "0074_wide_randall_flagg",
+			"breakpoints": true
+		},
+		{
+			"idx": 75,
+			"version": "7",
+			"when": 1787033763976,
+			"tag": "0075_grey_enchantress",
+			"breakpoints": true
+		},
+		{
+			"idx": 76,
+			"version": "7",
+			"when": 1787035300356,
+			"tag": "0076_mature_romulus",
+			"breakpoints": true
+		},
+		{
+			"idx": 77,
+			"version": "7",
+			"when": 1787035589131,
+			"tag": "0077_mixed_ultron",
+			"breakpoints": true
+		},
+		{
+			"idx": 78,
+			"version": "7",
+			"when": 1787090466005,
+			"tag": "0078_tidy_apocalypse",
+			"breakpoints": true
 		}
 	]
 }

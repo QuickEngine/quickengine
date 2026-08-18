@@ -1,4 +1,5 @@
 import {
+	boolean,
 	index,
 	integer,
 	pgTable,
@@ -8,6 +9,7 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 import { clientRecords } from "./client-records";
+import { discounts } from "./discounts";
 import { orders } from "./orders";
 import { quickengineWorkspaces } from "./quickengine";
 
@@ -74,6 +76,46 @@ export const referralCodes = pgTable(
 		 */
 		totalReferrals: integer("total_referrals").notNull().default(0),
 		totalEarnedCents: integer("total_earned_cents").notNull().default(0),
+
+		/**
+		 * What the code's owner earns, in BASIS POINTS of the order subtotal.
+		 *
+		 * ── Why this exists ──────────────────────────────────────────────────────
+		 *
+		 * 🔴 `totalEarnedCents` accrued with no rule saying how much. The table
+		 * could tell you a referrer had earned money and never how that number was
+		 * arrived at, which is unanswerable the first time somebody disputes a
+		 * payout.
+		 *
+		 * ⚠️ Basis points, not a percent, for the same reason money is cents: 7.5%
+		 * is 750 and needs no decimal. A float here would eventually pay somebody
+		 * a fraction of a penny less than they are owed, every month, for ever.
+		 *
+		 * Null means no commission — a plain customer referral code, which is what
+		 * every existing row is.
+		 */
+		commissionBasisPoints: integer("commission_basis_points"),
+
+		/**
+		 * What the VISITOR gets for arriving through this code.
+		 *
+		 * 🔑 Separate from the commission, because the two sides of an affiliate
+		 * arrangement are genuinely separate: the creator's cut and the shopper's
+		 * discount are negotiated apart and either can be zero. Reusing `discounts`
+		 * rather than inventing a second kind of price reduction means checkout,
+		 * order totals and reporting need no new concept.
+		 *
+		 * Null means the link attributes the order but takes nothing off it.
+		 */
+		discountId: uuid("discount_id").references(() => discounts.id, {
+			onDelete: "set null",
+		}),
+
+		/**
+		 * A code that can be handed out but not yet earned against, or retired
+		 * without erasing what it already earned.
+		 */
+		active: boolean("active").notNull().default(true),
 
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()

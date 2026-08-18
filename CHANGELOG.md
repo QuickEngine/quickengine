@@ -89,6 +89,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **You can create an API key again.** Choosing Publishable, Storefront or Secret produced "an API
+  key needs at least one capability" and refused, so connecting a storefront could not be
+  completed at all. Each kind now carries what it is allowed to do.
+
 - **One workspace's notifications no longer appear in another.** The inbox is per person, so
   every workspace was showing every other workspace's notices — and worse, marking sidebar rows
   in a business where nothing had happened. Following one of those marks led to an empty page.

@@ -38,30 +38,54 @@ const field =
 	"h-9 rounded-full border border-[var(--console-line-strong)] bg-transparent px-3.5 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-30)] focus:border-[rgb(var(--console-ink)/0.18)]";
 
 /** What each kind of key is FOR, in the terms somebody choosing one thinks in. */
+/**
+ * 🔴 What each key may DO. There is no default on the server, by design.
+ *
+ * `normalizeCapabilities` THROWS when the resulting set is empty rather than
+ * granting the type's ceiling: silently filling in a forgotten field with full
+ * access is the wrong direction to fail in.
+ *
+ * This screen sent `capabilities: []` for every key and offers a picker only for
+ * scoped keys — so issuing a publishable, storefront or secret key was
+ * IMPOSSIBLE here. It failed with "an API key needs at least one capability",
+ * which reads like a validation quibble rather than "this page cannot do the one
+ * thing it exists for". Connecting a storefront is the first thing a new
+ * customer does, and it could not be completed.
+ *
+ * ⚠️ Mirrors `PUBLISHABLE_CAPABILITIES` and `STOREFRONT_CAPABILITIES` in
+ * `@quickengine/auth/api-keys`, duplicated rather than imported because that
+ * module reaches for Node's crypto and must never enter a browser bundle. The
+ * server clamps whatever arrives to the same ceiling, so drift here can only
+ * ever grant LESS than intended, never more.
+ */
 const KEY_TYPES = [
 	{
 		id: "publishable",
 		label: "Publishable",
 		detail: "Safe in a browser. Reads public catalog and content.",
 		browser: true,
+		capabilities: ["catalog:read", "events:write"],
 	},
 	{
 		id: "storefront",
 		label: "Storefront",
 		detail: "Safe in a browser. Carts, checkout and customer sessions.",
 		browser: true,
+		capabilities: ["catalog:read", "events:write", "checkout:write"],
 	},
 	{
 		id: "secret",
 		label: "Secret",
 		detail: "Server only. Full workspace access — never ship it to a browser.",
 		browser: false,
+		capabilities: ["catalog:read", "events:write", "checkout:write"],
 	},
 	{
 		id: "scoped",
 		label: "Scoped",
 		detail: "Server only, limited to the capabilities you tick.",
 		browser: false,
+		capabilities: ["catalog:read"],
 	},
 ] as const;
 
@@ -133,7 +157,9 @@ function ApiKeysPage() {
 						workspaceId: chosen,
 						name: name.trim(),
 						type,
-						capabilities: [],
+						// The chosen type's own set, never an empty list.
+						capabilities:
+							KEY_TYPES.find((entry) => entry.id === type)?.capabilities ?? [],
 						allowedOrigins: origins
 							.split(/[,\s]+/)
 							.map((value) => value.trim())

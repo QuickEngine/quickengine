@@ -6,6 +6,7 @@ import {
 	PopoverTrigger,
 } from "@quickengine/ui/components/ui/popover";
 import type { ReactNode } from "react";
+import { usePageTakenOver } from "./header-action";
 
 /**
  * The bar above every list: search, filter, and the page's one create action.
@@ -39,6 +40,20 @@ export function ListControls({
 	/** The one create action, if the page has one. */
 	action?: ReactNode;
 }) {
+	/**
+	 * 🔴 Nothing to search, so nothing to search with.
+	 *
+	 * When the page itself has no content to operate on — it does not exist, you
+	 * cannot see it, or the module is switched off — a search box, filter pills
+	 * and a table/card toggle are controls over nothing. They would accept input
+	 * and do nothing with it, which reads as a broken console rather than an
+	 * unavailable page.
+	 *
+	 * ⚠️ A list that merely failed to LOAD keeps every control: the filters still
+	 * describe exactly what pressing "Try again" would fetch.
+	 */
+	if (usePageTakenOver()) return null;
+
 	return (
 		<div className="mb-3 flex items-center gap-2">
 			<div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--console-line-strong)] px-3 transition-colors focus-within:border-[rgb(var(--console-ink)/0.18)]">

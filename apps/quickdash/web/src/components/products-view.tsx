@@ -1,25 +1,14 @@
-import {
-	FunnelIcon,
-	ImageIcon,
-	MagnifyingGlassIcon,
-} from "@phosphor-icons/react";
-import {
-	Popover,
-	PopoverAnchor,
-	PopoverContent,
-	PopoverTrigger,
-} from "@quickengine/ui/components/ui/popover";
+import { ImageIcon } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { type CatalogItem, compareAt, imagesOf, money } from "../lib/catalog";
+import { PAGE_SIZE } from "../lib/list-view";
 import { useHeaderAction, useHeaderCrumb } from "./header-action";
+import { ListControls } from "./list-controls";
+import { Pager } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 import { ProductPanel } from "./product-panel";
-
-/** The page's one create action. Filled pill, ink on the popover surface. */
-const addAction =
-	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85 focus-visible:opacity-85";
 
 const chip =
 	"rounded-full bg-[rgb(var(--console-ink)/0.06)] px-2 py-0.5 text-[10.5px] text-[var(--ink-50)]";
@@ -75,6 +64,7 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 	const [query, setQuery] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [page, setPage] = useState(1);
 
 	const queryClient = useQueryClient();
 
@@ -127,9 +117,25 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 				: item.name.toLowerCase().includes(query.trim().toLowerCase()),
 		);
 
-	const withoutImages = ((catalog.data?.items ?? []) as CatalogItem[]).filter(
-		(item) => imagesOf(item.metadata).length === 0,
-	).length;
+	/**
+	 * Paged like every other list, 25 at a time.
+	 *
+	 * 🔴 Products drew EVERY product in one grid while every other page in the
+	 * console paged. A catalog of two thousand items rendered two thousand cards,
+	 * each with an image, and the page that a shop opens most was the one that
+	 * scaled worst.
+	 *
+	 * ⚠️ Clamped, not capped: narrowing a search while on page 4 must not strand
+	 * somebody on an empty page with no way back.
+	 */
+	const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+	const current = Math.min(page, pageCount);
+	const visible = items.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-page when the result set changes
+	useEffect(() => {
+		setPage(1);
+	}, [items.length, workspaceId]);
 
 	// Resolved from the live list rather than held as its own copy, so an upload
 	// shows in the panel the moment the query refetches.
@@ -150,38 +156,17 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			<div className="mb-3 flex items-center gap-2">
-				<div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--console-line-strong)] px-3 transition-colors focus-within:border-[rgb(var(--console-ink)/0.18)]">
-					<MagnifyingGlassIcon
-						size={14}
-						className="shrink-0 text-[var(--ink-30)]"
-					/>
-					<input
-						value={query}
-						onChange={(event) => setQuery(event.target.value)}
-						placeholder="Search products"
-						className="min-w-0 flex-1 bg-transparent text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-30)]"
-					/>
-				</div>
-
-				<Popover>
-					<PopoverAnchor asChild>
-						<div className="flex shrink-0 items-center gap-2">
-							<PopoverTrigger className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[var(--console-line-strong)] px-3 text-[12.5px] text-[var(--ink-50)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.04)] hover:text-[var(--ink-85)] focus-visible:bg-[rgb(var(--console-ink)/0.04)] data-[state=open]:bg-[rgb(var(--console-ink)/0.04)] data-[state=open]:text-[var(--ink-85)]">
-								<FunnelIcon size={14} />
-								Filter
-								{statuses.length > 0 ? (
-									<span className={chip}>{statuses.length}</span>
-								) : null}
-							</PopoverTrigger>
-						</div>
-					</PopoverAnchor>
-
-					<PopoverContent
-						align="start"
-						sideOffset={8}
-						className="w-[var(--radix-popover-trigger-width)] rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-3"
-					>
+			{/* 🔴 The SHARED control bar, not a private copy.
+			    Products had its own search box and filter popover, which meant it
+			    was the one page whose chrome stayed on screen behind a page-level
+			    wall — offering a search over a list that could not exist. */}
+			<ListControls
+				query={query}
+				onQueryChange={setQuery}
+				placeholder="Search products"
+				filterCount={statuses.length}
+				filter={
+					<>
 						<p className="mb-2 text-[11px] text-[var(--ink-45)]">Status</p>
 						<div className="flex flex-wrap gap-1.5">
 							{STATUSES.map((status) => {
@@ -208,17 +193,9 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 								);
 							})}
 						</div>
-					</PopoverContent>
-				</Popover>
-			</div>
-
-			{/* Says the one thing an operator most needs to act on, without becoming a
-			    banner that has to be dismissed. */}
-			{withoutImages > 0 ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-30)]">
-					{withoutImages} of {catalog.data?.items.length} have no photograph.
-				</p>
-			) : null}
+					</>
+				}
+			/>
 
 			<PageState
 				query={catalog}
@@ -228,16 +205,6 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 					<EmptyState
 						title="No products yet"
 						detail="A product is anything this business sells. Add one and it stays a draft until you put it on sale, so nothing reaches your shop before you are ready."
-						action={
-							<button
-								type="button"
-								className={addAction}
-								disabled={create.isPending}
-								onClick={() => create.mutate()}
-							>
-								{create.isPending ? "Adding…" : "Add your first product"}
-							</button>
-						}
 					/>
 				}
 			>
@@ -248,43 +215,53 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 							detail="Try a different search, or clear the status filter."
 						/>
 					) : (
-						<div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-3">
-							{items.map((item) => {
-								const original = compareAt(item.metadata);
-								return (
-									<button
-										type="button"
-										key={item.id}
-										onClick={() => setSelectedId(item.id)}
-										className={`cursor-pointer rounded-xl border p-2.5 text-left transition-colors ${
-											selectedId === item.id
-												? "border-[rgb(var(--console-ink)/0.35)]"
-												: "border-[var(--console-line-soft)] hover:border-[var(--console-line-strong)]"
-										}`}
-									>
-										<Thumb item={item} size="lg" />
-										<p className="mt-2.5 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
-											{item.name}
-										</p>
-										<div className="mt-1.5 flex items-baseline gap-1.5">
-											<span className="text-[12.5px] text-[var(--ink-85)]">
-												{money(item.priceCents, item.currency)}
-											</span>
-											{original != null && original !== item.priceCents ? (
-												<span className="text-[11px] text-[var(--ink-30)] line-through">
-													{money(original, item.currency)}
+						<>
+							<div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-3">
+								{visible.map((item) => {
+									const original = compareAt(item.metadata);
+									return (
+										<button
+											type="button"
+											key={item.id}
+											onClick={() => setSelectedId(item.id)}
+											className={`cursor-pointer rounded-xl border p-2.5 text-left transition-colors ${
+												selectedId === item.id
+													? "border-[rgb(var(--console-ink)/0.35)]"
+													: "border-[var(--console-line-soft)] hover:border-[var(--console-line-strong)]"
+											}`}
+										>
+											<Thumb item={item} size="lg" />
+											<p className="mt-2.5 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
+												{item.name}
+											</p>
+											<div className="mt-1.5 flex items-baseline gap-1.5">
+												<span className="text-[12.5px] text-[var(--ink-85)]">
+													{money(item.priceCents, item.currency)}
 												</span>
-											) : null}
-											{item.status !== "active" ? (
-												<span className={`${chip} ml-auto capitalize`}>
-													{item.status}
-												</span>
-											) : null}
-										</div>
-									</button>
-								);
-							})}
-						</div>
+												{original != null && original !== item.priceCents ? (
+													<span className="text-[11px] text-[var(--ink-30)] line-through">
+														{money(original, item.currency)}
+													</span>
+												) : null}
+												{item.status !== "active" ? (
+													<span className={`${chip} ml-auto capitalize`}>
+														{item.status}
+													</span>
+												) : null}
+											</div>
+										</button>
+									);
+								})}
+							</div>
+							{/* Same pager as every other list, so turning a page feels
+							    identical wherever you are. */}
+							<Pager
+								page={current}
+								pageCount={pageCount}
+								total={items.length}
+								onPage={setPage}
+							/>
+						</>
 					)
 				}
 			</PageState>

@@ -14,6 +14,17 @@ export const API_ERROR_CODES = [
 	"WORKSPACE_NOT_FOUND",
 	"CAPABILITY_DENIED",
 	"MODULE_DISABLED",
+	/**
+	 * A workspace cannot move between test and live once it holds orders,
+	 * payments or a connected provider.
+	 *
+	 * 🔑 Distinct from VALIDATION_ERROR, which is what it used to be reported
+	 * as. Nothing the caller sent was wrong; the workspace has history that
+	 * cannot be relabelled. A client could not tell the two apart and had to
+	 * infer it from the prose, which is exactly how one came to report an
+	 * unrelated failure to an operator as a lock.
+	 */
+	"ENVIRONMENT_LOCKED",
 	"CSRF_REJECTED",
 	"VALIDATION_ERROR",
 	"PAYLOAD_TOO_LARGE",
@@ -56,6 +67,8 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
 	MODULE_DISABLED: 403,
 	CSRF_REJECTED: 403,
 	VALIDATION_ERROR: 400,
+	// 409: a conflict with state that already exists, not a bad request.
+	ENVIRONMENT_LOCKED: 409,
 	PAYLOAD_TOO_LARGE: 413,
 	REQUEST_TIMEOUT: 504,
 	RATE_LIMITED: 429,

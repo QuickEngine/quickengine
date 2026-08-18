@@ -135,7 +135,12 @@ export async function createOrderInTx(
 	);
 	{
 		const [workspace] = await tx
-			.select({ id: quickengineWorkspaces.id })
+			.select({
+				id: quickengineWorkspaces.id,
+				// Read under the same `FOR UPDATE` lock the sequence uses, so the
+				// mode cannot change between deciding it and writing the order.
+				environment: quickengineWorkspaces.environment,
+			})
 			.from(quickengineWorkspaces)
 			.where(eq(quickengineWorkspaces.id, workspaceId))
 			.limit(1)
@@ -155,6 +160,16 @@ export async function createOrderInTx(
 			.insert(orders)
 			.values({
 				workspaceId,
+				/**
+				 * 🔴 Read from the workspace at the moment of sale, and never again.
+				 *
+				 * A snapshot, not a lookup: when a business later goes live, every
+				 * rehearsal it did must stay a rehearsal. Joining to the workspace
+				 * to decide would silently reclassify every test order as a real
+				 * sale the instant the switch was flipped, and the books would
+				 * gain revenue nobody was ever paid.
+				 */
+				environment: workspace.environment,
 				clientId: parsed.clientId,
 				clientName: client.name,
 				clientEmail: client.email,
@@ -210,11 +225,42 @@ export async function createOrder(
 	return db.transaction((tx) => createOrderInTx(tx, workspaceId, input));
 }
 
+/**
+ * Orders belonging to the mode the workspace is CURRENTLY in.
+ *
+ * ── Why this is a helper and not a hand-written clause ───────────────────────
+ *
+ * 🔴 There are around thirty places that query orders by workspace. Every one
+ * that reaches an operator must agree about which mode it is showing, and the
+ * failure when one does not is silent: a rehearsal appears among real sales, or
+ * worse, sums into revenue. Nobody reads a revenue figure and thinks "that
+ * looks like it includes a test order".
+ *
+ * ⚠️ Fetching a single order BY ID deliberately does not filter. Holding the id
+ * is entitlement enough, and hiding a record somebody navigated to directly
+ * produces a "not found" for something that plainly exists. The detail view
+ * marks a test order instead.
+ */
+export function inCurrentMode(
+	workspaceId: string,
+	environment: "test" | "live",
+) {
+	return and(
+		eq(orders.workspaceId, workspaceId),
+		eq(orders.environment, environment),
+	);
+}
+
 export async function listOrders(workspaceId: string) {
+	const [workspace] = await db
+		.select({ environment: quickengineWorkspaces.environment })
+		.from(quickengineWorkspaces)
+		.where(eq(quickengineWorkspaces.id, workspaceId))
+		.limit(1);
 	return db
 		.select()
 		.from(orders)
-		.where(eq(orders.workspaceId, workspaceId))
+		.where(inCurrentMode(workspaceId, workspace?.environment ?? "live"))
 		.orderBy(desc(orders.createdAt), desc(orders.id));
 }
 

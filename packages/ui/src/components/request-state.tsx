@@ -32,6 +32,8 @@ export type RequestErrorPresentation = {
 		| "conflict"
 		| "rate-limit"
 		| "network"
+		| "invalid"
+		| "plan-limit"
 		| "server";
 };
 
@@ -53,6 +55,53 @@ export function presentRequestError(error: unknown): RequestErrorPresentation {
 			? candidate.requestId
 			: null;
 
+	/**
+	 * 🔴 400 used to fall through to "Something went wrong".
+	 *
+	 * Every other status here earns specific copy, and the one that means "the
+	 * request itself was wrong" got the shrug. It is not a rare case either: a
+	 * route registered behind a parameter route answers 400 because a path
+	 * segment fails uuid parsing, and that fault reached production twice while
+	 * the console said nothing useful about it.
+	 *
+	 * The copy does NOT tell an operator to fix their input, because most 400s
+	 * they will ever see are not their doing. It says what is known — the request
+	 * was refused as malformed — and points at the request id, which is the thing
+	 * that actually resolves it.
+	 */
+	if (status === 400 || status === 422) {
+		return {
+			code: String(status),
+			title: "QuickDash couldn't make sense of that request",
+			message:
+				"The request was refused before it ran, so nothing was changed. If you did not just type something unusual, quote the request ID.",
+			requestId,
+			kind: "invalid",
+		};
+	}
+	/**
+	 * 🔴 402 is an OFFER, not a fault.
+	 *
+	 * The API answers `USAGE_LIMIT_EXCEEDED` with 402 when an account has spent
+	 * what its plan includes — inviting a member past the seat count, creating a
+	 * workspace past the allowance. Nothing broke and nothing was typed wrong, so
+	 * the generic "something went wrong" was actively misleading: it sent people
+	 * to debug a failure that was really a decision.
+	 *
+	 * ⚠️ The API's own message names the specific limit and how to clear it, so
+	 * the caller shows THAT rather than this text. This exists so a 402 can be
+	 * told apart from a fault at all, and so nothing paints it red.
+	 */
+	if (status === 402) {
+		return {
+			code: "402",
+			title: "That needs a larger plan",
+			message:
+				"Your plan's allowance for this is used up. Nothing has been lost, and raising the plan or freeing some of the allowance lets it through.",
+			requestId,
+			kind: "plan-limit",
+		};
+	}
 	if (status === 401) {
 		return {
 			code: "401",

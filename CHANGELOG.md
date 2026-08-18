@@ -41,7 +41,98 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **Stock warnings can be turned on.** An item's low stock level is editable for the first time,
   which is what the low stock notification watches.
 
+- **Sandbox and live are now two views of one workspace, and you can move between them freely.**
+  Every order records which mode it was placed in, so a rehearsal and a real sale never mix: the
+  console shows one at a time, and revenue counts only what is real. Switching used to be refused
+  the moment a workspace held a single order, which made testing a one way door.
+
+- **A shop can be closed for maintenance** without touching its payment settings. A closed shop
+  refuses orders outright, and says so on the storefront rather than letting somebody choose
+  coffee and enter a card before finding out.
+
+- **Partner links.** Give a creator a code and hand out `yoursite.com/theircode`. Orders placed
+  through it are credited to them at the rate you agreed, their audience can get a discount at the
+  same time, and both the basket and a toast confirm it applied.
+
+- **Suppliers.** Record who makes what you sell, how orders reach them, and the code each of your
+  products carries in their system.
+
+- **A page tells you what kind of problem it hit.** A failed list reports it where the list
+  would be and keeps its search and filters, because they still describe what trying again would
+  fetch. A page that cannot exist takes over the content area and withdraws those controls, since
+  there is nothing left to search. A session that has ended takes the whole window, because
+  nothing still on screen is current.
+
+- **Hitting a plan limit now reads as an offer rather than a fault.** Inviting somebody past your
+  seat count, or creating a workspace past your allowance, opens a quiet panel naming the limit
+  with the plans beside it. It is never red, and "Not now" is a real answer that nothing follows
+  up on.
+
+- **A card at the foot of the sidebar shows the next thing worth doing** — the same next step the
+  home page shows, or a usage allowance running low. One at a time, dismissible, and silent when
+  there is nothing true to say.
+
+- **Sandbox mode can be left from the banner that announces it**, instead of going to another
+  application to find the switch.
+
+- **Suppliers, and the codes they use for your products.** A business that does not make what it
+  sells can now record who does: their contact, how orders are meant to reach them, their lead
+  time, and the code each of your products has in their system. Sits under Inventory, because it
+  is the answer to "where does my stock come from". A supplier whose handoff has not been agreed
+  says so on the row rather than looking finished.
+
+- **A page that has failed says which kind of failure it was.** A list that could not load reports
+  it on one line and keeps its search and filters, because they still describe what trying again
+  would fetch. A page that cannot exist at all — missing, not permitted, or a module that is
+  switched off — replaces the whole screen instead, and takes the search box and the page's action
+  button with it, so nothing is left offering to act on something that is not there.
+
 ### Fixed
+
+- **One workspace's notifications no longer appear in another.** The inbox is per person, so
+  every workspace was showing every other workspace's notices — and worse, marking sidebar rows
+  in a business where nothing had happened. Following one of those marks led to an empty page.
+
+- **Switches say which way they are set.** Module switches turn green when the module is on, with
+  a white knob that can actually be seen against it. Switches that choose between two equal things
+  — table or cards, sandbox or live — keep a neutral colour and gain a visible edge, because
+  neither side of those is "on".
+
+- **Leaving sandbox mode works from QuickDash.** The request was missing the organization it
+  belonged to, so it never arrived, and the failure was then reported as "this workspace already
+  has orders" — a sentence about a different problem entirely, on a workspace that was empty.
+
+- **A refused mode change explains itself.** It said the workspace had "entered the payment
+  lifecycle", which is a phrase from inside our own codebase, and it arrived indistinguishable
+  from an ordinary invalid request.
+
+- **A malformed request says so.** Every other kind of failure had its own explanation and this
+  one fell through to "something went wrong".
+
+- **A panel whose contents fail to load says so**, instead of showing "Loading…" for ever — which
+  looked exactly like a slow connection and so was never reported.
+
+- **A reply that fails to send says so**, and keeps what you wrote. The box cleared either way, so
+  a refused reply looked identical to a sent one and a waiting customer was never answered.
+
+- **Products behaves like every other list** — the same search and filter controls, and paged
+  twenty five at a time rather than drawing a whole catalog of images at once.
+
+- **The suppliers page loads.** Its address was being read as the identifier of a single stock
+  record, so the page failed before it started. The same fault had already shipped once before,
+  on a payments address, and there is now a test that walks the whole address table and fails if
+  any fixed address is hidden behind a variable one.
+
+- **A broken page no longer wears the sign-in screen's clothes.** A fault inside the console was
+  rendered with the sign-in wordmark and a spaced-out "ERROR" heading, which belonged to a
+  different part of the product entirely.
+
+- **The console stopped asking the same question four times a minute.** A check for whether
+  anything had ever called the workspace repeated every fifteen seconds on every page, forever, to
+  answer something already known.
+
+- **The marks in the sidebar line up.** Notification dots and the arrows beside expandable
+  sections sat two and a half pixels apart, because one is six pixels wide and the other eleven.
 
 - **Uploading a product photograph works.** It had three separate faults, any one of which looked
   identical from the outside: the request was refused for want of an idempotency key, the

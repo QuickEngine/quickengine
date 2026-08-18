@@ -4,15 +4,28 @@ import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
 import {
 	applyInventoryAdjustmentCommand,
+	archiveSupplier,
 	createInventoryItemCommand,
+	createSupplier,
+	createSupplierSku,
 	deleteInventoryItemCommand,
+	deleteSupplierSku,
 	getInventoryItemDto,
 	INVENTORY_ITEM_STATUSES,
 	inventorySettingsSchema,
 	listInventoryAdjustmentsPage,
 	listInventoryItemsPage,
+	listSupplierSkus,
+	listSuppliers,
+	SupplierError,
 	setInventoryItemStatusCommand,
+	supplierInputSchema,
+	supplierPatchSchema,
+	supplierSkuInputSchema,
+	supplierSkuPatchSchema,
 	updateInventoryItemCommand,
+	updateSupplier,
+	updateSupplierSku,
 } from "@quickengine/mod-inventory";
 import { getWorkspaceModules } from "@quickengine/module-registry";
 import type { Context, Hono } from "hono";
@@ -102,6 +115,157 @@ export function registerInventoryRoutes(
 			await createInventoryItemCommand(context, body, options.uow),
 		);
 	});
+	/**
+	 * 🔴 Registered BEFORE `/v1/inventory/:id`, and it must stay there.
+	 *
+	 * Hono matches in registration order, so with `:id` first a request for
+	 * `/v1/inventory/suppliers` is captured as a stock record whose id is the
+	 * word "suppliers", `uuid.parse` throws, and the page fails with a 400 that
+	 * says nothing about routing. This is the same fault PR #419 fixed when
+	 * `/v1/payments/connect` was captured as a payment uuid.
+	 *
+	 * ⚠️ Any future literal segment under `/v1/inventory` belongs above the
+	 * parameterised routes too.
+	 */
+	/* ── Suppliers ─────────────────────────────────────────────────────────────
+	 *
+	 * 🔑 Under Inventory, and gated by the SAME module and capabilities. A
+	 * business that can see its stock can see who supplies it; there is no
+	 * separate thing to buy and no separate permission to forget to grant.
+	 */
+
+	const supplierError = (c: Context<PlatformEnv>, error: unknown) => {
+		if (!(error instanceof SupplierError)) throw error;
+		if (error.code === "SUPPLIER_SKU_EXISTS") {
+			return respondError(
+				c,
+				"CONFLICT",
+				"That product is already mapped to this supplier.",
+				409,
+			);
+		}
+		return respondError(c, "NOT_FOUND", "Supplier record not found.", 404);
+	};
+
+	app.get("/v1/inventory/suppliers", readAccess, readLimit, async (c) =>
+		respond(c, {
+			items: await listSuppliers(c.get("authorized").workspaceId),
+		}),
+	);
+	app.post("/v1/inventory/suppliers", writeAccess, writeLimit, async (c) =>
+		respond(
+			c,
+			await createSupplier(
+				c.get("authorized").workspaceId,
+				supplierInputSchema.parse(await c.req.json()),
+			),
+			201,
+		),
+	);
+	app.patch(
+		"/v1/inventory/suppliers/:id",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			try {
+				return respond(
+					c,
+					await updateSupplier(
+						c.get("authorized").workspaceId,
+						uuid.parse(c.req.param("id")),
+						supplierPatchSchema.parse(await c.req.json()),
+					),
+				);
+			} catch (error) {
+				return supplierError(c, error);
+			}
+		},
+	);
+	app.delete(
+		"/v1/inventory/suppliers/:id",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			try {
+				return respond(
+					c,
+					await archiveSupplier(
+						c.get("authorized").workspaceId,
+						uuid.parse(c.req.param("id")),
+					),
+				);
+			} catch (error) {
+				return supplierError(c, error);
+			}
+		},
+	);
+
+	app.get("/v1/inventory/supplier-skus", readAccess, readLimit, async (c) => {
+		const supplierId = c.req.query("supplierId");
+		return respond(c, {
+			items: await listSupplierSkus(
+				c.get("authorized").workspaceId,
+				supplierId ? uuid.parse(supplierId) : undefined,
+			),
+		});
+	});
+	app.post(
+		"/v1/inventory/supplier-skus",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			try {
+				return respond(
+					c,
+					await createSupplierSku(
+						c.get("authorized").workspaceId,
+						supplierSkuInputSchema.parse(await c.req.json()),
+					),
+					201,
+				);
+			} catch (error) {
+				return supplierError(c, error);
+			}
+		},
+	);
+	app.patch(
+		"/v1/inventory/supplier-skus/:id",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			try {
+				return respond(
+					c,
+					await updateSupplierSku(
+						c.get("authorized").workspaceId,
+						uuid.parse(c.req.param("id")),
+						supplierSkuPatchSchema.parse(await c.req.json()),
+					),
+				);
+			} catch (error) {
+				return supplierError(c, error);
+			}
+		},
+	);
+	app.delete(
+		"/v1/inventory/supplier-skus/:id",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			try {
+				return respond(
+					c,
+					await deleteSupplierSku(
+						c.get("authorized").workspaceId,
+						uuid.parse(c.req.param("id")),
+					),
+				);
+			} catch (error) {
+				return supplierError(c, error);
+			}
+		},
+	);
+
 	app.get("/v1/inventory/:id", readAccess, readLimit, async (c) => {
 		const item = await getInventoryItemDto(
 			c.get("authorized").workspaceId,

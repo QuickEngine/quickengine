@@ -34,6 +34,7 @@ const workspaceFor = (id: string): WorkspaceResolution => ({
 	workspace: {
 		businessType: "commerce",
 		environment: "live",
+		published: true,
 		id,
 		name: "Gemsutopia",
 		slug: "gems",

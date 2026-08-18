@@ -1,7 +1,12 @@
 import { API_HEADERS } from "@quickengine/api-contracts/headers";
 import type { MutationUnitOfWork } from "@quickengine/api-contracts/mutations";
 import type { CacheProvider } from "@quickengine/cache";
-import type { DatabaseTransaction } from "@quickengine/db";
+import {
+	type DatabaseTransaction,
+	db,
+	eq,
+	quickengineWorkspaces,
+} from "@quickengine/db";
 import {
 	CheckoutError,
 	checkoutInputSchema,
@@ -193,6 +198,34 @@ export function registerCheckoutRoutes(
 		}
 
 		const { workspaceId } = c.get("authorized");
+
+		/**
+		 * 🔴 A closed shop takes no orders. Checked FIRST, before anything is
+		 * priced, reserved or charged.
+		 *
+		 * This is the guard that makes `published` mean something. Without it a
+		 * business that had taken its shop down for maintenance — or had never
+		 * opened it — still accepts a stranger's order, and in test mode hands
+		 * them a confirmation for a payment that moved no money. They wait for
+		 * coffee that is not coming, the business has an order it was never paid
+		 * for, and nobody finds out until somebody chases a delivery.
+		 *
+		 * ⚠️ 409, not 403. Nothing is wrong with the caller or their credentials —
+		 * the shop is shut, and it may open again within the hour.
+		 */
+		const [shop] = await db
+			.select({ published: quickengineWorkspaces.published })
+			.from(quickengineWorkspaces)
+			.where(eq(quickengineWorkspaces.id, workspaceId))
+			.limit(1);
+		if (shop && !shop.published) {
+			return respondError(
+				c,
+				"CONFLICT",
+				"This shop is not currently accepting orders.",
+				409,
+			);
+		}
 
 		let priced: Awaited<ReturnType<typeof priceCheckout>>;
 		try {

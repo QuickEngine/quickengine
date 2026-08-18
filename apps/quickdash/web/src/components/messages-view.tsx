@@ -77,6 +77,7 @@ function Thread({
 		},
 	});
 
+	const [replyFailure, setReplyFailure] = useState<string | null>(null);
 	const reply = useMutation({
 		mutationFn: async () => {
 			await workspaceApi(workspaceId).request(
@@ -84,6 +85,17 @@ function Thread({
 				{ method: "POST", body: { body: body.trim() } },
 			);
 		},
+		onMutate: () => setReplyFailure(null),
+		/**
+		 * 🔴 A reply that fails silently is the worst write in the console.
+		 *
+		 * The box clears on success, so with no failure arm a refused send looked
+		 * exactly like a sent one — the operator walks away believing a waiting
+		 * customer has been answered. The draft is deliberately KEPT here so
+		 * nobody retypes what they already wrote.
+		 */
+		onError: (error: { message?: string }) =>
+			setReplyFailure(error?.message ?? "That reply could not be sent."),
 		onSuccess: () => {
 			setBody("");
 			queryClient.invalidateQueries({
@@ -138,6 +150,15 @@ function Thread({
 					)}
 				</PageState>
 			</div>
+
+			{replyFailure ? (
+				<p
+					role="alert"
+					className="border-[var(--console-line-soft)] border-t px-4 pt-3 text-[11.5px] text-[var(--signal-attention)]"
+				>
+					{replyFailure}
+				</p>
+			) : null}
 
 			<form
 				className="flex items-end gap-2 border-[var(--console-line-soft)] border-t px-4 py-3"

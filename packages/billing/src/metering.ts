@@ -156,8 +156,31 @@ export async function checkAllowance({
 	const { planId, limits } = await getAccountLimits(scopeId);
 	const limit = limits[key];
 	const used = await readValue(scopeId, key);
-	const allowed = withinGrace(limit, used);
 	const nextUsed = METER_KIND[key] === "gauge" ? amount : used + amount;
+
+	/**
+	 * 🔴 Gauges stop HARD at the limit. Counters keep the grace ceiling.
+	 *
+	 * The two kinds fail for different reasons and deserve different answers.
+	 *
+	 * A COUNTER is consumption in flight — an API call, an AI action. Refusing
+	 * the request that happens to cross the line cuts somebody off mid-operation
+	 * and leaves work half-written, so the crossing request is allowed and only
+	 * the next one is refused. That policy is about not breaking things.
+	 *
+	 * A GAUGE is a possession: how many workspaces you have, how many seats are
+	 * filled. There is no operation in flight to protect and nothing gets
+	 * corrupted by saying no. Applying the same grace to a limit of ONE meant a
+	 * free account could always hold TWO workspaces and TWO seats — the plan said
+	 * one, the product allowed two, and the pricing page was quietly wrong.
+	 *
+	 * ⚠️ Checked against `nextUsed`, not `used`. A gauge check asks "may I have
+	 * one more", so the number that matters is the one it would become.
+	 */
+	const allowed =
+		METER_KIND[key] === "gauge"
+			? limit === null || nextUsed <= limit
+			: withinGrace(limit, used);
 	return {
 		...evaluate(key, limit, allowed ? nextUsed : used),
 		allowed,

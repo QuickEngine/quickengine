@@ -11,6 +11,7 @@
 
 const CLIENT = "3f1b2c40-0000-4000-8000-00000000c001";
 const CATALOG_ITEM = "3f1b2c40-0000-4000-8000-00000000ca01";
+const SUPPLIER = "3f1b2c40-0000-4000-8000-00000000da01";
 const PROJECT = "3f1b2c40-0000-4000-8000-00000000pr01".replace("pr", "b0");
 const ORDER = "3f1b2c40-0000-4000-8000-00000000or01".replace("or", "c2");
 const FILE_VERSION = "3f1b2c40-0000-4000-8000-00000000f101".replace("f1", "d3");
@@ -124,6 +125,25 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		quantity: 25,
 		note: "Restock from supplier",
 	},
+	createSupplier: {
+		name: "EZPZ Coffee",
+		contactName: "Liam Garneau",
+		contactEmail: "orders@example.com",
+		handoffMethod: "unknown",
+		leadTimeDays: 3,
+	},
+	updateSupplier: {
+		handoffMethod: "api",
+		handoffTarget: "https://example.com/v1",
+	},
+	createSupplierSku: {
+		supplierId: SUPPLIER,
+		catalogItemId: CATALOG_ITEM,
+		supplierSku: "ETH-GUJI-340",
+		unitCostCents: 1500,
+		currency: "CAD",
+	},
+	updateSupplierSku: { unitCostCents: 1450, leadTimeDays: 2 },
 
 	createShipment: {
 		orderId: ORDER,
@@ -317,6 +337,7 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	renameWorkspace: { name: "Northwind Trading Co." },
 	setWorkspaceArchived: { archived: true },
 	setWorkspaceEnvironment: { environment: "test" },
+	setWorkspacePublished: { published: false },
 	setWorkspaceModuleEnabled: { enabled: true },
 	registerContentManifest: {
 		slots: [
@@ -379,6 +400,12 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		label: "About — body text",
 		group: "About",
 		published: true,
+	},
+	setPartnerLinkActive: { active: false },
+	issuePartnerLink: {
+		clientRecordId: CLIENT,
+		code: "SARAHBREWS",
+		commissionBasisPoints: 1000,
 	},
 	createDiscount: {
 		name: "Summer sale",

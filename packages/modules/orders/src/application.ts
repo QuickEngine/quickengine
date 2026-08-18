@@ -75,6 +75,12 @@ const FRIENDLY: Record<string, string> = {
 		"That discount code was just used up. Remove it and try again.",
 	REFERRAL_CODE_GENERATION_FAILED:
 		"We couldn't create a referral code just now. Try again.",
+	REFERRAL_CODE_TAKEN: "That code is already in use in this workspace.",
+	REFERRAL_CODE_NOT_FOUND: "That partner link was not found.",
+	// Says what is allowed AND why it is restricted — the constraint is
+	// arbitrary-looking until you know the code becomes part of a web address.
+	REFERRAL_CODE_INVALID:
+		"A partner code becomes part of a web address, so it may use letters, numbers and hyphens only.",
 	CLIENT_NOT_FOUND: "The client on this order was not found.",
 	CLIENT_WORKSPACE_MISMATCH: "That client belongs to another workspace.",
 	CATALOG_ITEM_NOT_FOUND: "A catalog item on this order was not found.",
@@ -110,11 +116,15 @@ function mapOrderError(error: unknown): never {
 		if (error.message.endsWith("NOT_FOUND")) {
 			throw new DomainError("NOT_FOUND", message);
 		}
-		if (/MISMATCH|DISCOUNT_WINDOW_INVALID/.test(error.message)) {
+		if (
+			/MISMATCH|DISCOUNT_WINDOW_INVALID|REFERRAL_CODE_INVALID/.test(
+				error.message,
+			)
+		) {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (
-			/(NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|CONCURRENT_UPDATE|NOT_READY_FOR_FULFILLMENT|FULFILLMENT_NOT_COMPLETE|FULFILLMENT_ALREADY_COMPLETE|FULFILLMENT_LINK_FAILED|REFERRAL_CODE_GENERATION_FAILED|DISCOUNT_EXHAUSTED)/.test(
+			/(NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|CONCURRENT_UPDATE|NOT_READY_FOR_FULFILLMENT|FULFILLMENT_NOT_COMPLETE|FULFILLMENT_ALREADY_COMPLETE|FULFILLMENT_LINK_FAILED|REFERRAL_CODE_GENERATION_FAILED|REFERRAL_CODE_TAKEN|DISCOUNT_EXHAUSTED)/.test(
 				error.message,
 			)
 		) {

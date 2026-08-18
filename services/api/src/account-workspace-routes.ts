@@ -13,6 +13,7 @@ import {
 	setWorkspaceArchived,
 	setWorkspaceEnvironment,
 	setWorkspaceModuleEnabled,
+	setWorkspacePublished,
 	workspaceBelongsToOrganization,
 } from "@quickengine/db";
 import {
@@ -53,14 +54,20 @@ export const renameWorkspaceSchema = z.object({
 });
 export const archiveWorkspaceSchema = z.object({ archived: z.boolean() });
 export const workspaceModuleSchema = z.object({ enabled: z.boolean() });
+export const workspacePublishedSchema = z.object({
+	published: z.boolean(),
+});
 export const workspaceEnvironmentSchema = z.object({
 	environment: z.enum(["test", "live"]),
 });
 
 /** Domain errors the data layer throws, mapped to something a caller can act on. */
-function messageFor(
-	error: unknown,
-): { code: "VALIDATION_ERROR"; message: string } | null {
+function messageFor(error: unknown): {
+	code: "VALIDATION_ERROR" | "ENVIRONMENT_LOCKED";
+	message: string;
+	/** Defaults to 400 where the caller sent something invalid. */
+	status?: 400 | 409;
+} | null {
 	if (!(error instanceof Error)) return null;
 	switch (error.message) {
 		case "WORKSPACE_NAME_TOO_LONG":
@@ -75,11 +82,26 @@ function messageFor(
 				code: "VALIDATION_ERROR",
 				message: "That module does not exist.",
 			};
+		/**
+		 * 🔴 Its own code, and 409 rather than 400.
+		 *
+		 * Nothing the caller sent was invalid — the workspace simply has history
+		 * that cannot be relabelled, which is a conflict with existing state. It
+		 * was previously VALIDATION_ERROR, indistinguishable from a malformed
+		 * request, so a client could not tell "you typed something wrong" from
+		 * "this can never work" and had to guess from the prose. A UI that guesses
+		 * eventually guesses wrong, and this one did: a failure for an unrelated
+		 * reason was reported to the operator as a lock.
+		 *
+		 * The wording no longer says "payment lifecycle", which is a phrase from
+		 * inside this repository rather than anything a business would recognise.
+		 */
 		case "WORKSPACE_ENVIRONMENT_LOCKED":
 			return {
-				code: "VALIDATION_ERROR",
+				code: "ENVIRONMENT_LOCKED",
+				status: 409,
 				message:
-					"This workspace has entered the payment lifecycle. Create a separate workspace to keep test and live business data isolated.",
+					"This workspace already holds orders, payments or a connected payment provider, so it cannot change between test and live. Test rehearsals and real books cannot share one ledger.",
 			};
 		default:
 			return null;
@@ -216,7 +238,13 @@ export function registerAccountWorkspaceRoutes(
 				return respond(c, workspace, 201);
 			} catch (error) {
 				const mapped = messageFor(error);
-				if (mapped) return respondError(c, mapped.code, mapped.message, 400);
+				if (mapped)
+					return respondError(
+						c,
+						mapped.code,
+						mapped.message,
+						mapped.status ?? 400,
+					);
 				throw error;
 			}
 		},
@@ -237,7 +265,13 @@ export function registerAccountWorkspaceRoutes(
 			return respond(c, workspace);
 		} catch (error) {
 			const mapped = messageFor(error);
-			if (mapped) return respondError(c, mapped.code, mapped.message, 400);
+			if (mapped)
+				return respondError(
+					c,
+					mapped.code,
+					mapped.message,
+					mapped.status ?? 400,
+				);
 			throw error;
 		}
 	});
@@ -263,6 +297,30 @@ export function registerAccountWorkspaceRoutes(
 			if (mapped) return respondError(c, mapped.code, mapped.message, 409);
 			throw error;
 		}
+	});
+
+	/**
+	 * Open or close the shop.
+	 *
+	 * 🔑 Its own route rather than a field on the rename patch: this is the one
+	 * setting whose effect is visible to strangers within seconds, and it should
+	 * be as hard to change by accident as it is easy to change on purpose.
+	 */
+	app.patch("/v1/account/workspaces/:id/published", manage, async (c) => {
+		if (
+			!(await ownsTarget(c.req.param("id"), c.get("account").organizationId))
+		) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		const input = workspacePublishedSchema.parse(await c.req.json());
+		const workspace = await setWorkspacePublished(
+			c.req.param("id"),
+			input.published,
+		);
+		if (!workspace) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		return respond(c, workspace);
 	});
 
 	app.post("/v1/account/workspaces/:id/archive", manage, async (c) => {
@@ -361,7 +419,13 @@ export function registerAccountWorkspaceRoutes(
 				return respond(c, { enabled: input.enabled });
 			} catch (error) {
 				const mapped = messageFor(error);
-				if (mapped) return respondError(c, mapped.code, mapped.message, 400);
+				if (mapped)
+					return respondError(
+						c,
+						mapped.code,
+						mapped.message,
+						mapped.status ?? 400,
+					);
 				throw error;
 			}
 		},

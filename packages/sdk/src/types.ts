@@ -108,7 +108,24 @@ export type QuickResponse<TData> = {
 };
 
 export type QuickConnectContext = {
-	workspace: { name: string; slug: string };
+	workspace: {
+		name: string;
+		slug: string;
+		/**
+		 * Is the shop open to the public?
+		 *
+		 * 🔑 A storefront should render a closed sign from this rather than
+		 * discovering it when checkout is refused — by which point somebody has
+		 * chosen coffee and typed an address.
+		 */
+		published: boolean;
+		/**
+		 * ⚠️ `test` means payments take NO REAL MONEY. A shop in test mode that
+		 * looks ordinary will hand a real customer a confirmation for a purchase
+		 * that never happened, so a storefront is expected to say so plainly.
+		 */
+		environment: "test" | "live";
+	};
 	modules: string[];
 	signedIn: boolean;
 };

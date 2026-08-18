@@ -1,11 +1,12 @@
 import { resolveSession } from "@quickengine/auth/session";
-import { RequestErrorScreen, StatusScreen, textLink } from "@quickengine/ui";
+import { presentRequestError } from "@quickengine/ui";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
 	Outlet,
 	redirect,
 } from "@tanstack/react-router";
+import { FullPageWall } from "../components/page-state";
 import { SkeletonScreen } from "../components/skeletons";
 import { ToastProvider } from "../components/toast";
 import { clientEnv } from "../lib/env";
@@ -117,12 +118,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function NotFoundScreen() {
 	return (
-		<StatusScreen
+		<FullPageWall
 			code="404"
-			title="Page not found"
-			message="That QuickDash page doesn't exist."
+			title="That page doesn't exist"
+			detail="The address is wrong, or whatever was here has moved. Nothing in your workspace has changed."
 			action={
-				<a href="/" className={textLink}>
+				<a href="/" className={wallAction}>
 					Back to QuickDash
 				</a>
 			}
@@ -130,13 +131,37 @@ function NotFoundScreen() {
 	);
 }
 
+/**
+ * The whole app failed, not one list.
+ *
+ * ⚠️ The only place a bare "something went wrong" is honest: a boundary catches
+ * a render fault with no status to classify, so unlike a failed request there is
+ * genuinely nothing more specific to say. Everywhere else that copy is a
+ * shrug, which is why it lives only here.
+ */
 function ErrorScreen({ error, reset }: { error: Error; reset: () => void }) {
+	const it = presentRequestError(error);
 	return (
-		<RequestErrorScreen
-			error={error}
-			onRetry={reset}
-			homeHref="/"
-			homeLabel="Back to QuickDash"
+		<FullPageWall
+			code={it.code}
+			tone="var(--signal-failure)"
+			title={it.title}
+			detail={it.message}
+			action={
+				<div className="flex items-center gap-2">
+					<button type="button" onClick={reset} className={wallPrimary}>
+						Try again
+					</button>
+					<a href="/" className={wallAction}>
+						Back to QuickDash
+					</a>
+				</div>
+			}
 		/>
 	);
 }
+
+const wallPrimary =
+	"inline-flex h-9 items-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85";
+const wallAction =
+	"inline-flex h-9 items-center rounded-full border border-[var(--console-line-strong)] px-4 text-[12.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]";

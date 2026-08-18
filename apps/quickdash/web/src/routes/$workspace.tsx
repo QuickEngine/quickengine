@@ -14,11 +14,13 @@ import {
 } from "@tanstack/react-router";
 import { type MouseEventHandler, useState } from "react";
 import { FeedbackDialog } from "../components/feedback-dialog";
+import { GoLive } from "../components/go-live";
 import {
 	HeaderActionProvider,
 	useHeaderSlots,
 } from "../components/header-action";
 import { NotificationToasts } from "../components/notification-toasts";
+import { SidebarCard } from "../components/sidebar-card";
 import {
 	helpWasOpen,
 	rememberHelpOpen,
@@ -60,6 +62,29 @@ function WorkspaceFrame() {
 	);
 	const notifications = useQuery(quickDashQueries.notifications());
 	/**
+	 * 🔴 Scoped to the workspace on screen.
+	 *
+	 * The inbox is per PERSON — `notifications` carries a `user_id` and no
+	 * workspace at all — so every workspace showed every other workspace's
+	 * notices. Two businesses run by one person read each other's mail, and the
+	 * counts on the bell described work that was not here.
+	 *
+	 * ⚠️ Filtered on the href's own first segment, which is the workspace the
+	 * notice actually points at. Anything without an href cannot be attributed
+	 * and is left in: dropping it would hide it everywhere rather than somewhere.
+	 */
+	const workspaceNotices = (notifications.data?.items ?? []).filter((item) => {
+		if (!item.href) return true;
+		const [owner] = item.href.replace(/^\/+/, "").split("/");
+		return owner === workspaceId || owner === context.data?.workspace.slug;
+	});
+	// 🔴 Counted from the SCOPED list, not the server's organization-wide total.
+	// Otherwise the bell reads "3" over a panel showing nothing, and the number
+	// somebody is chasing belongs to a different business.
+	const workspaceUnread = workspaceNotices.filter(
+		(item) => !item.readAt,
+	).length;
+	/**
 	 * Has anything ever called this workspace?
 	 *
 	 * 🔑 The SAME query key the Connect page uses, so this shares its cache
@@ -76,12 +101,22 @@ function WorkspaceFrame() {
 				}>(`/account/api-keys?workspaceId=${encodeURIComponent(workspaceId)}`)
 			).data,
 		placeholderData: (previous) => previous,
-		refetchInterval: (query) =>
-			(query.state.data?.items ?? []).some(
-				(key) => !key.revokedAt && key.lastUsedAt,
-			)
-				? false
-				: 15_000,
+		/**
+		 * 🔴 Deliberately NOT polled here.
+		 *
+		 * This used to refetch every 15 seconds whenever no key had been used —
+		 * which includes a workspace with no keys at all. That is the common case
+		 * for a new workspace, so the layout route, which is mounted on every
+		 * page, asked the API the same question four times a minute for the whole
+		 * session. Worse, it was asking to compute `connectPending`, and that flag
+		 * requires `liveKeys.length > 0`, so in the state that triggered the
+		 * polling the answer was already known to be false.
+		 *
+		 * The Connect page keeps its poll: somebody sitting there is mid-setup and
+		 * watching it turn over. Both observers share this query key, so while
+		 * that page is open the sidebar gets the fresh answer for free.
+		 */
+		staleTime: 5 * 60_000,
 	});
 	/**
 	 * Customers waiting on a reply.
@@ -189,7 +224,15 @@ function WorkspaceFrame() {
 			// what the API will actually do with a payment.
 			banner={
 				context.data?.workspace.environment === "test" ? (
-					<SandboxBanner />
+					<SandboxBanner
+						action={
+							<GoLive
+								workspaceId={workspaceId}
+								organizationId={context.data?.workspace.organizationId}
+								accountUrl={clientEnv.ACCOUNT_URL}
+							/>
+						}
+					/>
 				) : undefined
 			}
 			switcher={
@@ -221,15 +264,15 @@ function WorkspaceFrame() {
 							current === "notifications" ? "navigation" : "notifications",
 						)
 					}
-					notificationCount={notifications.data?.unread ?? 0}
+					notificationCount={workspaceUnread}
 					notificationsActive={sidebarContext === "notifications"}
 				/>
 			}
 			nav={
 				sidebarContext === "notifications" ? (
 					<WorkspaceNotifications
-						items={notifications.data?.items ?? []}
-						unread={notifications.data?.unread ?? 0}
+						items={workspaceNotices}
+						unread={workspaceUnread}
 					/>
 				) : (
 					<WorkspaceNav
@@ -246,12 +289,34 @@ function WorkspaceFrame() {
 						// merged in from the conversation list, which knows about
 						// messages the bell was never told about.
 						childBadges={withCount(
-							navSignals(notifications.data?.items),
+							navSignals(workspaceNotices, {
+								id: workspaceId,
+								slug: context.data?.workspace.slug,
+							}),
 							"client-records/messages",
 							unreadMessages,
 						)}
 					/>
 				)
+			}
+			// Between the navigation and the account row: seen, never in the way.
+			navBottom={
+				<SidebarCard
+					workspaceId={workspaceId}
+					usage={plan.data?.usage}
+					/**
+					 * 🔑 The SAME next step Home shows, derived the same way. Two
+					 * surfaces computing "what should I do next" separately is two
+					 * surfaces that will eventually disagree in front of a customer.
+					 */
+					nextStep={
+						context.data?.checklist.dismissed
+							? null
+							: (context.data?.checklist.items ?? [])
+									.flatMap((goal) => goal.steps)
+									.find((step) => step.isNext)
+					}
+				/>
 			}
 			account={
 				<SidebarAccount

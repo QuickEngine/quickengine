@@ -235,7 +235,12 @@ function WorkspaceDetailPage() {
 						aria-label="Environment"
 						disabled={setEnvironment.isPending}
 						onClick={() => setEnvironment.mutate(sandbox ? "live" : "test")}
-						className="relative flex h-9 shrink-0 items-center rounded-full bg-[rgb(var(--console-ink)/0.07)] p-0.5 outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.1)] disabled:opacity-40"
+						/* 🔑 A switch between two equals — sandbox and live — so it takes a
+						   visible track and NEVER an on-colour. Green here would imply one
+						   of the two modes is "running" and the other is off, which is
+						   exactly the wrong idea about a workspace that is always in one
+						   of them. */
+						className="relative flex h-9 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] bg-[rgb(var(--console-ink)/0.04)] p-0.5 outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] disabled:opacity-40"
 					>
 						<span
 							aria-hidden="true"
@@ -295,11 +300,23 @@ function WorkspaceDetailPage() {
 									onClick={() =>
 										toggleModule.mutate({ moduleId: module.id, enabled: !on })
 									}
-									className={`relative flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 outline-none transition-colors disabled:opacity-40 ${on ? "bg-[rgb(var(--console-ink)/0.22)]" : "bg-[rgb(var(--console-ink)/0.07)]"}`}
+									/* 🔴 On is GREEN, off is the surface.
+									   Both states were shades of the same ink at low alpha, so a
+									   row of switches read as a row of controls with no legible
+									   position — you had to look at the knob, not the switch.
+									   Colour set inline because the token is a hex, and a Tailwind
+									   arbitrary value with an alpha channel would emit no rule. */
+									style={on ? { background: "var(--signal-on)" } : undefined}
+									className={`relative flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 outline-none transition-colors disabled:opacity-40 ${on ? "" : "bg-[rgb(var(--console-ink)/0.1)]"}`}
 								>
 									<span
 										aria-hidden="true"
-										className={`size-5 rounded-full bg-[var(--console-pop)] shadow-[0_1px_2px_rgb(0_0_0/0.3)] transition-transform duration-200 ${on ? "translate-x-4" : "translate-x-0"}`}
+										/* ⚠️ White while on, the surface colour while off. The thumb was
+										   `--console-pop` in both states, which on a green track is a dark
+										   disc on a mid tone — the one element that has to be unmistakable
+										   became the least visible thing on the control. */
+										style={on ? { background: "#fff" } : undefined}
+										className={`size-5 rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.3)] transition-transform duration-200 ${on ? "translate-x-4" : "translate-x-0 bg-[var(--console-pop)]"}`}
 									/>
 								</button>
 							</div>

@@ -1,4 +1,6 @@
+import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { inlineFailure } from "./page-state";
 
 /**
  * The shell every detail panel wears.
@@ -153,4 +155,38 @@ export function Block({
 /** Nothing to show inside a block — quieter than a page-level empty state. */
 export function BlockEmpty({ children }: { children: string }) {
 	return <p className="text-[11.5px] text-[var(--ink-30)]">{children}</p>;
+}
+
+/**
+ * A block inside a panel whose request failed.
+ *
+ * ── Why this exists ──────────────────────────────────────────────────────────
+ *
+ * 🔴 Panels do not go through `PageState`, and every block inside one was
+ * written as `isPending ? "Loading…" : data.map(...)`. That ternary has no
+ * failure arm, so a block whose request failed showed **"Loading…" forever** —
+ * arguably the worst state in the product, because it is indistinguishable from
+ * a slow network and so nobody ever reports it as a bug.
+ *
+ * ⚠️ Reported INSIDE the block, never as a takeover. One block failing does not
+ * invalidate the record: a customer whose addresses did not load still has a
+ * name, an email and an order history worth reading.
+ */
+export function BlockFailure({ query }: { query: UseQueryResult<unknown> }) {
+	return (
+		<div role="alert" className="space-y-1.5">
+			<p className="text-[11.5px] text-[var(--ink-45)]">
+				{inlineFailure(query.error)}
+			</p>
+			<button
+				type="button"
+				onClick={() => {
+					void query.refetch();
+				}}
+				className="text-[11px] text-[var(--ink-50)] underline underline-offset-2 transition-colors hover:text-[var(--ink-90)]"
+			>
+				Try again
+			</button>
+		</div>
+	);
 }

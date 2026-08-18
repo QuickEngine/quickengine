@@ -4,9 +4,11 @@ import { CategoriesView } from "../components/categories-view";
 import { DiscountsView } from "../components/discounts-view";
 import { FoldersView } from "../components/folders-view";
 import { MessagesView } from "../components/messages-view";
+import { PartnerLinksView } from "../components/partner-links-view";
 import { PaymentsView } from "../components/payments-view";
 import { RatesView } from "../components/rates-view";
 import { ReviewsView } from "../components/reviews-view";
+import { SuppliersView } from "../components/suppliers-view";
 import { TasksView } from "../components/tasks-view";
 import { ZonesView } from "../components/zones-view";
 
@@ -47,8 +49,19 @@ function Page() {
 	if (module === "inventory" && section === "adjustments") {
 		return <AdjustmentsView workspaceId={workspaceId} />;
 	}
+	// Suppliers sits under Inventory rather than in a module of its own: it only
+	// matters to a business that does not make its own product, which is the
+	// same business already tracking stock.
+	if (module === "inventory" && section === "suppliers") {
+		return <SuppliersView workspaceId={workspaceId} />;
+	}
 	if (module === "orders" && section === "discounts") {
 		return <DiscountsView workspaceId={workspaceId} />;
+	}
+	// Beside Discounts because a partner link carries one, and because somebody
+	// looking for "how do I give a creator a code" looks where codes live.
+	if (module === "orders" && section === "partners") {
+		return <PartnerLinksView workspaceId={workspaceId} />;
 	}
 	if (module === "products-services" && section === "categories") {
 		return <CategoriesView workspaceId={workspaceId} />;

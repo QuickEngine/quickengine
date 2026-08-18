@@ -1,0 +1,566 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
+import { CreatePanel } from "./create-panel";
+import { useHeaderAction } from "./header-action";
+import { ListControls } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { EmptyState, PageState } from "./page-state";
+// ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
+// if the import is ever dropped, and the error that produces names React
+// internals rather than the missing import.
+import { Choice, Text as TextField } from "./product-fields";
+
+/**
+ * Suppliers — who makes and ships what this business sells.
+ *
+ * 🔴 For a business that never touches its own product, this page and the
+ * mapping below it are the difference between an order somebody can fulfil and
+ * an order somebody has to phone about. The supplier's own code for a product
+ * is the one piece of information no amount of care can reconstruct later.
+ *
+ * ⚠️ Nothing here sends anything anywhere yet. `handoffMethod` records how
+ * orders are MEANT to reach this supplier so the agreement survives the
+ * conversation it was made in; the adapter that acts on it is separate work,
+ * deliberately, because guessing a supplier's format costs a rebuild.
+ */
+
+type Supplier = {
+	id: string;
+	name: string;
+	contactName: string | null;
+	contactEmail: string | null;
+	handoffMethod: string;
+	handoffTarget: string | null;
+	leadTimeDays: number | null;
+	notes: string | null;
+};
+
+type Mapping = {
+	id: string;
+	supplierId: string;
+	catalogItemId: string;
+	catalogItemName: string;
+	supplierSku: string;
+	unitCostCents: number | null;
+	currency: string;
+	leadTimeDays: number | null;
+};
+
+/**
+ * How orders reach a supplier.
+ *
+ * 🔑 `shopify` and `woocommerce` are here because suppliers commonly ingest
+ * orders through a storefront platform rather than an API of their own — EZPZ
+ * Coffee's public dropshipping page says exactly that. Recording it keeps the
+ * distinction visible: satisfying a platform's contract is a different and much
+ * larger job than writing a client for somebody's REST API.
+ */
+const METHODS = [
+	"unknown",
+	"manual",
+	"email",
+	"csv",
+	"api",
+	"portal",
+	"shopify",
+	"woocommerce",
+] as const;
+
+const quiet =
+	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
+
+const money = (cents: number | null, currency: string) =>
+	cents === null
+		? "—"
+		: new Intl.NumberFormat(undefined, {
+				style: "currency",
+				currency,
+			}).format(cents / 100);
+
+export function SuppliersView({ workspaceId }: { workspaceId: string }) {
+	const { layout, setLayout } = useListLayout(workspaceId);
+	const queryClient = useQueryClient();
+	const api = workspaceApi(workspaceId);
+
+	const [creating, setCreating] = useState(false);
+	const [search, setSearch] = useState("");
+	const [failure, setFailure] = useState<string | null>(null);
+	const [open, setOpen] = useState<string | null>(null);
+
+	const [name, setName] = useState("");
+	const [contactName, setContactName] = useState("");
+	const [contactEmail, setContactEmail] = useState("");
+	const [method, setMethod] = useState<string>("unknown");
+	const [target, setTarget] = useState("");
+	const [notes, setNotes] = useState("");
+
+	const suppliers = useQuery({
+		queryKey: ["quickdash", workspaceId, "suppliers"],
+		queryFn: async () =>
+			(await api.request<{ items: Supplier[] }>("/inventory/suppliers")).data,
+	});
+
+	// Every mapping in the workspace, fetched once. A per-supplier request would
+	// mean the panel could not show a count until it was opened.
+	const mappings = useQuery({
+		queryKey: ["quickdash", workspaceId, "supplier-skus"],
+		queryFn: async () =>
+			(await api.request<{ items: Mapping[] }>("/inventory/supplier-skus"))
+				.data,
+	});
+
+	const refresh = () => {
+		void queryClient.invalidateQueries({
+			queryKey: ["quickdash", workspaceId, "suppliers"],
+		});
+		void queryClient.invalidateQueries({
+			queryKey: ["quickdash", workspaceId, "supplier-skus"],
+		});
+	};
+
+	const create = useMutation({
+		mutationFn: async () => {
+			await api.request("/inventory/suppliers", {
+				method: "POST",
+				body: {
+					name: name.trim(),
+					contactName: contactName.trim() || null,
+					contactEmail: contactEmail.trim() || null,
+					handoffMethod: method,
+					handoffTarget: target.trim() || null,
+					notes: notes.trim() || null,
+				},
+			});
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That supplier could not be saved."),
+		onSuccess: () => {
+			setCreating(false);
+			setName("");
+			setContactName("");
+			setContactEmail("");
+			setMethod("unknown");
+			setTarget("");
+			setNotes("");
+			refresh();
+		},
+	});
+
+	const archive = useMutation({
+		mutationFn: async (id: string) => {
+			await api.request(`/inventory/suppliers/${id}`, { method: "DELETE" });
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That supplier could not be archived."),
+		onSuccess: () => {
+			setOpen(null);
+			refresh();
+		},
+	});
+
+	useHeaderAction({
+		label: "New supplier",
+		onClick: () => setCreating((was) => !was),
+	});
+
+	const countFor = (supplierId: string) =>
+		(mappings.data?.items ?? []).filter((row) => row.supplierId === supplierId)
+			.length;
+
+	return (
+		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
+			{creating ? (
+				<CreatePanel
+					title="New supplier"
+					submitLabel="Add supplier"
+					busy={create.isPending}
+					valid={name.trim().length > 0}
+					failure={failure}
+					onClose={() => setCreating(false)}
+					onSubmit={() => create.mutate()}
+				>
+					<TextField
+						label="Name"
+						value={name}
+						onChange={setName}
+						placeholder="EZPZ Coffee"
+					/>
+					<TextField
+						label="Contact"
+						value={contactName}
+						onChange={setContactName}
+						placeholder="Who you speak to"
+					/>
+					<TextField
+						label="Email"
+						value={contactEmail}
+						onChange={setContactEmail}
+						placeholder="orders@supplier.com"
+					/>
+					<Choice
+						label="How orders reach them"
+						hint="leave as unknown until they tell you"
+						options={METHODS}
+						value={method}
+						onChange={setMethod}
+					/>
+					<TextField
+						label="Where orders go"
+						hint="an email address, portal URL or API base"
+						value={target}
+						onChange={setTarget}
+						placeholder="depends on the method above"
+					/>
+					<TextField
+						label="Notes"
+						value={notes}
+						onChange={setNotes}
+						placeholder="Lead times, minimums, anything agreed"
+					/>
+				</CreatePanel>
+			) : null}
+
+			<ListControls
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
+				query={search}
+				onQueryChange={setSearch}
+				placeholder="Search suppliers"
+			/>
+
+			{failure ? (
+				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
+			) : null}
+
+			<PageState
+				query={suppliers}
+				loadingLabel="Loading suppliers…"
+				isEmpty={(data) => data.items.length === 0}
+				empty={
+					<EmptyState
+						title="No suppliers yet"
+						detail="A supplier is whoever makes or ships what you sell. Record one, then map your products to the codes they use, so an order can be handed over without anybody guessing."
+					/>
+				}
+			>
+				{(data) => {
+					const needle = search.trim().toLowerCase();
+					const rows = data.items.filter(
+						(supplier) =>
+							!needle || supplier.name.toLowerCase().includes(needle),
+					);
+					if (rows.length === 0) {
+						return (
+							<EmptyState
+								title="Nothing matches"
+								detail="Try a different search."
+							/>
+						);
+					}
+					return (
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Suppliers"
+							rows={rows}
+							selectedId={open}
+							onOpen={(supplier) => setOpen(supplier.id)}
+							columns={[
+								{
+									key: "name",
+									header: "Supplier",
+									render: (supplier) => supplier.name,
+								},
+								{
+									key: "contact",
+									header: "Contact",
+									render: (supplier) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{supplier.contactEmail ?? supplier.contactName ?? "—"}
+										</span>
+									),
+								},
+								{
+									key: "method",
+									header: "Handoff",
+									width: "w-40",
+									tight: true,
+									render: (supplier) =>
+										/**
+										 * 🔴 The state that matters before a supplier call. An
+										 * unknown handoff is not a blank field, it is the open
+										 * question, and it should be visible from the list.
+										 */
+										supplier.handoffMethod === "unknown" ? (
+											<span className="rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention)]">
+												Not agreed yet
+											</span>
+										) : (
+											<span className="text-[11px] text-[var(--ink-30)]">
+												{supplier.handoffMethod}
+											</span>
+										),
+								},
+								{
+									key: "mapped",
+									header: "Products",
+									width: "w-28",
+									tight: true,
+									render: (supplier) => (
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{countFor(supplier.id) || "None mapped"}
+										</span>
+									),
+								},
+								{
+									key: "actions",
+									header: "",
+									align: "right",
+									tight: true,
+									render: (supplier) => (
+										<button
+											type="button"
+											className={quiet}
+											disabled={archive.isPending}
+											onClick={() => archive.mutate(supplier.id)}
+										>
+											Archive
+										</button>
+									),
+								},
+							]}
+						/>
+					);
+				}}
+			</PageState>
+
+			{open ? (
+				<SupplierPanel
+					workspaceId={workspaceId}
+					supplier={
+						(suppliers.data?.items ?? []).find((row) => row.id === open) ?? null
+					}
+					mappings={(mappings.data?.items ?? []).filter(
+						(row) => row.supplierId === open,
+					)}
+					onClose={() => setOpen(null)}
+					onChanged={refresh}
+				/>
+			) : null}
+		</main>
+	);
+}
+
+/**
+ * One supplier, and the products mapped to it.
+ *
+ * 🔑 The mapping lives HERE rather than on its own page because it is
+ * meaningless without the supplier it belongs to: "ETH-GUJI-340" answers a
+ * question nobody can ask without first knowing whose code it is.
+ */
+function SupplierPanel({
+	workspaceId,
+	supplier,
+	mappings,
+	onClose,
+	onChanged,
+}: {
+	workspaceId: string;
+	supplier: Supplier | null;
+	mappings: Mapping[];
+	onClose: () => void;
+	onChanged: () => void;
+}) {
+	const api = workspaceApi(workspaceId);
+	const [itemId, setItemId] = useState("");
+	const [sku, setSku] = useState("");
+	const [cost, setCost] = useState("");
+	const [failure, setFailure] = useState<string | null>(null);
+
+	const catalog = useQuery({
+		queryKey: ["quickdash", workspaceId, "catalog", "for-mapping"],
+		queryFn: async () =>
+			(
+				await api.request<{ items: Array<{ id: string; name: string }> }>(
+					"/catalog?limit=100",
+				)
+			).data,
+	});
+
+	const map = useMutation({
+		mutationFn: async () => {
+			await api.request("/inventory/supplier-skus", {
+				method: "POST",
+				body: {
+					supplierId: supplier?.id,
+					catalogItemId: itemId,
+					supplierSku: sku.trim(),
+					// Typed in currency units; stored as integer cents like every
+					// other money value in the system.
+					unitCostCents:
+						cost.trim() === "" ? null : Math.round(Number(cost) * 100),
+				},
+			});
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That product could not be mapped."),
+		onSuccess: () => {
+			setItemId("");
+			setSku("");
+			setCost("");
+			onChanged();
+		},
+	});
+
+	const unmap = useMutation({
+		mutationFn: async (id: string) => {
+			await api.request(`/inventory/supplier-skus/${id}`, { method: "DELETE" });
+		},
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That mapping could not be removed."),
+		onSuccess: onChanged,
+	});
+
+	if (!supplier) return null;
+
+	const unmapped = (catalog.data?.items ?? []).filter(
+		(item) => !mappings.some((row) => row.catalogItemId === item.id),
+	);
+
+	return (
+		<aside className="fixed top-3 right-3 bottom-3 z-30 flex w-[calc(50%-0.75rem)] min-w-[24rem] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl border border-[var(--console-line)] bg-[var(--console-panel)] shadow-[0_24px_60px_rgb(0_0_0/0.45)]">
+			<header className="flex items-center gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
+				<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
+					{supplier.name}
+				</p>
+				<button type="button" onClick={onClose} className={quiet}>
+					Close
+				</button>
+			</header>
+
+			<div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4">
+				<section className="space-y-1.5">
+					<Fact label="Handoff" value={supplier.handoffMethod} />
+					{supplier.handoffTarget ? (
+						<Fact label="Goes to" value={supplier.handoffTarget} />
+					) : null}
+					{supplier.contactEmail ? (
+						<Fact label="Email" value={supplier.contactEmail} />
+					) : null}
+					{supplier.leadTimeDays !== null ? (
+						<Fact label="Lead time" value={`${supplier.leadTimeDays} days`} />
+					) : null}
+					{supplier.notes ? (
+						<p className="pt-1 text-[11.5px] text-[var(--ink-45)] leading-5">
+							{supplier.notes}
+						</p>
+					) : null}
+				</section>
+
+				<section className="space-y-2">
+					<p className="text-[11px] text-[var(--ink-45)]">
+						Products mapped to this supplier
+					</p>
+					{mappings.length === 0 ? (
+						<p className="text-[11.5px] text-[var(--ink-30)]">
+							None yet. Map a product to the code this supplier uses for it.
+						</p>
+					) : (
+						<div className="overflow-hidden rounded-xl border border-[var(--console-line)]">
+							{mappings.map((row) => (
+								<div
+									key={row.id}
+									className="flex h-10 items-center gap-3 border-[var(--console-line-soft)] border-b px-3 last:border-b-0"
+								>
+									<span className="min-w-0 flex-1 truncate text-[11.5px] text-[var(--ink-85)]">
+										{row.catalogItemName}
+									</span>
+									<code className="shrink-0 font-mono text-[11px] text-[var(--ink-45)]">
+										{row.supplierSku}
+									</code>
+									<span className="w-20 shrink-0 text-right text-[11px] text-[var(--ink-30)]">
+										{money(row.unitCostCents, row.currency)}
+									</span>
+									<button
+										type="button"
+										className={quiet}
+										disabled={unmap.isPending}
+										onClick={() => unmap.mutate(row.id)}
+									>
+										Remove
+									</button>
+								</div>
+							))}
+						</div>
+					)}
+				</section>
+
+				<section className="space-y-2">
+					<p className="text-[11px] text-[var(--ink-45)]">Map a product</p>
+					{unmapped.length === 0 ? (
+						<p className="text-[11.5px] text-[var(--ink-30)]">
+							Every product is already mapped to this supplier.
+						</p>
+					) : (
+						<>
+							<Choice
+								label="Product"
+								options={unmapped.slice(0, 12).map((item) => item.name)}
+								value={unmapped.find((item) => item.id === itemId)?.name ?? ""}
+								onChange={(chosen) =>
+									setItemId(
+										unmapped.find((item) => item.name === chosen)?.id ?? "",
+									)
+								}
+							/>
+							<TextField
+								label="Their code"
+								hint="sent to them verbatim, never parsed"
+								value={sku}
+								onChange={setSku}
+								placeholder="ETH-GUJI-340"
+							/>
+							<TextField
+								label="What you pay them"
+								hint="per unit, leave blank if unknown"
+								value={cost}
+								onChange={setCost}
+								placeholder="15.00"
+							/>
+							{failure ? (
+								<p className="text-[11.5px] text-[var(--signal-attention)]">
+									{failure}
+								</p>
+							) : null}
+							<button
+								type="button"
+								disabled={!itemId || !sku.trim() || map.isPending}
+								onClick={() => map.mutate()}
+								className="inline-flex h-9 items-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40"
+							>
+								{map.isPending ? "Mapping…" : "Map product"}
+							</button>
+						</>
+					)}
+				</section>
+			</div>
+		</aside>
+	);
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="flex items-baseline gap-3">
+			<span className="w-24 shrink-0 text-[11px] text-[var(--ink-30)]">
+				{label}
+			</span>
+			<span className="min-w-0 flex-1 break-words text-[11.5px] text-[var(--ink-85)]">
+				{value}
+			</span>
+		</div>
+	);
+}

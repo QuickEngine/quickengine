@@ -2,6 +2,10 @@ import { CheckIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import {
+	isPlanLimit,
+	PlanLimitDialog,
+} from "../../components/plan-limit-dialog";
 import { useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
 import {
@@ -43,6 +47,7 @@ function NewWorkspacePage() {
 	const [recipe, setRecipe] = useState<Recipe | null>(null);
 	const [sandbox, setSandbox] = useState(false);
 	const [failure, setFailure] = useState<string | null>(null);
+	const [planLimit, setPlanLimit] = useState<string | null>(null);
 
 	const matches = useMemo(() => {
 		const found = query.trim() ? searchRecipes(query) : [];
@@ -76,8 +81,21 @@ function NewWorkspacePage() {
 			});
 			void navigate({ to: "/workspaces" });
 		},
-		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That workspace could not be created."),
+		/**
+		 * 🔴 A workspace allowance is an offer, not a refusal.
+		 *
+		 * Free includes one workspace, so this fires the moment somebody wants a
+		 * second — which is somebody using the product exactly as intended. Shown
+		 * as plain failure text it read as "you did something wrong"; as a dialog
+		 * with the plan beside it, it reads as the answer to what they just asked.
+		 */
+		onError: (error: { code?: string; message?: string }) => {
+			if (isPlanLimit(error)) {
+				setPlanLimit(error.message);
+				return;
+			}
+			setFailure(error?.message ?? "That workspace could not be created.");
+		},
 	});
 
 	return (
@@ -238,6 +256,13 @@ function NewWorkspacePage() {
 					</button>
 				</div>
 			</div>
+			{planLimit ? (
+				<PlanLimitDialog
+					message={planLimit}
+					accountUrl=""
+					onClose={() => setPlanLimit(null)}
+				/>
+			) : null}
 		</main>
 	);
 }

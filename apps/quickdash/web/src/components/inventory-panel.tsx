@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
-import { Block, BlockEmpty, DetailPanel, Fact } from "./detail-panel";
+import {
+	Block,
+	BlockEmpty,
+	BlockFailure,
+	DetailPanel,
+	Fact,
+} from "./detail-panel";
 import { Text } from "./product-fields";
 
 /**
@@ -122,7 +128,9 @@ export function InventoryPanel({
 				</>
 			}
 		>
-			{item.isPending ? (
+			{item.isError ? (
+				<BlockFailure query={item} />
+			) : item.isPending ? (
 				<BlockEmpty>Loading…</BlockEmpty>
 			) : !data ? (
 				<BlockEmpty>That item could not be loaded.</BlockEmpty>
@@ -154,7 +162,9 @@ export function InventoryPanel({
 						title="History"
 						aside={adjustments.data?.items.length || undefined}
 					>
-						{adjustments.isPending ? (
+						{adjustments.isError ? (
+							<BlockFailure query={adjustments} />
+						) : adjustments.isPending ? (
 							<BlockEmpty>Loading…</BlockEmpty>
 						) : (adjustments.data?.items.length ?? 0) === 0 ? (
 							<BlockEmpty>Nothing has moved yet.</BlockEmpty>

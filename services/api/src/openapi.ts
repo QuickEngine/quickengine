@@ -942,6 +942,62 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/partner-links": {
+				get: {
+					operationId: "listPartnerLinks",
+					summary: "List partner codes and what they have earned",
+					responses: {
+						"200": { description: "Every partner code in the workspace." },
+					},
+				},
+				post: {
+					operationId: "issuePartnerLink",
+					summary: "Issue an affiliate code to a named partner",
+					responses: {
+						"201": { description: "Code issued." },
+						"400": { description: "The code is not usable in a web address." },
+						"409": { description: "That code is already in use here." },
+					},
+				},
+			},
+			"/v1/partner-links/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "setPartnerLinkActive",
+					summary: "Retire or restore a partner code",
+					responses: {
+						"200": { description: "Updated." },
+						"404": { description: "No such code in this workspace." },
+					},
+				},
+			},
+			"/v1/partner-links/{code}": {
+				parameters: [
+					{
+						in: "path",
+						name: "code",
+						required: true,
+						schema: { type: "string" },
+					},
+				],
+				get: {
+					operationId: "resolvePartnerLink",
+					summary: "Resolve a partner code arriving from a public link",
+					responses: {
+						"200": {
+							description:
+								"The code and any discount it carries, or null when unknown or retired. Never the owner or their commission.",
+						},
+					},
+				},
+			},
 			"/v1/discounts": {
 				get: {
 					operationId: "listDiscounts",
@@ -1220,6 +1276,103 @@ function declaredDocument(config: ApiConfig) {
 					responses: {
 						"200": { description: "Status changed." },
 						"409": { description: "Illegal or redundant transition." },
+					},
+				},
+			},
+			"/v1/inventory/suppliers": {
+				get: {
+					operationId: "listSuppliers",
+					summary: "List the businesses that supply this workspace",
+					responses: {
+						"200": { description: "Every supplier that is not archived." },
+					},
+				},
+				post: {
+					operationId: "createSupplier",
+					summary: "Record a supplier",
+					responses: {
+						"201": { description: "Supplier recorded." },
+						"400": { description: "The supplier details are invalid." },
+					},
+				},
+			},
+			"/v1/inventory/suppliers/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "updateSupplier",
+					summary: "Change a supplier's details",
+					responses: {
+						"200": { description: "Supplier updated." },
+						"404": { description: "No such supplier in this workspace." },
+					},
+				},
+				delete: {
+					operationId: "archiveSupplier",
+					summary: "Archive a supplier, keeping its history",
+					responses: {
+						"200": { description: "Supplier archived." },
+						"404": { description: "No such supplier in this workspace." },
+					},
+				},
+			},
+			"/v1/inventory/supplier-skus": {
+				get: {
+					operationId: "listSupplierSkus",
+					summary: "List catalog-item to supplier-code mappings",
+					parameters: [
+						{
+							in: "query",
+							name: "supplierId",
+							required: false,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					responses: {
+						"200": { description: "Mappings, with each catalog item's name." },
+					},
+				},
+				post: {
+					operationId: "createSupplierSku",
+					summary: "Map a catalog item to a supplier's own code",
+					responses: {
+						"201": { description: "Mapping created." },
+						"404": { description: "The supplier or catalog item is unknown." },
+						"409": {
+							description: "That item is already mapped to this supplier.",
+						},
+					},
+				},
+			},
+			"/v1/inventory/supplier-skus/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "updateSupplierSku",
+					summary: "Change a mapping's code, cost or lead time",
+					responses: {
+						"200": { description: "Mapping updated." },
+						"404": { description: "No such mapping in this workspace." },
+					},
+				},
+				delete: {
+					operationId: "deleteSupplierSku",
+					summary: "Remove a mapping",
+					responses: {
+						"200": { description: "Mapping removed." },
+						"404": { description: "No such mapping in this workspace." },
 					},
 				},
 			},
@@ -2979,6 +3132,24 @@ function declaredDocument(config: ApiConfig) {
 						"200": { description: "The workspace was archived or restored." },
 						"403": { description: "You cannot manage this workspace." },
 						"404": { description: "No such workspace." },
+					},
+				},
+			},
+			"/v1/account/workspaces/{id}/published": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "setWorkspacePublished",
+					summary: "Open or close the shop to the public",
+					responses: {
+						"200": { description: "Updated." },
+						"404": { description: "Workspace not found." },
 					},
 				},
 			},

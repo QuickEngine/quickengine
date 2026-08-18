@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
-import { BlockEmpty, DetailPanel } from "./detail-panel";
+import { BlockEmpty, BlockFailure, DetailPanel } from "./detail-panel";
 
 /**
  * The shared machinery behind every record's detail panel.
@@ -116,7 +116,9 @@ export function RecordPanel<TRecord extends { id: string }>({
 				) : undefined
 			}
 		>
-			{record.isPending ? (
+			{record.isError ? (
+				<BlockFailure query={record} />
+			) : record.isPending ? (
 				<BlockEmpty>Loading…</BlockEmpty>
 			) : record.isError || !data ? (
 				<BlockEmpty>That record could not be loaded.</BlockEmpty>

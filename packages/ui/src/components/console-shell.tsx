@@ -61,18 +61,26 @@ const AnchorLink: ConsoleLink = ({ href, className, children }) => (
  */
 export function SandboxBanner({ action }: { action?: ReactNode }) {
 	return (
-		<div className="flex h-9 shrink-0 items-center justify-center gap-3 bg-[var(--console-banner)] px-4 text-[var(--console-banner-ink)]">
-			{/* A dot rather than a colour field: the marker is unmistakable up close
-			    and the band stays quiet from across the room. */}
-			<span
-				aria-hidden="true"
-				className="size-1.5 shrink-0 rounded-full bg-[#f5b44a]"
-			/>
-			<p className="truncate text-[11.5px]">
-				Sandbox mode — nothing here is real. Payments are not charged and
-				records do not belong to your live business.
+		<div className="flex h-9 shrink-0 items-center gap-3 bg-[var(--console-banner)] px-4 text-[var(--console-banner-ink)]">
+			{/* Which mode you are IN sits on the left, where a label belongs. The way
+			    OUT sits on the right, where an action belongs. Previously both the
+			    marker and the explanation were centred and the action trailed after
+			    the sentence, so the one control on the band was the hardest thing on
+			    it to find. */}
+			<span className="flex shrink-0 items-center gap-2">
+				{/* A dot rather than a colour field: unmistakable up close, and the
+				    band stays quiet from across the room. */}
+				<span
+					aria-hidden="true"
+					className="size-1.5 shrink-0 rounded-full bg-[#f5b44a]"
+				/>
+				<span className="font-medium text-[11.5px]">Sandbox</span>
+			</span>
+			<p className="min-w-0 flex-1 truncate text-[11.5px] opacity-90">
+				Nothing here is real. Payments are not charged and records do not belong
+				to your live business.
 			</p>
-			{action}
+			{action ? <span className="shrink-0">{action}</span> : null}
 		</div>
 	);
 }
@@ -510,12 +518,28 @@ export function ConsoleShell({
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				{navTop}
 				{nav}
-				{navBottom ? (
-					<div className="mt-auto shrink-0 px-2 pb-3">{navBottom}</div>
-				) : null}
 			</div>
+			{/* 🔴 `navBottom` OVERLAYS the foot of the sidebar rather than sitting in
+			    the column.
+
+			    Placed in the flow it became a third block between the navigation and
+			    the account row, pushing them apart and changing the sidebar's
+			    proportions whenever it had something to say. Anchored to the account
+			    row with `bottom-full` it floats over the end of the navigation
+			    instead: the sidebar's layout is identical whether or not anything is
+			    showing, and the card reads as laid on top rather than built in.
+
+			    ⚠️ `empty:hidden` because a slot being PASSED is not the same as it
+			    rendering something — a component that decides for itself whether to
+			    appear still satisfies `navBottom ? ...`, so without this the padded
+			    wrapper drew a shadow around nothing. */}
 			{account ? (
-				<div className="shrink-0 border-[var(--console-line-soft)] border-t">
+				<div className="relative shrink-0 border-[var(--console-line-soft)] border-t">
+					{navBottom ? (
+						<div className="absolute inset-x-0 bottom-full px-2 pb-2 empty:hidden">
+							{navBottom}
+						</div>
+					) : null}
 					{account}
 				</div>
 			) : null}

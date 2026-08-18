@@ -30,6 +30,7 @@ const workspace: WorkspaceResolution = {
 	workspace: {
 		businessType: "agency",
 		environment: "live",
+		published: true,
 		id: "11111111-1111-4111-8111-111111111111",
 		name: "Acme",
 		slug: "acme",

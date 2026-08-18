@@ -52,6 +52,7 @@ const workspaceFor = (id: string): WorkspaceResolution => ({
 	workspace: {
 		businessType: "test",
 		environment: "live",
+		published: true,
 		id,
 		name: "Test",
 		slug: "test",

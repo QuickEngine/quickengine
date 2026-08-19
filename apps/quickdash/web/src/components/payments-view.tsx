@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { WriteFailure } from "./page-state";
 
 /**
  * Connecting somewhere to get paid.
@@ -317,9 +318,7 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 				</p>
 			</div>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-y">
 				{PROVIDERS.map((provider, index) => {

@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { isAmount, parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy } from "./page-state";
+import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
@@ -72,6 +73,9 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 			).data,
 	});
 
+	// What the picker shows, and therefore what must be submitted.
+	const chosenZone = zoneId ?? zones.data?.items[0]?.id ?? null;
+
 	const refresh = () =>
 		queryClient.invalidateQueries({
 			queryKey: ["quickdash", workspaceId, "shipping-zones"],
@@ -82,11 +86,24 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 			await workspaceApi(workspaceId).request("/shipping/rates", {
 				method: "POST",
 				body: {
-					zoneId,
+					/**
+					 * 🔴 `chosenZone`, not `zoneId`.
+					 *
+					 * The picker DISPLAYS a zone by falling back to the first one when
+					 * nothing has been clicked, but the raw state stays null until
+					 * somebody actually clicks. So the form showed "Canada" selected and
+					 * submitted nothing, and the server rejected it as an invalid
+					 * request — an error that describes the payload accurately and the
+					 * user's experience not at all, because they had chosen a zone.
+					 *
+					 * Sending the same value the form renders is the fix: what you see
+					 * selected is what gets sent.
+					 */
+					zoneId: chosenZone,
 					name: name.trim(),
 					// Entered in currency, stored in minor units. One conversion, at the
 					// edge, so nothing downstream has to wonder which it is holding.
-					baseCents: Math.round(Number(price) * 100),
+					baseCents: parseAmountCents(price) ?? 0,
 					active: true,
 				},
 			});
@@ -123,8 +140,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 		onSuccess: refresh,
 	});
 
-	const chosenZone = zoneId ?? zones.data?.items[0]?.id ?? null;
-	const valid = Boolean(chosenZone) && name.trim() && Number(price) >= 0;
+	const valid = Boolean(chosenZone) && name.trim() && isAmount(price);
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
@@ -176,9 +192,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search rates"
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={zones}

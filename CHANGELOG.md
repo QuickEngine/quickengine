@@ -97,6 +97,35 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **You can see the API key you just created.** Keys were issued correctly, stored correctly and
+  worked — and were never shown, so every key was lost the moment it was made and the only way
+  forward was to create another and lose that one too. The key now appears once, with a copy
+  button and a warning that it will not be shown again.
+
+- **Amounts accept the way people actually write them.** Typing `$12.00` into a shipping rate,
+  `$5.00` into a refund or `15%` into a discount left the save button dead with nothing on screen
+  explaining why. Currency symbols, percent signs and stray spaces are now understood everywhere
+  an amount is entered.
+
+- **Adding stock no longer opens the wrong thing.** Clicking the quantity box on a stock row
+  opened the record instead, and the panel then covered the box you were aiming at. The quantity
+  box and its two buttons now behave like the controls they are, and match the rest of the row.
+
+- **A delivery address is chosen from a list.** Typing a province by name was rejected by the
+  shipping quote with an error that named neither the field nor the reason, which made checkout
+  impossible to finish. Provinces are now picked from a list.
+
+- **Your discount follows you to checkout.** The basket showed the reduced total and checkout
+  showed the full one, while the amount actually charged was the reduced figure — three different
+  numbers for one order. Checkout now shows the same saving the basket does, priced by the server
+  in both places.
+
+- **A basket no longer counts things that are not in it.** Products removed from a shop stayed in
+  the basket count while the basket itself showed empty.
+
+- **The workspace switcher no longer asks for keys that belong to nothing.** A failed request went
+  out on every page load before a workspace had been chosen.
+
 - **You can create an API key again.** Choosing Publishable, Storefront or Secret produced "an API
   key needs at least one capability" and refused, so connecting a storefront could not be
   completed at all. Each kind now carries what it is allowed to do.

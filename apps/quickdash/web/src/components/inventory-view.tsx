@@ -6,7 +6,7 @@ import { useRecordSignals } from "../lib/record-signals";
 import { InventoryPanel } from "./inventory-panel";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState } from "./page-state";
+import { EmptyState, PageState, WriteFailure } from "./page-state";
 
 /**
  * Stock levels — what is actually on the shelf.
@@ -32,8 +32,12 @@ type CatalogItem = { id: string; name: string };
 const quiet =
 	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
 
+// Matched to `quiet` rather than the console's usual field: this input sits
+// between two pill buttons, so a taller square-cornered box breaks the row's
+// shared edge. Same height, same radius, same border — it reads as one control
+// group instead of a form dropped into a table cell.
 const field =
-	"h-8 w-20 rounded-lg border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[12px] text-[var(--ink-85)] outline-none focus:border-[rgb(var(--console-ink)/0.25)]";
+	"h-7 w-16 shrink-0 rounded-full border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[11px] text-[var(--ink-85)] outline-none focus:border-[rgb(var(--console-ink)/0.25)]";
 
 /**
  * What a person can actually sell right now.
@@ -123,9 +127,7 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={inventory}
@@ -247,8 +249,17 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 										const canAdjust = Number.isFinite(amount) && amount > 0;
 										return (
 											<div className="flex items-center justify-end gap-1.5">
+												{/* 🔴 Clicks stop at each control.
+												    The row opens the detail panel, so a click in here
+												    bubbled up and opened it — and the panel then
+												    covered the very control being aimed at. The only
+												    way to reach the box was to click-and-hold, because
+												    a drag is not a click. Guarding the controls rather
+												    than wrapping them in a click-catching div keeps
+												    the cell a plain container. */}
 												<input
 													value={draft}
+													onClick={(event) => event.stopPropagation()}
 													onChange={(event) =>
 														setDrafts((current) => ({
 															...current,
@@ -263,13 +274,14 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 													type="button"
 													className={quiet}
 													disabled={!canAdjust || adjust.isPending}
-													onClick={() =>
+													onClick={(event) => {
+														event.stopPropagation();
 														adjust.mutate({
 															id: item.id,
 															kind: "receive",
 															quantity: amount,
-														})
-													}
+														});
+													}}
 												>
 													Receive
 												</button>
@@ -277,13 +289,14 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 													type="button"
 													className={quiet}
 													disabled={!canAdjust || adjust.isPending}
-													onClick={() =>
+													onClick={(event) => {
+														event.stopPropagation();
 														adjust.mutate({
 															id: item.id,
 															kind: "correction_out",
 															quantity: amount,
-														})
-													}
+														});
+													}}
 												>
 													Remove
 												</button>

@@ -6,7 +6,7 @@ import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { ContractPanel } from "./module-panels";
-import { EmptyState, PageState } from "./page-state";
+import { EmptyState, PageState, WriteFailure } from "./page-state";
 
 /**
  * Contracts — agreements sent for signature.
@@ -126,9 +126,7 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={contracts}

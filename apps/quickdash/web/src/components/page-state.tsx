@@ -763,3 +763,38 @@ function FullPageFailure({
 		/>
 	);
 }
+
+/**
+ * A write that failed, said the same way a read that failed is said.
+ *
+ * ── Why this exists ──────────────────────────────────────────────────────────
+ *
+ * 🔴 Reading and writing failed in two completely different visual languages.
+ * A list that could not load got a bordered panel; a save that was refused got
+ * a bare line of text floating under the controls, in twenty four separate
+ * views that each wrote their own. So the console looked considered when
+ * nothing happened and slapdash the moment somebody tried to do something —
+ * which is exactly backwards, because a refused save is the one they care about.
+ *
+ * ⚠️ Not the same component as `FailurePanel`, deliberately. A failed READ
+ * replaces content that never arrived and can occupy the space. A failed WRITE
+ * sits above a form that is still there and still correct, so it must be
+ * compact enough not to shove the thing being fixed off the screen.
+ */
+export function WriteFailure({ message }: { message: string }) {
+	return (
+		<div
+			role="alert"
+			className="mb-3 flex items-start gap-2.5 rounded-xl border border-[var(--console-line)] px-3 py-2.5"
+		>
+			<span
+				aria-hidden="true"
+				className="mt-[5px] size-1.5 shrink-0 rounded-full"
+				style={{ background: "var(--signal-failure)" }}
+			/>
+			<p className="min-w-0 flex-1 text-[11.5px] text-[var(--ink-60)] leading-5">
+				{message}
+			</p>
+		</div>
+	);
+}

@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { parseAmountCents } from "../lib/money-input";
 import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { PaymentPanel } from "./module-panels";
-import { EmptyState, PageState } from "./page-state";
+import { EmptyState, PageState, WriteFailure } from "./page-state";
 
 /**
  * Payments — money that actually moved.
@@ -137,9 +138,7 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={payments}
@@ -255,7 +254,11 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 											payment.status === "succeeded" && remaining > 0;
 										if (!canRefund) return null;
 										const open = refunding === payment.id;
-										const entered = Math.round(Number(amount) * 100);
+										// 🔴 A refund is the field somebody is MOST likely to
+										// type a currency symbol into, because they are copying
+										// a figure off the payment above it. `Number("$12.00")`
+										// is NaN, which silently refused the refund.
+										const entered = parseAmountCents(amount) ?? 0;
 										const validAmount =
 											Number.isFinite(entered) &&
 											entered > 0 &&

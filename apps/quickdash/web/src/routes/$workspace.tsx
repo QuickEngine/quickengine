@@ -100,6 +100,8 @@ function WorkspaceFrame() {
 					items: Array<{ lastUsedAt: string | null; revokedAt: string | null }>;
 				}>(`/account/api-keys?workspaceId=${encodeURIComponent(workspaceId)}`)
 			).data,
+		// Same guard as Connect: no workspace, no question. See the note there.
+		enabled: workspaceId.length > 0,
 		placeholderData: (previous) => previous,
 		/**
 		 * 🔴 Deliberately NOT polled here.

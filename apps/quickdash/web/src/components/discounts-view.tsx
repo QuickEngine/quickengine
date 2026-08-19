@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { parseAmount } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy } from "./page-state";
+import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
@@ -109,7 +110,10 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 
 	const create = useMutation({
 		mutationFn: async () => {
-			const entered = Number(amount);
+			// 🔴 Tolerant of what people actually type. `Number("$5.00")` and
+			// `Number("15%")` are both NaN, and the only symptom was a create
+			// button that stayed dead with nothing on screen explaining why.
+			const entered = parseAmount(amount) ?? 0;
 			await workspaceApi(workspaceId).request("/discounts", {
 				method: "POST",
 				body: {
@@ -158,7 +162,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 		onSuccess: refresh,
 	});
 
-	const valid = code.trim().length >= 3 && Number(amount) > 0;
+	const valid = code.trim().length >= 3 && (parseAmount(amount) ?? 0) > 0;
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
@@ -203,9 +207,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search codes"
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={discounts}

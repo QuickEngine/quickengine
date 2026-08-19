@@ -402,6 +402,15 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		published: true,
 	},
 	setPartnerLinkActive: { active: false },
+	setSubscriptionStatus: { status: "paused" },
+	createInvoiceForOrder: { orderId: ORDER },
+	createSubscriptionPlan: {
+		name: "Monthly \u2014 The Build",
+		interval: "month",
+		intervalCount: 1,
+		priceCents: 4200,
+		items: [{ catalogItemId: CATALOG_ITEM, quantity: 1 }],
+	},
 	issuePartnerLink: {
 		clientRecordId: CLIENT,
 		code: "SARAHBREWS",

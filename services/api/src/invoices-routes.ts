@@ -4,6 +4,7 @@ import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
 import {
 	createInvoiceCommand,
+	createInvoiceForOrder,
 	deleteInvoiceCommand,
 	getInvoiceDto,
 	INVOICE_STATUSES,
@@ -83,6 +84,40 @@ export function registerInvoicesRoutes(
 			}),
 		),
 	);
+	/**
+	 * Invoice an order that already exists.
+	 *
+	 * 🔑 Its own route rather than a flag on create: the body is just an order
+	 * id, because every other field is copied from the order. Accepting line
+	 * items alongside it would invite an invoice that disagrees with the sale it
+	 * claims to represent.
+	 */
+	app.post("/v1/invoices/from-order", writeAccess, writeLimit, async (c) => {
+		const { orderId } = z
+			.object({ orderId: z.uuid() })
+			.parse(await c.req.json());
+		try {
+			return respond(
+				c,
+				await createInvoiceForOrder(c.get("authorized").workspaceId, orderId),
+				201,
+			);
+		} catch (error) {
+			if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
+				return respondError(c, "NOT_FOUND", "That order was not found.", 404);
+			}
+			if (error instanceof Error && error.message === "ORDER_HAS_NO_CLIENT") {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"That order has no customer to invoice.",
+					400,
+				);
+			}
+			throw error;
+		}
+	});
+
 	app.post("/v1/invoices", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
 		const context = await mutationContext(c, "invoices.create", body);

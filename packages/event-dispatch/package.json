@@ -22,6 +22,7 @@
 		"@quickengine/jobs": "workspace:*",
 		"@quickengine/mod-client-records": "workspace:*",
 		"@quickengine/mod-files": "workspace:*",
+		"@quickengine/mod-orders": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/realtime": "workspace:*",
 		"@quickengine/search": "workspace:*",

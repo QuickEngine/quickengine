@@ -70,6 +70,9 @@ const FRIENDLY: Record<string, string> = {
 	WORKSPACE_NOT_FOUND: "The workspace was not found.",
 	CLIENT_NOT_FOUND: "The client on this invoice was not found.",
 	INVOICE_NOT_FOUND: "The invoice was not found.",
+	ORDER_NOT_FOUND: "That order was not found.",
+	ORDER_HAS_NO_CLIENT:
+		"That order has no customer on it, so there is nobody to invoice.",
 	INVOICE_NOT_EDITABLE: "Only a draft invoice can be edited.",
 	INVOICE_HAS_MANAGED_LINES:
 		"This invoice has lines owned by another module and can't be edited here.",
@@ -91,7 +94,9 @@ function mapInvoiceError(error: unknown): never {
 			throw new DomainError("NOT_FOUND", message);
 		}
 		// A bad reference or a missing line is the caller's input, not a state conflict.
-		if (/(MISMATCH|LINES_REQUIRED)/.test(error.message)) {
+		// `ORDER_HAS_NO_CLIENT` joins them: the order named is real, it simply has
+		// nobody attached to bill, which the caller has to resolve.
+		if (/(MISMATCH|LINES_REQUIRED|ORDER_HAS_NO_CLIENT)/.test(error.message)) {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (

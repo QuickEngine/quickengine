@@ -71,6 +71,7 @@ export const MODULE_CHILDREN: Readonly<
 	],
 	orders: [
 		["", "Orders"],
+		["subscriptions", "Subscriptions"],
 		["discounts", "Discounts"],
 		["partners", "Partners"],
 	],

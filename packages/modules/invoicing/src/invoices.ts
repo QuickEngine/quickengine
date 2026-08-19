@@ -1,5 +1,6 @@
 import {
 	and,
+	asc,
 	clientRecords,
 	db,
 	eq,
@@ -7,6 +8,8 @@ import {
 	invoiceLineItems,
 	invoiceSequences,
 	invoices,
+	orderLineItems,
+	orders,
 	quickengineWorkspaces,
 	sql,
 } from "@quickengine/db";
@@ -458,4 +461,77 @@ export async function deleteInvoiceInTx(
 
 export async function deleteInvoice(workspaceId: string, id: string) {
 	return db.transaction((tx) => deleteInvoiceInTx(tx, workspaceId, id));
+}
+
+/**
+ * Raise an invoice for an order that already exists.
+ *
+ * ── Why this is worth its own function ───────────────────────────────────────
+ *
+ * 🔴 Invoicing could already create an invoice against a client with hand typed
+ * lines, which meant invoicing a sale involved retyping it — and any typo became
+ * a discrepancy between what somebody bought and what they were billed. Two
+ * records of one transaction that disagree is the single thing accounting
+ * cannot tolerate.
+ *
+ * ⚠️ Lines are COPIED, not referenced. An invoice is a statement of what was
+ * charged at a moment in time; if it followed the order it would silently change
+ * when the order was edited, and a sent invoice must never rewrite itself.
+ *
+ * ⚠️ Shipping and discount arrive as their own lines rather than being folded
+ * into the totals, because somebody reading the invoice is entitled to see why
+ * the number differs from the sum of the products.
+ */
+export async function createInvoiceForOrder(
+	workspaceId: string,
+	orderId: string,
+) {
+	const [order] = await db
+		.select()
+		.from(orders)
+		.where(and(eq(orders.workspaceId, workspaceId), eq(orders.id, orderId)))
+		.limit(1);
+	if (!order) throw new Error("ORDER_NOT_FOUND");
+	if (!order.clientId) throw new Error("ORDER_HAS_NO_CLIENT");
+
+	const lines = await db
+		.select()
+		.from(orderLineItems)
+		.where(eq(orderLineItems.orderId, orderId))
+		.orderBy(asc(orderLineItems.position));
+
+	const lineItems: InvoiceLineItemInput[] = lines.map((line, position) => ({
+		description: line.name,
+		quantity: line.quantity,
+		unitPriceCents: line.unitPriceCents,
+		position,
+	}));
+
+	if (order.shippingCents > 0) {
+		lineItems.push({
+			description: order.shippingRateName ?? "Shipping",
+			quantity: 1,
+			unitPriceCents: order.shippingCents,
+			position: lineItems.length,
+		});
+	}
+	if (order.discountCents > 0) {
+		// A negative line, so the invoice total still reconciles against the order.
+		lineItems.push({
+			description: order.discountCode
+				? `Discount (${order.discountCode})`
+				: "Discount",
+			quantity: 1,
+			unitPriceCents: -order.discountCents,
+			position: lineItems.length,
+		});
+	}
+
+	return createInvoice(workspaceId, {
+		clientId: order.clientId,
+		currency: order.currency,
+		lineItems,
+		taxCents: order.taxCents,
+		notes: `Order ${order.number}`,
+	});
 }

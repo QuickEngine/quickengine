@@ -77,6 +77,10 @@ const FRIENDLY: Record<string, string> = {
 		"We couldn't create a referral code just now. Try again.",
 	REFERRAL_CODE_TAKEN: "That code is already in use in this workspace.",
 	REFERRAL_CODE_NOT_FOUND: "That partner link was not found.",
+	SUBSCRIPTION_PLAN_NOT_FOUND: "That subscription is no longer offered.",
+	SUBSCRIPTION_PLAN_EMPTY:
+		"That subscription has nothing in it, so there is nothing to send.",
+	SUBSCRIPTION_NOT_FOUND: "That subscription was not found.",
 	// Says what is allowed AND why it is restricted — the constraint is
 	// arbitrary-looking until you know the code becomes part of a web address.
 	REFERRAL_CODE_INVALID:
@@ -124,7 +128,7 @@ function mapOrderError(error: unknown): never {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (
-			/(NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|CONCURRENT_UPDATE|NOT_READY_FOR_FULFILLMENT|FULFILLMENT_NOT_COMPLETE|FULFILLMENT_ALREADY_COMPLETE|FULFILLMENT_LINK_FAILED|REFERRAL_CODE_GENERATION_FAILED|REFERRAL_CODE_TAKEN|DISCOUNT_EXHAUSTED)/.test(
+			/(NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|NOT_DELETABLE|CONCURRENT_UPDATE|NOT_READY_FOR_FULFILLMENT|FULFILLMENT_NOT_COMPLETE|FULFILLMENT_ALREADY_COMPLETE|FULFILLMENT_LINK_FAILED|REFERRAL_CODE_GENERATION_FAILED|REFERRAL_CODE_TAKEN|SUBSCRIPTION_PLAN_EMPTY|DISCOUNT_EXHAUSTED)/.test(
 				error.message,
 			)
 		) {

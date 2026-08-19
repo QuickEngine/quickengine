@@ -18,6 +18,9 @@ import {
 	readOrdersSettings,
 	recordReferral,
 	resolveCheckoutClient,
+	SubscriptionError,
+	startSubscription,
+	subscriptionPlanContents,
 	taxCalculatorFor,
 } from "@quickengine/mod-orders";
 import {
@@ -138,7 +141,7 @@ export function registerCheckoutRoutes(
 		}
 		const { workspaceId } = c.get("authorized");
 		try {
-			const priced = await priceCheckout(workspaceId, parsed.data.items);
+			const priced = await priceCheckout(workspaceId, parsed.data.items ?? []);
 			let discountCents = 0;
 			if (parsed.data.discountCode) {
 				const discount = await evaluateDiscount({
@@ -160,7 +163,7 @@ export function registerCheckoutRoutes(
 					),
 					quote: {
 						destination: parsed.data.destination,
-						lines: parsed.data.items.map((item) => ({
+						lines: (parsed.data.items ?? []).map((item) => ({
 							catalogItemId: item.catalogItemId,
 							catalogItemVariantId: item.variantId ?? null,
 							quantity: item.quantity,
@@ -214,7 +217,10 @@ export function registerCheckoutRoutes(
 		 * the shop is shut, and it may open again within the hour.
 		 */
 		const [shop] = await db
-			.select({ published: quickengineWorkspaces.published })
+			.select({
+				published: quickengineWorkspaces.published,
+				environment: quickengineWorkspaces.environment,
+			})
 			.from(quickengineWorkspaces)
 			.where(eq(quickengineWorkspaces.id, workspaceId))
 			.limit(1);
@@ -227,9 +233,58 @@ export function registerCheckoutRoutes(
 			);
 		}
 
+		/**
+		 * A subscription supplies its own contents.
+		 *
+		 * 🔑 The plan is resolved to real catalog lines and then priced by exactly
+		 * the same code a one-off basket goes through. Everything downstream —
+		 * inventory reservation, the order, fulfilment, shipping — sees an
+		 * ordinary order and never learns subscriptions exist.
+		 *
+		 * ⚠️ The plan's own price is NOT used as the order total here. The order is
+		 * priced from its lines like any other, so a plan whose contents changed
+		 * cannot quietly charge yesterday's amount for today's box. The plan price
+		 * governs the recurring agreement; the order records what was actually
+		 * sent.
+		 */
+		let subscriptionLines: Array<{
+			catalogItemId: string;
+			quantity: number;
+		}> | null = null;
+		if (parsed.data.subscriptionPlanId) {
+			try {
+				const { contents } = await subscriptionPlanContents(
+					workspaceId,
+					parsed.data.subscriptionPlanId,
+				);
+				subscriptionLines = contents.map(
+					(line: { catalogItemId: string; quantity: number }) => ({
+						catalogItemId: line.catalogItemId,
+						quantity: line.quantity,
+					}),
+				);
+			} catch (error) {
+				if (error instanceof SubscriptionError) {
+					const missing = error.message === "SUBSCRIPTION_PLAN_NOT_FOUND";
+					return respondError(
+						c,
+						missing ? "NOT_FOUND" : "VALIDATION_ERROR",
+						missing
+							? "That subscription is no longer offered."
+							: "That subscription has nothing in it.",
+						missing ? 404 : 400,
+					);
+				}
+				throw error;
+			}
+		}
+
 		let priced: Awaited<ReturnType<typeof priceCheckout>>;
 		try {
-			priced = await priceCheckout(workspaceId, parsed.data.items);
+			priced = await priceCheckout(
+				workspaceId,
+				subscriptionLines ?? parsed.data.items ?? [],
+			);
 		} catch (error) {
 			if (error instanceof CheckoutError) {
 				// 400, not 500. The request named something unbuyable, which is the
@@ -302,11 +357,27 @@ export function registerCheckoutRoutes(
 							regionCode: parsed.data.shippingAddress.region,
 							postalCode: parsed.data.shippingAddress.postalCode,
 						},
-						lines: parsed.data.items.map((item) => ({
-							catalogItemId: item.catalogItemId,
-							catalogItemVariantId: item.variantId ?? null,
-							quantity: item.quantity,
-						})),
+						// The same lines that were priced: a subscription's contents when
+						// one was bought, otherwise the basket.
+						/**
+						 * The same lines that were priced: a subscription's contents when
+						 * one was bought, otherwise the basket.
+						 *
+						 * ⚠️ A subscription's contents carry no variant. Plan items name a
+						 * catalog item directly, so there is nothing to narrow and the
+						 * field is simply absent rather than guessed at.
+						 */
+						lines: subscriptionLines
+							? subscriptionLines.map((line) => ({
+									catalogItemId: line.catalogItemId,
+									catalogItemVariantId: null,
+									quantity: line.quantity,
+								}))
+							: (parsed.data.items ?? []).map((item) => ({
+									catalogItemId: item.catalogItemId,
+									catalogItemVariantId: item.variantId ?? null,
+									quantity: item.quantity,
+								})),
 					},
 				});
 			} catch (error) {
@@ -398,6 +469,32 @@ export function registerCheckoutRoutes(
 			return respondMutation(c, result);
 		}
 		const order = result.result;
+
+		/**
+		 * 🔑 Started AFTER the order, against the client the order resolved.
+		 *
+		 * A guest's client record is created from the details they typed during
+		 * this same request, so there is nobody to subscribe until the order
+		 * exists. Failure here is logged and swallowed for the same reason a
+		 * referral is: the sale has already completed and taking money without
+		 * recording it is far worse than a subscription that has to be repaired.
+		 */
+		if (parsed.data.subscriptionPlanId) {
+			try {
+				await startSubscription({
+					workspaceId,
+					planId: parsed.data.subscriptionPlanId,
+					customerId: client.id,
+					environment: shop?.environment ?? "live",
+				});
+			} catch (error) {
+				options.logger.error("checkout.subscription_failed", {
+					orderId: order.id,
+					requestId: c.get("requestId"),
+					reason: error instanceof Error ? error.name : "unknown",
+				});
+			}
+		}
 
 		// A referral records WHO BROUGHT this customer. It does not change what the
 		// order costs — the reward accrues to the referrer, and only once this order

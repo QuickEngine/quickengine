@@ -1,5 +1,8 @@
+import { db, eq, quickengineWorkspaces } from "@quickengine/db";
 import {
+	archiveSubscriptionPlan,
 	createDiscount,
+	createSubscriptionPlan,
 	deleteDiscount,
 	discountInputSchema,
 	discountPreviewInputSchema,
@@ -7,10 +10,15 @@ import {
 	issuePartnerCode,
 	listDiscounts,
 	listPartnerCodes,
+	listSubscriptionPlans,
+	listSubscriptions,
 	partnerLinkSchema,
 	priceCheckout,
 	resolvePartnerLink,
+	SubscriptionError,
 	setPartnerCodeActive,
+	setSubscriptionStatus,
+	subscriptionPlanInputSchema,
 	updateDiscount,
 } from "@quickengine/mod-orders";
 import type { Hono } from "hono";
@@ -184,6 +192,109 @@ export function registerDiscountRoutes(
 		return removed
 			? respond(c, { deleted: true })
 			: respondError(c, "NOT_FOUND", "No such discount.", 404);
+	});
+
+	/* ── Subscription plans ───────────────────────────────────────────────────
+	 *
+	 * 🔑 Under the orders module because a subscription IS a standing order: the
+	 * same catalog, the same checkout, the same fulfilment. Giving it its own
+	 * module would mean a business buying "subscriptions" separately from the
+	 * ability to sell anything at all.
+	 */
+
+	/** What a shopper can subscribe to. Public: a storefront must render these. */
+	app.get("/v1/subscription-plans", publicRead, async (c) =>
+		respond(c, {
+			items: await listSubscriptionPlans(c.get("authorized").workspaceId),
+		}),
+	);
+
+	app.post("/v1/subscription-plans", write, async (c) => {
+		try {
+			return respond(
+				c,
+				await createSubscriptionPlan(
+					c.get("authorized").workspaceId,
+					subscriptionPlanInputSchema.parse(await c.req.json()),
+				),
+				201,
+			);
+		} catch (error) {
+			if (error instanceof SubscriptionError) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"One of those products is not in this workspace.",
+					400,
+				);
+			}
+			throw error;
+		}
+	});
+
+	app.delete("/v1/subscription-plans/:id", write, async (c) => {
+		try {
+			return respond(
+				c,
+				await archiveSubscriptionPlan(
+					c.get("authorized").workspaceId,
+					uuid.parse(c.req.param("id")),
+				),
+			);
+		} catch (error) {
+			if (error instanceof SubscriptionError) {
+				return respondError(c, "NOT_FOUND", "That plan was not found.", 404);
+			}
+			throw error;
+		}
+	});
+
+	/** Live subscriptions, for the operator. Filtered to the workspace's mode. */
+	app.get("/v1/subscriptions", read, async (c) => {
+		const [workspace] = await db
+			.select({ environment: quickengineWorkspaces.environment })
+			.from(quickengineWorkspaces)
+			.where(eq(quickengineWorkspaces.id, c.get("authorized").workspaceId))
+			.limit(1);
+		return respond(c, {
+			items: await listSubscriptions(
+				c.get("authorized").workspaceId,
+				workspace?.environment ?? "live",
+			),
+		});
+	});
+
+	/**
+	 * Pause, resume or cancel.
+	 *
+	 * ⚠️ Cancelling stops future cycles; it never touches orders already placed.
+	 * A subscription is an agreement about the future, and rewriting the past
+	 * would remove revenue the business actually earned.
+	 */
+	app.patch("/v1/subscriptions/:id", write, async (c) => {
+		const { status } = z
+			.object({ status: z.enum(["active", "paused", "cancelled"]) })
+			.parse(await c.req.json());
+		try {
+			return respond(
+				c,
+				await setSubscriptionStatus({
+					workspaceId: c.get("authorized").workspaceId,
+					id: uuid.parse(c.req.param("id")),
+					status,
+				}),
+			);
+		} catch (error) {
+			if (error instanceof SubscriptionError) {
+				return respondError(
+					c,
+					"NOT_FOUND",
+					"That subscription was not found.",
+					404,
+				);
+			}
+			throw error;
+		}
 	});
 
 	/* ── Partner links ────────────────────────────────────────────────────────

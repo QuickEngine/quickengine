@@ -8,6 +8,7 @@ import { PartnerLinksView } from "../components/partner-links-view";
 import { PaymentsView } from "../components/payments-view";
 import { RatesView } from "../components/rates-view";
 import { ReviewsView } from "../components/reviews-view";
+import { SubscriptionsView } from "../components/subscriptions-view";
 import { SuppliersView } from "../components/suppliers-view";
 import { TasksView } from "../components/tasks-view";
 import { ZonesView } from "../components/zones-view";
@@ -62,6 +63,11 @@ function Page() {
 	// looking for "how do I give a creator a code" looks where codes live.
 	if (module === "orders" && section === "partners") {
 		return <PartnerLinksView workspaceId={workspaceId} />;
+	}
+	// Beside Orders because a subscription IS a standing order: it produces one
+	// every cycle, and everything downstream treats those as ordinary sales.
+	if (module === "orders" && section === "subscriptions") {
+		return <SubscriptionsView workspaceId={workspaceId} />;
 	}
 	if (module === "products-services" && section === "categories") {
 		return <CategoriesView workspaceId={workspaceId} />;

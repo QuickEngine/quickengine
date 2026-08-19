@@ -41,6 +41,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **Stock warnings can be turned on.** An item's low stock level is editable for the first time,
   which is what the low stock notification watches.
 
+- **Sell a subscription.** Offer a plan at a price on an interval, and a customer can sign up from
+  your shop. Each renewal places an ordinary order, so stock, fulfilment and shipping work exactly
+  as they do for a one off sale. A failed payment marks the subscription past due and tries again
+  rather than cancelling somebody who would happily have updated their card.
+
+- **Invoice an order.** Raising an invoice for a sale copies its lines, shipping and discount
+  instead of making you retype them, so the invoice and the order can never disagree.
+
 - **Sandbox and live are now two views of one workspace, and you can move between them freely.**
   Every order records which mode it was placed in, so a rehearsal and a real sale never mix: the
   console shows one at a time, and revenue counts only what is real. Switching used to be refused

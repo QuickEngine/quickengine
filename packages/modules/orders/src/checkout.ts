@@ -45,42 +45,67 @@ export const checkoutShippingAddressSchema = z.object({
 	countryCode: z.string().trim().toUpperCase().length(2),
 });
 
-export const checkoutInputSchema = z.object({
-	items: z.array(checkoutItemSchema).min(1).max(100),
-	/**
-	 * Who is buying. The only identity a guest has.
-	 *
-	 * Used to find or create a client record, which is what later lets them claim
-	 * the purchase by verifying the same address — see `bindMembership`.
-	 */
-	email: z.email().max(320),
-	name: z.string().trim().max(200).optional(),
-	notes: z.string().trim().max(2_000).optional(),
-	/**
-	 * A discount code the shopper typed.
-	 *
-	 * ⚠️ The CODE is accepted; the AMOUNT never is. The server looks the code up,
-	 * checks its window, minimum, and caps, and computes what it takes off from
-	 * the subtotal it priced itself.
-	 */
-	discountCode: z.string().trim().min(3).max(40).optional(),
-	/**
-	 * A referral code the shopper was given by an existing customer.
-	 *
-	 * ⚠️ Does NOT change what this order costs. It records who brought this
-	 * customer and what the referrer earns — a separate concern from a discount,
-	 * which is why they are two fields rather than one "code".
-	 */
-	referralCode: z.string().trim().min(4).max(40).optional(),
-	/** The browser chooses an offered rate; the server recomputes its amount. */
-	shippingRateId: z.uuid().optional(),
-	shippingAddress: checkoutShippingAddressSchema.optional(),
-	// ⚠️ NOT accepted, deliberately, and each one is a way to steal:
-	// · any price, subtotal, total, tax or discount field
-	// · clientId — a caller naming somebody else's client record attaches a
-	//   stranger's purchase to them, which is the prototype's bug
-	// · currency — it comes from the catalog item, not the buyer
-});
+export const checkoutInputSchema = z
+	.object({
+		/**
+		 * ⚠️ Optional ONLY because a subscription supplies its own contents. Exactly
+		 * one of `items` or `subscriptionPlanId` must be present — enforced by the
+		 * refinement below, not by hope.
+		 */
+		items: z.array(checkoutItemSchema).min(1).max(100).optional(),
+		/**
+		 * Who is buying. The only identity a guest has.
+		 *
+		 * Used to find or create a client record, which is what later lets them claim
+		 * the purchase by verifying the same address — see `bindMembership`.
+		 */
+		email: z.email().max(320),
+		name: z.string().trim().max(200).optional(),
+		notes: z.string().trim().max(2_000).optional(),
+		/**
+		 * A discount code the shopper typed.
+		 *
+		 * ⚠️ The CODE is accepted; the AMOUNT never is. The server looks the code up,
+		 * checks its window, minimum, and caps, and computes what it takes off from
+		 * the subtotal it priced itself.
+		 */
+		discountCode: z.string().trim().min(3).max(40).optional(),
+		/**
+		 * A referral code the shopper was given by an existing customer.
+		 *
+		 * ⚠️ Does NOT change what this order costs. It records who brought this
+		 * customer and what the referrer earns — a separate concern from a discount,
+		 * which is why they are two fields rather than one "code".
+		 */
+		referralCode: z.string().trim().min(4).max(40).optional(),
+		/**
+		 * Buy a recurring plan instead of a one-off basket.
+		 *
+		 * 🔴 Mutually exclusive with `items`. A plan already says what is in the box,
+		 * and accepting both would let a caller subscribe to one thing while being
+		 * charged for another — the plan's price with the basket's contents.
+		 *
+		 * ⚠️ Only the plan ID is accepted. Its price, interval and contents are read
+		 * from the plan itself, for the same reason no price is ever accepted here.
+		 */
+		subscriptionPlanId: z.uuid().optional(),
+		/** The browser chooses an offered rate; the server recomputes its amount. */
+		shippingRateId: z.uuid().optional(),
+		shippingAddress: checkoutShippingAddressSchema.optional(),
+		// ⚠️ NOT accepted, deliberately, and each one is a way to steal:
+		// · any price, subtotal, total, tax or discount field
+		// · clientId — a caller naming somebody else's client record attaches a
+		//   stranger's purchase to them, which is the prototype's bug
+		// · currency — it comes from the catalog item, not the buyer
+	})
+	.refine(
+		(input) => Boolean(input.items) !== Boolean(input.subscriptionPlanId),
+		{
+			message:
+				"Send either items or a subscription plan, not both and not neither.",
+			path: ["items"],
+		},
+	);
 
 export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
 

@@ -82,6 +82,26 @@ export class SiteResource {
 		>("/discounts/preview", { method: "POST", body: input });
 	}
 
+	/**
+	 * Plans a shopper can subscribe to.
+	 *
+	 * Public, like the catalog: a storefront cannot offer a subscription it is
+	 * not allowed to read.
+	 */
+	listSubscriptionPlans() {
+		return this.client.request<{
+			items: Array<{
+				id: string;
+				name: string;
+				interval: "week" | "month" | "year";
+				intervalCount: number;
+				priceCents: number;
+				currency: string;
+				items: Array<{ catalogItemId: string; name: string; quantity: number }>;
+			}>;
+		}>("/subscription-plans");
+	}
+
 	quoteShipping(input: {
 		items: QuickCheckoutItem[];
 		destination: {

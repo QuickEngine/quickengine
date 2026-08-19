@@ -914,6 +914,9 @@ importers:
       '@quickengine/mod-files':
         specifier: workspace:*
         version: link:../modules/files
+      '@quickengine/mod-orders':
+        specifier: workspace:*
+        version: link:../modules/orders
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../module-registry

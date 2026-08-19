@@ -147,11 +147,19 @@ export type QuickCheckoutAddress = {
 };
 
 export type QuickCheckoutInput = {
-	items: QuickCheckoutItem[];
+	items?: QuickCheckoutItem[];
 	email: string;
 	name?: string;
 	notes?: string;
 	discountCode?: string;
+	/**
+	 * Buy a recurring plan instead of a basket.
+	 *
+	 * ⚠️ Mutually exclusive with `items` — the server refuses both, because a
+	 * plan already says what is in the box and accepting a basket alongside it
+	 * would charge one thing's price for another thing's contents.
+	 */
+	subscriptionPlanId?: string;
 	referralCode?: string;
 	shippingRateId?: string;
 	shippingAddress?: QuickCheckoutAddress;

@@ -59,7 +59,23 @@ describe("checkout input cannot influence money", () => {
 			...valid,
 			items: [{ ...valid.items[0], unitPriceCents: 1 }],
 		});
-		expect(parsed.items[0]).not.toHaveProperty("unitPriceCents");
+		expect(parsed.items?.[0]).not.toHaveProperty("unitPriceCents");
+	});
+
+	it("refuses a basket and a subscription plan together", () => {
+		// 🔴 Both would let somebody subscribe to one thing and be charged for
+		// another: the plan's price against the basket's contents.
+		expect(() =>
+			checkoutInputSchema.parse({
+				...valid,
+				subscriptionPlanId: "3f1b2c40-0000-4000-8000-00000000ab01",
+			}),
+		).toThrow();
+	});
+
+	it("refuses neither a basket nor a subscription plan", () => {
+		const { items, ...withoutItems } = valid;
+		expect(() => checkoutInputSchema.parse(withoutItems)).toThrow();
 	});
 
 	it("requires an email, because a guest order with no address is unreachable", () => {

@@ -34,6 +34,7 @@ import {
 	discountPreviewInputSchema,
 	orderInputSchema,
 	partnerLinkSchema,
+	subscriptionPlanInputSchema,
 } from "@quickengine/mod-orders";
 import {
 	paymentOnboardingInputSchema,
@@ -295,6 +296,11 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 		website: z.string().max(0).optional(),
 	}),
 	// getCustomerOrder is a GET whose UUID lives in the path; it deliberately has no body.
+	createSubscriptionPlan: subscriptionPlanInputSchema,
+	createInvoiceForOrder: z.object({ orderId: z.uuid() }),
+	setSubscriptionStatus: z.object({
+		status: z.enum(["active", "paused", "cancelled"]),
+	}),
 	issuePartnerLink: partnerLinkSchema,
 	setPartnerLinkActive: z.object({ active: z.boolean() }),
 	createDiscount: discountInputSchema,

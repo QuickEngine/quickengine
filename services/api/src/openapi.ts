@@ -404,6 +404,17 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/invoices/from-order": {
+				post: {
+					operationId: "createInvoiceForOrder",
+					summary: "Raise an invoice for an existing order",
+					responses: {
+						"201": { description: "Invoice created from the order's lines." },
+						"400": { description: "That order has no customer to invoice." },
+						"404": { description: "No such order in this workspace." },
+					},
+				},
+			},
 			"/v1/invoices": {
 				get: {
 					operationId: "listInvoices",
@@ -939,6 +950,68 @@ function declaredDocument(config: ApiConfig) {
 								"Either the discount and the resulting total, or why the code cannot be used.",
 						},
 						"400": { description: "Missing code, or an unavailable item." },
+					},
+				},
+			},
+			"/v1/subscriptions": {
+				get: {
+					operationId: "listSubscriptions",
+					summary: "Live subscriptions in the current mode",
+					responses: {
+						"200": { description: "Subscriptions with their plan." },
+					},
+				},
+			},
+			"/v1/subscriptions/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				patch: {
+					operationId: "setSubscriptionStatus",
+					summary: "Pause, resume or cancel a subscription",
+					responses: {
+						"200": { description: "Updated." },
+						"404": { description: "No such subscription here." },
+					},
+				},
+			},
+			"/v1/subscription-plans": {
+				get: {
+					operationId: "listSubscriptionPlans",
+					summary: "What a shopper can subscribe to",
+					responses: {
+						"200": { description: "Plans with their contents." },
+					},
+				},
+				post: {
+					operationId: "createSubscriptionPlan",
+					summary: "Offer a recurring plan",
+					responses: {
+						"201": { description: "Plan created." },
+						"400": { description: "A named product is not in this workspace." },
+					},
+				},
+			},
+			"/v1/subscription-plans/{id}": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				delete: {
+					operationId: "archiveSubscriptionPlan",
+					summary: "Stop offering a plan, keeping its subscribers",
+					responses: {
+						"200": { description: "Plan archived." },
+						"404": { description: "No such plan in this workspace." },
 					},
 				},
 			},

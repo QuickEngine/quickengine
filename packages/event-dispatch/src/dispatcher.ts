@@ -6,6 +6,7 @@ import {
 import { inngest } from "@quickengine/jobs";
 import { defaultOutboxHandlers } from "./handlers";
 import { mutationRetention, storageCleanup } from "./storage-cleanup";
+import { renewDueSubscriptions } from "./subscription-renewal";
 import { deliverPendingWebhooks } from "./webhooks";
 
 /**
@@ -95,9 +96,29 @@ export const webhookDelivery = inngest.createFunction(
 	async () => deliverPendingWebhooks(),
 );
 
+/**
+ * The scheduled renewal run.
+ *
+ * ⚠️ Hourly, not every minute. A subscription is due on a DAY, so checking sixty
+ * times an hour buys nothing and multiplies the chance of two runs overlapping
+ * on the same row. `concurrency: 1` because the work is short and serialising
+ * removes a whole class of contention the unique cycle key would otherwise have
+ * to absorb.
+ */
+export const subscriptionRenewal = inngest.createFunction(
+	{
+		id: "subscription-renewal",
+		concurrency: 1,
+		retries: 0, // A failed cycle is recorded on the row; the next hour retries.
+		triggers: [{ cron: "0 * * * *" }],
+	},
+	async () => renewDueSubscriptions(),
+);
+
 /** Durable functions this package contributes to the Inngest serve endpoint. */
 export const eventDispatchFunctions = [
 	outboxDispatch,
+	subscriptionRenewal,
 	webhookDelivery,
 	storageCleanup,
 	mutationRetention,

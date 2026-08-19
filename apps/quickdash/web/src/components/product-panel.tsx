@@ -11,6 +11,7 @@ import {
 	money,
 	toCents,
 } from "../lib/catalog";
+import { parseAmount } from "../lib/money-input";
 import { BlockFailure, detailCard } from "./detail-panel";
 import {
 	Area,
@@ -179,9 +180,18 @@ export function ProductPanel({
 		mutationFn: async () => {
 			const priced = wantsPrice(draft.pricingModel);
 			const compareAtCents = toCents(draft.compareAt);
-			const weight = draft.weightGrams.trim()
-				? Number(draft.weightGrams.trim())
-				: null;
+			/**
+			 * 🔴 Tolerant of the unit the hint asks for. The field says "grams", so
+			 * people type "340g" — and `Number("340g")` is NaN, which the guard
+			 * below turns into null. The weight was then silently discarded and the
+			 * product shipped unweighable, with nothing on screen to say so.
+			 *
+			 * Rounded because grams are whole. Negative and zero are refused by the
+			 * `weight > 0` guard where this is sent, so a weight is either a real
+			 * positive number of grams or it is absent.
+			 */
+			const parsedWeight = parseAmount(draft.weightGrams);
+			const weight = parsedWeight === null ? null : Math.round(parsedWeight);
 
 			/**
 			 * 🔴 METADATA IS REPLACED, NOT MERGED, BY THE API.

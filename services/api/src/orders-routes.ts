@@ -13,7 +13,10 @@ import {
 	updateDraftOrderCommand,
 } from "@quickengine/mod-orders";
 import { getOrderPaymentSummary } from "@quickengine/mod-payments";
-import { listShipments } from "@quickengine/mod-shipping";
+import {
+	listShipments,
+	shippedQuantitiesForOrder,
+} from "@quickengine/mod-shipping";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
@@ -31,12 +34,14 @@ type OperatorOrderLoaders = {
 	getOrder: typeof getOrderDto;
 	getPayment: typeof getOrderPaymentSummary;
 	getShipments: typeof listShipments;
+	getShipped: typeof shippedQuantitiesForOrder;
 };
 
 const operatorOrderLoaders: OperatorOrderLoaders = {
 	getOrder: getOrderDto,
 	getPayment: getOrderPaymentSummary,
 	getShipments: listShipments,
+	getShipped: shippedQuantitiesForOrder,
 };
 
 /** One operator-safe order view: commercial terms, settlement and delivery. */
@@ -47,12 +52,24 @@ export async function loadOperatorOrderDetail(
 ) {
 	const order = await loaders.getOrder(workspaceId, id);
 	if (!order) return null;
-	const [payment, shipmentRows] = await Promise.all([
+	const [payment, shipmentRows, shipped] = await Promise.all([
 		loaders.getPayment(workspaceId, id),
 		loaders.getShipments(workspaceId, id),
+		loaders.getShipped(workspaceId, id),
 	]);
 	return {
 		...order,
+		/**
+		 * 🔴 What is still OWED on each line, not just what was ordered. Without
+		 * it a fulfilment screen cannot tell a fully shipped order from an
+		 * untouched one, so it offers to send goods that already went and the
+		 * write is refused after the form is filled in.
+		 */
+		lineItems: order.lineItems.map((line) => ({
+			...line,
+			shippedQuantity: shipped[line.id] ?? 0,
+			outstandingQuantity: Math.max(0, line.quantity - (shipped[line.id] ?? 0)),
+		})),
 		payment,
 		shipments: shipmentRows.map((shipment) => ({
 			id: shipment.id,

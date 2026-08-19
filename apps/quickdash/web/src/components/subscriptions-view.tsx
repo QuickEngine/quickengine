@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { isAmount, parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState } from "./page-state";
+import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`.
 import { Choice, Text as TextField } from "./product-fields";
 
@@ -119,7 +120,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 					interval,
 					intervalCount: 1,
 					// Typed in currency units; stored as integer cents like all money.
-					priceCents: Math.round(Number(price) * 100),
+					priceCents: parseAmountCents(price) ?? 0,
 					items: chosen ? [{ catalogItemId: chosen.id, quantity: 1 }] : [],
 				},
 			});
@@ -204,9 +205,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search subscriptions"
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			{/* Plans are the OFFER, subscriptions are who took it. Both belong here:
 			    a page of subscriptions with no way to see what is on sale sends

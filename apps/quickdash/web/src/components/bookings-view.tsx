@@ -6,7 +6,7 @@ import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { BookingPanel } from "./module-panels";
-import { EmptyState, PageState, rowBusy } from "./page-state";
+import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 
 /**
  * Bookings — appointments, grouped by the day they happen.
@@ -143,9 +143,7 @@ export function BookingsView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={bookings}

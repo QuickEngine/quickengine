@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { isAmount, parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState } from "./page-state";
+import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
@@ -231,9 +232,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search suppliers"
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={suppliers}
@@ -400,8 +399,7 @@ function SupplierPanel({
 					supplierSku: sku.trim(),
 					// Typed in currency units; stored as integer cents like every
 					// other money value in the system.
-					unitCostCents:
-						cost.trim() === "" ? null : Math.round(Number(cost) * 100),
+					unitCostCents: cost.trim() === "" ? null : parseAmountCents(cost),
 				},
 			});
 		},

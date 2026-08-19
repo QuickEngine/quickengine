@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { FilterChip, ListControls } from "./list-controls";
-import { EmptyState, PageState, rowBusy } from "./page-state";
+import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 
 /**
  * Content — the words on a business's own website.
@@ -153,9 +153,7 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={content}

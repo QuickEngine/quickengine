@@ -125,6 +125,11 @@ function ConnectPage() {
 					}>;
 				}>(`/account/api-keys?workspaceId=${encodeURIComponent(workspace)}`)
 			).data,
+		// 🔴 Never asked without a workspace. The route param is empty for a beat
+		// on first mount, and the request that went out in that beat asked for the
+		// keys of nothing — which the API correctly refuses with a 400, filling
+		// the console with a failure that was never a real fault.
+		enabled: workspace.length > 0,
 		// Held across refetches so the panel never flickers back to "waiting" for
 		// a beat before the answer arrives — that flash is the same bug in
 		// miniature.

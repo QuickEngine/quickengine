@@ -8,7 +8,7 @@ import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy } from "./page-state";
+import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
@@ -180,9 +180,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search categories"
 			/>
 
-			{failure ? (
-				<p className="mb-3 text-[11.5px] text-[var(--ink-60)]">{failure}</p>
-			) : null}
+			{failure ? <WriteFailure message={failure} /> : null}
 
 			<PageState
 				query={categories}

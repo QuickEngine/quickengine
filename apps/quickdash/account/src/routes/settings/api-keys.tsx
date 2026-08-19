@@ -149,7 +149,14 @@ function ApiKeysPage() {
 
 	const create = useMutation({
 		mutationFn: async () =>
-			api.request<{ key: string }>(
+			// 🔴 `plaintext`, which is what `issueApiKey` actually returns and what
+			// the route echoes back verbatim. This read `data.key` — a field that
+			// has never existed — so `setIssued(undefined)` left the reveal panel
+			// unrendered and every key ever issued was lost the instant it was
+			// made. Nothing failed: the key was real, stored and working, just
+			// unreachable. A typed response would have caught it, but the type was
+			// written to match the mistake.
+			api.request<{ plaintext: string }>(
 				`/account/api-keys?organizationId=${encodeURIComponent(organizationId)}`,
 				{
 					method: "POST",
@@ -168,7 +175,7 @@ function ApiKeysPage() {
 				},
 			),
 		onSuccess: ({ data }) => {
-			setIssued(data.key);
+			setIssued(data.plaintext);
 			setName("");
 			setOrigins("");
 			setFailure(null);

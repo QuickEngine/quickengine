@@ -9,6 +9,7 @@ import {
 import { getSearchProvider, type SearchProvider } from "@quickengine/search";
 import { customerNotificationHandler } from "./customer-notifications";
 import { operatorNotificationHandler } from "./operator-notifications";
+import { supplierHandoffHandler } from "./supplier-handoff";
 import { webhookFanoutHandler } from "./webhooks";
 
 /**
@@ -128,6 +129,9 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 		// The bell. Tells the people who RUN the business what happened in it,
 		// where `customerNotificationHandler` above tells their shopper.
 		operatorNotificationHandler(),
+		// Routes a paid order to whoever actually ships it. Writes the record
+		// whatever happens; only the notifying varies by handoff method.
+		supplierHandoffHandler(),
 		webhookFanoutHandler(),
 	];
 }

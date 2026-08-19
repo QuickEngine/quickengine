@@ -116,17 +116,52 @@ async function noticeFor(event: OutboxEvent): Promise<Notice | null> {
 	 * reported a problem" would be describing an integration that does not exist.
 	 */
 	if (event.eventName === "shipment.status-changed") {
-		if (String(payload.status ?? "") !== "exception") return null;
-		return {
-			type: "shipment.exception",
-			signal: "attention",
-			title: "Shipment problem",
-			body: "A shipment was marked as having a problem.",
-			// ⚠️ The module is `shipping` and shipments are its index. There is no
-			// `/fulfillment` route — a notification that deep-links to a 404 is worse
-			// than one with no link at all.
-			path: "/shipping",
-		};
+		const status = String(payload.status ?? "");
+
+		if (status === "exception") {
+			return {
+				type: "shipment.exception",
+				signal: "attention",
+				title: "Shipment problem",
+				body: "A shipment was marked as having a problem.",
+				// ⚠️ The module is `shipping` and shipments are its index. There is no
+				// `/fulfillment` route — a notification that deep-links to a 404 is
+				// worse than one with no link at all.
+				path: "/shipping",
+			};
+		}
+
+		/**
+		 * 🔴 The ordinary milestones, not just the failures.
+		 *
+		 * Only `exception` reached the dashboard, so an operator saw a shipment
+		 * exactly when it went wrong and never when it went right. That is
+		 * defensible for a large team drowning in noise and wrong for somebody
+		 * running the business alone, who is watching for the loop to CLOSE.
+		 *
+		 * ⚠️ Deliberately two, not five. `ready` and `in_transit` are steps along
+		 * the way that nobody acts on, and a feed that reports every hop stops
+		 * being read — which is how the exception above gets missed.
+		 */
+		if (status === "shipped") {
+			return {
+				type: "shipment.shipped",
+				signal: "news",
+				title: "Order shipped",
+				body: "A parcel is on its way to a customer.",
+				path: "/shipping",
+			};
+		}
+		if (status === "delivered") {
+			return {
+				type: "shipment.delivered",
+				signal: "news",
+				title: "Order delivered",
+				body: "A parcel reached its customer.",
+				path: "/shipping",
+			};
+		}
+		return null;
 	}
 
 	if (event.eventName === "inventory-item.adjusted") {
@@ -204,7 +239,45 @@ async function recipients(workspaceId: string) {
 	return { workspace, members };
 }
 
-export function operatorNotificationHandler(): OutboxHandler {
+/**
+ * Which notices are worth an inbox, and which stay in the bell.
+ *
+ * 🔴 NOT everything. Three notices per order times a hundred orders a day is
+ * three hundred emails to the person who already has the dashboard open, and a
+ * channel that noisy gets filtered — which is how the one notice that mattered
+ * goes unread. So the rule is by SIGNAL, not by type: anything asking for a
+ * human emails, routine progress does not.
+ *
+ * ⚠️ One line to change if that proves wrong. `news` covers the per-order
+ * milestones (shipped, delivered, new order); `attention` and `failure` cover
+ * low stock, shipment problems and anything that broke.
+ */
+const EMAILED_SIGNALS = new Set(["attention", "failure"]);
+
+async function defaultSendNotice(input: {
+	to: string;
+	subject: string;
+	html: string;
+	text: string;
+}) {
+	// Lazy, per hard rule: nothing reachable from route registration may pull the
+	// mail SDK into its module graph.
+	const { getEmailProvider } = await import("@quickengine/email");
+	return getEmailProvider().send(input);
+}
+
+export function operatorNotificationHandler(
+	send: (input: {
+		to: string;
+		subject: string;
+		html: string;
+		text: string;
+	}) => Promise<unknown> = defaultSendNotice,
+	log: (message: string, detail: Record<string, unknown>) => void = (
+		message,
+		detail,
+	) => console.error(message, detail),
+): OutboxHandler {
 	return {
 		name: "operator-notifications",
 		async handle(event: OutboxEvent) {
@@ -236,6 +309,51 @@ export function operatorNotificationHandler(): OutboxHandler {
 					// the operator sees in the list.
 					recordId: notice.recordId ?? event.aggregateId,
 				});
+
+				/**
+				 * The same notice, sent so it reaches somebody not looking at the tab.
+				 *
+				 * ⚠️ Never allowed to fail the handler. The notification is already
+				 * recorded and visible; throwing here would make the outbox retry and
+				 * re-deliver a notice that landed perfectly well the first time.
+				 */
+				if (EMAILED_SIGNALS.has(notice.signal) && member.email) {
+					try {
+						const { operatorNotificationEmail } = await import(
+							"@quickengine/email/templates"
+						);
+						const rendered = operatorNotificationEmail({
+							/**
+							 * 🔴 The PLATFORM brand, not the workspace's.
+							 *
+							 * This is QuickDash telling an operator about their own
+							 * business, the exact inverse of a customer email where the
+							 * business must appear as itself. Branding it as the workspace
+							 * would have Caffeinate emailing Asher about Caffeinate.
+							 */
+							brand: {
+								name: "QuickDash",
+								supportEmail:
+									process.env.CUSTOMER_SUPPORT_EMAIL ?? "support@quickdash.xyz",
+							},
+							title: notice.title,
+							body: notice.body ?? null,
+							url: notice.path ? `${base}${notice.path}` : null,
+						});
+						await send({
+							to: member.email,
+							subject: rendered.subject,
+							html: rendered.html,
+							text: rendered.text,
+						});
+					} catch (error) {
+						log("operator-notification.email_failed", {
+							error,
+							eventId: event.id,
+							type: notice.type,
+						});
+					}
+				}
 			}
 		},
 	};

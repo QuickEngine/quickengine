@@ -32,6 +32,10 @@ import { authorizeWorkspace } from "./authorize";
 import type { ApiLogger } from "./logger";
 import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
+import {
+	onShipmentCreated,
+	onShipmentDispatched,
+} from "./order-fulfilment-progress";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
 import { respond, respondError } from "./respond";
@@ -84,13 +88,17 @@ export function registerShippingRoutes(
 		c: Context<PlatformEnv>,
 		operation: string,
 		canonicalInput: unknown,
+		// Overridden only by follow-on mutations inside one request, which must not
+		// share the request's key or the later ones replay instead of running.
+		idempotencyKeyOverride?: string,
 	) =>
 		buildMutationContext({
 			authorized: c.get("authorized"),
 			abortSignal: c.get("abortSignal"),
 			canonicalInput,
 			deadlineAtMs: c.get("deadlineAtMs"),
-			idempotencyKey: c.req.header(API_HEADERS.idempotencyKey),
+			idempotencyKey:
+				idempotencyKeyOverride ?? c.req.header(API_HEADERS.idempotencyKey),
 			operation,
 			requestId: c.get("requestId"),
 		});
@@ -211,10 +219,25 @@ export function registerShippingRoutes(
 	app.post("/v1/shipments", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
 		const context = await mutationContext(c, "shipments.create", body);
-		return respondMutation(
-			c,
-			await createShipmentCommand(context, body, options.uow),
-		);
+		const result = await createShipmentCommand(context, body, options.uow);
+		// A parcel exists, so the order is being worked on. Best effort by design.
+		// ⚠️ Narrowed: a mutation may come back `conflict` or `in_progress`, and
+		// neither carries a result to react to.
+		if (result.kind === "success" && result.result.orderId) {
+			await onShipmentCreated(
+				c.get("authorized").workspaceId,
+				result.result.orderId,
+				{
+					logger: options.logger,
+					idempotencyKey: c.req.header(API_HEADERS.idempotencyKey) ?? "",
+					mutationContext: (action, payload, key) =>
+						mutationContext(c, action, payload, key),
+					requestId: c.get("requestId"),
+					uow: options.uow,
+				},
+			);
+		}
+		return respondMutation(c, result);
 	});
 	app.get("/v1/shipments/:id", readAccess, readLimit, async (c) => {
 		const shipment = await getShipmentDto(
@@ -243,16 +266,30 @@ export function registerShippingRoutes(
 			requireTracking: settings.requireTracking,
 			status,
 		});
-		return respondMutation(
-			c,
-			await setShipmentStatusCommand(
-				context,
-				id,
-				status,
-				{ requireTracking: settings.requireTracking },
-				options.uow,
-			),
+		const result = await setShipmentStatusCommand(
+			context,
+			id,
+			status,
+			{ requireTracking: settings.requireTracking },
+			options.uow,
 		);
+		// A parcel left. If nothing is still owed, the order is done.
+		if (result.kind === "success" && result.result.orderId) {
+			await onShipmentDispatched(
+				c.get("authorized").workspaceId,
+				result.result.orderId,
+				status,
+				{
+					logger: options.logger,
+					idempotencyKey: c.req.header(API_HEADERS.idempotencyKey) ?? "",
+					mutationContext: (action, payload, key) =>
+						mutationContext(c, action, payload, key),
+					requestId: c.get("requestId"),
+					uow: options.uow,
+				},
+			);
+		}
+		return respondMutation(c, result);
 	});
 	app.post("/v1/shipments/:id/tracking", writeAccess, writeLimit, async (c) => {
 		const id = uuid.parse(c.req.param("id"));

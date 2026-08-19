@@ -1,6 +1,7 @@
 import { money } from "../lib/catalog";
 import { Block, BlockEmpty, Fact } from "./detail-panel";
 import { type RecordAction, RecordPanel } from "./record-panel";
+import { TrackingForm } from "./tracking-form";
 
 /**
  * The detail panel for each remaining module record.
@@ -354,6 +355,18 @@ export function ShipmentPanel({ workspaceId, id, onClose }: PanelProps) {
 						<Fact label="Destination">
 							{shipment.shipToName ?? shipment.shipToCity ?? "—"}
 						</Fact>
+					</div>
+					{/* A number rarely exists while the box is being packed; it turns up
+					    when the label is bought or a dropship supplier replies. */}
+					<div className="mt-3">
+						<TrackingForm
+							workspaceId={workspaceId}
+							shipmentId={shipment.id}
+							carrier={shipment.carrier ?? null}
+							serviceLevel={shipment.serviceLevel ?? null}
+							trackingNumber={shipment.trackingNumber ?? null}
+							trackingUrl={shipment.trackingUrl ?? null}
+						/>
 					</div>
 					<Block title="Progress">
 						<div className="space-y-1.5">

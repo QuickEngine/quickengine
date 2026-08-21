@@ -1,5 +1,6 @@
 import { listBookings } from "@quickengine/mod-bookings";
 import { listClientRecords } from "@quickengine/mod-client-records";
+import { listAllContent } from "@quickengine/mod-content";
 import { listContracts } from "@quickengine/mod-contracts-esign";
 import { listFileDocuments } from "@quickengine/mod-files";
 import { listFulfillments } from "@quickengine/mod-fulfillment";
@@ -81,6 +82,19 @@ export const databaseGuidedStepCompletionDetectors = {
 		(await listShipments(id)).some((record) =>
 			guidedStatusPolicies.shipmentDispatched(record.status),
 		),
+	/**
+	 * Content is three steps against one table, read once each.
+	 *
+	 * The slots are REGISTERED by a developer, WRITTEN by an operator and then
+	 * PUBLISHED — so "has a row", "has a value" and "has a published row" are
+	 * genuinely three different states, and a slot manifest that nobody has typed
+	 * into yet must not read as finished.
+	 */
+	"content:edit:register": (id) => hasAny(listAllContent(id)),
+	"content:edit:write": async (id) =>
+		(await listAllContent(id)).some((entry) => entry.value !== null),
+	"content:edit:publish": async (id) =>
+		(await listAllContent(id)).some((entry) => entry.published),
 } satisfies GuidedStepCompletionDetectors;
 
 export function resolveDatabaseGuidedStepCompletions(

@@ -3,6 +3,7 @@ import { testDbClient } from "@quickengine/db/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	claimPurchaseOrderForDispatch,
+	listPurchaseOrders,
 	markPurchaseOrderShippedInTx,
 	raisePurchaseOrdersForOrder,
 	recordSupplierOrderPlaced,
@@ -415,5 +416,47 @@ describe("recording what a supplier says it shipped", () => {
 				trackingNumber: "TRK-INTRUDER",
 			}),
 		).toEqual({ applied: false, reason: "unknown" });
+	});
+});
+
+/**
+ * What the operator screen reads. 🔴 The shape is the contract: the Purchase
+ * orders page shows the customer ORDER NUMBER and the contents, and a uuid or an
+ * empty row answers neither of the two questions anybody opens it to ask —
+ * "which order is this for" and "what did we ask them to send".
+ */
+describe("reading purchase orders back", () => {
+	it("carries the customer order number, not just its id", async () => {
+		await raisePurchaseOrdersForOrder({ workspaceId, orderId });
+
+		const [row] = await listPurchaseOrders(workspaceId);
+		expect(row).toMatchObject({
+			number: "PO-0001",
+			supplierName: "EZPZ Coffee",
+			orderId,
+			orderNumber: "ORD-9001",
+			status: "draft",
+		});
+	});
+
+	it("carries what the supplier was asked to send", async () => {
+		await raisePurchaseOrdersForOrder({ workspaceId, orderId });
+
+		const [row] = await listPurchaseOrders(workspaceId);
+		// The mug the business stocks itself is deliberately absent.
+		expect(row.lines).toEqual([
+			{
+				purchaseOrderId: row.id,
+				supplierSku: "EZPZ-ETH-250",
+				description: "Ethiopia Guji",
+				quantity: 2,
+				unitCostCents: 1500,
+				currency: "CAD",
+			},
+		]);
+	});
+
+	it("comes back empty rather than failing when nothing has been ordered", async () => {
+		expect(await listPurchaseOrders(workspaceId)).toEqual([]);
 	});
 });

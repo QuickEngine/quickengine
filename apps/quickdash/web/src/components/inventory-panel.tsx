@@ -8,7 +8,7 @@ import {
 	DetailPanel,
 	Fact,
 } from "./detail-panel";
-import { Text } from "./product-fields";
+import { Choice, Text } from "./product-fields";
 
 /**
  * One stocked item: how much there is, and everything that changed it.
@@ -17,6 +17,19 @@ import { Text } from "./product-fields";
  * low-stock notification fires on, so until this existed the warning could not
  * be turned on at all from the console — the feature was reachable only by
  * writing to the database.
+ *
+ * 🔴 Stock is MOVED here too, and this is the only place all of it can be.
+ *
+ * The row's quick Receive and Remove cover the common case, but only two of the
+ * nine movements were reachable anywhere — damage, a customer return and a
+ * correction upward could be READ in the history and never written, so a real
+ * count could not be corrected without the API.
+ *
+ * ⚠️ Five kinds, not nine. `sale`, `reserve`, `release` and `fulfill_reserved`
+ * belong to Orders: they are written when a customer buys, a checkout holds
+ * stock, a basket is abandoned, or a shipment goes out. Offering them by hand
+ * would let somebody record a sale no order exists for, and stock would stop
+ * agreeing with the orders that moved it.
  */
 
 type InventoryDetail = {
@@ -52,6 +65,9 @@ export function InventoryPanel({
 	const queryClient = useQueryClient();
 	const [threshold, setThreshold] = useState("");
 	const [failure, setFailure] = useState<string | null>(null);
+	const [movement, setMovement] = useState<string>("receive");
+	const [quantity, setQuantity] = useState("");
+	const [note, setNote] = useState("");
 
 	const item = useQuery({
 		queryKey: ["quickdash", workspaceId, "inventory", id],
@@ -99,6 +115,46 @@ export function InventoryPanel({
 			}),
 	});
 
+	/**
+	 * What a person means, rather than what the column is called. `receive`
+	 * reads as a delivery arriving, which is exactly when it is used.
+	 */
+	const MOVEMENTS = [
+		["receive", "Stock arrived"],
+		["customer_return", "Customer sent it back"],
+		["correction_in", "Count was too low"],
+		["correction_out", "Count was too high"],
+		["damage", "Damaged or lost"],
+	] as const;
+
+	const record = useMutation({
+		mutationFn: async () => {
+			const amount = Number(quantity.trim());
+			if (!Number.isFinite(amount) || amount <= 0) {
+				throw new Error("Enter how many.");
+			}
+			await workspaceApi(workspaceId).request(`/inventory/${id}/adjustments`, {
+				method: "POST",
+				idempotencyKey: crypto.randomUUID(),
+				body: {
+					kind: movement,
+					quantity: Math.round(amount),
+					note: note.trim() || null,
+				},
+			});
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That movement did not save."),
+		onSuccess: () => {
+			setQuantity("");
+			setNote("");
+			queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspaceId, "inventory"],
+			});
+		},
+	});
+
 	const data = item.data;
 	// What can actually be sold: reserved stock is spoken for by open orders.
 	const available = data ? data.onHand - data.reserved : 0;
@@ -141,6 +197,45 @@ export function InventoryPanel({
 						<Fact label="Reserved">{data.reserved}</Fact>
 						<Fact label="Available">{available}</Fact>
 					</div>
+
+					<Block title="Move stock">
+						<Choice
+							label="What happened"
+							options={MOVEMENTS.map(([, label]) => label)}
+							value={
+								MOVEMENTS.find(([kind]) => kind === movement)?.[1] ??
+								"Stock arrived"
+							}
+							onChange={(label) =>
+								setMovement(
+									MOVEMENTS.find(([, text]) => text === label)?.[0] ??
+										"receive",
+								)
+							}
+						/>
+						<Text
+							label="How many"
+							value={quantity}
+							onChange={setQuantity}
+							placeholder="12"
+							inputMode="decimal"
+						/>
+						<Text
+							label="Note"
+							hint="optional, for whoever reads this later"
+							value={note}
+							onChange={setNote}
+							placeholder="Box arrived crushed"
+						/>
+						<button
+							type="button"
+							disabled={record.isPending || !quantity.trim()}
+							onClick={() => record.mutate()}
+							className={`${record.isPending ? "shimmer-busy" : ""} mt-2 inline-flex h-8 w-full items-center justify-center rounded-full border border-[var(--console-line)] text-[12px] text-[var(--ink-85)] transition-opacity hover:opacity-75 disabled:opacity-40`}
+						>
+							{record.isPending ? "Recording…" : "Record movement"}
+						</button>
+					</Block>
 
 					<Block title="Low stock warning">
 						<Text

@@ -3,10 +3,13 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useRecordSignals } from "../lib/record-signals";
+import { CreatePanel } from "./create-panel";
+import { useHeaderAction } from "./header-action";
 import { InventoryPanel } from "./inventory-panel";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
+import { Choice, Text as TextField } from "./product-fields";
 
 /**
  * Stock levels — what is actually on the shelf.
@@ -15,6 +18,11 @@ import { EmptyState, PageState, WriteFailure } from "./page-state";
  * reserves stock before an order is paid, so an item can show three on hand
  * with three reserved and be genuinely unsellable. A page showing only "3"
  * would have somebody promise stock that is already spoken for.
+ *
+ * 🔑 A product only appears here once it is TRACKED, and tracking is started
+ * from this page. Until it was, a new product could never be stocked from the
+ * console at all — the record had to be created through the API first, which
+ * meant the whole screen was unreachable for anything newly added.
  */
 
 type InventoryItem = {
@@ -61,6 +69,9 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 	const [lowOnly, setLowOnly] = useState(false);
 	const [failure, setFailure] = useState<string | null>(null);
 	const [drafts, setDrafts] = useState<Record<string, string>>({});
+	const [tracking, setTracking] = useState(false);
+	const [product, setProduct] = useState("");
+	const [threshold, setThreshold] = useState("");
 
 	const inventory = useQuery({
 		queryKey: ["quickdash", workspaceId, "inventory"],
@@ -72,15 +83,50 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 				api.request<{ items: InventoryItem[] }>("/inventory?limit=100"),
 				api.catalog.list({ limit: 100 }),
 			]);
+			const products = catalog.data.items as CatalogItem[];
 			return {
 				items: levels.data.items,
-				names: new Map(
-					(catalog.data.items as CatalogItem[]).map((item) => [
-						item.id,
-						item.name,
-					]),
-				),
+				// Kept as a list as well as a lookup: starting to track something
+				// needs the products that are NOT here yet, which a Map cannot answer.
+				products,
+				names: new Map(products.map((item) => [item.id, item.name])),
 			};
+		},
+	});
+
+	/** Products that exist but are not counted yet. The only valid choices. */
+	const untracked = (inventory.data?.products ?? []).filter(
+		(item) =>
+			!(inventory.data?.items ?? []).some(
+				(row) => row.catalogItemId === item.id,
+			),
+	);
+
+	const track = useMutation({
+		mutationFn: async () => {
+			const chosen = untracked.find((item) => item.name === product);
+			if (!chosen) throw new Error("Choose a product to track.");
+			const warnAt = Number(threshold.trim());
+			await workspaceApi(workspaceId).request("/inventory", {
+				method: "POST",
+				idempotencyKey: crypto.randomUUID(),
+				body: {
+					catalogItemId: chosen.id,
+					lowStockThreshold:
+						Number.isFinite(warnAt) && warnAt > 0 ? Math.round(warnAt) : 0,
+				},
+			});
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That product could not be tracked."),
+		onSuccess: () => {
+			setTracking(false);
+			setProduct("");
+			setThreshold("");
+			queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspaceId, "inventory"],
+			});
 		},
 	});
 
@@ -107,8 +153,57 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 		},
 	});
 
+	useHeaderAction({
+		label: "Track a product",
+		onClick: () => setTracking((was) => !was),
+	});
+
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
+			{tracking ? (
+				<CreatePanel
+					title="Start counting a product"
+					submitLabel="Track it"
+					busy={track.isPending}
+					valid={!!product}
+					failure={failure}
+					onClose={() => setTracking(false)}
+					onSubmit={() => track.mutate()}
+				>
+					{untracked.length === 0 ? (
+						<p className="text-[11.5px] text-[var(--ink-30)] leading-4">
+							Every product is already counted. Anything new appears here once
+							it is added to the catalog.
+						</p>
+					) : (
+						<>
+							<Choice
+								label="Product"
+								options={untracked.map((item) => item.name)}
+								value={product}
+								onChange={setProduct}
+							/>
+							<TextField
+								label="Warn at"
+								hint="optional, 0 means never warn"
+								value={threshold}
+								onChange={setThreshold}
+								placeholder="5"
+								inputMode="decimal"
+							/>
+							{/* 🔑 Said plainly, because it surprises people: tracking starts
+							    at zero and the product reads as out of stock until a delivery
+							    is recorded. Better to say so than to have somebody think the
+							    save failed. */}
+							<p className="mt-1 text-[11px] text-[var(--ink-30)] leading-4">
+								It starts at none in stock. Record what arrived from the
+								product's row, or from its panel.
+							</p>
+						</>
+					)}
+				</CreatePanel>
+			) : null}
+
 			<ListControls
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}

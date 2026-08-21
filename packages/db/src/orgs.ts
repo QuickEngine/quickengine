@@ -9,15 +9,13 @@ import {
 	quickengineUsers,
 	quickengineWorkspaces,
 } from "./schema/quickengine";
+import { trimRepeated } from "./slug";
 
 // URL-safe org slug from a name + a short random suffix. Org slugs are globally
 // unique, so the suffix avoids a collision-checking round-trip.
 function orgSlug(name: string): string {
 	const base =
-		name
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, "-")
-			.replace(/^-+|-+$/g, "") || "org";
+		trimRepeated(name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), "-") || "org";
 	return `${base}-${Math.random().toString(36).slice(2, 8)}`;
 }
 

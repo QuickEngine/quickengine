@@ -234,7 +234,15 @@ export function normalizeOrigin(value: string): string {
 		const url = new URL(value.trim());
 		return url.origin.toLowerCase();
 	} catch {
-		return value.trim().toLowerCase().replace(/\/+$/, "");
+		/**
+		 * ⚠️ A loop, not `/\/+$/`. That pattern is a polynomial ReDoS, and this
+		 * value comes straight from an operator's settings field. Trailing slashes
+		 * are the only thing being removed, so counting them is exact and linear.
+		 */
+		const lowered = value.trim().toLowerCase();
+		let end = lowered.length;
+		while (end > 0 && lowered[end - 1] === "/") end -= 1;
+		return lowered.slice(0, end);
 	}
 }
 

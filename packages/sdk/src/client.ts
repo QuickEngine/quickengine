@@ -26,8 +26,21 @@ import type {
 	QuickResponse,
 } from "./types";
 
+/**
+ * ⚠️ A loop, not `/^\/+|\/+$/`. That pattern is a polynomial ReDoS, and this is
+ * a published library taking a caller-supplied path segment. The SDK carries no
+ * dependencies, so the helper lives here rather than being imported.
+ */
+const trimSlashes = (value: string) => {
+	let start = 0;
+	let end = value.length;
+	while (start < end && value[start] === "/") start += 1;
+	while (end > start && value[end - 1] === "/") end -= 1;
+	return value.slice(start, end);
+};
+
 const cleanSegment = (value: string, label: string) => {
-	const cleaned = value.trim().replace(/^\/+|\/+$/g, "");
+	const cleaned = trimSlashes(value.trim());
 	if (!cleaned) {
 		throw new TypeError(`${label} is required`);
 	}

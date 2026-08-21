@@ -137,6 +137,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Setting up an authenticator no longer fails silently.** Turning on two-factor authentication
+  reads the authenticator secret only when there is one to read, so a setup that returns a different
+  kind of code says so plainly instead of showing an empty screen.
+
+- **Names and web addresses with unusual punctuation are handled in one pass.** Workspace names,
+  organisation names, portal addresses and API key origins are trimmed by counting characters rather
+  than by pattern matching, so a value made of hundreds of repeated hyphens or slashes cannot make
+  the server work harder than it should.
+
+
 - **A brand new workspace opens.** A workspace created with the Content module switched on showed a
   blank name over an empty sidebar, as though it had been deleted, and nothing in it could be
   reached. The workspace was always fine: its setup checklist covered a step the dashboard had no

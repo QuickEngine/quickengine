@@ -144,6 +144,16 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		currency: "CAD",
 	},
 	updateSupplierSku: { unitCostCents: 1450, leadTimeDays: 2 },
+	saveSupplierConnection: {
+		supplierId: SUPPLIER,
+		provider: "shopify",
+		shopDomain: "example.myshopify.com",
+		// Illustrative only. The real token is write-only and no route ever
+		// returns one.
+		adminAccessToken: "shpat_example_token",
+		apiVersion: "2026-07",
+	},
+	checkSupplierConnection: { supplierId: SUPPLIER, provider: "shopify" },
 
 	createShipment: {
 		orderId: ORDER,

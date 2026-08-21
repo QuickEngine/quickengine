@@ -8,6 +8,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Connect a supplier's own system, and check it before an order depends on it.** A supplier that
+  takes orders through their own store can be connected from their record. The access token is
+  stored encrypted and can never be read back, only replaced. A Check button asks the supplier's
+  system to confirm every product mapped to them and **names the ones it does not recognise** — so a
+  mistyped code is caught on a settings screen in seconds instead of by a customer waiting for
+  something that was never ordered.
+
+- **See what you have asked your suppliers for.** Purchase orders raised from paid orders are now
+  readable, with their status and any tracking a supplier has sent back.
+
+- **A supplier order survives a busy morning.** If the supplier's system is briefly rate limited,
+  the order waits and tries again rather than being abandoned, and waits exactly as long as the
+  supplier asks. If a supplier is not asked to fulfil automatically, QuickDash can ask them, without
+  anybody opening another tab.
+
 - **Groundwork for connecting a supplier's own system.** A supplier can now hold an encrypted
   connection to the service that fulfils its orders, kept separate from the supplier's own record
   and never readable back once saved. Nothing is switched on yet: this is the foundation the first

@@ -1,4 +1,5 @@
 import { and, db, eq, supplierConnections } from "@quickengine/db";
+import { z } from "zod";
 import type { SupplierConnection } from "./handoff";
 import {
 	decryptSupplierCredentials,
@@ -16,6 +17,31 @@ import {
  * caller's correct response to "no usable connection" is the same: leave the
  * purchase order for a human and say why.
  */
+
+/**
+ * What connecting a supplier's system requires.
+ *
+ * ⚠️ Shared with the OpenAPI request map so the documented body and the parsed
+ * body cannot drift. `openapi.ts`, `openapi-requests.ts` and
+ * `openapi-examples.ts` are linked by operationId STRINGS, which no import graph
+ * can see — see hard rule 13.
+ */
+export const supplierConnectionInputSchema = z.object({
+	supplierId: z.uuid(),
+	provider: z.string().min(1).max(40),
+	shopDomain: z.string().min(1).max(255),
+	/** 🔴 Write-only. Never echoed back by any route. */
+	adminAccessToken: z.string().min(1).max(500),
+	webhookSecret: z.string().max(500).optional(),
+	/** Pinned, so a provider moving its API forward does not move ours. */
+	apiVersion: z.string().min(1).max(20),
+});
+
+/** Which connection to verify. */
+export const supplierConnectionCheckSchema = z.object({
+	supplierId: z.uuid(),
+	provider: z.string().min(1).max(40),
+});
 
 /** The decrypted connection, or null if it cannot be used right now. */
 export async function resolveSupplierConnection(input: {

@@ -14,9 +14,18 @@ const connection = {
 };
 
 /** Records every call so a test can assert ORDER of operations, not just result. */
-function fakeShopify(responses: unknown[]) {
+type Reply = unknown | { httpStatus: number; retryAfter?: string };
+
+function isHttpReply(
+	reply: Reply,
+): reply is { httpStatus: number; retryAfter?: string } {
+	return Boolean(reply && typeof reply === "object" && "httpStatus" in reply);
+}
+
+function fakeShopify(responses: Reply[]) {
 	const calls: Array<{ query: string; variables: Record<string, unknown> }> =
 		[];
+	const waits: number[] = [];
 	let index = 0;
 	const fetchImpl = (async (_url: string, init?: RequestInit) => {
 		const body = JSON.parse(String(init?.body)) as {
@@ -24,14 +33,27 @@ function fakeShopify(responses: unknown[]) {
 			variables: Record<string, unknown>;
 		};
 		calls.push(body);
-		const payload = responses[index++];
+		const reply = responses[index++];
+		if (isHttpReply(reply)) {
+			return {
+				ok: false,
+				status: reply.httpStatus,
+				headers: { get: () => reply.retryAfter ?? null },
+				json: async () => ({}),
+			} as unknown as Response;
+		}
 		return {
 			ok: true,
 			status: 200,
-			json: async () => payload,
+			headers: { get: () => null },
+			json: async () => reply,
 		} as unknown as Response;
 	}) as unknown as typeof fetch;
-	return { calls, fetchImpl };
+	// Records the wait instead of taking it, so backoff is asserted not endured.
+	const sleepImpl = async (ms: number) => {
+		waits.push(ms);
+	};
+	return { calls, waits, fetchImpl, sleepImpl };
 }
 
 const noExistingOrder = { data: { orders: { nodes: [] } } };
@@ -274,5 +296,146 @@ describe("checking a Shopify connection", () => {
 			["gid://shopify/ProductVariant/111"],
 		);
 		expect(check).toEqual({ ok: true });
+	});
+});
+
+describe("surviving Shopify's rate limit", () => {
+	const throttled = {
+		errors: [{ message: "Throttled", extensions: { code: "THROTTLED" } }],
+	};
+
+	/**
+	 * ⚠️ The Admin API is a leaky bucket, roughly 40 points a second, and
+	 * `orderCreate` costs 10. A burst of paid orders will hit it, and an
+	 * un-retried throttle means a supplier never hears about somebody's coffee.
+	 */
+	it("retries a 429 and honours Retry-After", async () => {
+		const { calls, waits, fetchImpl, sleepImpl } = fakeShopify([
+			{ httpStatus: 429, retryAfter: "2" },
+			noExistingOrder,
+			createdOrder,
+		]);
+
+		const placement = await createShopifyAdapter(
+			fetchImpl,
+			sleepImpl,
+		).placeOrder(request);
+
+		expect(placement.correlated).toBe(false);
+		expect(calls).toHaveLength(3);
+		// Shopify's own number, not a guess: 2 seconds.
+		expect(waits).toEqual([2000]);
+	});
+
+	/**
+	 * 🔴 GraphQL throttling arrives as 200 with a THROTTLED code, NOT a 429.
+	 * Treating status alone as success marks a throttled order permanently failed.
+	 */
+	it("retries a 200 that carries a THROTTLED error code", async () => {
+		const { calls, waits, fetchImpl, sleepImpl } = fakeShopify([
+			throttled,
+			noExistingOrder,
+			createdOrder,
+		]);
+
+		await createShopifyAdapter(fetchImpl, sleepImpl).placeOrder(request);
+
+		expect(calls).toHaveLength(3);
+		expect(waits).toHaveLength(1);
+	});
+
+	it("does not retry a permanent failure", async () => {
+		// A 401 is a settled answer. Retrying it four times delays the truth.
+		const { calls, fetchImpl, sleepImpl } = fakeShopify([{ httpStatus: 401 }]);
+
+		await expect(
+			createShopifyAdapter(fetchImpl, sleepImpl).placeOrder(request),
+		).rejects.toThrow(/401/);
+		expect(calls).toHaveLength(1);
+	});
+
+	it("gives up after its attempt budget rather than looping forever", async () => {
+		const { calls, fetchImpl, sleepImpl } = fakeShopify([
+			{ httpStatus: 429 },
+			{ httpStatus: 429 },
+			{ httpStatus: 429 },
+			{ httpStatus: 429 },
+		]);
+
+		await expect(
+			createShopifyAdapter(fetchImpl, sleepImpl).placeOrder(request),
+		).rejects.toThrow(/429/);
+		expect(calls).toHaveLength(4);
+	});
+});
+
+describe("asking a supplier to fulfil when Collective did not", () => {
+	/**
+	 * 🔴 The fallback for the one unproven assumption: whether Collective routes
+	 * an order created through the Admin API at all. If it does not, this is the
+	 * programmatic equivalent of clicking "Request fulfillment".
+	 */
+	it("submits only the fulfilment orders nobody has requested yet", async () => {
+		const { calls, fetchImpl } = fakeShopify([
+			{
+				data: {
+					order: {
+						fulfillmentOrders: {
+							nodes: [
+								{ id: "fo_1", status: "OPEN", requestStatus: "UNSUBMITTED" },
+								{ id: "fo_2", status: "OPEN", requestStatus: "SUBMITTED" },
+							],
+						},
+					},
+				},
+			},
+			{
+				data: {
+					fulfillmentOrderSubmitFulfillmentRequest: {
+						originalFulfillmentOrder: {
+							id: "fo_1",
+							requestStatus: "SUBMITTED",
+						},
+						userErrors: [],
+					},
+				},
+			},
+		]);
+
+		const submitted = await createShopifyAdapter(fetchImpl).requestFulfilment?.(
+			connection,
+			"gid://shopify/Order/999",
+		);
+
+		expect(submitted).toBe(1);
+		// ⚠️ `fo_2` was already submitted. Re-requesting it would ask the supplier
+		// for the same coffee twice.
+		expect(calls).toHaveLength(2);
+		expect(calls[1].variables.id).toBe("fo_1");
+	});
+
+	it("reports zero when Collective already did the work", async () => {
+		// 🔑 Zero is the GOOD outcome, and the result the first test order is
+		// hoping for. It must not read as a failure.
+		const { fetchImpl } = fakeShopify([
+			{
+				data: {
+					order: {
+						fulfillmentOrders: {
+							nodes: [
+								{ id: "fo_1", status: "OPEN", requestStatus: "SUBMITTED" },
+							],
+						},
+					},
+				},
+			},
+		]);
+
+		expect(
+			await createShopifyAdapter(fetchImpl).requestFulfilment?.(
+				connection,
+				"gid://shopify/Order/999",
+			),
+		).toBe(0);
 	});
 });

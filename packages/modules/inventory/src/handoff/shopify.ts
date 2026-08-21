@@ -52,11 +52,13 @@ import {
 const configFor = (
 	connection: SupplierConnection,
 	fetchImpl?: ShopifyFetch,
+	sleepImpl?: (ms: number) => Promise<void>,
 ): ShopifyConfig => ({
 	shopDomain: connection.shopDomain,
 	adminAccessToken: connection.adminAccessToken,
 	apiVersion: connection.apiVersion,
 	fetchImpl,
+	sleepImpl,
 });
 
 const FIND_BY_TAG = `
@@ -76,6 +78,37 @@ const CREATE_ORDER = `
 	}
 `;
 
+/**
+ * The fallback trigger, for when Collective does not route on its own.
+ *
+ * 🔴 The one unproven assumption in this design is whether Collective acts on an
+ * order created through the Admin API the same way it acts on one from Shopify's
+ * checkout. If it does not, this mutation is the programmatic equivalent of a
+ * human clicking "Request fulfillment" in the admin — so the failure mode is a
+ * second API call, not a person doing data entry per order.
+ *
+ * ⚠️ Fulfilment orders cannot be created; Shopify's router makes them after an
+ * order exists. So this reads them off the order rather than constructing one.
+ */
+const READ_FULFILMENT_ORDERS = `
+	query FulfilmentOrders($id: ID!) {
+		order(id: $id) {
+			fulfillmentOrders(first: 10) {
+				nodes { id status requestStatus }
+			}
+		}
+	}
+`;
+
+const REQUEST_FULFILMENT = `
+	mutation RequestFulfilment($id: ID!) {
+		fulfillmentOrderSubmitFulfillmentRequest(id: $id) {
+			originalFulfillmentOrder { id requestStatus }
+			userErrors { field message }
+		}
+	}
+`;
+
 const RESOLVE_VARIANTS = `
 	query ResolveVariants($ids: [ID!]!) {
 		nodes(ids: $ids) { ... on ProductVariant { id } }
@@ -90,6 +123,19 @@ type CreateResult = {
 	};
 };
 type ResolveResult = { nodes: Array<{ id: string } | null> };
+type FulfilmentOrdersResult = {
+	order: {
+		fulfillmentOrders: {
+			nodes: Array<{ id: string; status: string; requestStatus: string }>;
+		};
+	} | null;
+};
+type RequestResult = {
+	fulfillmentOrderSubmitFulfillmentRequest: {
+		originalFulfillmentOrder: { id: string; requestStatus: string } | null;
+		userErrors: Array<{ field: string[] | null; message: string }>;
+	};
+};
 
 /**
  * Find an order this system already placed for the same purchase order.
@@ -114,6 +160,7 @@ async function findCorrelated(
 
 export function createShopifyAdapter(
 	fetchImpl?: ShopifyFetch,
+	sleepImpl?: (ms: number) => Promise<void>,
 ): SupplierFulfilmentAdapter {
 	return {
 		id: "shopify",
@@ -122,7 +169,7 @@ export function createShopifyAdapter(
 			connection: SupplierConnection,
 			supplierSkus: readonly string[],
 		): Promise<SupplierConnectionCheck> {
-			const config = configFor(connection, fetchImpl);
+			const config = configFor(connection, fetchImpl, sleepImpl);
 			try {
 				if (supplierSkus.length === 0) {
 					// Nothing mapped yet is not a broken connection; it is an unfinished
@@ -174,7 +221,7 @@ export function createShopifyAdapter(
 		async placeOrder(
 			request: SupplierOrderRequest,
 		): Promise<SupplierOrderPlacement> {
-			const config = configFor(request.connection, fetchImpl);
+			const config = configFor(request.connection, fetchImpl, sleepImpl);
 
 			const existing = await findCorrelated(config, request.correlationKey);
 			if (existing) {
@@ -238,6 +285,54 @@ export function createShopifyAdapter(
 				externalOrderNumber: result.orderCreate.order.name,
 				correlated: false,
 			};
+		},
+
+		/**
+		 * Ask the supplier to fulfil, when Collective has not asked on its own.
+		 *
+		 * Returns how many requests were actually submitted. Zero is a NORMAL and
+		 * good outcome: it means Collective already did the work, which is the
+		 * result we are hoping the first test order proves.
+		 *
+		 * ⚠️ Only submits for fulfilment orders whose `requestStatus` is
+		 * `UNSUBMITTED`. Re-requesting one already sent is how a supplier receives
+		 * the same ask twice.
+		 */
+		async requestFulfilment(
+			connection: SupplierConnection,
+			externalOrderId: string,
+		): Promise<number> {
+			const config = configFor(connection, fetchImpl, sleepImpl);
+			const read = await shopifyGraphQL<FulfilmentOrdersResult>(
+				config,
+				"fulfilment order lookup",
+				READ_FULFILMENT_ORDERS,
+				{ id: externalOrderId },
+			);
+
+			const pending = (read.order?.fulfillmentOrders.nodes ?? []).filter(
+				(node) => node.requestStatus === "UNSUBMITTED",
+			);
+			let submitted = 0;
+			for (const node of pending) {
+				const result = await shopifyGraphQL<RequestResult>(
+					config,
+					"fulfilment request",
+					REQUEST_FULFILMENT,
+					{ id: node.id },
+				);
+				const failures =
+					result.fulfillmentOrderSubmitFulfillmentRequest.userErrors;
+				if (failures.length > 0) {
+					throw new Error(
+						`SHOPIFY_FULFILMENT_REQUEST_REFUSED:${failures
+							.map((f) => f.message)
+							.join("; ")}`,
+					);
+				}
+				submitted += 1;
+			}
+			return submitted;
 		},
 
 		async verifyWebhook(

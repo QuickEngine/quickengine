@@ -1395,6 +1395,71 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/inventory/purchase-orders": {
+				get: {
+					operationId: "listPurchaseOrders",
+					summary: "List what a business has asked its suppliers for",
+					responses: {
+						"200": {
+							description:
+								"Purchase orders, newest first, with status and any tracking a supplier has returned.",
+						},
+					},
+				},
+			},
+			"/v1/inventory/supplier-connections": {
+				get: {
+					operationId: "describeSupplierConnection",
+					summary: "Whether a supplier's system is connected",
+					parameters: [
+						{
+							in: "query",
+							name: "supplierId",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+						{
+							in: "query",
+							name: "provider",
+							required: false,
+							schema: { type: "string" },
+						},
+					],
+					responses: {
+						"200": {
+							description:
+								"Presence, shop domain, API version and last verification. Never the credential itself.",
+						},
+					},
+				},
+				post: {
+					operationId: "saveSupplierConnection",
+					summary: "Connect a supplier's own system",
+					responses: {
+						"201": {
+							description:
+								"Stored, encrypted, and left pending until it has been checked.",
+						},
+					},
+				},
+			},
+			"/v1/inventory/supplier-connections/check": {
+				post: {
+					operationId: "checkSupplierConnection",
+					summary: "Verify a connection and every product mapped through it",
+					responses: {
+						"200": {
+							description:
+								"Whether the connection works, and any mapped products the supplier does not recognise, by name.",
+						},
+						"400": {
+							description:
+								"That handoff method is not one QuickDash connects to.",
+						},
+						"404": { description: "That supplier is not connected yet." },
+					},
+				},
+			},
 			"/v1/inventory/supplier-skus": {
 				get: {
 					operationId: "listSupplierSkus",

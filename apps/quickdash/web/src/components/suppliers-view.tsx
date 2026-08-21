@@ -459,6 +459,12 @@ function SupplierPanel({
 					) : null}
 				</section>
 
+				<ConnectionSection
+					supplier={supplier}
+					mappings={mappings}
+					workspaceId={workspaceId}
+				/>
+
 				<section className="space-y-2">
 					<p className="text-[11px] text-[var(--ink-45)]">
 						Products mapped to this supplier
@@ -560,5 +566,219 @@ function Fact({ label, value }: { label: string; value: string }) {
 				{value}
 			</span>
 		</div>
+	);
+}
+
+/** Handoff methods QuickDash can place an order into, as opposed to email or by hand. */
+const CONNECTABLE = new Set(["shopify", "woocommerce"]);
+
+/**
+ * Connecting a supplier's own system, and proving the mapping before an order
+ * depends on it.
+ *
+ * 🔑 The reason this screen exists is the check, not the form. An unrecognised
+ * product found HERE is a typo somebody fixes in ten seconds; the same typo
+ * found when an order arrives is a paying customer waiting for coffee that was
+ * never ordered. So unknown codes are reported against the PRODUCT NAME the
+ * operator recognises, never the supplier's opaque identifier.
+ *
+ * 🔴 The token is write-only. Nothing here can read one back — the read returns
+ * only whether one is present, which shop it points at, and whether it last
+ * worked.
+ */
+function ConnectionSection({
+	supplier,
+	mappings,
+	workspaceId,
+}: {
+	supplier: Supplier;
+	mappings: Mapping[];
+	workspaceId: string;
+}) {
+	const api = workspaceApi(workspaceId);
+	const queryClient = useQueryClient();
+	const [shopDomain, setShopDomain] = useState("");
+	const [token, setToken] = useState("");
+	const [apiVersion, setApiVersion] = useState("2026-07");
+	const [failure, setFailure] = useState<string | null>(null);
+	const [checked, setChecked] = useState<{
+		ok: boolean;
+		reason?: string;
+		unknownSkus?: string[];
+	} | null>(null);
+
+	const provider = supplier.handoffMethod;
+	const connectable = CONNECTABLE.has(provider);
+
+	const connection = useQuery({
+		queryKey: ["quickdash", workspaceId, "supplier-connection", supplier.id],
+		enabled: connectable,
+		queryFn: async () =>
+			(
+				await api.request<{
+					status: string;
+					shopDomain: string | null;
+					apiVersion: string | null;
+					present: boolean;
+					lastError: string | null;
+				} | null>(
+					`/inventory/supplier-connections?supplierId=${supplier.id}&provider=${provider}`,
+				)
+			).data,
+	});
+
+	const refresh = () =>
+		queryClient.invalidateQueries({
+			queryKey: ["quickdash", workspaceId, "supplier-connection", supplier.id],
+		});
+
+	const connect = useMutation({
+		mutationFn: async () => {
+			await api.request("/inventory/supplier-connections", {
+				method: "POST",
+				body: {
+					supplierId: supplier.id,
+					provider,
+					shopDomain: shopDomain.trim(),
+					adminAccessToken: token.trim(),
+					apiVersion: apiVersion.trim(),
+				},
+			});
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That connection could not be saved."),
+		onSuccess: () => {
+			// Cleared immediately. The token has no reason to sit in a form field.
+			setToken("");
+			setChecked(null);
+			void refresh();
+		},
+	});
+
+	const check = useMutation({
+		mutationFn: async () =>
+			(
+				await api.request<{
+					ok: boolean;
+					reason?: string;
+					unknownSkus?: string[];
+				}>("/inventory/supplier-connections/check", {
+					method: "POST",
+					body: { supplierId: supplier.id, provider },
+				})
+			).data,
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That connection could not be checked."),
+		onSuccess: (result) => {
+			setChecked(result);
+			void refresh();
+		},
+	});
+
+	if (!connectable) return null;
+
+	/** The supplier's code translated back to the name on the shelf. */
+	const nameFor = (supplierSku: string) =>
+		mappings.find((row) => row.supplierSku === supplierSku)?.catalogItemName ??
+		supplierSku;
+
+	const state = connection.data;
+
+	return (
+		<section className="space-y-2.5">
+			<p className="text-[11px] text-[var(--ink-45)]">
+				{supplier.name}&rsquo;s system
+			</p>
+
+			{state?.present ? (
+				<div className="space-y-1.5">
+					<Fact label="Connected to" value={state.shopDomain ?? "—"} />
+					<Fact label="Status" value={state.status} />
+					{state.lastError ? (
+						<p className="text-[11.5px] text-[var(--ink-45)] leading-5">
+							{state.lastError}
+						</p>
+					) : null}
+				</div>
+			) : (
+				<div className="space-y-2">
+					<p className="text-[11.5px] text-[var(--ink-30)] leading-5">
+						Not connected yet. Orders for this supplier will wait for you to
+						send them by hand.
+					</p>
+					<TextField
+						label="Store address"
+						value={shopDomain}
+						onChange={setShopDomain}
+						placeholder="example.myshopify.com"
+					/>
+					<TextField
+						label="Access token"
+						value={token}
+						onChange={setToken}
+						placeholder="shpat_…"
+					/>
+					<TextField
+						label="API version"
+						value={apiVersion}
+						onChange={setApiVersion}
+					/>
+				</div>
+			)}
+
+			<div className="flex items-center gap-2">
+				{state?.present ? null : (
+					<button
+						type="button"
+						className={quiet}
+						disabled={
+							connect.isPending ||
+							shopDomain.trim() === "" ||
+							token.trim() === ""
+						}
+						onClick={() => connect.mutate()}
+					>
+						{connect.isPending ? "Connecting…" : "Connect"}
+					</button>
+				)}
+				{state?.present ? (
+					<button
+						type="button"
+						className={quiet}
+						disabled={check.isPending}
+						onClick={() => check.mutate()}
+					>
+						{check.isPending ? "Checking…" : "Check connection"}
+					</button>
+				) : null}
+			</div>
+
+			{checked ? (
+				checked.ok ? (
+					<p className="text-[11.5px] text-[var(--ink-60)] leading-5">
+						Everything mapped to this supplier was recognised.
+					</p>
+				) : (
+					<div className="space-y-1">
+						<p className="text-[11.5px] text-[var(--ink-85)] leading-5">
+							{checked.reason ?? "This connection could not be verified."}
+						</p>
+						{/* 🔑 By NAME. A list of variant ids tells an operator nothing. */}
+						{(checked.unknownSkus ?? []).map((sku) => (
+							<p
+								key={sku}
+								className="text-[11.5px] text-[var(--ink-45)] leading-5"
+							>
+								{nameFor(sku)} — not recognised by this store
+							</p>
+						))}
+					</div>
+				)
+			) : null}
+
+			{failure ? <WriteFailure message={failure} /> : null}
+		</section>
 	);
 }

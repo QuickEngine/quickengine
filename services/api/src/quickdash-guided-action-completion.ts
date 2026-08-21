@@ -24,6 +24,9 @@ export const SUPPORTED_GUIDED_STEP_IDS = [
 	"contracts-esign:create:send",
 	"shipping:create:shipment",
 	"shipping:create:dispatch",
+	"content:edit:register",
+	"content:edit:write",
+	"content:edit:publish",
 ] as const;
 
 export type SupportedGuidedStepId = (typeof SUPPORTED_GUIDED_STEP_IDS)[number];
@@ -52,13 +55,28 @@ export async function resolveGuidedStepCompletions(
 	if (workspaceId.trim().length === 0)
 		throw new Error("GUIDED_STEP_WORKSPACE_REQUIRED");
 	const unique = [...new Set(stepIds)];
-	for (const id of unique)
-		if (!supported.has(id))
-			throw new Error(`GUIDED_STEP_COMPLETION_UNSUPPORTED:${id}`);
 	return Promise.all(
-		unique.map(async (id) => ({
-			id,
-			completed: await detectors[id as SupportedGuidedStepId](workspaceId),
-		})),
+		unique.map(async (id) => {
+			const detector = supported.has(id)
+				? detectors[id as SupportedGuidedStepId]
+				: undefined;
+			/**
+			 * 🔴 An unmapped step reports "not done". It used to THROW, and that
+			 * threw away the entire workspace.
+			 *
+			 * `/v1/quickdash/context` is one call that carries the workspace name,
+			 * the module list and the checklist, so a single unmapped step id
+			 * answered 500 and the console rendered with a blank name and an empty
+			 * sidebar — a workspace that looked deleted rather than one with an
+			 * unfinished checklist. That is exactly what happened when `content`
+			 * was enabled: its three first-action steps had no detectors, and every
+			 * request for that workspace failed.
+			 *
+			 * A checklist is a hint, never an authorization decision. The worst an
+			 * absent detector may do is leave a tick box unticked.
+			 */
+			if (!detector) return { id, completed: false };
+			return { id, completed: await detector(workspaceId) };
+		}),
 	);
 }

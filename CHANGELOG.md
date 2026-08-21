@@ -97,6 +97,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **A brand new workspace opens.** A workspace created with the Content module switched on showed a
+  blank name over an empty sidebar, as though it had been deleted, and nothing in it could be
+  reached. The workspace was always fine: its setup checklist covered a step the dashboard had no
+  way to check off, and rather than leaving that one item unticked it gave up on the whole screen.
+  An unrecognised checklist step is now simply not done yet, so a checklist can never take a
+  workspace down with it.
+
 - **An order can be fulfilled from the dashboard.** A paid order can now be confirmed and shipped:
   the delivery address and the items are carried over from the order, so the only thing to enter is
   the parcel weight. Sending part of an order leaves the rest outstanding, and once everything has

@@ -1,8 +1,11 @@
 import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
 import {
+	claimPurchaseOrderForDispatch,
+	isAutomatedHandoff,
 	markPurchaseOrderSent,
 	type RaisedPurchaseOrder,
 	raisePurchaseOrdersForOrder,
+	recordSupplierOrderPlaced,
 } from "@quickengine/mod-inventory";
 
 /**
@@ -84,73 +87,189 @@ export function supplierHandoffHandler(
 			}
 
 			for (const purchaseOrder of raised) {
-				if (purchaseOrder.handoffMethod !== "email") {
-					// Deliberately left in `draft`. A method nobody has agreed yet is a
-					// record for a human, not a guess about where to send it.
+				if (purchaseOrder.handoffMethod === "email") {
+					await sendByEmail(event, purchaseOrder, log);
 					continue;
 				}
-
-				const to = purchaseOrder.handoffTarget ?? purchaseOrder.contactEmail;
-				if (!to) {
-					await markPurchaseOrderSent({
-						workspaceId: event.workspaceId,
-						purchaseOrderId: purchaseOrder.id,
-						failureReason: "No address to send this supplier's orders to.",
-					});
-					continue;
+				if (isAutomatedHandoff(purchaseOrder.handoffMethod)) {
+					await sendByAdapter(event, purchaseOrder, log);
 				}
-
-				try {
-					const { getEmailProvider } = await import("@quickengine/email");
-					const { resolveBrand, usesPlatformSupportEmail } = await import(
-						"@quickengine/db"
-					);
-					const brand = await resolveBrand(event.workspaceId);
-
-					/**
-					 * 🔴 The fail-closed gate. Without a verified sending domain the
-					 * only address available is ours, and a supplier must never receive
-					 * a purchase order from QuickDash on a business's behalf.
-					 */
-					if (!brand || usesPlatformSupportEmail(brand)) {
-						await markPurchaseOrderSent({
-							workspaceId: event.workspaceId,
-							purchaseOrderId: purchaseOrder.id,
-							failureReason:
-								"No verified sending domain, so this was not sent. Verify your domain, then send it by hand.",
-						});
-						continue;
-					}
-
-					const body = renderPurchaseOrder(purchaseOrder);
-					await getEmailProvider().send({
-						to,
-						subject: `Purchase order ${purchaseOrder.number} from ${brand.name}`,
-						// Plain text on purpose: a purchase order is read by somebody
-						// keying it into their own system, and no branding of ours belongs
-						// anywhere near it.
-						html: `<pre style="font:14px/1.5 monospace;white-space:pre-wrap">${body}</pre>`,
-						text: body,
-					});
-					await markPurchaseOrderSent({
-						workspaceId: event.workspaceId,
-						purchaseOrderId: purchaseOrder.id,
-					});
-				} catch (error) {
-					// The purchase order exists either way; the send is what failed, and
-					// saying so on the record is more useful than retrying the whole
-					// event and re-raising orders that already landed.
-					log("supplier-handoff.send_failed", {
-						error,
-						purchaseOrderId: purchaseOrder.id,
-					});
-					await markPurchaseOrderSent({
-						workspaceId: event.workspaceId,
-						purchaseOrderId: purchaseOrder.id,
-						failureReason: "The purchase order could not be emailed.",
-					});
-				}
+				// Deliberately left in `draft`. A method nobody has agreed yet is a
+				// record for a human, not a guess about where to send it.
 			}
 		},
 	};
+}
+
+/**
+ * The email rail. Unchanged in behaviour — extracted so the switch above reads.
+ */
+async function sendByEmail(
+	event: OutboxEvent,
+	purchaseOrder: RaisedPurchaseOrder,
+	log: (message: string, detail: Record<string, unknown>) => void,
+) {
+	// A redelivery of an order already emailed must not email it twice.
+	if (purchaseOrder.alreadyExisted && purchaseOrder.status !== "draft") return;
+
+	const to = purchaseOrder.handoffTarget ?? purchaseOrder.contactEmail;
+	if (!to) {
+		await markPurchaseOrderSent({
+			workspaceId: event.workspaceId,
+			purchaseOrderId: purchaseOrder.id,
+			failureReason: "No address to send this supplier's orders to.",
+		});
+		return;
+	}
+
+	try {
+		const { getEmailProvider } = await import("@quickengine/email");
+		const { resolveBrand, usesPlatformSupportEmail } = await import(
+			"@quickengine/db"
+		);
+		const brand = await resolveBrand(event.workspaceId);
+
+		/**
+		 * 🔴 The fail-closed gate. Without a verified sending domain the only
+		 * address available is ours, and a supplier must never receive a purchase
+		 * order from QuickDash on a business's behalf.
+		 */
+		if (!brand || usesPlatformSupportEmail(brand)) {
+			await markPurchaseOrderSent({
+				workspaceId: event.workspaceId,
+				purchaseOrderId: purchaseOrder.id,
+				failureReason:
+					"No verified sending domain, so this was not sent. Verify your domain, then send it by hand.",
+			});
+			return;
+		}
+
+		const body = renderPurchaseOrder(purchaseOrder);
+		await getEmailProvider().send({
+			to,
+			subject: `Purchase order ${purchaseOrder.number} from ${brand.name}`,
+			// Plain text on purpose: a purchase order is read by somebody keying it
+			// into their own system, and no branding of ours belongs anywhere near it.
+			html: `<pre style="font:14px/1.5 monospace;white-space:pre-wrap">${body}</pre>`,
+			text: body,
+		});
+		await markPurchaseOrderSent({
+			workspaceId: event.workspaceId,
+			purchaseOrderId: purchaseOrder.id,
+		});
+	} catch (error) {
+		// The purchase order exists either way; the send is what failed, and saying
+		// so on the record is more useful than retrying the whole event and
+		// re-raising orders that already landed.
+		log("supplier-handoff.send_failed", {
+			error,
+			purchaseOrderId: purchaseOrder.id,
+		});
+		await markPurchaseOrderSent({
+			workspaceId: event.workspaceId,
+			purchaseOrderId: purchaseOrder.id,
+			failureReason: "The purchase order could not be emailed.",
+		});
+	}
+}
+
+/**
+ * The automated rail: place the order in the supplier's own system.
+ *
+ * 🔴 **Claim first, call second.** `claimPurchaseOrderForDispatch` is a
+ * conditional update, so of two workers draining the same at-least-once event
+ * exactly one proceeds. Losing the claim is an ordinary outcome, not an error.
+ *
+ * 🔴 **Fails closed, and never falls back to email.** A supplier who agreed to
+ * receive orders through their own system must not suddenly get a plain-text
+ * email from a vendor they have never heard of. No connection means the purchase
+ * order waits for a human and says why.
+ *
+ * ⚠️ **Swallows its errors deliberately.** A throwing outbox handler re-runs
+ * every peer handler, replaying activity, realtime, search and both mail paths
+ * for an event that already succeeded at all of them. The cost is that a
+ * `failed` purchase order is only retried on a later redelivery of the same
+ * `order.paid`, and the outbox stops at eight attempts — so an outage longer
+ * than that strands it. Accepted: a stranded order is visible, a silent double
+ * order is not. Recorded in `TECH_DEBT.md`.
+ */
+async function sendByAdapter(
+	event: OutboxEvent,
+	purchaseOrder: RaisedPurchaseOrder,
+	log: (message: string, detail: Record<string, unknown>) => void,
+) {
+	const claimed = await claimPurchaseOrderForDispatch({
+		workspaceId: event.workspaceId,
+		purchaseOrderId: purchaseOrder.id,
+	});
+	if (!claimed) return;
+
+	try {
+		const { getSupplierAdapter, resolveSupplierConnection } = await import(
+			"@quickengine/mod-inventory"
+		);
+		const connection = await resolveSupplierConnection({
+			workspaceId: event.workspaceId,
+			supplierId: purchaseOrder.supplierId,
+			provider: purchaseOrder.handoffMethod,
+		});
+		if (!connection) {
+			await markPurchaseOrderSent({
+				workspaceId: event.workspaceId,
+				purchaseOrderId: purchaseOrder.id,
+				failureReason:
+					"This supplier is not connected, so nothing was sent. Connect them, then send this by hand.",
+			});
+			return;
+		}
+
+		const placement = await getSupplierAdapter(
+			purchaseOrder.handoffMethod,
+		).placeOrder({
+			connection,
+			// Derived from the purchase order, so it is identical on every retry —
+			// which is what lets the adapter recognise an order it already placed.
+			correlationKey: `qd-po-${purchaseOrder.id}`,
+			purchaseOrderNumber: purchaseOrder.number,
+			lines: purchaseOrder.lines.map((line) => ({
+				supplierSku: line.supplierSku,
+				quantity: line.quantity,
+				description: line.description,
+			})),
+			shipTo: {
+				name: claimed.shipToName,
+				line1: claimed.shipToLine1,
+				line2: claimed.shipToLine2,
+				city: claimed.shipToCity,
+				region: claimed.shipToRegion,
+				postalCode: claimed.shipToPostalCode,
+				countryCode: claimed.shipToCountryCode,
+			},
+			currency: purchaseOrder.lines[0]?.currency ?? "USD",
+		});
+
+		await recordSupplierOrderPlaced({
+			workspaceId: event.workspaceId,
+			purchaseOrderId: purchaseOrder.id,
+			externalOrderId: placement.externalOrderId,
+			externalOrderNumber: placement.externalOrderNumber,
+			metadata: {
+				provider: purchaseOrder.handoffMethod,
+				shopDomain: connection.shopDomain,
+				apiVersion: connection.apiVersion,
+				correlated: placement.correlated,
+			},
+		});
+	} catch (error) {
+		log("supplier-handoff.place_failed", {
+			error,
+			purchaseOrderId: purchaseOrder.id,
+			supplierId: purchaseOrder.supplierId,
+		});
+		await markPurchaseOrderSent({
+			workspaceId: event.workspaceId,
+			purchaseOrderId: purchaseOrder.id,
+			failureReason: "The supplier's system did not accept this order.",
+		});
+	}
 }

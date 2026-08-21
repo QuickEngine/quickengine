@@ -1,6 +1,10 @@
 import { testDbClient } from "@quickengine/db/testing";
 import { beforeEach, describe, expect, it } from "vitest";
-import { raisePurchaseOrdersForOrder } from "./purchase-orders";
+import {
+	claimPurchaseOrderForDispatch,
+	raisePurchaseOrdersForOrder,
+	recordSupplierOrderPlaced,
+} from "./purchase-orders";
 
 const ownerId = "po-owner";
 const workspaceId = "00000000-0000-4000-8000-0000000015a1";
@@ -79,6 +83,7 @@ describe("raising purchase orders from a paid order", () => {
 				description: "Ethiopia Guji",
 				quantity: 2,
 				unitCostCents: 1500,
+				currency: "CAD",
 			},
 		]);
 	});
@@ -109,13 +114,120 @@ describe("raising purchase orders from a paid order", () => {
 		 * at the business's expense, silently.
 		 */
 		const second = await raisePurchaseOrdersForOrder({ workspaceId, orderId });
-		expect(second).toHaveLength(0);
+
+		/**
+		 * ⚠️ It returns the EXISTING order, flagged, rather than nothing.
+		 *
+		 * Returning nothing used to look like the safe answer and quietly disabled
+		 * retries: a supplier call that failed on the first delivery was never
+		 * attempted again, because the second delivery handed the caller an empty
+		 * list. The duplicate protection is the unique constraint and the dispatch
+		 * claim, never the caller being kept in the dark.
+		 */
+		expect(second).toHaveLength(1);
+		expect(second[0]).toMatchObject({
+			id: first[0].id,
+			alreadyExisted: true,
+			status: "draft",
+		});
 
 		const sql = testDbClient();
 		const rows = await sql`
 			select id from purchase_orders where workspace_id = ${workspaceId}
 		`;
 		expect(rows).toHaveLength(1);
+
+		// And no second set of lines was written for it.
+		const lines = await sql`
+			select id from purchase_order_lines where purchase_order_id = ${first[0].id}
+		`;
+		expect(lines).toHaveLength(1);
+	});
+
+	it("lets exactly one worker claim a purchase order for dispatch", async () => {
+		const [raised] = await raisePurchaseOrdersForOrder({
+			workspaceId,
+			orderId,
+		});
+
+		/**
+		 * 🔴 The single-call guarantee. Two workers draining the same at-least-once
+		 * event both reach this; a conditional UPDATE means Postgres picks one. A
+		 * read-then-write would let both through and the supplier would ship twice.
+		 */
+		const [a, b] = await Promise.all([
+			claimPurchaseOrderForDispatch({
+				workspaceId,
+				purchaseOrderId: raised.id,
+			}),
+			claimPurchaseOrderForDispatch({
+				workspaceId,
+				purchaseOrderId: raised.id,
+			}),
+		]);
+		expect([a, b].filter(Boolean)).toHaveLength(1);
+
+		const winner = a ?? b;
+		expect(winner?.status).toBe("sending");
+		// The claim carries the address, so the caller needs no second read.
+		expect(winner?.shipToCity).toBe("Sylvan Lake");
+	});
+
+	it("will not re-claim an order already sent, but will re-claim a failed one", async () => {
+		const [raised] = await raisePurchaseOrdersForOrder({
+			workspaceId,
+			orderId,
+		});
+		const sql = testDbClient();
+
+		await sql`update purchase_orders set status = 'sent' where id = ${raised.id}`;
+		expect(
+			await claimPurchaseOrderForDispatch({
+				workspaceId,
+				purchaseOrderId: raised.id,
+			}),
+		).toBeUndefined();
+
+		// `failed` is claimable on purpose: the outbox redelivers, and a supplier
+		// outage that has since passed should not strand the order forever.
+		await sql`update purchase_orders set status = 'failed' where id = ${raised.id}`;
+		expect(
+			await claimPurchaseOrderForDispatch({
+				workspaceId,
+				purchaseOrderId: raised.id,
+			}),
+		).toBeDefined();
+	});
+
+	it("records the supplier's own order id as the join key for tracking", async () => {
+		const [raised] = await raisePurchaseOrdersForOrder({
+			workspaceId,
+			orderId,
+		});
+		await claimPurchaseOrderForDispatch({
+			workspaceId,
+			purchaseOrderId: raised.id,
+		});
+		await recordSupplierOrderPlaced({
+			workspaceId,
+			purchaseOrderId: raised.id,
+			externalOrderId: "gid://shopify/Order/12345",
+			externalOrderNumber: "#1001",
+			metadata: { provider: "shopify" },
+		});
+
+		const sql = testDbClient();
+		const [row] = await sql`
+			select status, supplier_reference, sent_at, metadata
+			from purchase_orders where id = ${raised.id}
+		`;
+		expect(row.status).toBe("sent");
+		expect(row.supplier_reference).toBe("gid://shopify/Order/12345");
+		expect(row.sent_at).not.toBeNull();
+		expect(row.metadata).toMatchObject({
+			externalOrderNumber: "#1001",
+			provider: "shopify",
+		});
 	});
 
 	it("raises nothing for an order it cannot find", async () => {

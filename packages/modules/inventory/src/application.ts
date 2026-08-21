@@ -88,6 +88,10 @@ const FRIENDLY: Record<string, string> = {
 		"There aren't that many reserved units to release or fulfill.",
 	INVENTORY_INSUFFICIENT_AVAILABLE:
 		"There isn't enough available stock for that movement.",
+	// The stored connection cannot be read back. Real after the application
+	// secret is rotated, and the only fix is reconnecting — so the message says
+	// that rather than describing encryption.
+	SUPPLIER_CREDENTIALS_MALFORMED: "That supplier needs connecting again.",
 };
 
 function mapInventoryError(error: unknown): never {
@@ -105,6 +109,12 @@ function mapInventoryError(error: unknown): never {
 				error.message,
 			)
 		) {
+			throw new DomainError("CONFLICT", message);
+		}
+		// A credential that will not decrypt is a connection to redo, not a bad
+		// request and not a crash. CONFLICT keeps it out of the 500s, where it
+		// would read as "QuickDash is broken" rather than "reconnect your supplier".
+		if (/CREDENTIALS_MALFORMED/.test(error.message)) {
 			throw new DomainError("CONFLICT", message);
 		}
 	}

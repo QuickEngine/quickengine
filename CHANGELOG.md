@@ -8,6 +8,23 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Groundwork for connecting a supplier's own system.** A supplier can now hold an encrypted
+  connection to the service that fulfils its orders, kept separate from the supplier's own record
+  and never readable back once saved. Nothing is switched on yet: this is the foundation the first
+  automated handoff plugs into, and the shape every later one will reuse, so a business can
+  eventually choose per supplier whether orders go out by email, by file, or straight into the
+  supplier's own system.
+
+- **A paid order is routed to whoever actually ships it.** Each supplier on an order is handed the
+  order its own way, chosen per supplier rather than one setting for the whole business. Suppliers
+  who take orders by email still get an email; a supplier connected to their own system has the
+  order placed there directly. A supplier whose method has not been agreed yet leaves a purchase
+  order waiting for a person, which is the honest state rather than a guess.
+
+- **A supplier can never be sent the same order twice**, even when the same paid order is processed
+  again after a network problem, and a handoff that failed is retried instead of being abandoned.
+  Both were possible before: a retry either did nothing at all or risked a second real shipment.
+
 - **Every list is a table you can read.** Columns have headings, they line up, and each list sits
   in its own bordered panel instead of floating as loose rows. Every list can be switched between
   a table and cards, and it remembers your choice for that page — products as cards, orders as a

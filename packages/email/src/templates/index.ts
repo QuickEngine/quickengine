@@ -69,6 +69,41 @@ export function signInLinkEmail(input: {
 }
 
 /**
+ * A dashboard notification, delivered to the operator's inbox.
+ *
+ * 🔴 The same notice the bell shows, sent so it reaches somebody who is not
+ * looking at the tab. A low-stock warning nobody happens to see is the same as
+ * no warning, and the whole point of a notification is that it finds you.
+ *
+ * ⚠️ Carries the LINK, not the record. The email is a nudge back into QuickDash;
+ * putting order contents or customer details in it would spread business data
+ * across an inbox for no gain, and the dashboard is one click away.
+ */
+export function operatorNotificationEmail(input: {
+	brand: EmailBrand;
+	title: string;
+	body?: string | null;
+	url?: string | null;
+}): RenderedEmail {
+	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const parts = [heading(escapeHtml(input.title))];
+	if (input.body) parts.push(paragraph(escapeHtml(input.body)));
+	if (input.url) parts.push(button("Open QuickDash", input.url, accent));
+
+	return {
+		subject: input.title,
+		html: renderEmail({
+			brand: input.brand,
+			preheader: input.body ?? input.title,
+			body: parts.join("\n"),
+		}),
+		text: [input.title, input.body ?? "", input.url ?? ""]
+			.filter(Boolean)
+			.join("\n\n"),
+	};
+}
+
+/**
  * An invitation to join an organization.
  *
  * 🔴 The token appears here and nowhere else. It is stored hashed, so this email

@@ -183,6 +183,49 @@ export async function listShipments(workspaceId: string, orderId?: string) {
 		.orderBy(desc(shipments.createdAt), desc(shipments.id));
 }
 
+/**
+ * How much of each order line has already gone out, keyed by order line id.
+ *
+ * 🔴 Without this nothing can tell what is still OUTSTANDING on an order, so a
+ * fulfilment screen offers to ship quantities that already shipped and the API
+ * refuses after the form has been filled in.
+ *
+ * ⚠️ Cancelled shipments do not count. A cancelled parcel never left, so its
+ * lines are owed again — treating them as shipped would strand the remainder
+ * with no way to send it.
+ *
+ * Summed in JS rather than SQL: an order has a handful of shipment lines, and
+ * an aggregate here would need a group-by whose types fight the driver for no
+ * benefit at this size.
+ */
+export async function shippedQuantitiesForOrder(
+	workspaceId: string,
+	orderId: string,
+): Promise<Record<string, number>> {
+	const rows = await db
+		.select({
+			orderLineItemId: shipmentLines.orderLineItemId,
+			quantity: shipmentLines.quantity,
+			status: shipments.status,
+		})
+		.from(shipmentLines)
+		.innerJoin(shipments, eq(shipments.id, shipmentLines.shipmentId))
+		.where(
+			and(
+				eq(shipments.workspaceId, workspaceId),
+				eq(shipments.orderId, orderId),
+			),
+		);
+
+	const totals: Record<string, number> = {};
+	for (const row of rows) {
+		if (row.status === "cancelled") continue;
+		totals[row.orderLineItemId] =
+			(totals[row.orderLineItemId] ?? 0) + row.quantity;
+	}
+	return totals;
+}
+
 export async function getShipment(workspaceId: string, id: string) {
 	const [shipment] = await db
 		.select()

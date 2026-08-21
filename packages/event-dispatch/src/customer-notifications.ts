@@ -70,7 +70,16 @@ type Notification = { to: string; email: RenderedEmail };
 const NOTIFIED_EVENTS = new Set([
 	"order.paid",
 	"payment.recorded",
-	"shipment.created",
+	/**
+	 * 🔴 `shipment.status-changed`, NOT `shipment.created`.
+	 *
+	 * A shipment is created as a DRAFT while somebody is still packing it, so
+	 * mailing on creation tells a customer their order has shipped before it has
+	 * — and if that draft is then cancelled, they were told about a parcel that
+	 * never existed. This is the same rule the invoice note below states:
+	 * sending is the deliberate act, and it arrives as a status change.
+	 */
+	"shipment.status-changed",
 	"booking.created",
 	// 🔴 Not `invoice.created`. An invoice is drafted, edited and often corrected
 	// before anybody means a customer to see it — mailing on creation sends
@@ -115,7 +124,14 @@ async function recordLifecycle(event: OutboxEvent) {
 			});
 			return;
 		}
-		case "shipment.created": {
+		case "shipment.status-changed": {
+			/**
+			 * 🔴 Only when the parcel actually LEAVES. This event also fires for
+			 * `ready`, `exception` and `cancelled`, and none of those are news a
+			 * customer should receive as "your order has shipped".
+			 */
+			if ((event.payload as { status?: string } | null)?.status !== "shipped")
+				return;
 			const [shipment] = await db
 				.select()
 				.from(shipments)
@@ -284,7 +300,10 @@ async function buildNotification(
 			};
 		}
 
-		case "shipment.created": {
+		case "shipment.status-changed": {
+			// Same gate as above: shipped only. See the note there.
+			if ((event.payload as { status?: string } | null)?.status !== "shipped")
+				return null;
 			const [shipment] = await db
 				.select()
 				.from(shipments)

@@ -92,6 +92,7 @@ export type {
 } from "./templates";
 export {
 	bookingConfirmationEmail,
+	operatorNotificationEmail,
 	orderConfirmationEmail,
 	organizationInviteEmail,
 	paymentReceiptEmail,

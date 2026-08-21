@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
@@ -7,6 +7,11 @@ import { detailCard } from "./detail-panel";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
+import {
+	ShipmentComposer,
+	type ShippableOrder,
+	shipBlockedReason,
+} from "./shipment-composer";
 
 /**
  * Orders — what a business has sold.
@@ -73,7 +78,18 @@ type OrderDetail = OrderRow & {
 		trackingNumber: string | null;
 		trackingUrl: string | null;
 	}>;
-	destination?: Record<string, unknown> | null;
+	/**
+	 * ⚠️ FLAT, not nested. The detail route spreads the order DTO into its
+	 * response and the DTO stores the delivery address column by column. A
+	 * `destination` object was declared here once and never populated.
+	 */
+	shipToName?: string | null;
+	shipToLine1?: string | null;
+	shipToLine2?: string | null;
+	shipToCity?: string | null;
+	shipToRegion?: string | null;
+	shipToPostalCode?: string | null;
+	shipToCountryCode?: string | null;
 };
 
 const money = (cents: number, currency: string) =>
@@ -98,20 +114,62 @@ const chip =
  * Read defensively: the destination is a snapshot taken at checkout, so its
  * shape belongs to whatever the storefront sent that day, not to today's code.
  */
-function addressLines(destination: Record<string, unknown> | null | undefined) {
-	if (!destination) return [];
-	const value = (key: string) =>
-		typeof destination[key] === "string" ? (destination[key] as string) : null;
+/**
+ * The delivery address, from the order's own columns.
+ *
+ * 🔴 This read a nested `destination` object looking for `line1`/`address1` and
+ * friends. The order detail route spreads the order DTO into its response and
+ * that DTO carries the address as FLAT `shipTo*` fields, so `destination` was
+ * always undefined and the "Deliver to" block never rendered on any order — on
+ * the one screen whose whole job is telling somebody where to send the parcel.
+ */
+function addressLines(order: {
+	shipToName?: string | null;
+	shipToLine1?: string | null;
+	shipToLine2?: string | null;
+	shipToCity?: string | null;
+	shipToRegion?: string | null;
+	shipToPostalCode?: string | null;
+	shipToCountryCode?: string | null;
+}) {
 	return [
-		value("name"),
-		value("line1") ?? value("address1"),
-		value("line2") ?? value("address2"),
-		[value("city"), value("region") ?? value("state"), value("postalCode")]
+		order.shipToName,
+		order.shipToLine1,
+		order.shipToLine2,
+		[order.shipToCity, order.shipToRegion, order.shipToPostalCode]
 			.filter(Boolean)
 			.join(" "),
-		value("country"),
+		order.shipToCountryCode,
 	].filter((line): line is string => Boolean(line?.trim()));
 }
+
+/**
+ * Where an order may go next, mirroring the server's own table.
+ *
+ * 🔴 A paid order arrives as `placed`, and shipping refuses anything that is not
+ * `confirmed` or `processing` — so without these actions "create shipment" is a
+ * button that can only ever fail. Confirming is the operator saying "yes, I am
+ * going to send this", which is a real decision and deliberately not automatic.
+ *
+ * ⚠️ Kept in step with `ALLOWED_TRANSITIONS` in `mod-orders/status.ts`. Offering
+ * a move the server refuses is worse than offering none.
+ */
+const ORDER_MOVES: Record<string, readonly string[]> = {
+	draft: ["placed", "cancelled"],
+	placed: ["confirmed", "cancelled"],
+	confirmed: ["processing", "cancelled"],
+	processing: ["fulfilled", "cancelled"],
+	fulfilled: [],
+	cancelled: [],
+};
+
+const MOVE_LABEL: Record<string, string> = {
+	placed: "Mark placed",
+	confirmed: "Confirm",
+	processing: "Start processing",
+	fulfilled: "Mark fulfilled",
+	cancelled: "Cancel order",
+};
 
 function OrderPanel({
 	workspaceId,
@@ -122,6 +180,9 @@ function OrderPanel({
 	orderId: string;
 	onClose: () => void;
 }) {
+	const [shipping, setShipping] = useState(false);
+	const [failure, setFailure] = useState<string | null>(null);
+	const queryClient = useQueryClient();
 	const detail = useQuery({
 		queryKey: ["quickdash", workspaceId, "order", orderId],
 		queryFn: async () =>
@@ -130,6 +191,23 @@ function OrderPanel({
 					`/orders/${orderId}`,
 				)
 			).data,
+	});
+
+	const move = useMutation({
+		mutationFn: async (status: string) => {
+			await workspaceApi(workspaceId).request(`/orders/${orderId}/status`, {
+				method: "POST",
+				body: { status },
+				idempotencyKey: crypto.randomUUID(),
+			});
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That order could not be changed."),
+		onSuccess: () =>
+			queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspaceId, "order", orderId],
+			}),
 	});
 
 	return (
@@ -164,6 +242,30 @@ function OrderPanel({
 									{money(order.totalCents, order.currency)}
 								</span>
 							</div>
+
+							{/* The operator's decisions about this order, offered only where
+							    the server would accept them. A paid order arrives `placed`
+							    and must be confirmed before it can be shipped. */}
+							{(ORDER_MOVES[order.status] ?? []).length > 0 ? (
+								<div className="mt-2.5 flex flex-wrap gap-1.5">
+									{(ORDER_MOVES[order.status] ?? []).map((next) => (
+										<button
+											key={next}
+											type="button"
+											disabled={move.isPending}
+											onClick={() => move.mutate(next)}
+											className="h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40"
+										>
+											{move.isPending && move.variables === next
+												? "Saving…"
+												: (MOVE_LABEL[next] ?? next)}
+										</button>
+									))}
+								</div>
+							) : null}
+							{failure ? (
+								<p className="mt-1.5 text-[10.5px] text-[#ff6b6b]">{failure}</p>
+							) : null}
 
 							<p className="mt-3 text-[11px] text-[var(--ink-45)]">Customer</p>
 							<p className="text-[12px] text-[var(--ink-85)]">
@@ -231,13 +333,13 @@ function OrderPanel({
 								</p>
 							)}
 
-							{addressLines(order.destination).length > 0 ? (
+							{addressLines(order).length > 0 ? (
 								<>
 									<p className="mt-4 mb-1 text-[11px] text-[var(--ink-45)]">
 										Deliver to
 									</p>
 									<div className="text-[11.5px] text-[var(--ink-60)] leading-5">
-										{addressLines(order.destination).map((line) => (
+										{addressLines(order).map((line) => (
 											<p key={line}>{line}</p>
 										))}
 									</div>
@@ -265,6 +367,33 @@ function OrderPanel({
 									</p>
 								))
 							)}
+
+							{/* 🔑 Fulfilment starts HERE, on the order somebody paid for,
+							    rather than on the shipments list where the first question
+							    would be "which order?" — which is already answered. */}
+							{shipBlockedReason(order as ShippableOrder) === null ? (
+								<button
+									type="button"
+									onClick={() => setShipping(true)}
+									className="mt-2.5 h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+								>
+									{order.shipments.length === 0
+										? "Create shipment"
+										: "Ship the rest"}
+								</button>
+							) : (
+								<p className="mt-2.5 text-[10.5px] text-[var(--ink-30)]">
+									{shipBlockedReason(order as ShippableOrder)}
+								</p>
+							)}
+
+							{shipping ? (
+								<ShipmentComposer
+									workspaceId={workspaceId}
+									order={order as ShippableOrder}
+									onClose={() => setShipping(false)}
+								/>
+							) : null}
 
 							{order.notes ? (
 								<>

@@ -97,6 +97,47 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **An order can be fulfilled from the dashboard.** A paid order can now be confirmed and shipped:
+  the delivery address and the items are carried over from the order, so the only thing to enter is
+  the parcel weight. Sending part of an order leaves the rest outstanding, and once everything has
+  gone the order says so instead of offering to send it again.
+
+- **An order's status follows its parcels.** Creating a shipment moves the order into processing,
+  and the order completes on its own once nothing is left to send. It was possible to mark an order
+  fulfilled with no shipment at all.
+
+- **Tracking can be added after a parcel is packed.** A carrier and tracking number could only be
+  entered at the moment a shipment was created, which is rarely when you have them, and a wrong one
+  could never be corrected.
+
+- **The delivery address appears on an order.** The "Deliver to" panel never showed anything, on the
+  one screen whose job is telling you where to send the parcel.
+
+- **A customer is told their order shipped when it ships.** The notice was sent while the parcel was
+  still being packed, so a shipment that was then cancelled had already been announced.
+
+- **Notifications that need you reach you by email.** Anything asking for attention, such as low
+  stock or a shipment problem, now also arrives in your inbox. Routine progress stays in the app so
+  the important ones are not buried.
+
+- **You are told when an order ships and when it arrives.** Shipments only appeared in your
+  notifications when something went wrong with them.
+
+- **A product's weight accepts "340g".** Typing the unit the field asks for silently discarded the
+  weight.
+
+### Added
+
+- **Orders are handed to your suppliers automatically.** When an order is paid, whatever you do not
+  make yourself becomes a purchase order for the supplier who does, using their own product code and
+  the customer's address, ready to send. Items you stock yourself are left alone, an order split
+  across two suppliers becomes two purchase orders, and the same order can never be sent to a
+  supplier twice.
+
+- **Supplier orders are sent from your own address, or not at all.** Until your sending domain is
+  verified, a purchase order is held for you to send by hand rather than going out under
+  QuickDash's name.
+
 - **You can see the API key you just created.** Keys were issued correctly, stored correctly and
   worked — and were never shown, so every key was lost the moment it was made and the only way
   forward was to create another and lose that one too. The key now appears once, with a copy

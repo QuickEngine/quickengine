@@ -8,7 +8,7 @@ const WORKSPACE = "00000000-0000-4000-8000-0000000019a1";
 const SUPPLIER = "00000000-0000-4000-8000-0000000019b1";
 
 const resolveSupplierConnection = vi.fn();
-const recordSupplierShipment = vi.fn();
+const recordSupplierShipmentNotice = vi.fn();
 const verifyWebhook = vi.fn();
 const toShipmentNotice = vi.fn();
 
@@ -17,7 +17,16 @@ vi.mock("@quickengine/mod-inventory", () => ({
 	getSupplierAdapter: () => ({ verifyWebhook, toShipmentNotice }),
 	resolveSupplierConnection: (input: unknown) =>
 		resolveSupplierConnection(input),
-	recordSupplierShipment: (input: unknown) => recordSupplierShipment(input),
+}));
+
+/**
+ * ⚠️ The coordinator is mocked here on purpose. What it commits is proven
+ * against a real database in `purchase-orders.test.ts` and the shipping tests;
+ * this file proves the HTTP contract around it.
+ */
+vi.mock("./supplier-shipment", () => ({
+	recordSupplierShipmentNotice: (input: unknown) =>
+		recordSupplierShipmentNotice(input),
 }));
 
 const logger = {
@@ -92,7 +101,7 @@ describe("inbound supplier webhooks", () => {
 		const response = await post(path);
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({ error: "Invalid signature." });
-		expect(recordSupplierShipment).not.toHaveBeenCalled();
+		expect(recordSupplierShipmentNotice).not.toHaveBeenCalled();
 	});
 
 	/**
@@ -113,7 +122,7 @@ describe("inbound supplier webhooks", () => {
 			"x-shopify-shop-domain": "someone-else.myshopify.com",
 		});
 		expect(response.status).toBe(400);
-		expect(recordSupplierShipment).not.toHaveBeenCalled();
+		expect(recordSupplierShipmentNotice).not.toHaveBeenCalled();
 	});
 
 	/**
@@ -132,7 +141,7 @@ describe("inbound supplier webhooks", () => {
 		toShipmentNotice.mockReturnValueOnce(null);
 
 		expect((await post(path)).status).toBe(200);
-		expect(recordSupplierShipment).not.toHaveBeenCalled();
+		expect(recordSupplierShipmentNotice).not.toHaveBeenCalled();
 	});
 
 	it("records a shipment and answers 200", async () => {
@@ -150,14 +159,15 @@ describe("inbound supplier webhooks", () => {
 			trackingUrl: null,
 			lines: [],
 		});
-		recordSupplierShipment.mockResolvedValueOnce({
+		recordSupplierShipmentNotice.mockResolvedValueOnce({
 			applied: true,
 			purchaseOrderId: "po_1",
 			orderId: "ord_1",
+			shipmentId: "shp_1",
 		});
 
 		expect((await post(path)).status).toBe(200);
-		expect(recordSupplierShipment).toHaveBeenCalledWith(
+		expect(recordSupplierShipmentNotice).toHaveBeenCalledWith(
 			expect.objectContaining({ trackingNumber: "TRACK1" }),
 		);
 	});
@@ -182,7 +192,7 @@ describe("inbound supplier webhooks", () => {
 			trackingUrl: null,
 			lines: [],
 		});
-		recordSupplierShipment.mockResolvedValueOnce({
+		recordSupplierShipmentNotice.mockResolvedValueOnce({
 			applied: false,
 			reason: "unknown",
 		});
@@ -214,7 +224,7 @@ describe("inbound supplier webhooks", () => {
 			trackingUrl: null,
 			lines: [],
 		});
-		recordSupplierShipment.mockResolvedValueOnce({
+		recordSupplierShipmentNotice.mockResolvedValueOnce({
 			applied: false,
 			reason: "not-sent",
 		});
@@ -223,6 +233,70 @@ describe("inbound supplier webhooks", () => {
 		expect(logger.error).toHaveBeenCalledWith(
 			"supplier.webhook.unmatched_shipment",
 			expect.objectContaining({ reason: "not-sent" }),
+		);
+	});
+
+	/**
+	 * 🔴 The supplier shipped, the tracking is recorded, and yet NOTHING reached
+	 * the buyer. From the customer's side that is indistinguishable from the
+	 * parcel never being sent, so it must be as loud as an outright failure.
+	 */
+	it("logs loudly when tracking is recorded but no customer shipment exists", async () => {
+		vi.mocked(logger.error).mockClear();
+		resolveSupplierConnection.mockResolvedValueOnce(connected);
+		verifyWebhook.mockResolvedValueOnce({
+			id: "evt_7",
+			type: "fulfillments/create",
+			externalOrderId: "gid://shopify/Order/12",
+			payload: {},
+		});
+		toShipmentNotice.mockReturnValueOnce({
+			externalOrderId: "gid://shopify/Order/12",
+			carrier: "Canada Post",
+			trackingNumber: "TRK12",
+			trackingUrl: null,
+			lines: [],
+		});
+		recordSupplierShipmentNotice.mockResolvedValueOnce({
+			applied: true,
+			purchaseOrderId: "po_12",
+			orderId: "ord_12",
+			shipmentId: null,
+		});
+
+		expect((await post(path)).status).toBe(200);
+		expect(logger.error).toHaveBeenCalledWith(
+			"supplier.webhook.shipment_not_shown",
+			expect.objectContaining({ purchaseOrderId: "po_12" }),
+		);
+	});
+
+	/** An order cancelled or already fulfilled. A person has to sort it out. */
+	it("logs loudly when the order cannot receive a shipment", async () => {
+		vi.mocked(logger.error).mockClear();
+		resolveSupplierConnection.mockResolvedValueOnce(connected);
+		verifyWebhook.mockResolvedValueOnce({
+			id: "evt_8",
+			type: "fulfillments/create",
+			externalOrderId: "gid://shopify/Order/13",
+			payload: {},
+		});
+		toShipmentNotice.mockReturnValueOnce({
+			externalOrderId: "gid://shopify/Order/13",
+			carrier: null,
+			trackingNumber: null,
+			trackingUrl: null,
+			lines: [],
+		});
+		recordSupplierShipmentNotice.mockResolvedValueOnce({
+			applied: false,
+			reason: "order-not-shippable",
+		});
+
+		expect((await post(path)).status).toBe(200);
+		expect(logger.error).toHaveBeenCalledWith(
+			"supplier.webhook.unmatched_shipment",
+			expect.objectContaining({ reason: "order-not-shippable" }),
 		);
 	});
 
@@ -242,7 +316,7 @@ describe("inbound supplier webhooks", () => {
 			trackingUrl: null,
 			lines: [],
 		});
-		recordSupplierShipment.mockResolvedValueOnce({
+		recordSupplierShipmentNotice.mockResolvedValueOnce({
 			applied: false,
 			reason: "already-shipped",
 		});

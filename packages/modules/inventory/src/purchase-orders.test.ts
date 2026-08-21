@@ -1,10 +1,11 @@
+import { db } from "@quickengine/db";
 import { testDbClient } from "@quickengine/db/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	claimPurchaseOrderForDispatch,
+	markPurchaseOrderShippedInTx,
 	raisePurchaseOrdersForOrder,
 	recordSupplierOrderPlaced,
-	recordSupplierShipment,
 } from "./purchase-orders";
 
 const ownerId = "po-owner";
@@ -267,10 +268,18 @@ describe("recording what a supplier says it shipped", () => {
 		return raised;
 	}
 
+	/**
+	 * ⚠️ The real path opens a transaction, because the purchase order and the
+	 * customer shipment it produces must commit together. Wrapped here rather
+	 * than mocked so the `FOR UPDATE` claim is exercised as written.
+	 */
+	const record = (input: Parameters<typeof markPurchaseOrderShippedInTx>[1]) =>
+		db.transaction((tx) => markPurchaseOrderShippedInTx(tx, input));
+
 	it("matches on the supplier's own order id and stores the tracking", async () => {
 		const raised = await sentPurchaseOrder("gid://shopify/Order/5001");
 
-		const result = await recordSupplierShipment({
+		const result = await record({
 			workspaceId,
 			supplierId,
 			externalOrderId: "gid://shopify/Order/5001",
@@ -283,6 +292,9 @@ describe("recording what a supplier says it shipped", () => {
 			applied: true,
 			purchaseOrderId: raised.id,
 			orderId,
+			// 🔴 The order lines the shipment is built from. Only the roasted coffee
+			// is on this purchase order; the mug the business stocks itself is not.
+			lines: [{ orderLineItemId: roastedLineId, quantity: 2 }],
 		});
 
 		const sql = testDbClient();
@@ -305,7 +317,7 @@ describe("recording what a supplier says it shipped", () => {
 	it("changes nothing when the same fulfilment is delivered twice", async () => {
 		const raised = await sentPurchaseOrder("gid://shopify/Order/5002");
 
-		await recordSupplierShipment({
+		await record({
 			workspaceId,
 			supplierId,
 			externalOrderId: "gid://shopify/Order/5002",
@@ -314,7 +326,7 @@ describe("recording what a supplier says it shipped", () => {
 		});
 
 		// A redelivery carrying DIFFERENT tracking must not overwrite the first.
-		const second = await recordSupplierShipment({
+		const second = await record({
 			workspaceId,
 			supplierId,
 			externalOrderId: "gid://shopify/Order/5002",
@@ -351,7 +363,7 @@ describe("recording what a supplier says it shipped", () => {
 		`;
 
 		expect(
-			await recordSupplierShipment({
+			await record({
 				workspaceId,
 				supplierId,
 				externalOrderId: "gid://shopify/Order/5003",
@@ -370,7 +382,7 @@ describe("recording what a supplier says it shipped", () => {
 
 		// A supplier's own store carries orders QuickDash never raised. Normal.
 		expect(
-			await recordSupplierShipment({
+			await record({
 				workspaceId,
 				supplierId,
 				externalOrderId: "gid://shopify/Order/9999",
@@ -387,7 +399,7 @@ describe("recording what a supplier says it shipped", () => {
 		await sentPurchaseOrder("gid://shopify/Order/5005");
 
 		expect(
-			await recordSupplierShipment({
+			await record({
 				workspaceId: "00000000-0000-4000-8000-0000000015aa",
 				supplierId,
 				externalOrderId: "gid://shopify/Order/5005",
@@ -396,7 +408,7 @@ describe("recording what a supplier says it shipped", () => {
 		).toEqual({ applied: false, reason: "unknown" });
 
 		expect(
-			await recordSupplierShipment({
+			await record({
 				workspaceId,
 				supplierId: "00000000-0000-4000-8000-0000000015cc",
 				externalOrderId: "gid://shopify/Order/5005",

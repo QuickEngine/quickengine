@@ -1,12 +1,12 @@
 import {
 	getSupplierAdapter,
 	isAutomatedHandoff,
-	recordSupplierShipment,
 	resolveSupplierConnection,
 } from "@quickengine/mod-inventory";
 import type { Hono } from "hono";
 import type { ApiLogger } from "./logger";
 import type { PlatformEnv } from "./platform-types";
+import { recordSupplierShipmentNotice } from "./supplier-shipment";
 
 /**
  * Inbound supplier events — a supplier telling us it shipped.
@@ -111,9 +111,11 @@ export function registerSupplierWebhookRoutes(
 			// A topic we do not act on. 200 so the endpoint stays healthy.
 			if (!notice) return c.json({ received: true }, 200);
 
-			const result = await recordSupplierShipment({
+			const result = await recordSupplierShipmentNotice({
 				workspaceId,
 				supplierId,
+				provider,
+				eventId: event.id,
 				externalOrderId: notice.externalOrderId,
 				carrier: notice.carrier,
 				trackingNumber: notice.trackingNumber,
@@ -127,9 +129,10 @@ export function registerSupplierWebhookRoutes(
 				 * Stripe refund defect survived three PRs.
 				 *
 				 * `unknown` is a reference this workspace never issued; `not-sent` is
-				 * one it issued but never dispatched. Both mean somebody is shipping
-				 * coffee nobody asked them for. Only `already-shipped` stays quiet,
-				 * because at-least-once delivery makes it the NORMAL case.
+				 * one it issued but never dispatched; `order-not-shippable` is an
+				 * order that was cancelled or already fulfilled. All three mean a
+				 * person needs to look. Only `already-shipped` stays quiet, because
+				 * at-least-once delivery makes it the NORMAL case.
 				 */
 				if (result.reason !== "already-shipped") {
 					options.logger.error("supplier.webhook.unmatched_shipment", {
@@ -143,9 +146,27 @@ export function registerSupplierWebhookRoutes(
 				return c.json({ received: true }, 200);
 			}
 
+			/**
+			 * 🔴 Applied, but no customer shipment. The supplier really did ship and
+			 * the tracking is recorded, yet nothing reached the buyer — the purchase
+			 * order carries a `failureReason` explaining why. Logged at ERROR,
+			 * because from the customer's side this is indistinguishable from the
+			 * parcel never being sent.
+			 */
+			if (!result.shipmentId) {
+				options.logger.error("supplier.webhook.shipment_not_shown", {
+					requestId: c.get("requestId"),
+					workspaceId,
+					purchaseOrderId: result.purchaseOrderId,
+					orderId: result.orderId,
+				});
+				return c.json({ received: true }, 200);
+			}
+
 			options.logger.info("supplier.webhook.shipment_recorded", {
 				requestId: c.get("requestId"),
 				purchaseOrderId: result.purchaseOrderId,
+				shipmentId: result.shipmentId,
 			});
 			return c.json({ received: true }, 200);
 		},

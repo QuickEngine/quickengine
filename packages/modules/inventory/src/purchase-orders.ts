@@ -383,37 +383,58 @@ export async function markPurchaseOrderSent(input: {
 		);
 }
 
+/** Matches the shipping module's convention for a transaction-scoped write. */
+export type PurchaseOrderTransaction = Parameters<
+	Parameters<typeof db.transaction>[0]
+>[0];
+
 /**
- * Record that a supplier says it has shipped.
+ * Claim a purchase order for a supplier's shipment notice, and record the
+ * tracking that came with it.
  *
- * 🔴 Idempotency here is the STATUS GUARD, not a dedupe table — the same shape
- * the payment webhooks use. A redelivered fulfilment finds the purchase order
- * already `shipped` and changes nothing, which is the normal outcome of
- * at-least-once delivery rather than a divergence.
+ * 🔴 The claim IS the idempotency — a conditional update guarded on status, the
+ * same shape as `claimPurchaseOrderForDispatch` and the payment webhooks. A
+ * redelivered fulfilment finds the purchase order already `shipped` and changes
+ * nothing, which is the normal outcome of at-least-once delivery rather than a
+ * divergence. A redelivery carrying DIFFERENT tracking must not overwrite what
+ * the first one recorded.
  *
- * Advances only from `sent` or `acknowledged`. A purchase order still `draft`
- * was never sent, so a supplier claiming to have shipped it is a real problem
- * that needs a person, not a status update.
+ * 🔴 The three refusals are told APART on purpose. `already-shipped` is ordinary
+ * and must stay quiet, but `unknown` and `not-sent` both mean a supplier is
+ * shipping something this system has no record of asking for. Folding them into
+ * one reason is how that goes unnoticed.
  *
- * 🔴 The three refusals are told APART on purpose. `already-shipped` is the
- * ordinary shape of at-least-once delivery and must stay quiet, but `unknown`
- * and `not-sent` both mean a supplier is shipping something this system has no
- * record of asking for. Folding them into one reason is how that goes unnoticed.
+ * ⚠️ In-transaction only. The caller commits this together with the customer
+ * shipment it produces, so a supplier can never be recorded as having shipped
+ * while the customer's order shows nothing.
+ *
+ * Returns the order lines this purchase order covers, which is what the shipment
+ * is built from. Lines whose order line has since been deleted are dropped:
+ * `order_line_item_id` is `set null` precisely so the record of what a supplier
+ * was asked to send survives, but a shipment cannot reference what is gone.
  */
-export async function recordSupplierShipment(input: {
-	workspaceId: string;
-	supplierId: string;
-	externalOrderId: string;
-	carrier?: string | null;
-	trackingNumber?: string | null;
-	trackingUrl?: string | null;
-	now?: Date;
-}): Promise<
-	| { applied: true; purchaseOrderId: string; orderId: string | null }
+export async function markPurchaseOrderShippedInTx(
+	tx: PurchaseOrderTransaction,
+	input: {
+		workspaceId: string;
+		supplierId: string;
+		externalOrderId: string;
+		carrier?: string | null;
+		trackingNumber?: string | null;
+		trackingUrl?: string | null;
+		now?: Date;
+	},
+): Promise<
+	| {
+			applied: true;
+			purchaseOrderId: string;
+			orderId: string | null;
+			lines: { orderLineItemId: string; quantity: number }[];
+	  }
 	| { applied: false; reason: "unknown" | "not-sent" | "already-shipped" }
 > {
 	const now = input.now ?? new Date();
-	const [found] = await db
+	const [found] = await tx
 		.select()
 		.from(purchaseOrders)
 		.where(
@@ -423,9 +444,10 @@ export async function recordSupplierShipment(input: {
 				eq(purchaseOrders.supplierReference, input.externalOrderId),
 			),
 		)
-		.limit(1);
+		.limit(1)
+		.for("update");
 
-	// A Collective store may carry orders QuickDash never placed. Not an error.
+	// A supplier's own store may carry orders QuickDash never placed. Not an error.
 	if (!found) return { applied: false, reason: "unknown" };
 
 	// Already at or past shipped: the ordinary redelivery. Nothing to say.
@@ -441,7 +463,7 @@ export async function recordSupplierShipment(input: {
 	if (found.status !== "sent" && found.status !== "acknowledged")
 		return { applied: false, reason: "not-sent" };
 
-	const [updated] = await db
+	const [updated] = await tx
 		.update(purchaseOrders)
 		.set({
 			status: "shipped",
@@ -460,11 +482,47 @@ export async function recordSupplierShipment(input: {
 
 	// Lost the race to a concurrent redelivery, which already applied it.
 	if (!updated) return { applied: false, reason: "already-shipped" };
+
+	const lines = await tx
+		.select({
+			orderLineItemId: purchaseOrderLines.orderLineItemId,
+			quantity: purchaseOrderLines.quantity,
+		})
+		.from(purchaseOrderLines)
+		.where(eq(purchaseOrderLines.purchaseOrderId, updated.id));
+
 	return {
 		applied: true,
 		purchaseOrderId: updated.id,
 		orderId: updated.orderId,
+		lines: lines.flatMap((line) =>
+			line.orderLineItemId
+				? [{ orderLineItemId: line.orderLineItemId, quantity: line.quantity }]
+				: [],
+		),
 	};
+}
+
+/**
+ * Record why a supplier's shipment could not become a customer shipment.
+ *
+ * ⚠️ The purchase order stays `shipped`, because it IS — the supplier really did
+ * send the goods. `failureReason` says the customer-facing half did not happen,
+ * which is the pair of facts a person needs to put it right.
+ */
+export async function recordPurchaseOrderShipmentFailureInTx(
+	tx: PurchaseOrderTransaction,
+	input: { workspaceId: string; purchaseOrderId: string; reason: string },
+) {
+	await tx
+		.update(purchaseOrders)
+		.set({ failureReason: input.reason, updatedAt: new Date() })
+		.where(
+			and(
+				eq(purchaseOrders.workspaceId, input.workspaceId),
+				eq(purchaseOrders.id, input.purchaseOrderId),
+			),
+		);
 }
 
 /** What a business asked its suppliers for, newest first. */

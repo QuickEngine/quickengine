@@ -48,7 +48,9 @@ product carries in the supplier's own system. When an order is paid, QuickDash r
 order against whichever supplier actually makes each line, keeping the lines a business stocks
 itself out of it, and hands it over the way that supplier is reached. A supplier's own system can be
 connected and checked before anyone relies on it, so an unrecognised product code is caught on a
-settings screen rather than by a customer waiting for something that was never ordered.
+settings screen rather than by a customer waiting for something that was never ordered. When that
+supplier ships, the tracking it reports becomes a shipment on the customer's order and reaches them
+through the same email and portal as anything the business ships itself.
 
 Shipping supports deterministic country and region zones, flat and weight-based delivery,
 order-value bands and free-shipping thresholds. Storefronts choose a quoted rate; QuickDash

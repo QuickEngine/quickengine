@@ -15,6 +15,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   mistyped code is caught on a settings screen in seconds instead of by a customer waiting for
   something that was never ordered.
 
+- **A supplier saying it shipped reaches your customer.** When a supplier fulfils an order in their
+  own system, the tracking number and carrier land on the purchase order, become a real shipment on
+  the order, and reach the customer through the same shipping email and portal as anything you ship
+  yourself. Only that supplier can report it, proven by a signature, and reporting the same shipment
+  twice never sends a second email or creates a second shipment. If a supplier reports shipping
+  something you never asked for, or against an order that has been cancelled, that is recorded for
+  you to look at rather than quietly accepted.
+
 - **See what you have asked your suppliers for.** Purchase orders raised from paid orders are now
   readable, with their status and any tracking a supplier has sent back.
 

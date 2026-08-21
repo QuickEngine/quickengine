@@ -87,6 +87,7 @@ const FRIENDLY: Record<string, string> = {
 		"A line on this shipment isn't a physical item that can ship.",
 	ORDER_LINE_OVERSHIPPED:
 		"That would ship more units than the order has remaining.",
+	SHIPMENT_HAS_NO_LINES: "A shipment must contain at least one item.",
 };
 
 function mapShipmentError(error: unknown): never {
@@ -100,7 +101,7 @@ function mapShipmentError(error: unknown): never {
 			throw new DomainError("VALIDATION_ERROR", message);
 		}
 		if (
-			/(NOT_READY_FOR_SHIPPING|NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|TRACKING_REQUIRED|TRACKING_LOCKED|CONCURRENT_UPDATE|NOT_DELETABLE|OVERSHIPPED)/.test(
+			/(NOT_READY_FOR_SHIPPING|NOT_EDITABLE|UNCHANGED|ILLEGAL_TRANSITION|TRACKING_REQUIRED|TRACKING_LOCKED|CONCURRENT_UPDATE|NOT_DELETABLE|OVERSHIPPED|HAS_NO_LINES)/.test(
 				error.message,
 			)
 		) {

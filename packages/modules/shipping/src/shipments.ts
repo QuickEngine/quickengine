@@ -3,6 +3,7 @@ import {
 	db,
 	desc,
 	eq,
+	fulfillments,
 	ne,
 	orderLineItems,
 	orders,
@@ -23,6 +24,7 @@ import {
 	type ShipmentTrackingPatch,
 	shipmentInputSchema,
 	shipmentTrackingPatchSchema,
+	shippingAddressSchema,
 } from "./shipment";
 
 export type ShipmentTransaction = Parameters<
@@ -166,6 +168,181 @@ export async function createShipmentInTx(
 		await replaceShipmentChildren(tx, shipment.id, parsed);
 		return shipment;
 	}
+}
+
+/**
+ * A shipment somebody ELSE packed and shipped.
+ *
+ * 🔴 The dropship case: a supplier fulfils an order in its own system and tells
+ * us. It is still a real shipment, deliberately not a special case — teaching
+ * the notification path a new branch would duplicate logic and leave the portal
+ * and the operator list empty for exactly the orders a dropshipping business
+ * sells.
+ *
+ * Three things differ from `createShipmentInTx`:
+ *
+ * 1. **Zero parcel rows.** The `.min(1)` on parcels lives only in
+ *    `shipmentInputSchema`, and nothing requires a shipment to HAVE parcels.
+ *    This business never touched the box; inventing a weight would poison
+ *    rate-shopping later with a number nobody measured.
+ * 2. **`sourceModule` / `sourceRecordId` are populated** — the first caller ever
+ *    to do so, which finally arms the dormant `fulfillments_source_unique`
+ *    index. That is what makes a redelivered webhook produce ONE shipment
+ *    however often it arrives, enforced by the database rather than by us
+ *    remembering to check.
+ * 3. **It returns null instead of throwing** when that index says the shipment
+ *    already exists. At-least-once delivery makes that the normal case.
+ *
+ * ⚠️ Does NOT move the order. Shipment creation still demands `confirmed` or
+ * `processing`, and settlement leaves a paid order at `placed`, so the caller
+ * walks it forward first — in the same transaction. That coordination lives at
+ * the API layer beside `settlePaidCheckout` rather than here, so shipping does
+ * not take a dependency on orders.
+ */
+export async function recordSupplierShipmentInTx(
+	tx: ShipmentTransaction,
+	workspaceId: string,
+	input: {
+		orderId: string;
+		/** Opaque to shipping. `purchase_orders` is the only value today. */
+		sourceModule: string;
+		sourceRecordId: string;
+		lines: ReadonlyArray<{ orderLineItemId: string; quantity: number }>;
+		carrier?: string | null;
+		trackingNumber?: string | null;
+		trackingUrl?: string | null;
+		metadata?: Record<string, unknown>;
+	},
+) {
+	/**
+	 * 🔴 FIRST, before anything that can throw.
+	 *
+	 * A redelivery must return null, never raise — a thrown error is a 500, and a
+	 * provider answered 500 redelivers forever. Every check below it fails on a
+	 * redelivery for a reason that looks like a fault and is not: the lines are
+	 * already allocated to the shipment this call made last time
+	 * (`ORDER_LINE_OVERSHIPPED`), and by the time the parcel is delivered the
+	 * order has moved past shippable (`ORDER_NOT_READY_FOR_SHIPPING`).
+	 *
+	 * ⚠️ Found by a test, not by reading. The first version of this function
+	 * relied on `createFulfillment` raising `FULFILLMENT_SOURCE_EXISTS`, which is
+	 * three checks too late to ever be reached.
+	 */
+	const [alreadyRecorded] = await tx
+		.select({ id: fulfillments.id })
+		.from(fulfillments)
+		.where(
+			and(
+				eq(fulfillments.workspaceId, workspaceId),
+				eq(fulfillments.sourceModule, input.sourceModule),
+				eq(fulfillments.sourceRecordId, input.sourceRecordId),
+			),
+		)
+		.limit(1);
+	if (alreadyRecorded) return null;
+
+	const [order] = await tx
+		.select({
+			id: orders.id,
+			number: orders.number,
+			clientId: orders.clientId,
+			status: orders.status,
+			shipToName: orders.shipToName,
+			shipToLine1: orders.shipToLine1,
+			shipToLine2: orders.shipToLine2,
+			shipToCity: orders.shipToCity,
+			shipToRegion: orders.shipToRegion,
+			shipToPostalCode: orders.shipToPostalCode,
+			shipToCountryCode: orders.shipToCountryCode,
+		})
+		.from(orders)
+		.where(
+			and(eq(orders.workspaceId, workspaceId), eq(orders.id, input.orderId)),
+		)
+		.limit(1)
+		.for("update");
+	if (!order) throw new Error("ORDER_NOT_FOUND");
+	if (order.status !== "confirmed" && order.status !== "processing") {
+		throw new Error("ORDER_NOT_READY_FOR_SHIPPING");
+	}
+
+	/**
+	 * 🔴 Refused rather than shipped empty. A shipment with no lines tells a
+	 * customer their order is on its way while claiming nothing is in the box,
+	 * and it silently consumes the one shipment this purchase order is allowed.
+	 */
+	if (input.lines.length === 0) throw new Error("SHIPMENT_HAS_NO_LINES");
+
+	/**
+	 * Snapshotted from the order, the same address the supplier was given.
+	 *
+	 * ⚠️ `email` is deliberately left null. Nothing reads it — the customer
+	 * notification takes the address from the ORDER — and a delivery address is
+	 * not a place to keep a second copy of somebody's inbox.
+	 */
+	const destination = shippingAddressSchema.parse({
+		recipientName: order.shipToName,
+		line1: order.shipToLine1,
+		city: order.shipToCity,
+		region: order.shipToRegion,
+		postalCode: order.shipToPostalCode,
+		countryCode: order.shipToCountryCode,
+		line2: order.shipToLine2,
+	});
+
+	await assertShippableLines(tx, workspaceId, order.id, input.lines);
+
+	/**
+	 * The read above is the fast path; `fulfillments_source_unique` is the one
+	 * that actually holds. Two concurrent redeliveries can both pass the read,
+	 * and only the database can stop the second — which it does by raising here,
+	 * rolling the whole transaction back rather than shipping twice.
+	 */
+	const fulfillment = await createFulfillment(
+		workspaceId,
+		{
+			title: `Shipment for order ${order.number}`,
+			kind: "physical",
+			clientId: order.clientId,
+			sourceModule: input.sourceModule,
+			sourceRecordId: input.sourceRecordId,
+			details: { orderId: order.id, orderNumber: order.number },
+		},
+		tx,
+	);
+
+	const [shipment] = await tx
+		.insert(shipments)
+		.values({
+			workspaceId,
+			orderId: order.id,
+			fulfillmentId: fulfillment.id,
+			destination,
+			carrier: input.carrier ?? null,
+			serviceLevel: null,
+			trackingNumber: input.trackingNumber ?? null,
+			trackingUrl: input.trackingUrl ?? null,
+			metadata: input.metadata ?? {},
+		})
+		.returning();
+
+	// Lines only. See the parcel note above.
+	await tx.insert(shipmentLines).values(
+		input.lines.map((line) => ({
+			shipmentId: shipment.id,
+			orderLineItemId: line.orderLineItemId,
+			quantity: line.quantity,
+		})),
+	);
+
+	/**
+	 * `draft -> ready -> shipped`, both hops, because the transition table has no
+	 * edge straight from draft. Going through `setShipmentStatusInTx` rather than
+	 * writing the column is what keeps the delivery record in step: reaching
+	 * `shipped` moves the fulfilment to `in_progress` in this same transaction.
+	 */
+	await setShipmentStatusInTx(tx, workspaceId, shipment.id, "ready");
+	return setShipmentStatusInTx(tx, workspaceId, shipment.id, "shipped");
 }
 
 export async function listShipments(workspaceId: string, orderId?: string) {

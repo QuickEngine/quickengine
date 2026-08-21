@@ -45,6 +45,7 @@ import { registerRolesRoutes } from "./roles-routes";
 import { registerSavedViewRoutes } from "./saved-view-routes";
 import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
+import { registerSupplierWebhookRoutes } from "./supplier-webhook-routes";
 import { registerTimeTrackingRoutes } from "./time-tracking-routes";
 import { registerWebhookRoutes } from "./webhook-routes";
 
@@ -118,4 +119,5 @@ export function registerAllRoutes(
 	registerInngestRoutes(app);
 	registerConnectWebhookRoutes(app, { logger });
 	registerStripeWebhookRoutes(app, { logger });
+	registerSupplierWebhookRoutes(app, { logger });
 }

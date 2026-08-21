@@ -79,6 +79,7 @@ export const MODULE_CHILDREN: Readonly<
 		["", "Levels"],
 		["adjustments", "Adjustments"],
 		["suppliers", "Suppliers"],
+		["purchase-orders", "Purchase orders"],
 	],
 	shipping: [
 		["", "Shipments"],

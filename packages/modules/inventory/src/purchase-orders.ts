@@ -525,9 +525,19 @@ export async function recordPurchaseOrderShipmentFailureInTx(
 		);
 }
 
-/** What a business asked its suppliers for, newest first. */
+/**
+ * What a business asked its suppliers for, newest first.
+ *
+ * 🔑 Carries the customer ORDER NUMBER, not just its id. An operator reading
+ * this screen is holding a customer conversation — "where is order ORD-1042" —
+ * and a uuid answers nothing. Left-joined because a purchase order raised by
+ * hand, or one whose order was since deleted, is still a real record.
+ *
+ * ⚠️ Lines come back with it. A purchase order without its contents cannot
+ * answer the only question anybody asks of one: what did we ask them to send?
+ */
 export async function listPurchaseOrders(workspaceId: string) {
-	return db
+	const rows = await db
 		.select({
 			id: purchaseOrders.id,
 			number: purchaseOrders.number,
@@ -536,14 +546,49 @@ export async function listPurchaseOrders(workspaceId: string) {
 			supplierName: suppliers.name,
 			handoffMethod: purchaseOrders.handoffMethod,
 			orderId: purchaseOrders.orderId,
+			orderNumber: orders.number,
 			carrier: purchaseOrders.carrier,
 			trackingNumber: purchaseOrders.trackingNumber,
+			trackingUrl: purchaseOrders.trackingUrl,
 			failureReason: purchaseOrders.failureReason,
+			supplierReference: purchaseOrders.supplierReference,
 			sentAt: purchaseOrders.sentAt,
 			createdAt: purchaseOrders.createdAt,
 		})
 		.from(purchaseOrders)
 		.innerJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
+		.leftJoin(orders, eq(orders.id, purchaseOrders.orderId))
 		.where(eq(purchaseOrders.workspaceId, workspaceId))
 		.orderBy(sql`${purchaseOrders.createdAt} desc`);
+
+	if (rows.length === 0) return [];
+
+	const lines = await db
+		.select({
+			purchaseOrderId: purchaseOrderLines.purchaseOrderId,
+			supplierSku: purchaseOrderLines.supplierSku,
+			description: purchaseOrderLines.description,
+			quantity: purchaseOrderLines.quantity,
+			unitCostCents: purchaseOrderLines.unitCostCents,
+			currency: purchaseOrderLines.currency,
+		})
+		.from(purchaseOrderLines)
+		.where(
+			inArray(
+				purchaseOrderLines.purchaseOrderId,
+				rows.map((row) => row.id),
+			),
+		);
+
+	const byPurchaseOrder = new Map<string, typeof lines>();
+	for (const line of lines) {
+		const existing = byPurchaseOrder.get(line.purchaseOrderId);
+		if (existing) existing.push(line);
+		else byPurchaseOrder.set(line.purchaseOrderId, [line]);
+	}
+
+	return rows.map((row) => ({
+		...row,
+		lines: byPurchaseOrder.get(row.id) ?? [],
+	}));
 }

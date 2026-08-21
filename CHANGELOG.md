@@ -8,6 +8,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **See everything you have asked your suppliers for.** A Purchase orders page under Inventory shows
+  every ask raised from a paid order: the supplier, what was asked for and what it costs you, which
+  customer order it belongs to, where it has got to, and the tracking once they ship. Anything that
+  could not be sent says why, in the list, without anybody going looking for it.
+
+- **Start counting a product.** A product can now be put on the stock page from the console. Until
+  now a newly added product could never be stocked at all without going through the API, which made
+  the whole stock screen unreachable for anything new.
+
+- **Record what actually happened to stock.** A product's panel now takes any of the five movements a
+  person performs: stock arrived, a customer sent something back, the count was too low or too high,
+  and damaged or lost. Only two of those could be recorded before, so a real count could not be
+  corrected. Movements that belong to an order remain the order's to make.
+
+
 - **Connect a supplier's own system, and check it before an order depends on it.** A supplier that
   takes orders through their own store can be connected from their record. The access token is
   stored encrypted and can never be read back, only replaced. A Check button asks the supplier's
@@ -136,6 +151,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   button with it, so nothing is left offering to act on something that is not there.
 
 ### Fixed
+
+- **A subscription plan can no longer be created with no price.** Typing something that is not a
+  number left the plan at zero and charged every customer on it nothing, forever, with nothing on
+  screen to show it. The price must now be a real amount before the plan can be offered.
+
 
 - **Security updates for bundled libraries can arrive on their own.** Pinned replacements for
   vulnerable libraries were locked to one exact version, which meant the next fix for the same

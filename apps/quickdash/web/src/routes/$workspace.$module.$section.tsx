@@ -6,6 +6,7 @@ import { FoldersView } from "../components/folders-view";
 import { MessagesView } from "../components/messages-view";
 import { PartnerLinksView } from "../components/partner-links-view";
 import { PaymentsView } from "../components/payments-view";
+import { PurchaseOrdersView } from "../components/purchase-orders-view";
 import { RatesView } from "../components/rates-view";
 import { ReviewsView } from "../components/reviews-view";
 import { SubscriptionsView } from "../components/subscriptions-view";
@@ -55,6 +56,11 @@ function Page() {
 	// same business already tracking stock.
 	if (module === "inventory" && section === "suppliers") {
 		return <SuppliersView workspaceId={workspaceId} />;
+	}
+	// Purchase orders sit beside Suppliers for the same reason: they only exist
+	// for a business that buys what it sells rather than making it.
+	if (module === "inventory" && section === "purchase-orders") {
+		return <PurchaseOrdersView workspaceId={workspaceId} />;
 	}
 	if (module === "orders" && section === "discounts") {
 		return <DiscountsView workspaceId={workspaceId} />;

@@ -119,8 +119,18 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 					name: name.trim(),
 					interval,
 					intervalCount: 1,
-					// Typed in currency units; stored as integer cents like all money.
-					priceCents: parseAmountCents(price) ?? 0,
+					/**
+					 * Typed in currency units; stored as integer cents like all money.
+					 *
+					 * ⚠️ Throws rather than falling back to zero. The button cannot be
+					 * pressed with an unparseable price, so reaching here with one is a
+					 * bug — and a free subscription is far worse than a failed save.
+					 */
+					priceCents: (() => {
+						const cents = parseAmountCents(price);
+						if (cents === null) throw new Error("That price is not a number.");
+						return cents;
+					})(),
 					items: chosen ? [{ catalogItemId: chosen.id, quantity: 1 }] : [],
 				},
 			});
@@ -161,7 +171,15 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 					title="New subscription plan"
 					submitLabel="Offer plan"
 					busy={createPlan.isPending}
-					valid={name.trim().length > 0 && price.trim().length > 0 && !!product}
+					/**
+					 * 🔴 `isAmount`, not "is not empty".
+					 *
+					 * A price of `abc` parsed to null, fell through to `?? 0`, and
+					 * created a plan that charges NOTHING — silently, with no error and
+					 * no way to tell from the list. Every renewal of it would bill the
+					 * customer zero forever.
+					 */
+					valid={name.trim().length > 0 && isAmount(price) && !!product}
 					failure={failure}
 					onClose={() => setCreating(false)}
 					onSubmit={() => createPlan.mutate()}

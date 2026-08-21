@@ -4,6 +4,7 @@ import {
 	claimPurchaseOrderForDispatch,
 	raisePurchaseOrdersForOrder,
 	recordSupplierOrderPlaced,
+	recordSupplierShipment,
 } from "./purchase-orders";
 
 const ownerId = "po-owner";
@@ -236,5 +237,171 @@ describe("raising purchase orders from a paid order", () => {
 			orderId: "00000000-0000-4000-8000-0000000015ff",
 		});
 		expect(raised).toEqual([]);
+	});
+});
+
+/**
+ * 🔴 The inbound half of the fulfilment loop, against a REAL database.
+ *
+ * The route test proves the HTTP behaviour with this function mocked. These
+ * prove the function itself, because the status guard is the only thing standing
+ * between a redelivered webhook and a purchase order whose tracking silently
+ * changes underneath a customer.
+ */
+describe("recording what a supplier says it shipped", () => {
+	/** Raise, claim and place one purchase order, as a real dispatch would. */
+	async function sentPurchaseOrder(externalOrderId: string) {
+		const [raised] = await raisePurchaseOrdersForOrder({
+			workspaceId,
+			orderId,
+		});
+		await claimPurchaseOrderForDispatch({
+			workspaceId,
+			purchaseOrderId: raised.id,
+		});
+		await recordSupplierOrderPlaced({
+			workspaceId,
+			purchaseOrderId: raised.id,
+			externalOrderId,
+		});
+		return raised;
+	}
+
+	it("matches on the supplier's own order id and stores the tracking", async () => {
+		const raised = await sentPurchaseOrder("gid://shopify/Order/5001");
+
+		const result = await recordSupplierShipment({
+			workspaceId,
+			supplierId,
+			externalOrderId: "gid://shopify/Order/5001",
+			carrier: "Canada Post",
+			trackingNumber: "TRK-5001",
+			trackingUrl: "https://track.example/TRK-5001",
+		});
+
+		expect(result).toEqual({
+			applied: true,
+			purchaseOrderId: raised.id,
+			orderId,
+		});
+
+		const sql = testDbClient();
+		const [row] = await sql`
+			select status, carrier, tracking_number, tracking_url
+			from purchase_orders where id = ${raised.id}
+		`;
+		expect(row).toMatchObject({
+			status: "shipped",
+			carrier: "Canada Post",
+			tracking_number: "TRK-5001",
+			tracking_url: "https://track.example/TRK-5001",
+		});
+	});
+
+	/**
+	 * 🔴 THE duplicate defence. At-least-once delivery guarantees this happens,
+	 * and it must be a no-op rather than a second write.
+	 */
+	it("changes nothing when the same fulfilment is delivered twice", async () => {
+		const raised = await sentPurchaseOrder("gid://shopify/Order/5002");
+
+		await recordSupplierShipment({
+			workspaceId,
+			supplierId,
+			externalOrderId: "gid://shopify/Order/5002",
+			carrier: "Canada Post",
+			trackingNumber: "TRK-FIRST",
+		});
+
+		// A redelivery carrying DIFFERENT tracking must not overwrite the first.
+		const second = await recordSupplierShipment({
+			workspaceId,
+			supplierId,
+			externalOrderId: "gid://shopify/Order/5002",
+			carrier: "Purolator",
+			trackingNumber: "TRK-SECOND",
+		});
+
+		expect(second).toEqual({ applied: false, reason: "already-shipped" });
+
+		const sql = testDbClient();
+		const [row] = await sql`
+			select carrier, tracking_number from purchase_orders where id = ${raised.id}
+		`;
+		expect(row).toMatchObject({
+			carrier: "Canada Post",
+			tracking_number: "TRK-FIRST",
+		});
+	});
+
+	/**
+	 * ⚠️ Told apart from `already-shipped` on purpose. This one gets logged at
+	 * ERROR by the route; the quiet redelivery above does not.
+	 */
+	it("refuses a shipment for a purchase order that was never sent", async () => {
+		const [raised] = await raisePurchaseOrdersForOrder({
+			workspaceId,
+			orderId,
+		});
+		// Still `draft`. Nobody ever asked this supplier for anything.
+		const sql = testDbClient();
+		await sql`
+			update purchase_orders set supplier_reference = 'gid://shopify/Order/5003'
+			where id = ${raised.id}
+		`;
+
+		expect(
+			await recordSupplierShipment({
+				workspaceId,
+				supplierId,
+				externalOrderId: "gid://shopify/Order/5003",
+				trackingNumber: "TRK-5003",
+			}),
+		).toEqual({ applied: false, reason: "not-sent" });
+
+		const [row] = await sql`
+			select status, tracking_number from purchase_orders where id = ${raised.id}
+		`;
+		expect(row).toMatchObject({ status: "draft", tracking_number: null });
+	});
+
+	it("reports a reference it has never issued without failing", async () => {
+		await sentPurchaseOrder("gid://shopify/Order/5004");
+
+		// A supplier's own store carries orders QuickDash never raised. Normal.
+		expect(
+			await recordSupplierShipment({
+				workspaceId,
+				supplierId,
+				externalOrderId: "gid://shopify/Order/9999",
+			}),
+		).toEqual({ applied: false, reason: "unknown" });
+	});
+
+	/**
+	 * 🔴 Tenancy. The reference is a SUPPLIER's id and is only unique within that
+	 * supplier's own system, so matching on it alone would let one workspace's
+	 * webhook write tracking onto another's purchase order.
+	 */
+	it("will not apply one workspace's shipment to another's purchase order", async () => {
+		await sentPurchaseOrder("gid://shopify/Order/5005");
+
+		expect(
+			await recordSupplierShipment({
+				workspaceId: "00000000-0000-4000-8000-0000000015aa",
+				supplierId,
+				externalOrderId: "gid://shopify/Order/5005",
+				trackingNumber: "TRK-INTRUDER",
+			}),
+		).toEqual({ applied: false, reason: "unknown" });
+
+		expect(
+			await recordSupplierShipment({
+				workspaceId,
+				supplierId: "00000000-0000-4000-8000-0000000015cc",
+				externalOrderId: "gid://shopify/Order/5005",
+				trackingNumber: "TRK-INTRUDER",
+			}),
+		).toEqual({ applied: false, reason: "unknown" });
 	});
 });

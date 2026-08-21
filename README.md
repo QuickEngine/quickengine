@@ -44,8 +44,11 @@ configurations — enabling Shipping brings Orders and its prerequisites with it
 
 Inventory covers where stock comes from as well as how much is left: a business that does not
 make what it sells records its suppliers, how orders are meant to reach them, and the code each
-product carries in the supplier's own system. Suppliers are recorded before any handoff is agreed,
-because a supplier relationship exists before its integration does.
+product carries in the supplier's own system. When an order is paid, QuickDash raises a purchase
+order against whichever supplier actually makes each line, keeping the lines a business stocks
+itself out of it, and hands it over the way that supplier is reached. A supplier's own system can be
+connected and checked before anyone relies on it, so an unrecognised product code is caught on a
+settings screen rather than by a customer waiting for something that was never ordered.
 
 Shipping supports deterministic country and region zones, flat and weight-based delivery,
 order-value bands and free-shipping thresholds. Storefronts choose a quoted rate; QuickDash

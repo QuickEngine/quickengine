@@ -30,12 +30,35 @@ export type ShopifyConfig = {
 	adminAccessToken: string;
 	apiVersion: string;
 	fetchImpl?: ShopifyFetch;
+	/** Injectable so backoff is testable without actually waiting. */
+	sleepImpl?: (ms: number) => Promise<void>;
 };
 
 type GraphQLResponse<T> = {
 	data?: T;
-	errors?: Array<{ message: string }>;
+	errors?: Array<{ message: string; extensions?: { code?: string } }>;
 };
+
+/** Attempt budget. Four tries spans ~7s of backoff, well inside a job's life. */
+const MAX_ATTEMPTS = 4;
+
+const sleep = (ms: number) =>
+	new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * How long to wait before trying again.
+ *
+ * Shopify sends `Retry-After` on a 429 and it is authoritative — guessing
+ * shorter just burns the budget against a bucket that is still empty. Falls back
+ * to exponential backoff for throttles that arrive without one.
+ */
+function backoffMs(attempt: number, retryAfter: string | null): number {
+	const advertised = retryAfter ? Number(retryAfter) : Number.NaN;
+	if (Number.isFinite(advertised) && advertised > 0) {
+		return Math.min(advertised * 1000, 10_000);
+	}
+	return Math.min(2 ** attempt * 500, 8_000);
+}
 
 /**
  * One GraphQL round trip.
@@ -52,34 +75,76 @@ export async function shopifyGraphQL<T>(
 	variables: Record<string, unknown>,
 ): Promise<T> {
 	const call = config.fetchImpl ?? fetch;
-	const response = await call(
-		`https://${config.shopDomain}/admin/api/${config.apiVersion}/graphql.json`,
-		{
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"X-Shopify-Access-Token": config.adminAccessToken,
+	const pause = config.sleepImpl ?? sleep;
+	let lastThrottle: ShopifyApiError | undefined;
+
+	for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+		const response = await call(
+			`https://${config.shopDomain}/admin/api/${config.apiVersion}/graphql.json`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Shopify-Access-Token": config.adminAccessToken,
+				},
+				body: JSON.stringify({ query, variables }),
 			},
-			body: JSON.stringify({ query, variables }),
-		},
-	);
-
-	if (!response.ok) {
-		// 🔴 The body is deliberately NOT included. Provider responses can echo
-		// request contents, and this string reaches logs and Sentry — the same
-		// redaction rule the CLI follows.
-		throw new ShopifyApiError(operation, response.status);
-	}
-
-	const body = (await response.json()) as GraphQLResponse<T>;
-	if (body.errors?.length) {
-		throw new ShopifyApiError(
-			operation,
-			200,
-			body.errors.map((error) => error.message).join("; "),
 		);
+
+		/**
+		 * ⚠️ The Admin API is a leaky bucket — roughly 40 points a second, and
+		 * `orderCreate` costs 10. A burst of paid orders WILL hit this, and an
+		 * un-retried throttle means a supplier never hears about somebody's coffee.
+		 *
+		 * 🔴 Retried only for throttling and for Shopify's own 5xx. A 401, a 404 or
+		 * a refused mutation is a permanent answer, and retrying it four times
+		 * delays the failure without changing it.
+		 */
+		if (response.status === 429 || response.status >= 500) {
+			lastThrottle = new ShopifyApiError(operation, response.status);
+			if (attempt < MAX_ATTEMPTS - 1) {
+				await pause(
+					backoffMs(attempt, response.headers?.get?.("retry-after") ?? null),
+				);
+				continue;
+			}
+			throw lastThrottle;
+		}
+
+		if (!response.ok) {
+			// 🔴 The body is deliberately NOT included. Provider responses can echo
+			// request contents, and this string reaches logs and Sentry — the same
+			// redaction rule the CLI follows.
+			throw new ShopifyApiError(operation, response.status);
+		}
+
+		const body = (await response.json()) as GraphQLResponse<T>;
+
+		/**
+		 * ⚠️ GraphQL throttling arrives as **200 with a THROTTLED error code**, not
+		 * as a 429. Treating status alone as success is how a throttled order looks
+		 * like a permanent failure and gets marked `failed` instead of retried.
+		 */
+		if (body.errors?.some((error) => error.extensions?.code === "THROTTLED")) {
+			lastThrottle = new ShopifyApiError(operation, 200, "Throttled.");
+			if (attempt < MAX_ATTEMPTS - 1) {
+				await pause(backoffMs(attempt, null));
+				continue;
+			}
+			throw lastThrottle;
+		}
+
+		if (body.errors?.length) {
+			throw new ShopifyApiError(
+				operation,
+				200,
+				body.errors.map((error) => error.message).join("; "),
+			);
+		}
+		if (!body.data)
+			throw new ShopifyApiError(operation, 200, "No data returned.");
+		return body.data;
 	}
-	if (!body.data)
-		throw new ShopifyApiError(operation, 200, "No data returned.");
-	return body.data;
+
+	throw lastThrottle ?? new ShopifyApiError(operation, 429);
 }

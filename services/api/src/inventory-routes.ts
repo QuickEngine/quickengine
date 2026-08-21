@@ -10,15 +10,24 @@ import {
 	createSupplierSku,
 	deleteInventoryItemCommand,
 	deleteSupplierSku,
+	describeSupplierConnection,
 	getInventoryItemDto,
+	getSupplierAdapter,
 	INVENTORY_ITEM_STATUSES,
 	inventorySettingsSchema,
+	isAutomatedHandoff,
 	listInventoryAdjustmentsPage,
 	listInventoryItemsPage,
+	listPurchaseOrders,
 	listSupplierSkus,
 	listSuppliers,
+	resolveSupplierConnection,
 	SupplierError,
+	saveSupplierConnection,
 	setInventoryItemStatusCommand,
+	setSupplierConnectionState,
+	supplierConnectionCheckSchema,
+	supplierConnectionInputSchema,
 	supplierInputSchema,
 	supplierPatchSchema,
 	supplierSkuInputSchema,
@@ -146,6 +155,126 @@ export function registerInventoryRoutes(
 		}
 		return respondError(c, "NOT_FOUND", "Supplier record not found.", 404);
 	};
+
+	/* ── Purchase orders ───────────────────────────────────────────────────────
+	 *
+	 * 🔑 Read-only here on purpose. A purchase order is RAISED by `order.paid`,
+	 * never by hand — inventing one would ask a supplier for goods nobody bought.
+	 * What an operator needs is to SEE them, which until now was possible only
+	 * through the database.
+	 */
+	app.get("/v1/inventory/purchase-orders", readAccess, readLimit, async (c) =>
+		respond(c, {
+			items: await listPurchaseOrders(c.get("authorized").workspaceId),
+		}),
+	);
+
+	/* ── Supplier connections ──────────────────────────────────────────────────
+	 *
+	 * 🔴 The credential never comes back out. `describeSupplierConnection`
+	 * answers whether one is present, which shop it points at and whether it
+	 * last worked — never the token. A screen that could show it would turn a
+	 * session hijack into write access to the business's own store.
+	 */
+	const connectionQuery = supplierConnectionCheckSchema;
+
+	app.get(
+		"/v1/inventory/supplier-connections",
+		readAccess,
+		readLimit,
+		async (c) => {
+			const query = connectionQuery.parse({
+				supplierId: c.req.query("supplierId"),
+				provider: c.req.query("provider") ?? "shopify",
+			});
+			return respond(
+				c,
+				await describeSupplierConnection({
+					workspaceId: c.get("authorized").workspaceId,
+					...query,
+				}),
+			);
+		},
+	);
+
+	app.post(
+		"/v1/inventory/supplier-connections",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			const body = supplierConnectionInputSchema.parse(await c.req.json());
+
+			const { supplierId, provider, ...credentials } = body;
+			const saved = await saveSupplierConnection({
+				workspaceId: c.get("authorized").workspaceId,
+				supplierId,
+				provider,
+				credentials,
+			});
+			// Lands `pending`: nothing has proven the token works yet, and calling it
+			// active before anything has spoken to the provider is how a broken
+			// connection looks healthy on a settings screen.
+			return respond(c, { id: saved?.id ?? null, status: "pending" }, 201);
+		},
+	);
+
+	/**
+	 * Verify a connection and every product mapped through it.
+	 *
+	 * 🔑 The whole point of this route. It resolves each mapped SKU against the
+	 * supplier's system and reports the ones it does not recognise BY NAME. An
+	 * unresolvable mapping found here is a typo somebody fixes in ten seconds;
+	 * the same typo found when an order arrives is a paying customer waiting for
+	 * coffee that was never ordered.
+	 */
+	app.post(
+		"/v1/inventory/supplier-connections/check",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			const workspaceId = c.get("authorized").workspaceId;
+			const body = connectionQuery.parse(await c.req.json());
+			if (!isAutomatedHandoff(body.provider)) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"That handoff method is not one QuickDash connects to.",
+					400,
+				);
+			}
+
+			const connection = await resolveSupplierConnection({
+				workspaceId,
+				...body,
+			});
+			if (!connection) {
+				return respondError(
+					c,
+					"NOT_FOUND",
+					"That supplier is not connected yet.",
+					404,
+				);
+			}
+
+			const mapped = (await listSupplierSkus(workspaceId))
+				.filter((sku) => sku.supplierId === body.supplierId)
+				.map((sku) => sku.supplierSku);
+
+			const result = await getSupplierAdapter(body.provider).checkConnection(
+				connection,
+				mapped,
+			);
+			// Recorded so the settings screen can say "last checked" without
+			// hitting the provider again on every page load.
+			await setSupplierConnectionState({
+				workspaceId,
+				...body,
+				ok: result.ok,
+				error: result.reason ?? null,
+			});
+			return respond(c, result);
+		},
+	);
 
 	app.get("/v1/inventory/suppliers", readAccess, readLimit, async (c) =>
 		respond(c, {

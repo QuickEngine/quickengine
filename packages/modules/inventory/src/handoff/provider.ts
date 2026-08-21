@@ -176,6 +176,19 @@ export interface SupplierFulfilmentAdapter {
 	placeOrder(request: SupplierOrderRequest): Promise<SupplierOrderPlacement>;
 
 	/**
+	 * Ask the supplier to fulfil an order already placed, when the provider did
+	 * not ask on its own.
+	 *
+	 * Optional: most transports have no equivalent. Returns how many requests
+	 * were submitted, where **zero is the good outcome** — it means the provider
+	 * had already done it.
+	 */
+	requestFulfilment?(
+		connection: SupplierConnection,
+		externalOrderId: string,
+	): Promise<number>;
+
+	/**
 	 * 🔴 Takes the RAW body, never a parsed object.
 	 *
 	 * Signatures are computed over exact bytes, so parsing and re-serialising

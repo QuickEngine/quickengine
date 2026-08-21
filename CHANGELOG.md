@@ -137,6 +137,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Security updates for bundled libraries can arrive on their own.** Pinned replacements for
+  vulnerable libraries were locked to one exact version, which meant the next fix for the same
+  library could not be picked up without somebody editing a file by hand. They now accept later
+  patches automatically, and one pin that was holding a library on a version with a known issue has
+  been removed entirely because it was no longer needed.
+
+
 - **Setting up an authenticator no longer fails silently.** Turning on two-factor authentication
   reads the authenticator secret only when there is one to read, so a setup that returns a different
   kind of code says so plainly instead of showing an empty screen. This applies on both screens that

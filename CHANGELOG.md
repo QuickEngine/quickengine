@@ -139,7 +139,8 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 - **Setting up an authenticator no longer fails silently.** Turning on two-factor authentication
   reads the authenticator secret only when there is one to read, so a setup that returns a different
-  kind of code says so plainly instead of showing an empty screen.
+  kind of code says so plainly instead of showing an empty screen. This applies on both screens that
+  offer it, in sign-in and in account settings.
 
 - **Names and web addresses with unusual punctuation are handled in one pass.** Workspace names,
   organisation names, portal addresses and API key origins are trimmed by counting characters rather

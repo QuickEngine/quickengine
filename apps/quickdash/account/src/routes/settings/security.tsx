@@ -79,6 +79,17 @@ function SecurityPage() {
 			setFailure(error?.message ?? "That password was not accepted.");
 			return;
 		}
+		/**
+		 * 🔴 Narrowed with `in`, the same as the auth app's copy of this screen.
+		 *
+		 * Better Auth returns a union: the authenticator path carries the URI and
+		 * backup codes, the one-time-code path carries neither. Reading them
+		 * unconditionally compiled only while that union had a single member.
+		 */
+		if (!("totpURI" in data)) {
+			setFailure("Couldn't start authenticator setup. Try again.");
+			return;
+		}
 		setSecret(data.totpURI.match(/secret=([^&]+)/)?.[1] ?? "");
 		setCodes(data.backupCodes ?? []);
 		setStep("verify");

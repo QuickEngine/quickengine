@@ -75,6 +75,19 @@ function Page() {
 			);
 			return;
 		}
+		/**
+		 * 🔴 Narrowed with `in`, not on a `method` discriminant.
+		 *
+		 * Better Auth returns a union here: the authenticator path carries the URI
+		 * and backup codes, the one-time-code path carries neither. Reading them
+		 * unconditionally compiled only while that union had a single member, and
+		 * broke the moment another was added. `in` narrows whether or not the shape
+		 * is a union, so this survives the next member too.
+		 */
+		if (!("totpURI" in data)) {
+			setError("Couldn't start authenticator setup. Try again.");
+			return;
+		}
 		setSecret(data.totpURI.match(/secret=([^&]+)/)?.[1] ?? "");
 		setBackupCodes(data.backupCodes ?? []);
 		setStep("totp-verify");

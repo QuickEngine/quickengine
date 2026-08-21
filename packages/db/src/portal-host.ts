@@ -34,7 +34,17 @@ export function normalizePortalHost(value: string): string | null {
 		}
 	}
 
-	host = host.replace(/\/.*$/, "").replace(/:\d+$/, "").replace(/\.$/, "");
+	/**
+	 * ⚠️ Cut at the first "/" by index, not with `/\/.*$/`.
+	 *
+	 * That pattern is a polynomial ReDoS on a value made of many slashes, and a
+	 * portal host arrives from a customer-controlled settings field. Everything
+	 * after the first slash is a path and is never part of a hostname, so the
+	 * index is both faster and a more honest description of the rule.
+	 */
+	const pathAt = host.indexOf("/");
+	if (pathAt !== -1) host = host.slice(0, pathAt);
+	host = host.replace(/:\d+$/, "").replace(/\.$/, "");
 
 	// At least one dot, no spaces, no wildcards. `localhost` is deliberately
 	// rejected: a custom portal domain is a public one.

@@ -32,6 +32,7 @@ export * from "./saved-views";
 export * from "./shipments";
 export * from "./shipping-rates";
 export * from "./subscriptions";
+export * from "./supplier-connections";
 export * from "./suppliers";
 export * from "./time-entries";
 export * from "./webhooks";

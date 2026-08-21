@@ -2,6 +2,7 @@ import {
 	and,
 	db,
 	eq,
+	inArray,
 	orderLineItems,
 	orders,
 	purchaseOrderLines,
@@ -44,6 +45,22 @@ import {
 export type RaisedPurchaseOrder = {
 	id: string;
 	number: string;
+	/** Current status, so a caller can tell a fresh ask from one still pending. */
+	status: string;
+	/**
+	 * True when this order was ALREADY raised and is being returned again.
+	 *
+	 * 🔴 It used to be dropped entirely, and that quietly disabled retries. The
+	 * outbox redelivers `order.paid` up to eight times with backoff, but the
+	 * second delivery hit `onConflictDoNothing`, returned nothing, and the caller
+	 * saw an empty list — so a supplier call that failed the first time was never
+	 * attempted again and the purchase order sat in `failed` forever.
+	 *
+	 * The email path still skips these once sent. The adapter path relies on
+	 * `claimPurchaseOrderForDispatch`, which is stricter than any boolean and also
+	 * survives two workers running at once.
+	 */
+	alreadyExisted: boolean;
 	supplierId: string;
 	supplierName: string;
 	handoffMethod: string;
@@ -54,6 +71,8 @@ export type RaisedPurchaseOrder = {
 		description: string;
 		quantity: number;
 		unitCostCents: number | null;
+		/** What the supplier is priced in. Carried so a handoff can state it. */
+		currency: string;
 	}>;
 };
 
@@ -185,7 +204,43 @@ export async function raisePurchaseOrdersForOrder(input: {
 				target: [purchaseOrders.orderId, purchaseOrders.supplierId],
 			})
 			.returning();
-		if (!created) continue;
+
+		if (!created) {
+			// Already raised for this order and supplier. Return it rather than
+			// dropping it, so a retried delivery can still finish a handoff that
+			// failed. Lines are not re-inserted; they were written the first time.
+			const [existing] = await db
+				.select()
+				.from(purchaseOrders)
+				.where(
+					and(
+						eq(purchaseOrders.workspaceId, input.workspaceId),
+						eq(purchaseOrders.orderId, input.orderId),
+						eq(purchaseOrders.supplierId, supplierId),
+					),
+				)
+				.limit(1);
+			if (!existing) continue;
+			raised.push({
+				id: existing.id,
+				number: existing.number,
+				status: existing.status,
+				alreadyExisted: true,
+				supplierId,
+				supplierName: supplier.name,
+				handoffMethod: existing.handoffMethod,
+				handoffTarget: existing.handoffTarget,
+				contactEmail: supplier.contactEmail,
+				lines: group.map((row) => ({
+					supplierSku: row.supplierSku,
+					description: row.name,
+					quantity: row.quantity,
+					unitCostCents: row.unitCostCents,
+					currency: row.currency,
+				})),
+			});
+			continue;
+		}
 
 		await db.insert(purchaseOrderLines).values(
 			group.map((row) => ({
@@ -203,6 +258,8 @@ export async function raisePurchaseOrdersForOrder(input: {
 		raised.push({
 			id: created.id,
 			number: created.number,
+			status: created.status,
+			alreadyExisted: false,
 			supplierId,
 			supplierName: supplier.name,
 			handoffMethod: supplier.handoffMethod,
@@ -213,11 +270,90 @@ export async function raisePurchaseOrdersForOrder(input: {
 				description: row.name,
 				quantity: row.quantity,
 				unitCostCents: row.unitCostCents,
+				currency: row.currency,
 			})),
 		});
 	}
 
 	return raised;
+}
+
+/**
+ * Claim a purchase order for an automated handoff.
+ *
+ * 🔴 The single-call guarantee, and it is a conditional UPDATE rather than a
+ * read-then-write on purpose. Postgres serialises the two writers, so exactly
+ * one gets a row back and exactly one talks to the supplier. A
+ * read-check-then-write would let both pass the check.
+ *
+ * Claimable from `draft` (never attempted) and from `failed` (attempted and
+ * broken, so a later redelivery may legitimately try again). Deliberately NOT
+ * from `sent`, `sending`, `acknowledged` or `shipped` — those either succeeded
+ * or are in flight, and re-sending any of them costs a real second shipment.
+ *
+ * Returns undefined when the claim was lost. That is an ordinary outcome, not an
+ * error: it means a peer already has it.
+ */
+export async function claimPurchaseOrderForDispatch(input: {
+	workspaceId: string;
+	purchaseOrderId: string;
+	now?: Date;
+}) {
+	const now = input.now ?? new Date();
+	const [claimed] = await db
+		.update(purchaseOrders)
+		.set({ status: "sending", failureReason: null, updatedAt: now })
+		.where(
+			and(
+				eq(purchaseOrders.workspaceId, input.workspaceId),
+				eq(purchaseOrders.id, input.purchaseOrderId),
+				inArray(purchaseOrders.status, ["draft", "failed"]),
+			),
+		)
+		.returning();
+	return claimed;
+}
+
+/**
+ * Record that a supplier accepted the order, and under what id.
+ *
+ * `supplierReference` is the join key everything inbound uses: a fulfilment
+ * webhook knows the supplier's own order id and nothing else. `metadata` keeps
+ * the human-facing details beside it so a support conversation can start without
+ * anybody logging into the supplier's system.
+ *
+ * ⚠️ Written immediately after the provider call returns. The window between the
+ * call succeeding and this committing is exactly the gap the adapter's
+ * correlation search exists to close.
+ */
+export async function recordSupplierOrderPlaced(input: {
+	workspaceId: string;
+	purchaseOrderId: string;
+	externalOrderId: string;
+	externalOrderNumber?: string | null;
+	metadata?: Record<string, unknown>;
+	now?: Date;
+}) {
+	const now = input.now ?? new Date();
+	await db
+		.update(purchaseOrders)
+		.set({
+			status: "sent",
+			sentAt: now,
+			failureReason: null,
+			supplierReference: input.externalOrderId,
+			metadata: {
+				externalOrderNumber: input.externalOrderNumber ?? null,
+				...(input.metadata ?? {}),
+			},
+			updatedAt: now,
+		})
+		.where(
+			and(
+				eq(purchaseOrders.workspaceId, input.workspaceId),
+				eq(purchaseOrders.id, input.purchaseOrderId),
+			),
+		);
 }
 
 /** Mark a purchase order as sent, or record why it could not be. */

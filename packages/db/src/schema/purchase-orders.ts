@@ -57,9 +57,22 @@ export const purchaseOrders = pgTable(
 		}),
 		/** Human reference, e.g. `PO-0001`. Sequenced per workspace. */
 		number: text("number").notNull(),
+		/**
+		 * ⚠️ `sending` is a CLAIM, not a state anybody sets by hand.
+		 *
+		 * An automated handoff moves `draft -> sending` with a conditional update
+		 * before it calls the supplier, so only the writer that won the update
+		 * makes the call. Without it, two workers draining the same at-least-once
+		 * event both place the order and the supplier ships twice.
+		 *
+		 * Widening this list needs no migration: the column is plain `text` with
+		 * the set enforced in TypeScript, and the live table carries zero check
+		 * constraints (verified 2026-08-21).
+		 */
 		status: text("status", {
 			enum: [
 				"draft",
+				"sending",
 				"sent",
 				"acknowledged",
 				"shipped",
@@ -113,6 +126,17 @@ export const purchaseOrders = pgTable(
 		index("purchase_orders_supplier_idx").on(table.supplierId),
 		index("purchase_orders_order_idx").on(table.orderId),
 		index("purchase_orders_status_idx").on(table.workspaceId, table.status),
+		/**
+		 * The join key for anything a supplier sends back.
+		 *
+		 * An inbound fulfilment webhook knows the supplier's own order id and
+		 * nothing else, so this lookup happens on every delivery — including the
+		 * redeliveries that at-least-once guarantees.
+		 */
+		index("purchase_orders_supplier_reference_idx").on(
+			table.workspaceId,
+			table.supplierReference,
+		),
 		/**
 		 * 🔴 THE constraint that makes the pipeline safe to retry.
 		 *

@@ -171,6 +171,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **A refund puts the stock back.** Refunding a customer reversed the money and left the count
+  alone, so a returned item stayed sold as far as stock was concerned and a business slowly
+  undercounted what it could sell. Nothing looked wrong while it happened, because the number stays
+  entirely plausible. A full refund now returns the goods to the shelf, and there is a **Restock**
+  choice beside the amount for the times they are not coming back: damaged in transit, lost by the
+  carrier, or a goodwill refund where the customer keeps what they bought. It is only offered on a
+  full refund, because a partial refund is an amount rather than a list of items and names nothing
+  that could be put back.
+
 - **Signing up for a recurring plan actually creates one.** Paying for a subscription recorded the
   order, sent the receipt, and then quietly failed to write the subscription itself, so the customer
   was never charged again and nobody was ever reminded. Nothing on any screen said so. The plan is

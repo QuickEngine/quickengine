@@ -279,7 +279,15 @@ export function refundPaymentCommand(
 				aggregateId: id,
 				aggregateType: "payment",
 				eventName: "payment.refunded",
-				payload: { paymentId: id, refundId: row.id },
+				// `restock` travels with the event because it is the OPERATOR's
+				// decision, not something a handler can work out later: whether the
+				// goods are coming back is a fact about the world, not about the
+				// record. Defaults to true to match the schema.
+				payload: {
+					paymentId: id,
+					refundId: row.id,
+					restock: input.restock ?? true,
+				},
 				version: 1,
 			});
 			return { result: serializeRefund(row), status: 201 };

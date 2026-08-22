@@ -61,6 +61,24 @@ export const refundPaymentInputSchema = z.object({
 	amountCents: z.number().int().min(1).max(MAX_MONEY_CENTS),
 	externalRefundId: z.string().trim().min(1).max(255).nullable().optional(),
 	reason: z.string().trim().max(1_000).nullable().optional(),
+	/**
+	 * Whether the goods go back on the shelf.
+	 *
+	 * 🔴 Defaults to TRUE, because the ordinary refund is a customer changing
+	 * their mind and the item coming back. Defaulting to false would have every
+	 * business slowly undercount what it can sell, which is the bug this
+	 * replaces.
+	 *
+	 * ⚠️ Set it FALSE for a refund where the goods are gone: damaged in transit,
+	 * lost by the carrier, or a goodwill refund where the customer keeps the
+	 * item. A system that always restocks invents stock that does not exist,
+	 * which is how a business oversells and disappoints the next customer.
+	 *
+	 * ⚠️ Only a FULL refund restocks. A partial refund carries no line
+	 * information — a $5 discount on a $50 order names no item — so there is
+	 * nothing to put back and this flag has no effect.
+	 */
+	restock: z.boolean().optional().default(true),
 });
 
 export type RefundPaymentInput = z.input<typeof refundPaymentInputSchema>;

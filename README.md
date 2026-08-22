@@ -73,7 +73,10 @@ with their agreement, and each renewal charged against it without them present; 
 retried and the subscription goes past due before it is ever cancelled.
 QuickDash reads each order as one operational record: purchased items and price breakdown,
 snapshotted destination, payment and refund state, and shipment progress. Shipment creation uses
-that destination as its editable starting point rather than duplicating data entry.
+that destination as its editable starting point rather than duplicating data entry. A full refund
+returns the goods to stock, with an explicit choice beside the amount for the times they are not
+coming back; a partial refund is an amount rather than a list of items, so it restocks nothing and
+does not pretend to.
 
 ---
 

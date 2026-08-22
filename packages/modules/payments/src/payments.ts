@@ -777,10 +777,23 @@ export async function getOrderPaymentSummary(
 	};
 }
 
+/**
+ * Every payment in a workspace, for the mode it is currently in.
+ *
+ * 🔴 A workspace moves between sandbox and live and back, so it accumulates
+ * payments in BOTH. Listing them unfiltered put test cards in the same table as
+ * real money, with nothing on the row to tell them apart.
+ */
 export async function listPayments(workspaceId: string) {
+	const environment = await workspaceEnvironment(workspaceId);
 	return db
 		.select()
 		.from(payments)
-		.where(eq(payments.workspaceId, workspaceId))
+		.where(
+			and(
+				eq(payments.workspaceId, workspaceId),
+				eq(payments.environment, environment),
+			),
+		)
 		.orderBy(sql`${payments.createdAt} desc`, sql`${payments.id} desc`);
 }

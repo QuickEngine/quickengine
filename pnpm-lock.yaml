@@ -919,6 +919,9 @@ importers:
       '@quickengine/mod-orders':
         specifier: workspace:*
         version: link:../modules/orders
+      '@quickengine/mod-payments':
+        specifier: workspace:*
+        version: link:../modules/payments
       '@quickengine/module-registry':
         specifier: workspace:*
         version: link:../module-registry

@@ -8,6 +8,7 @@ import {
 	payments,
 	reportingTrafficEvents,
 	sql,
+	workspaceEnvironment,
 } from "@quickengine/db";
 import { type ReportRangeInput, reportRangeInputSchema } from "./range";
 
@@ -16,6 +17,12 @@ export async function getRevenueSeries(
 	input: ReportRangeInput,
 ) {
 	const range = reportRangeInputSchema.parse(input);
+	/**
+	 * 🔴 A workspace holds records from BOTH modes — it can move between sandbox
+	 * and live and back. Without this, a business that tested first sees its test
+	 * cards in its real revenue chart, and the number looks entirely plausible.
+	 */
+	const environment = await workspaceEnvironment(workspaceId);
 	const collectedBucket = sql<string>`date_trunc(${range.granularity}, timezone(${range.timeZone}, ${payments.succeededAt}))::text`;
 	const refundedBucket = sql<string>`date_trunc(${range.granularity}, timezone(${range.timeZone}, ${payments.refundedAt}))::text`;
 	const [collected, refunded] = await Promise.all([
@@ -30,6 +37,7 @@ export async function getRevenueSeries(
 			.where(
 				and(
 					eq(payments.workspaceId, workspaceId),
+					eq(payments.environment, environment),
 					gte(payments.succeededAt, range.from),
 					lt(payments.succeededAt, range.to),
 				),
@@ -47,6 +55,7 @@ export async function getRevenueSeries(
 			.where(
 				and(
 					eq(payments.workspaceId, workspaceId),
+					eq(payments.environment, environment),
 					gte(payments.refundedAt, range.from),
 					lt(payments.refundedAt, range.to),
 				),

@@ -38,6 +38,8 @@ export * from "./schema";
 export * from "./slug";
 export * from "./support-bundle";
 export * from "./workspace-branding";
+export * from "./workspace-email-templates";
 export * from "./workspace-home";
 export * from "./workspace-input";
 export * from "./workspaces";
+export * from "./workspaces-environment";

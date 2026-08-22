@@ -600,6 +600,8 @@ function ConnectionSection({
 	const [shopDomain, setShopDomain] = useState("");
 	const [token, setToken] = useState("");
 	const [apiVersion, setApiVersion] = useState("2026-07");
+	const [webhookSecret, setWebhookSecret] = useState("");
+	const [replacing, setReplacing] = useState(false);
 	const [failure, setFailure] = useState<string | null>(null);
 	const [checked, setChecked] = useState<{
 		ok: boolean;
@@ -642,6 +644,16 @@ function ConnectionSection({
 					shopDomain: shopDomain.trim(),
 					adminAccessToken: token.trim(),
 					apiVersion: apiVersion.trim(),
+					/**
+					 * 🔴 Without this, tracking never comes back.
+					 *
+					 * Inbound fulfilment events are verified against this secret and
+					 * NOTHING else — an unsigned or unverifiable one is refused, which
+					 * is correct but means an absent secret silently rejects every real
+					 * event too. Optional because a supplier can be connected before
+					 * their webhook is set up, and outbound orders work without it.
+					 */
+					webhookSecret: webhookSecret.trim() || undefined,
 				},
 			});
 		},
@@ -649,8 +661,10 @@ function ConnectionSection({
 		onError: (error: { message?: string }) =>
 			setFailure(error?.message ?? "That connection could not be saved."),
 		onSuccess: () => {
-			// Cleared immediately. The token has no reason to sit in a form field.
+			// Cleared immediately. Neither secret has reason to sit in a form field.
 			setToken("");
+			setWebhookSecret("");
+			setReplacing(false);
 			setChecked(null);
 			void refresh();
 		},
@@ -702,11 +716,14 @@ function ConnectionSection({
 						</p>
 					) : null}
 				</div>
-			) : (
+			) : null}
+
+			{!state?.present || replacing ? (
 				<div className="space-y-2">
 					<p className="text-[11.5px] text-[var(--ink-30)] leading-5">
-						Not connected yet. Orders for this supplier will wait for you to
-						send them by hand.
+						{state?.present
+							? "Everything is replaced together. Enter the current store address and a token, whether or not either has changed."
+							: "Not connected yet. Orders for this supplier will wait for you to send them by hand."}
 					</p>
 					<TextField
 						label="Store address"
@@ -725,11 +742,18 @@ function ConnectionSection({
 						value={apiVersion}
 						onChange={setApiVersion}
 					/>
+					<TextField
+						label="Webhook signing secret"
+						hint="optional now, required before tracking can come back"
+						value={webhookSecret}
+						onChange={setWebhookSecret}
+						placeholder="Shown once when you create the webhook"
+					/>
 				</div>
-			)}
+			) : null}
 
 			<div className="flex items-center gap-2">
-				{state?.present ? null : (
+				{!state?.present || replacing ? (
 					<button
 						type="button"
 						className={quiet}
@@ -740,9 +764,13 @@ function ConnectionSection({
 						}
 						onClick={() => connect.mutate()}
 					>
-						{connect.isPending ? "Connecting…" : "Connect"}
+						{connect.isPending
+							? "Saving…"
+							: state?.present
+								? "Save connection"
+								: "Connect"}
 					</button>
-				)}
+				) : null}
 				{state?.present ? (
 					<button
 						type="button"
@@ -751,6 +779,32 @@ function ConnectionSection({
 						onClick={() => check.mutate()}
 					>
 						{check.isPending ? "Checking…" : "Check connection"}
+					</button>
+				) : null}
+				{/**
+				 * 🔑 The only way to add a webhook secret, or rotate a token.
+				 *
+				 * A connection is normally made BEFORE the webhook exists — the
+				 * secret is shown once, when the webhook is created, which happens
+				 * afterwards. Without this the connection would have to be deleted
+				 * and rebuilt to receive tracking at all.
+				 */}
+				{state?.present && !replacing ? (
+					<button
+						type="button"
+						className={quiet}
+						onClick={() => setReplacing(true)}
+					>
+						Replace
+					</button>
+				) : null}
+				{replacing ? (
+					<button
+						type="button"
+						className={quiet}
+						onClick={() => setReplacing(false)}
+					>
+						Cancel
 					</button>
 				) : null}
 			</div>

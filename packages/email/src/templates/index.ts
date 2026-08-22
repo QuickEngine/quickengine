@@ -1,13 +1,17 @@
 import {
+	applyCopy,
 	DEFAULT_ACCENT,
 	type EmailBrand,
 	escapeHtml,
 	formatDate,
 	formatMoney,
+	renderAuthored,
+	type TemplateCopy,
 } from "./brand";
 import { button, detailRows, heading, paragraph, renderEmail } from "./layout";
 
-export type { EmailBrand } from "./brand";
+export type { EmailBrand, TemplateCopy } from "./brand";
+export * from "./preview";
 
 /**
  * Transactional templates, sent BY a workspace TO its own customers.
@@ -42,10 +46,13 @@ export type OrderLine = {
  */
 export function signInLinkEmail(input: {
 	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
 	url: string;
 	expiresInMinutes: number;
 }): RenderedEmail {
 	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const COPY_TOKENS = { businessName: input.brand.name, url: input.url };
 	const body = [
 		heading("Sign in"),
 		paragraph(
@@ -58,12 +65,24 @@ export function signInLinkEmail(input: {
 	].join("\n");
 
 	return {
-		subject: `Sign in to ${input.brand.name}`,
-		html: renderEmail({
-			brand: input.brand,
-			preheader: `Your sign-in link expires in ${input.expiresInMinutes} minutes.`,
-			body,
-		}),
+		subject: applyCopy(
+			`Sign in to ${input.brand.name}`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		/**
+		 * 🔴 A business's own document replaces ours ENTIRELY, shell included.
+		 * Only the DATA is still ours: `{{details}}` is the generated block and
+		 * the other tokens are values the system knows. Someone able to write a
+		 * total by hand could send a receipt disagreeing with what was charged.
+		 */
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: `Your sign-in link expires in ${input.expiresInMinutes} minutes.`,
+					body,
+				}),
 		text: `Sign in to ${input.brand.name}\n\n${input.url}\n\nThis link expires in ${input.expiresInMinutes} minutes and can be used once. If you didn't request it, ignore this email.`,
 	};
 }
@@ -151,6 +170,8 @@ export function organizationInviteEmail(input: {
 /** Sent the moment an order is recorded. Silence after payment reads as failure. */
 export function orderConfirmationEmail(input: {
 	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
 	orderNumber: string;
 	customerName?: string;
 	lines: readonly OrderLine[];
@@ -168,6 +189,12 @@ export function orderConfirmationEmail(input: {
 		value: formatMoney(line.unitAmount * line.quantity, input.currency),
 	}));
 
+	const COPY_TOKENS = {
+		orderNumber: input.orderNumber,
+		customerName: input.customerName ?? "",
+		businessName: input.brand.name,
+		total: formatMoney(input.total, input.currency),
+	};
 	const body = [
 		heading("Order confirmed"),
 		paragraph(
@@ -194,12 +221,24 @@ export function orderConfirmationEmail(input: {
 	].join("\n");
 
 	return {
-		subject: `Order ${input.orderNumber} confirmed`,
-		html: renderEmail({
-			brand: input.brand,
-			preheader: `Your order is confirmed — ${formatMoney(input.total, input.currency)}.`,
-			body,
-		}),
+		subject: applyCopy(
+			`Order ${input.orderNumber} confirmed`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		/**
+		 * 🔴 A business's own document replaces ours ENTIRELY, shell included.
+		 * Only the DATA is still ours: `{{details}}` is the generated block and
+		 * the other tokens are values the system knows. Someone able to write a
+		 * total by hand could send a receipt disagreeing with what was charged.
+		 */
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: `Your order is confirmed — ${formatMoney(input.total, input.currency)}.`,
+					body,
+				}),
 		text: `Order ${input.orderNumber} confirmed\n\n${input.lines
 			.map(
 				(l) =>
@@ -214,12 +253,21 @@ export function orderConfirmationEmail(input: {
 /** Sent when a shipment leaves. Tracking is the entire payload. */
 export function shippingNoticeEmail(input: {
 	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
 	orderNumber: string;
 	carrier?: string;
 	trackingNumber?: string;
 	trackingUrl?: string;
 }): RenderedEmail {
 	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const COPY_TOKENS = {
+		orderNumber: input.orderNumber,
+		businessName: input.brand.name,
+		carrier: input.carrier ?? "",
+		trackingNumber: input.trackingNumber ?? "",
+		trackingUrl: input.trackingUrl ?? "",
+	};
 	const body = [
 		heading("Your order is on its way"),
 		paragraph(`Order ${escapeHtml(input.orderNumber)} has shipped.`),
@@ -237,14 +285,25 @@ export function shippingNoticeEmail(input: {
 	].join("\n");
 
 	return {
-		subject: `Order ${input.orderNumber} has shipped`,
-		html: renderEmail({
-			brand: input.brand,
-			preheader: input.trackingNumber
-				? `Tracking ${input.trackingNumber}`
-				: "Your order has shipped.",
-			body,
-		}),
+		subject: applyCopy(
+			`Order ${input.orderNumber} has shipped`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		/**
+		 * 🔴 A business's own document replaces ours ENTIRELY, shell included.
+		 * Only the DATA is still ours: `{{details}}` is the generated block and
+		 * the other tokens are values the system knows.
+		 */
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: input.trackingNumber
+						? `Tracking ${input.trackingNumber}`
+						: "Your order has shipped.",
+					body,
+				}),
 		text: `Order ${input.orderNumber} has shipped.${input.trackingNumber ? `\n\nTracking: ${input.trackingNumber}` : ""}${input.trackingUrl ? `\n${input.trackingUrl}` : ""}`,
 	};
 }
@@ -258,6 +317,8 @@ export function shippingNoticeEmail(input: {
  */
 export function bookingConfirmationEmail(input: {
 	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
 	serviceName: string;
 	startsAt: Date | string;
 	durationMinutes?: number;
@@ -265,6 +326,10 @@ export function bookingConfirmationEmail(input: {
 	manageUrl?: string;
 }): RenderedEmail {
 	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const COPY_TOKENS = {
+		serviceName: input.serviceName,
+		businessName: input.brand.name,
+	};
 	const body = [
 		heading("Booking confirmed"),
 		paragraph(`Your ${escapeHtml(input.serviceName)} is booked.`),
@@ -279,12 +344,24 @@ export function bookingConfirmationEmail(input: {
 	].join("\n");
 
 	return {
-		subject: `Booking confirmed — ${formatDate(input.startsAt)}`,
-		html: renderEmail({
-			brand: input.brand,
-			preheader: `${input.serviceName} on ${formatDate(input.startsAt)}`,
-			body,
-		}),
+		subject: applyCopy(
+			`Booking confirmed — ${formatDate(input.startsAt)}`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		/**
+		 * 🔴 A business's own document replaces ours ENTIRELY, shell included.
+		 * Only the DATA is still ours: `{{details}}` is the generated block and
+		 * the other tokens are values the system knows. Someone able to write a
+		 * total by hand could send a receipt disagreeing with what was charged.
+		 */
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: `${input.serviceName} on ${formatDate(input.startsAt)}`,
+					body,
+				}),
 		text: `Booking confirmed\n\n${input.serviceName}\n${formatDate(input.startsAt)}${input.location ? `\n${input.location}` : ""}${input.manageUrl ? `\n\n${input.manageUrl}` : ""}`,
 	};
 }
@@ -292,6 +369,8 @@ export function bookingConfirmationEmail(input: {
 /** A receipt for money actually taken — distinct from the order confirmation. */
 export function paymentReceiptEmail(input: {
 	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
 	reference: string;
 	amount: number;
 	currency: string;
@@ -300,6 +379,11 @@ export function paymentReceiptEmail(input: {
 	viewUrl?: string;
 }): RenderedEmail {
 	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const COPY_TOKENS = {
+		reference: input.reference,
+		businessName: input.brand.name,
+		amount: formatMoney(input.amount, input.currency),
+	};
 	const body = [
 		heading("Payment received"),
 		paragraph(
@@ -319,12 +403,24 @@ export function paymentReceiptEmail(input: {
 	].join("\n");
 
 	return {
-		subject: `Receipt for ${formatMoney(input.amount, input.currency)}`,
-		html: renderEmail({
-			brand: input.brand,
-			preheader: `Payment of ${formatMoney(input.amount, input.currency)} received.`,
-			body,
-		}),
+		subject: applyCopy(
+			`Receipt for ${formatMoney(input.amount, input.currency)}`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		/**
+		 * 🔴 A business's own document replaces ours ENTIRELY, shell included.
+		 * Only the DATA is still ours: `{{details}}` is the generated block and
+		 * the other tokens are values the system knows. Someone able to write a
+		 * total by hand could send a receipt disagreeing with what was charged.
+		 */
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: `Payment of ${formatMoney(input.amount, input.currency)} received.`,
+					body,
+				}),
 		text: `Payment received\n\nReference ${input.reference}\n${formatMoney(input.amount, input.currency)} on ${formatDate(input.paidAt)}${input.viewUrl ? `\n\n${input.viewUrl}` : ""}`,
 	};
 }
@@ -339,6 +435,8 @@ export function paymentReceiptEmail(input: {
  */
 export function invoiceSentEmail(input: {
 	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
 	invoiceNumber: string;
 	customerName?: string;
 	lines: readonly OrderLine[];
@@ -355,6 +453,12 @@ export function invoiceSentEmail(input: {
 		value: formatMoney(line.unitAmount * line.quantity, input.currency),
 	}));
 
+	const COPY_TOKENS = {
+		invoiceNumber: input.invoiceNumber,
+		customerName: input.customerName ?? "",
+		businessName: input.brand.name,
+		total: formatMoney(input.total, input.currency),
+	};
 	const body = [
 		heading(`Invoice ${input.invoiceNumber}`),
 		paragraph(
@@ -383,12 +487,24 @@ export function invoiceSentEmail(input: {
 	].join("\n");
 
 	return {
-		subject: `Invoice ${input.invoiceNumber} from ${input.brand.name}`,
-		html: renderEmail({
-			brand: input.brand,
-			preheader: `${formatMoney(input.total, input.currency)} due${input.dueDate ? ` by ${formatDate(input.dueDate)}` : ""}.`,
-			body,
-		}),
+		subject: applyCopy(
+			`Invoice ${input.invoiceNumber} from ${input.brand.name}`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		/**
+		 * 🔴 A business's own document replaces ours ENTIRELY, shell included.
+		 * Only the DATA is still ours: `{{details}}` is the generated block and
+		 * the other tokens are values the system knows. Someone able to write a
+		 * total by hand could send a receipt disagreeing with what was charged.
+		 */
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: `${formatMoney(input.total, input.currency)} due${input.dueDate ? ` by ${formatDate(input.dueDate)}` : ""}.`,
+					body,
+				}),
 		text: `Invoice ${input.invoiceNumber} from ${input.brand.name}\n\n${input.lines
 			.map(
 				(line) =>

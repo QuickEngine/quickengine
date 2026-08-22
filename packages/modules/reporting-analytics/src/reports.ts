@@ -121,7 +121,16 @@ export async function getWorkspaceReport(
 						refundedCents: sql<string>`coalesce(sum(${payments.amountCents}) filter (where ${payments.refundedAt} >= ${from}::timestamptz and ${payments.refundedAt} < ${to}::timestamptz), 0)::text`,
 					})
 					.from(payments)
-					.where(eq(payments.workspaceId, workspaceId))
+					.where(
+						and(
+							eq(payments.workspaceId, workspaceId),
+							// Sandbox payments are test cards, never revenue.
+							eq(
+								payments.environment,
+								workspace?.environment === "test" ? "test" : "live",
+							),
+						),
+					)
 					.groupBy(payments.currency)
 			: Promise.resolve([]),
 		has(moduleIds.orders)

@@ -233,6 +233,86 @@ describe("raising purchase orders from a paid order", () => {
 		});
 	});
 
+	/**
+	 * 🔴 A supplier a business has STOPPED using must not receive orders.
+	 *
+	 * This was claimed by a comment and enforced by nothing: the filter was
+	 * `rows.filter(row => row.supplierId)`, which is always true after an inner
+	 * join. A product mapped to two suppliers — one current, one removed — raised
+	 * a purchase order to BOTH, so the business paid twice and a supplier it had
+	 * dropped shipped coffee nobody meant to order from them.
+	 */
+	it("does not ask a supplier whose mapping was removed", async () => {
+		const sql = testDbClient();
+		await sql`
+			update supplier_skus set archived_at = now()
+			where workspace_id = ${workspaceId} and supplier_id = ${supplierId}
+		`;
+
+		expect(await raisePurchaseOrdersForOrder({ workspaceId, orderId })).toEqual(
+			[],
+		);
+	});
+
+	it("does not ask a supplier who has been archived", async () => {
+		const sql = testDbClient();
+		await sql`
+			update suppliers set archived_at = now() where id = ${supplierId}
+		`;
+
+		expect(await raisePurchaseOrdersForOrder({ workspaceId, orderId })).toEqual(
+			[],
+		);
+	});
+
+	/**
+	 * 🔴 Two suppliers, one product, ONE purchase order.
+	 *
+	 * `supplier_skus` is unique on (supplier, product) but not on product alone,
+	 * so dual sourcing is allowed. Grouping straight into purchase orders asked
+	 * BOTH suppliers for the same coffee — two bags bought and shipped for one
+	 * customer, and the business paying twice.
+	 */
+	it("asks only one supplier when two can supply the same product", async () => {
+		const sql = testDbClient();
+		const rivalId = "00000000-0000-4000-8000-0000000015c2";
+		await sql`
+			insert into suppliers (id, workspace_id, name, handoff_method)
+			values (${rivalId}, ${workspaceId}, 'Rival Roasters', 'email')
+		`;
+		// Dearer than EZPZ's 1500, so EZPZ must win.
+		await sql`
+			insert into supplier_skus
+				(workspace_id, supplier_id, catalog_item_id, supplier_sku, unit_cost_cents, currency)
+			values (${workspaceId}, ${rivalId}, ${roastedId}, 'RIVAL-ETH', 1900, 'CAD')
+		`;
+
+		const raised = await raisePurchaseOrdersForOrder({ workspaceId, orderId });
+
+		expect(raised).toHaveLength(1);
+		expect(raised[0].supplierName).toBe("EZPZ Coffee");
+	});
+
+	/** An unknown cost is not a cheap one, so it must not win on price. */
+	it("prefers a priced mapping over one with no cost recorded", async () => {
+		const sql = testDbClient();
+		const rivalId = "00000000-0000-4000-8000-0000000015c3";
+		await sql`
+			insert into suppliers (id, workspace_id, name, handoff_method)
+			values (${rivalId}, ${workspaceId}, 'Unpriced Roasters', 'email')
+		`;
+		await sql`
+			insert into supplier_skus
+				(workspace_id, supplier_id, catalog_item_id, supplier_sku, unit_cost_cents, currency)
+			values (${workspaceId}, ${rivalId}, ${roastedId}, 'UNPRICED-ETH', null, 'CAD')
+		`;
+
+		const raised = await raisePurchaseOrdersForOrder({ workspaceId, orderId });
+
+		expect(raised).toHaveLength(1);
+		expect(raised[0].supplierName).toBe("EZPZ Coffee");
+	});
+
 	it("raises nothing for an order it cannot find", async () => {
 		const raised = await raisePurchaseOrdersForOrder({
 			workspaceId,

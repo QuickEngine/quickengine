@@ -45,16 +45,37 @@ export const createResendEmailProvider = (
 ): EmailProvider => {
 	const resend = new Resend(apiKey);
 
+	const deliver = (sender: EmailAddress, input: SendEmailInput) =>
+		resend.emails.send({
+			from: sender,
+			to: input.to,
+			subject: input.subject,
+			replyTo: input.replyTo,
+			html: input.html ?? input.text ?? "",
+			text: input.text,
+		});
+
 	return {
 		async send(input) {
-			const { data, error } = await resend.emails.send({
-				from: input.from ?? from,
-				to: input.to,
-				subject: input.subject,
-				replyTo: input.replyTo,
-				html: input.html ?? input.text ?? "",
-				text: input.text,
-			});
+			let { data, error } = await deliver(input.from ?? from, input);
+
+			/**
+			 * 🔴 A business's own sender is REFUSED until its domain is verified with
+			 * the provider, and that refusal is the security boundary — without it,
+			 * setting a sender to somebody else's address would be a spoofing tool.
+			 *
+			 * ⚠️ But a refused send must not become NO send. A customer who receives
+			 * nothing has lost their receipt or their tracking number; one who
+			 * receives platform-branded mail has only lost the branding. So an
+			 * unverified sender falls back rather than failing, and says so loudly
+			 * enough that somebody fixes the domain.
+			 */
+			if (error && input.from && input.from !== from) {
+				console.warn(
+					`[email] sender "${input.from}" was refused, falling back to the platform sender. Verify the domain with the mail provider. Reason: ${error.message}`,
+				);
+				({ data, error } = await deliver(from, input));
+			}
 
 			if (error) {
 				throw new Error(`Resend send failed: ${error.message}`);

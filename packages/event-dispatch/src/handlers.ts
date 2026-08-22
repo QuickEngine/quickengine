@@ -9,6 +9,8 @@ import {
 import { getSearchProvider, type SearchProvider } from "@quickengine/search";
 import { customerNotificationHandler } from "./customer-notifications";
 import { operatorNotificationHandler } from "./operator-notifications";
+import { referralSettlementHandler } from "./referral-settlement";
+import { subscriptionPaymentMethodHandler } from "./subscription-payment-method";
 import { supplierHandoffHandler } from "./supplier-handoff";
 import { webhookFanoutHandler } from "./webhooks";
 
@@ -132,6 +134,14 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 		// Routes a paid order to whoever actually ships it. Writes the record
 		// whatever happens; only the notifying varies by handoff method.
 		supplierHandoffHandler(),
+		// 🔴 Credits the partner who brought the sale, and takes it back on a
+		// refund. Until this was registered the two functions that do it had no
+		// caller at all, so a partner earned nothing however much they sold.
+		referralSettlementHandler(),
+		// 🔴 Remembers the card the customer just used, so the subscription they
+		// signed up for can actually renew. Without it a subscription charges
+		// nothing on its second month and nothing says why.
+		subscriptionPaymentMethodHandler(),
 		webhookFanoutHandler(),
 	];
 }

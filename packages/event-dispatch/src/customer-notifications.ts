@@ -202,12 +202,22 @@ async function recordLifecycle(event: OutboxEvent) {
  * opened Connect still gets mail — its own name, and the platform support
  * address as a last resort.
  */
-async function brandFor(workspaceId: string): Promise<EmailBrand | null> {
+/**
+ * ⚠️ `EmailBrand` plus a sender, not `EmailBrand` itself.
+ *
+ * Templates render a brand; they have no business knowing what address the mail
+ * leaves from. Widening the template type would push a transport concern into
+ * every one of them.
+ */
+async function brandFor(
+	workspaceId: string,
+): Promise<(EmailBrand & { sender?: string }) | null> {
 	const brand = await resolveBrand(workspaceId);
 	if (!brand) return null;
 	return {
 		name: brand.name,
 		supportEmail: brand.supportEmail,
+		sender: brand.sender,
 		logoUrl: brand.logoUrl,
 		tagline: brand.tagline,
 		accentColor: brand.accentColor,
@@ -420,6 +430,8 @@ async function defaultSend(input: {
 export function customerNotificationHandler(
 	send: (input: {
 		to: string;
+		/** The business's own `From:`. Absent means the platform sender. */
+		from?: string;
 		subject: string;
 		html: string;
 		text: string;
@@ -453,8 +465,16 @@ export function customerNotificationHandler(
 				const notification = await buildNotification(event, brand);
 				if (!notification) return;
 
+				/**
+				 * 🔴 `from` is what stops a Caffeinate receipt arriving as QuickEngine.
+				 *
+				 * Undefined when the workspace has not set a sender, in which case the
+				 * transport uses the platform address — the state every workspace
+				 * starts in.
+				 */
 				await send({
 					to: notification.to,
+					from: brand.sender,
 					subject: notification.email.subject,
 					html: notification.email.html,
 					text: notification.email.text,

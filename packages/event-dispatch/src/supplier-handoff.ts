@@ -86,6 +86,37 @@ export function supplierHandoffHandler(
 				throw error;
 			}
 
+			/**
+			 * 🔴 A SANDBOX order never reaches a real supplier.
+			 *
+			 * Supplier connections carry no mode — there is one Shopify store, one
+			 * token, one Collective link — so nothing downstream can tell a test
+			 * order from a real one. Without this a test checkout placed a genuine
+			 * order in the business's real Shopify store, Collective routed it, and
+			 * a supplier shipped actual goods for a sale that never happened.
+			 *
+			 * ⚠️ The purchase order is still RAISED, so the operator can see what a
+			 * real order would have asked for. It is simply never sent, and says so.
+			 */
+			const { workspaceEnvironment } = await import("@quickengine/db");
+			const environment = await workspaceEnvironment(event.workspaceId);
+			if (environment === "test") {
+				for (const purchaseOrder of raised) {
+					await markPurchaseOrderSent({
+						workspaceId: event.workspaceId,
+						purchaseOrderId: purchaseOrder.id,
+						failureReason:
+							"This workspace is in sandbox, so nothing was sent to the supplier. Switch to live to place real orders.",
+					});
+				}
+				log("supplier-handoff.skipped_sandbox", {
+					eventId: event.id,
+					orderId,
+					raised: raised.length,
+				});
+				return;
+			}
+
 			for (const purchaseOrder of raised) {
 				if (purchaseOrder.handoffMethod === "email") {
 					await sendByEmail(event, purchaseOrder, log);
@@ -124,22 +155,25 @@ async function sendByEmail(
 
 	try {
 		const { getEmailProvider } = await import("@quickengine/email");
-		const { resolveBrand, usesPlatformSupportEmail } = await import(
-			"@quickengine/db"
-		);
+		const { resolveBrand } = await import("@quickengine/db");
 		const brand = await resolveBrand(event.workspaceId);
 
 		/**
-		 * 🔴 The fail-closed gate. Without a verified sending domain the only
-		 * address available is ours, and a supplier must never receive a purchase
-		 * order from QuickDash on a business's behalf.
+		 * 🔴 The fail-closed gate, and it checks the SENDER.
+		 *
+		 * It used to test the support address, which is only shown in a footer and
+		 * says nothing about what a message is sent from — so it passed for any
+		 * workspace that had filled in a support email, and then no `from` was ever
+		 * passed anyway. Every purchase order would have reached a supplier from
+		 * QuickEngine, on a business's behalf, to a person who has never heard of
+		 * us.
 		 */
-		if (!brand || usesPlatformSupportEmail(brand)) {
+		if (!brand?.sender) {
 			await markPurchaseOrderSent({
 				workspaceId: event.workspaceId,
 				purchaseOrderId: purchaseOrder.id,
 				failureReason:
-					"No verified sending domain, so this was not sent. Verify your domain, then send it by hand.",
+					"No sending address is set for this business, so this was not sent. Set one in settings, then send it by hand.",
 			});
 			return;
 		}
@@ -147,6 +181,10 @@ async function sendByEmail(
 		const body = renderPurchaseOrder(purchaseOrder);
 		await getEmailProvider().send({
 			to,
+			// 🔑 From the BUSINESS. A supplier has no relationship with the platform.
+			from: brand.sender,
+			// Replies go to the humans, not to the sending mailbox.
+			replyTo: brand.supportEmail,
 			subject: `Purchase order ${purchaseOrder.number} from ${brand.name}`,
 			// Plain text on purpose: a purchase order is read by somebody keying it
 			// into their own system, and no branding of ours belongs anywhere near it.

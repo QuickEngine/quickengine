@@ -8,6 +8,25 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A subscription actually charges.** Renewals have been scheduled and priced correctly for a
+  while, but nothing ever took the money, so every subscription in existence renewed for free. A
+  customer's card is now kept on file when they first pay, with their agreement, and each renewal is
+  charged against it without them having to be there. A renewal that fails is retried and the
+  subscription goes past due before it is ever cancelled, so one declined card does not end a
+  customer relationship.
+
+- **Your emails come from you.** A workspace can set the address its customer emails are sent from,
+  so a receipt from a coffee company arrives from the coffee company rather than from QuickEngine.
+  Until the address is verified with the mail provider, sending falls back rather than failing, and
+  the settings screen says which state it is in.
+
+- **Write your own customer emails.** Every customer-facing email can now be edited as a whole
+  document, HTML and CSS together, including the surrounding shell. A preview shows the real thing
+  with realistic contents, and a test send puts it in your own inbox before a customer ever sees it.
+  Only the actual order details stay under the system's control, so a template can never promise a
+  total that is not what was charged.
+
+
 - **See everything you have asked your suppliers for.** A Purchase orders page under Inventory shows
   every ask raised from a paid order: the supplier, what was asked for and what it costs you, which
   customer order it belongs to, where it has got to, and the tracking once they ship. Anything that
@@ -151,6 +170,48 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   button with it, so nothing is left offering to act on something that is not there.
 
 ### Fixed
+
+- **Signing up for a recurring plan actually creates one.** Paying for a subscription recorded the
+  order, sent the receipt, and then quietly failed to write the subscription itself, so the customer
+  was never charged again and nobody was ever reminded. Nothing on any screen said so. The plan is
+  now recorded against the same customer the order belongs to, and if it ever cannot be, whoever
+  runs the business is told rather than a line being written to a log nobody reads.
+
+- **Partners are paid the commission they earned.** A referral was recorded when an order was
+  created and then nothing ever completed it, so no partner or creator had ever actually been
+  credited for a sale. Commissions are now settled when the customer's payment succeeds, and
+  reversed if that order is later refunded or cancelled. A referral attached to an order the
+  customer abandoned at payment moves to the order they eventually paid for, instead of being
+  stranded on one that never settled. Two parts of the system also disagreed about rounding a
+  commission to the cent; both now round the same way, in the customer's favour.
+
+- **A test order can never be counted as real money.** Sandbox and live records share the same
+  tables, and eleven places read them without asking which was which. The worst was total revenue,
+  where paying with a test card added to what the business had actually earned. Reports, the payment
+  list and review verification were affected too. A check now runs on every build and fails if a new
+  query forgets, so this cannot come back quietly.
+
+- **Sandbox news and real news are no longer the same news.** Notifications carried no workspace and
+  no mode, so a test order's "New order" was indistinguishable from a real customer paying. Each
+  workspace now shows only its own, in its own mode. Account-level notices — an invitation, a
+  billing notice — have no mode and still appear everywhere, which is where they belong.
+
+- **A test order can no longer reach a real supplier.** A sandbox checkout placed a genuine order in
+  a supplier's own system, and a supplier would have picked, packed and shipped real goods for a
+  sale that never happened. Sandbox orders now stop at the handoff, and the purchase order is still
+  raised so it is visible rather than silently dropped.
+
+- **A supplier order keeps the customer's address.** Orders placed into a supplier's system were
+  losing the delivery address entirely, which would have left a supplier holding a paid order with
+  nowhere to send it.
+
+- **Archived suppliers stay out of the purchase order list.** The filter meant to exclude them was
+  written so that it could never exclude anything.
+
+- **Checking a supplier connection works the first time.** Saving a connection and immediately
+  checking it reported that no connection existed, because the check refused to look at one that had
+  not been checked yet — which it could not have been.
+
 
 - **A subscription plan can no longer be created with no price.** Typing something that is not a
   number left the plan at zero and charged every customer on it nothing, forever, with nothing on

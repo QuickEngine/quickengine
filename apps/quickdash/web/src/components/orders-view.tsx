@@ -421,7 +421,7 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
 	// The dots come from the bell, so marking a notification read clears
 	// the row it pointed at.
-	const rowSignal = useRecordSignals();
+	const rowSignal = useRecordSignals(workspaceId);
 	const orders = useQuery({
 		queryKey: ["quickdash", workspaceId, "orders"],
 		queryFn: async () =>

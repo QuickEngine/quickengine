@@ -3,6 +3,7 @@ import {
 	db,
 	eq,
 	inArray,
+	isNull,
 	orderLineItems,
 	orders,
 	purchaseOrderLines,
@@ -144,14 +145,58 @@ export async function raisePurchaseOrdersForOrder(input: {
 			and(
 				eq(supplierSkus.catalogItemId, orderLineItems.catalogItemId),
 				eq(supplierSkus.workspaceId, input.workspaceId),
+				/**
+				 * 🔴 The archived filter belongs HERE, in the join.
+				 *
+				 * It used to be a `.filter(row => row.supplierId)` below, which is
+				 * always true after an inner join and therefore did nothing — while
+				 * the comment beside it claimed archived mappings did not route. A
+				 * supplier removed from a product still received its orders, and the
+				 * code said the opposite.
+				 */
+				isNull(supplierSkus.archivedAt),
+			),
+		)
+		.innerJoin(
+			suppliers,
+			and(
+				eq(suppliers.id, supplierSkus.supplierId),
+				// An archived SUPPLIER routes nothing either, for the same reason.
+				isNull(suppliers.archivedAt),
 			),
 		)
 		.where(eq(orderLineItems.orderId, input.orderId));
 
-	// Archived mappings do not route: a supplier a business has stopped using
-	// must not receive orders because an old row was never deleted.
-	const live = rows.filter((row) => row.supplierId);
-	if (live.length === 0) return [];
+	if (rows.length === 0) return [];
+
+	/**
+	 * 🔴 ONE supplier per line, chosen here, or the business pays twice.
+	 *
+	 * `supplier_skus` is unique on (supplier, product) but NOT on product alone —
+	 * dual sourcing is legitimate, so two suppliers may both map the same coffee.
+	 * Grouping straight into purchase orders then asked BOTH of them for it: two
+	 * bags bought, two bags shipped, one customer.
+	 *
+	 * ⚠️ Cheapest wins, oldest mapping breaks a tie. Deterministic on purpose —
+	 * an arbitrary choice would make a paid order depend on row order, and the
+	 * same order would route differently on a retry.
+	 *
+	 * A mapping with no cost recorded sorts LAST: an unknown price is not a
+	 * cheap one, and treating it as zero would silently prefer the supplier
+	 * somebody had not finished setting up.
+	 */
+	const chosen = new Map<string, (typeof rows)[number]>();
+	for (const row of rows) {
+		const held = chosen.get(row.lineId);
+		if (!held) {
+			chosen.set(row.lineId, row);
+			continue;
+		}
+		const cost = row.unitCostCents ?? Number.POSITIVE_INFINITY;
+		const heldCost = held.unitCostCents ?? Number.POSITIVE_INFINITY;
+		if (cost < heldCost) chosen.set(row.lineId, row);
+	}
+	const live = [...chosen.values()];
 
 	const bySupplier = new Map<string, typeof live>();
 	for (const row of live) {

@@ -240,17 +240,19 @@ function ModuleItem({
 	const children = MODULE_CHILDREN[module.id];
 	const within = pathname === base || pathname.startsWith(`${base}/`);
 	/**
-	 * Open because you are inside it, OR because you opened it and we remembered.
+	 * Open because you opened it, and nothing else.
 	 *
-	 * 🔴 The `within` half is not optional: the section you are standing in must
-	 * never be collapsed, whatever was stored. The remembered half is what
-	 * survives a refresh — previously the URL was the only input, so reloading
-	 * shut every other group you had opened.
+	 * 🔴 Being INSIDE a group no longer forces it open. It used to — `within ||
+	 * open` — which meant the one group you were actually using was the one group
+	 * you could not collapse. The caret was there, it just did nothing, and
+	 * "collapse all" left a section standing.
 	 *
-	 * ⚠️ `within` also means "collapse all" cannot shut the section you are
-	 * standing in, which is correct: hiding the page you are on is not tidying.
+	 * ⚠️ Navigating into a group still OPENS it (see the effect in the nav), so
+	 * the useful default is unchanged. The difference is that it is now a
+	 * starting point rather than a rule, which is how the account sidebar has
+	 * always behaved.
 	 */
-	const expanded = within || open;
+	const expanded = open;
 	// Only while COLLAPSED: once open, each child shows its own, and two dots for
 	// one fact reads as two problems.
 	//
@@ -429,6 +431,28 @@ export function WorkspaceNav({
 	const [openModules, setOpenModules] = useState<Set<string>>(() =>
 		readOpenModules(workspaceId),
 	);
+
+	/**
+	 * 🔑 Walking into a group opens it, once.
+	 *
+	 * This is what makes collapsing possible: the group you navigate to starts
+	 * expanded, and from then on it obeys you. Writing it into the remembered set
+	 * rather than deriving it means a later collapse actually sticks.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the path, not the setter
+	useEffect(() => {
+		const active = modules.find((module) => {
+			const base = `/${workspaceId}/${module.id}`;
+			return pathname === base || pathname.startsWith(`${base}/`);
+		});
+		if (!active || !MODULE_CHILDREN[active.id]) return;
+		setOpenModules((current) => {
+			if (current.has(active.id)) return current;
+			const updated = new Set(current).add(active.id);
+			writeOpenModules(workspaceId, updated);
+			return updated;
+		});
+	}, [pathname, workspaceId]);
 
 	const toggleModule = useCallback(
 		(moduleId: string, next: boolean) => {

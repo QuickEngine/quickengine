@@ -58,7 +58,7 @@ const available = (item: InventoryItem) => item.onHand - item.reserved;
 
 export function InventoryView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
-	const rowSignal = useRecordSignals();
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	// The panel needs the product NAME, which the inventory row does not carry.
 	const [selected, setSelected] = useState<{

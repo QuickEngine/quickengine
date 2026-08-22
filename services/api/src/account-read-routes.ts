@@ -5,6 +5,7 @@ import {
 	listOrganizationMembers,
 	listWorkspacesForOrganization,
 	workspaceBelongsToOrganization,
+	workspaceEnvironment,
 } from "@quickengine/db";
 import { getWorkspaceModules, listModules } from "@quickengine/module-registry";
 import type { Hono } from "hono";
@@ -70,11 +71,30 @@ export function registerAccountReadRoutes(
 		}),
 	);
 
+	/**
+	 * The bell.
+	 *
+	 * 🔴 `?workspaceId=` narrows to that workspace's MODE, and it matters.
+	 * Sandbox and live records live in the same tables, so without it a test
+	 * order's "New order" is indistinguishable from a real customer paying —
+	 * and acting on a test, or ignoring a real sale, are both failures.
+	 *
+	 * ⚠️ Account-level notifications — an invitation, a billing notice — carry no
+	 * environment and appear in BOTH. They are not commerce and have no mode, and
+	 * hiding them from a sandbox would lose the ones that matter most.
+	 *
+	 * Omitting the parameter returns everything, which is what the account app
+	 * wants: it is not standing in a workspace.
+	 */
 	app.get("/v1/account/notifications", session, async (c) => {
 		const { userId } = c.get("account");
+		const workspaceId = c.req.query("workspaceId");
+		const environment = workspaceId
+			? await workspaceEnvironment(workspaceId)
+			: undefined;
 		const [items, unread] = await Promise.all([
-			listNotifications(userId),
-			countUnreadNotifications(userId),
+			listNotifications(userId, { environment }),
+			countUnreadNotifications(userId, { environment }),
 		]);
 		return respond(c, { items, unread });
 	});

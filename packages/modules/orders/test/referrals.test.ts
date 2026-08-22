@@ -131,6 +131,95 @@ describe("the three rules that stop this being free money", () => {
 		expect(!second.ok && second.reason).toBe("ALREADY_REFERRED");
 	});
 
+	/**
+	 * 🔴 The abandoned checkout. A referral is written BEFORE payment, so a
+	 * shopper whose card is declined leaves a `pending` row behind. Rejecting on
+	 * that row meant they could never be referred again — the first order never
+	 * settled so nobody was paid, and the retry carried no referral at all. The
+	 * referrer lost the reward, silently, for somebody hesitating.
+	 */
+	it("lets the same referrer try again after a checkout was abandoned", async () => {
+		const aliceCode = await issueReferralCode({
+			workspaceId,
+			clientRecordId: alice,
+		});
+		const first = await evaluateReferral({
+			workspaceId,
+			code: aliceCode.code,
+			referredClientRecordId: bob,
+			settings: ON,
+			orderSubtotalCents: 10_000,
+		});
+		expect(first.ok).toBe(true);
+		if (!first.ok) return;
+		await recordReferral({
+			workspaceId,
+			referralCodeId: first.referralCodeId,
+			referrerClientRecordId: alice,
+			referredClientRecordId: bob,
+			orderId: await anOrder(bob),
+			rewardType: first.rewardType,
+			rewardAmountCents: first.rewardAmountCents,
+		});
+
+		// Bob's payment failed. He comes back and uses Alice's code again.
+		const retry = await evaluateReferral({
+			workspaceId,
+			code: aliceCode.code,
+			referredClientRecordId: bob,
+			settings: ON,
+			orderSubtotalCents: 10_000,
+		});
+		expect(retry.ok).toBe(true);
+	});
+
+	/**
+	 * ⚠️ Retiring the stale row is what stops the reward being owed twice. It
+	 * never pays on its own — settlement only touches the order that settled —
+	 * but it would sit in the referrer's pending earnings as money that is never
+	 * coming.
+	 */
+	it("retires the abandoned attempt rather than leaving it pending", async () => {
+		const aliceCode = await issueReferralCode({
+			workspaceId,
+			clientRecordId: alice,
+		});
+		const evaluated = await evaluateReferral({
+			workspaceId,
+			code: aliceCode.code,
+			referredClientRecordId: bob,
+			settings: ON,
+			orderSubtotalCents: 10_000,
+		});
+		if (!evaluated.ok) throw new Error("expected a referral");
+		const shared = {
+			workspaceId,
+			referralCodeId: evaluated.referralCodeId,
+			referrerClientRecordId: alice,
+			referredClientRecordId: bob,
+			rewardType: evaluated.rewardType,
+			rewardAmountCents: evaluated.rewardAmountCents,
+		};
+		await recordReferral({ ...shared, orderId: await anOrder(bob) });
+		const second = await anOrder(bob);
+		await recordReferral({ ...shared, orderId: second });
+
+		const sql = testDbClient();
+		const rows = await sql`
+			select status, order_id from referrals
+			where workspace_id = ${workspaceId} and referred_client_record_id = ${bob}
+		`;
+		/**
+		 * 🔴 ONE row, pointed at the order that is still live. `referrals` is
+		 * unique on (workspace, customer), so the abandoned attempt cannot be left
+		 * beside a new one — it has to move, or the reward stays pinned to an
+		 * order that will never settle.
+		 */
+		expect(rows).toHaveLength(1);
+		expect(rows[0].status).toBe("pending");
+		expect(rows[0].order_id).toBe(second);
+	});
+
 	it("lets the database decide when two checkouts race", async () => {
 		const { code, ...rest } = await issueReferralCode({
 			workspaceId,
@@ -160,8 +249,23 @@ describe("the three rules that stop this being free money", () => {
 					}),
 			),
 		);
-		// Exactly one wins — the unique index, not a check somebody remembered.
-		expect(attempts.filter(Boolean)).toHaveLength(1);
+		/**
+		 * 🔴 The invariant is ONE ROW, not one winner.
+		 *
+		 * This used to assert that exactly one call returned true, which encoded
+		 * the old behaviour: the loser's order got no referral at all. If that
+		 * order was the one the customer actually paid for, the referrer was never
+		 * paid. The referral now moves to the most recent attempt, so whichever
+		 * order settles carries the reward — and the unique index still guarantees
+		 * a customer can only ever have one.
+		 */
+		expect(attempts.some(Boolean)).toBe(true);
+		const sql = testDbClient();
+		const rows = await sql`
+			select id from referrals
+			where workspace_id = ${workspaceId} and referred_client_record_id = ${bob}
+		`;
+		expect(rows).toHaveLength(1);
 	});
 
 	it("refuses when the programme is switched off", async () => {

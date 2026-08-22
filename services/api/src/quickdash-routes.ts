@@ -2,14 +2,22 @@ import { trackProductEvent } from "@quickengine/analytics";
 import {
 	claimIdempotencyKey,
 	completeFirstActionChecklistState,
+	db,
+	eq,
 	getFirstActionChecklistState,
 	getQuickDashOrientationState,
 	getWorkspaceHome,
 	listAccessibleWorkspaces,
+	quickengineUsers,
+	readEmailTemplateCopy,
+	readWorkspaceBranding,
 	releaseIdempotencyKey,
+	resolveBrand,
 	restartQuickDashOrientation,
+	saveEmailTemplateCopy,
 	saveFirstActionChecklistState,
 	saveQuickDashOrientationOutcome,
+	saveWorkspaceBranding,
 } from "@quickengine/db";
 import {
 	declineContract,
@@ -67,6 +75,18 @@ export function registerQuickDashRoutes(
 		keyCapability: "contracts:write",
 		module: "contracts-esign",
 		sessionCapability: "records.write",
+	});
+	/**
+	 * 🔴 No `module`, and `workspace.manage` rather than `records.write`.
+	 *
+	 * How a business appears to its own customers is a WORKSPACE setting, not a
+	 * record in a module. Reusing the contracts authorizer here made saving a
+	 * support email fail with "The contracts-esign module is not enabled", which
+	 * is both wrong and impossible to act on.
+	 */
+	const manage = authorizeWorkspace(options.platform, {
+		keyCapability: "catalog:read",
+		sessionCapability: "workspace.manage",
 	});
 	const operateFiles = authorizeWorkspace(options.platform, {
 		keyCapability: "files:write",
@@ -252,6 +272,197 @@ export function registerQuickDashRoutes(
 			},
 			workspaces,
 		});
+	});
+
+	/**
+	 * How a business appears to its own customers.
+	 *
+	 * 🔴 Until this existed the branding row was created only by a local script,
+	 * so in production a business could never set its own name, support address
+	 * or sender — and every email it sent went out as the platform. A receipt for
+	 * a coffee order arriving from QuickEngine is the most visible way the
+	 * platform shows through, and the shopper has no relationship with us.
+	 */
+	/**
+	 * ⚠️ Colour is checked against a solid hex on purpose. Mail clients discard
+	 * `oklch()` and custom properties, so an unvalidated value renders as no
+	 * colour at all in exactly the place branding matters most.
+	 */
+	/**
+	 * ⚠️ Length-capped, and deliberately plain text. A subject line is truncated
+	 * by every mail client past about 70 characters, and a heading that wraps
+	 * three times looks broken in exactly the place branding matters.
+	 */
+	const templateCopySchema = z.object({
+		subject: z.string().trim().max(200).nullable().optional(),
+		/**
+		 * ⚠️ Capped at 100k. A whole email document is legitimately large, but an
+		 * unbounded text field reachable by an authenticated write is a way to
+		 * fill a database one request at a time.
+		 */
+		html: z.string().max(100_000).nullable().optional(),
+	});
+
+	const brandingInputSchema = z.object({
+		displayName: z.string().trim().max(120).nullable().optional(),
+		supportEmail: z.string().trim().max(200).nullable().optional(),
+		senderEmail: z.string().trim().max(200).nullable().optional(),
+		websiteUrl: z.string().trim().max(300).nullable().optional(),
+		tagline: z.string().trim().max(200).nullable().optional(),
+		accentColor: z
+			.string()
+			.trim()
+			.regex(/^#[0-9a-fA-F]{6}$/, "Use a six digit hex colour, like #6B4423.")
+			.nullable()
+			.optional(),
+		logoUrl: z.string().trim().max(500).nullable().optional(),
+	});
+
+	app.get("/v1/quickdash/branding", view, async (c) =>
+		respond(c, await readWorkspaceBranding(c.get("authorized").workspaceId)),
+	);
+
+	app.patch("/v1/quickdash/branding", manage, async (c) => {
+		const body = brandingInputSchema.parse(await c.req.json());
+		await saveWorkspaceBranding(c.get("authorized").workspaceId, body);
+		return respond(
+			c,
+			await readWorkspaceBranding(c.get("authorized").workspaceId),
+		);
+	});
+
+	/**
+	 * Every email a customer can receive, rendered with this business's brand.
+	 *
+	 * 🔑 Rendered SERVER-SIDE from the real templates rather than mocked up in the
+	 * console. A preview drawn separately is a second implementation that drifts,
+	 * and the first time anybody notices is when a customer gets the version that
+	 * did not drift.
+	 *
+	 * ⚠️ `@quickengine/email/templates` — the pure subpath. The package root
+	 * exports the Resend client, and importing that here would drag a provider
+	 * SDK into route registration. See hard rule 12.
+	 */
+	app.get("/v1/quickdash/email-templates", view, async (c) => {
+		const { workspaceId } = c.get("authorized");
+		const brand = await resolveBrand(workspaceId);
+		if (!brand) {
+			return respondError(c, "NOT_FOUND", "That workspace was not found.", 404);
+		}
+		const { emailTemplatePreviews } = await import(
+			"@quickengine/email/templates"
+		);
+		const copy = await readEmailTemplateCopy(workspaceId);
+		return respond(c, {
+			sender: brand.sender ?? null,
+			items: emailTemplatePreviews(brand, copy).map((template) => ({
+				...template,
+				// What the business has typed, so the editor shows its own words
+				// rather than the rendered result.
+				copy: copy[template.key] ?? { subject: null, html: null },
+			})),
+		});
+	});
+
+	/**
+	 * Send one template to the person asking, with their own branding.
+	 *
+	 * 🔴 To the SIGNED-IN USER, never an address from the request. An endpoint
+	 * that mails arbitrary recipients on a business's behalf is an open relay,
+	 * and "just for testing" is how one ships.
+	 *
+	 * ⚠️ Failures are returned, not swallowed. This is the one place where the
+	 * whole point is finding out that a sending domain is not verified — the
+	 * customer path deliberately hides that, and it has to surface somewhere.
+	 */
+	/**
+	 * Set or clear a business's own wording for one email.
+	 *
+	 * ⚠️ Clearing every field DELETES the row rather than storing empties, so
+	 * "cleared" and "never set" behave identically. Otherwise a business that
+	 * empties a heading keeps overriding the built-in one with nothing.
+	 */
+	app.patch("/v1/quickdash/email-templates/:key", manage, async (c) => {
+		const { workspaceId } = c.get("authorized");
+		const body = templateCopySchema.parse(await c.req.json());
+		await saveEmailTemplateCopy(workspaceId, c.req.param("key"), body);
+		return respond(c, { saved: true });
+	});
+
+	app.post("/v1/quickdash/email-templates/:key/test", manage, async (c) => {
+		const { workspaceId } = c.get("authorized");
+		const principal = c.get("authorized").principal;
+		if (principal.kind !== "session") {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"A test email is sent to the person asking for it, so this needs a signed in user.",
+				400,
+			);
+		}
+
+		const brand = await resolveBrand(workspaceId);
+		if (!brand) {
+			return respondError(c, "NOT_FOUND", "That workspace was not found.", 404);
+		}
+
+		const { emailTemplatePreviews } = await import(
+			"@quickengine/email/templates"
+		);
+		const template = emailTemplatePreviews(
+			brand,
+			await readEmailTemplateCopy(workspaceId),
+		).find((item) => item.key === c.req.param("key"));
+		if (!template) {
+			return respondError(c, "NOT_FOUND", "No such email.", 404);
+		}
+
+		/**
+		 * ⚠️ Looked up, not taken from the request. The session proves who is
+		 * asking; their stored address is the only one this may send to.
+		 */
+		const [user] = await db
+			.select({ email: quickengineUsers.email })
+			.from(quickengineUsers)
+			/**
+			 * ⚠️ From the PRINCIPAL, not `c.get("account")`.
+			 *
+			 * That context is populated by the account authorizer; this route uses
+			 * the workspace one, where it is undefined — reading it threw a 500 with
+			 * no useful message. The principal is already narrowed to a session
+			 * above, so its user id is the right and available source.
+			 */
+			.where(eq(quickengineUsers.id, principal.userId))
+			.limit(1);
+		const to = user?.email;
+		if (!to) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"Your account has no email address to send to.",
+				400,
+			);
+		}
+
+		try {
+			const { getEmailProvider } = await import("@quickengine/email");
+			await getEmailProvider().send({
+				to,
+				from: brand.sender,
+				replyTo: brand.supportEmail,
+				subject: `[Test] ${template.rendered.subject}`,
+				html: template.rendered.html,
+				text: template.rendered.text,
+			});
+			return respond(c, { sentTo: to, sender: brand.sender ?? null });
+		} catch (error) {
+			return respondError(
+				c,
+				"DEPENDENCY_UNAVAILABLE",
+				error instanceof Error ? error.message : "That could not be sent.",
+				502,
+			);
+		}
 	});
 
 	app.get("/v1/quickdash/search", view, async (c) => {

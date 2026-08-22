@@ -6,7 +6,11 @@ import {
 	unique,
 	uuid,
 } from "drizzle-orm/pg-core";
-import { quickengineOrganizations, quickengineUsers } from "./quickengine";
+import {
+	quickengineOrganizations,
+	quickengineUsers,
+	quickengineWorkspaces,
+} from "./quickengine";
 
 // A user's notification inbox — user-scoped, cross-workspace. One row per thing a
 // user should know about (a teammate joined, later: an assignment, a payment, a
@@ -24,6 +28,34 @@ export const notifications = pgTable(
 			() => quickengineOrganizations.id,
 			{ onDelete: "cascade" },
 		),
+
+		/**
+		 * Which workspace this is about.
+		 *
+		 * 🔴 The workspace used to exist only inside `href`, as text. So a person
+		 * running several businesses saw one undifferentiated bell, and nothing
+		 * could filter it — the information was in the row but only a human
+		 * reading a URL could use it.
+		 */
+		workspaceId: uuid("workspace_id").references(
+			() => quickengineWorkspaces.id,
+			{ onDelete: "cascade" },
+		),
+
+		/**
+		 * Whether this happened with real money.
+		 *
+		 * 🔴 A sandbox order and a live order produced IDENTICAL notifications —
+		 * same title, same wording, same bell. "New order" meaning a real customer
+		 * paid and "New order" meaning somebody pressed a test card are not the
+		 * same news, and confusing them in either direction is bad: acting on a
+		 * test as though it were real, or ignoring a real one as though it were a
+		 * test.
+		 *
+		 * Nullable for rows written before this existed, which belong to no
+		 * environment anybody can now determine.
+		 */
+		environment: text("environment", { enum: ["test", "live"] }),
 		// Stable machine key, e.g. "org.member_joined" — lets the UI group/icon and
 		// future preferences filter by type.
 		type: text("type").notNull(),

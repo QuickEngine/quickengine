@@ -568,6 +568,34 @@
 			"when": 1787298285671,
 			"tag": "0080_solid_the_renegades",
 			"breakpoints": true
+		},
+		{
+			"idx": 81,
+			"version": "7",
+			"when": 1787350832664,
+			"tag": "0081_sleepy_namor",
+			"breakpoints": true
+		},
+		{
+			"idx": 82,
+			"version": "7",
+			"when": 1787354892053,
+			"tag": "0082_public_vengeance",
+			"breakpoints": true
+		},
+		{
+			"idx": 83,
+			"version": "7",
+			"when": 1787356219949,
+			"tag": "0083_odd_blizzard",
+			"breakpoints": true
+		},
+		{
+			"idx": 84,
+			"version": "7",
+			"when": 1787368998135,
+			"tag": "0084_orange_unicorn",
+			"breakpoints": true
 		}
 	]
 }

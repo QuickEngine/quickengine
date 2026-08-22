@@ -41,7 +41,7 @@
 		"build": "turbo build",
 		"lint": "biome lint .",
 		"format": "biome format . --write",
-		"check": "biome check . && pnpm check:no-next && pnpm check:error-maps && pnpm check:test-db-names && pnpm check:security-headers && pnpm check:recovery-safety",
+		"check": "biome check . && pnpm check:no-next && pnpm check:error-maps && pnpm check:test-db-names && pnpm check:security-headers && pnpm check:recovery-safety && pnpm check:environment-isolation",
 		"check:error-maps": "node .github/ci/check-error-maps.mjs",
 		"brand:sync": "node packages/ui/sync-brand.mjs && biome check --write packages/ui/src/components",
 		"typecheck": "turbo typecheck",
@@ -78,7 +78,11 @@
 		"check:recovery-safety": "node --test packages/db/recovery-safety.test.mjs",
 		"db:migration-parity": "pnpm --filter @quickengine/db db:migration-parity",
 		"db:tenant-recovery": "pnpm --filter @quickengine/db db:tenant-recovery",
-		"check:test-db-names": "node .github/ci/check-test-db-names.mjs"
+		"check:test-db-names": "node .github/ci/check-test-db-names.mjs",
+		"outbox:drain": "pnpm --filter @quickengine/api exec tsx scripts/drain-outbox.mts",
+		"order:paid": "pnpm --filter @quickengine/api exec tsx scripts/emit-order-paid.mts",
+		"supplier:webhook": "pnpm --filter @quickengine/api exec tsx scripts/deliver-supplier-webhook.mts",
+		"check:environment-isolation": "node .github/ci/check-environment-isolation.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",

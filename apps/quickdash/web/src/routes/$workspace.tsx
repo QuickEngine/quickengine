@@ -60,7 +60,7 @@ function WorkspaceFrame() {
 	const plan = useQuery(
 		quickDashQueries.plan(context.data?.workspace.organizationId),
 	);
-	const notifications = useQuery(quickDashQueries.notifications());
+	const notifications = useQuery(quickDashQueries.notifications(workspaceId));
 	/**
 	 * 🔴 Scoped to the workspace on screen.
 	 *

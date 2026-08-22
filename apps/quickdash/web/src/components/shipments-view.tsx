@@ -54,7 +54,7 @@ const readable = (status: string) => status.replace(/_/g, " ");
 
 export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
-	const rowSignal = useRecordSignals();
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");

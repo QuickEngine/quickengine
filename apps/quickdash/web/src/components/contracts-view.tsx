@@ -59,7 +59,7 @@ const isLapsed = (contract: Contract) =>
 
 export function ContractsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
-	const rowSignal = useRecordSignals();
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");

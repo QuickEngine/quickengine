@@ -69,6 +69,26 @@ export const workspaceBranding = pgTable(
 		displayName: text("display_name"),
 		/** 🔴 Where replies go. The whole point of the table. Never our address. */
 		supportEmail: text("support_email"),
+
+		/**
+		 * The address transactional mail is SENT FROM, as opposed to the one shown
+		 * in the footer for replies.
+		 *
+		 * 🔴 Until this existed every email in the system went out as one global
+		 * `EMAIL_FROM`, so a Caffeinate receipt arrived from QuickEngine. A business
+		 * whose customers see the platform's name in their inbox has no brand of
+		 * its own, and it is the single most visible way the platform shows
+		 * through.
+		 *
+		 * ⚠️ The domain must be verified with the mail provider or the send is
+		 * refused. That refusal is the SECURITY BOUNDARY and is deliberately not
+		 * duplicated here — without it, setting this to `billing@stripe.com` would
+		 * be a spoofing tool. A refused send falls back to the platform sender
+		 * rather than vanishing, because wrongly branded mail beats no mail.
+		 *
+		 * Nullable: a workspace that has not set one keeps the platform sender.
+		 */
+		senderEmail: text("sender_email"),
 		/** Absolute URL. Mail clients cannot resolve a relative path. */
 		logoUrl: text("logo_url"),
 		/**

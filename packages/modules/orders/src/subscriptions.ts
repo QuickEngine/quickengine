@@ -234,6 +234,14 @@ export async function startSubscription(input: {
 	customerId: string;
 	environment: "test" | "live";
 	destinationId?: string | null;
+	/**
+	 * The checkout order that started this.
+	 *
+	 * 🔴 Without it nothing connects the first PAYMENT to the subscription, and
+	 * the card the customer just used cannot be saved for the renewal. A
+	 * subscription with no saved method fails silently every month.
+	 */
+	firstOrderId?: string | null;
 }) {
 	return db.transaction(async (tx) => {
 		const [plan] = await tx
@@ -283,11 +291,98 @@ export async function startSubscription(input: {
 			subscriptionId: subscription.id,
 			periodStart: now,
 			periodEnd,
-			status: "pending",
+			// The first cycle is the order the customer just paid for, so it is
+			// already charged rather than waiting for the renewal engine.
+			orderId: input.firstOrderId ?? null,
+			status: input.firstOrderId ? "charged" : "pending",
 		});
 
 		return { subscription, plan, contents };
 	});
+}
+
+/**
+ * Remember how to charge this customer again.
+ *
+ * 🔴 Called once the FIRST payment has actually succeeded, never at checkout.
+ * A provider attaches the customer and the payment method when the charge
+ * completes; anything captured before that is a guess, and a subscription built
+ * on a guess fails on its second month with nothing on screen to explain it.
+ *
+ * ⚠️ Finds the subscription through its first cycle's order, which is why
+ * `startSubscription` records one. Without that link the payment and the
+ * subscription are two unrelated rows.
+ */
+export async function attachSubscriptionPaymentMethod(input: {
+	workspaceId: string;
+	orderId: string;
+	providerCustomerId: string;
+	providerPaymentMethodId: string;
+}): Promise<boolean> {
+	const [cycle] = await db
+		.select({ subscriptionId: subscriptionCycles.subscriptionId })
+		.from(subscriptionCycles)
+		.where(
+			and(
+				eq(subscriptionCycles.workspaceId, input.workspaceId),
+				eq(subscriptionCycles.orderId, input.orderId),
+			),
+		)
+		.limit(1);
+	if (!cycle) return false;
+
+	await db
+		.update(subscriptions)
+		.set({
+			providerCustomerId: input.providerCustomerId,
+			providerPaymentMethodId: input.providerPaymentMethodId,
+			updatedAt: new Date(),
+		})
+		.where(eq(subscriptions.id, cycle.subscriptionId));
+	return true;
+}
+
+/**
+ * The subscription a checkout order started, if it started one.
+ *
+ * Cheap enough to run on every paid order, which is the point — most paid
+ * orders are not subscriptions and must not cost a provider round trip.
+ */
+export async function subscriptionForOrder(
+	workspaceId: string,
+	orderId: string,
+): Promise<string | null> {
+	const [cycle] = await db
+		.select({ subscriptionId: subscriptionCycles.subscriptionId })
+		.from(subscriptionCycles)
+		.where(
+			and(
+				eq(subscriptionCycles.workspaceId, workspaceId),
+				eq(subscriptionCycles.orderId, orderId),
+			),
+		)
+		.limit(1);
+	return cycle?.subscriptionId ?? null;
+}
+
+/** True when this subscription can be charged without the customer present. */
+export async function subscriptionChargeable(subscriptionId: string): Promise<{
+	providerCustomerId: string;
+	providerPaymentMethodId: string;
+} | null> {
+	const [row] = await db
+		.select({
+			providerCustomerId: subscriptions.providerCustomerId,
+			providerPaymentMethodId: subscriptions.providerPaymentMethodId,
+		})
+		.from(subscriptions)
+		.where(eq(subscriptions.id, subscriptionId))
+		.limit(1);
+	if (!row?.providerCustomerId || !row.providerPaymentMethodId) return null;
+	return {
+		providerCustomerId: row.providerCustomerId,
+		providerPaymentMethodId: row.providerPaymentMethodId,
+	};
 }
 
 // ── Renewal ─────────────────────────────────────────────────────────────────

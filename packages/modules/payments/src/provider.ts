@@ -145,7 +145,44 @@ export interface PaymentProvider {
 		connectedAccountId: string;
 		applicationFeeCents: number;
 		metadata?: Record<string, string>;
+		/**
+		 * Keep the payment method for later charges, with the shopper's agreement.
+		 *
+		 * 🔴 Set only where the customer is TOLD they are setting up recurring
+		 * payment. Saving a card silently because it is convenient later is how a
+		 * business ends up charging somebody who never agreed to it.
+		 */
+		saveForFutureUse?: boolean;
+		/**
+		 * Charge a method saved earlier, with nobody present.
+		 *
+		 * ⚠️ When set, there is no browser to answer a challenge. A bank that wants
+		 * one refuses the charge instead, and the subscription has to ask the
+		 * customer to come back — which is why the failure is recorded rather than
+		 * retried blindly.
+		 */
+		offSession?: {
+			providerCustomerId: string;
+			providerPaymentMethodId: string;
+		};
 	}): Promise<ProviderCharge>;
+
+	/**
+	 * The identifiers needed to charge this payment again later.
+	 *
+	 * Returns null when the provider saved nothing — either the charge did not ask
+	 * to, or the provider has no concept of a stored method. A subscription with
+	 * no saved method cannot renew, and saying so plainly is better than a
+	 * renewal that fails every month for a reason nobody can see.
+	 */
+	readSavedMethod?(params: {
+		environment: PaymentEnvironment;
+		externalPaymentId: string;
+		connectedAccountId: string;
+	}): Promise<{
+		providerCustomerId: string;
+		providerPaymentMethodId: string;
+	} | null>;
 
 	/** Complete a browser-approved payment when the provider requires it. */
 	captureCharge?(params: {

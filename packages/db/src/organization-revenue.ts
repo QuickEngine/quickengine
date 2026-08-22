@@ -191,6 +191,9 @@ export async function getOrganizationRevenue(
 				.where(
 					and(
 						inArray(payments.workspaceId, workspaceIds),
+						// 🔴 LIVE only. A sandbox payment is a test card, and counting
+						// one as revenue tells an owner they earned money they did not.
+						eq(payments.environment, "live"),
 						gte(payments.succeededAt, range.from),
 						lt(payments.succeededAt, range.to),
 					),
@@ -206,6 +209,9 @@ export async function getOrganizationRevenue(
 				.where(
 					and(
 						inArray(payments.workspaceId, workspaceIds),
+						// 🔴 LIVE only. A sandbox payment is a test card, and counting
+						// one as revenue tells an owner they earned money they did not.
+						eq(payments.environment, "live"),
 						gte(payments.refundedAt, range.from),
 						lt(payments.refundedAt, range.to),
 					),
@@ -222,6 +228,9 @@ export async function getOrganizationRevenue(
 				.where(
 					and(
 						inArray(payments.workspaceId, workspaceIds),
+						// 🔴 LIVE only. A sandbox payment is a test card, and counting
+						// one as revenue tells an owner they earned money they did not.
+						eq(payments.environment, "live"),
 						gte(payments.succeededAt, range.from),
 						lt(payments.succeededAt, range.to),
 					),
@@ -238,6 +247,9 @@ export async function getOrganizationRevenue(
 				.where(
 					and(
 						inArray(payments.workspaceId, workspaceIds),
+						// 🔴 LIVE only. A sandbox payment is a test card, and counting
+						// one as revenue tells an owner they earned money they did not.
+						eq(payments.environment, "live"),
 						gte(payments.refundedAt, range.from),
 						lt(payments.refundedAt, range.to),
 					),

@@ -148,9 +148,9 @@ export const stripePaymentProvider: PaymentProvider = {
 	},
 
 	async createCharge(params) {
-		const intent = await (
-			await stripeFor(params.environment)
-		).paymentIntents.create(
+		const stripe = await stripeFor(params.environment);
+		const off = params.offSession;
+		const intent = await stripe.paymentIntents.create(
 			{
 				amount: params.amountCents,
 				currency: params.currency.toLowerCase(),
@@ -161,6 +161,27 @@ export const stripePaymentProvider: PaymentProvider = {
 						? params.applicationFeeCents
 						: undefined,
 				metadata: params.metadata,
+				/**
+				 * 🔴 Tells Stripe to keep the method for later, and tells the BANK
+				 * that a recurring agreement is being set up. Skipping it does not
+				 * merely fail to save the card — it makes the later off-session
+				 * charge far more likely to be declined, because the mandate the
+				 * bank expects was never established.
+				 */
+				setup_future_usage: params.saveForFutureUse ? "off_session" : undefined,
+				...(off
+					? {
+							customer: off.providerCustomerId,
+							payment_method: off.providerPaymentMethodId,
+							/**
+							 * ⚠️ Both are required together. `off_session` states nobody is
+							 * present; `confirm` charges immediately rather than waiting for
+							 * a browser that will never arrive.
+							 */
+							off_session: true,
+							confirm: true,
+						}
+					: {}),
 			},
 			// 🔴 DIRECT CHARGE. The charge is created ON the business's account, not
 			// on ours with a transfer out (which is what `transfer_data.destination`
@@ -185,10 +206,42 @@ export const stripePaymentProvider: PaymentProvider = {
 		);
 		return {
 			externalPaymentId: intent.id,
-			nextAction: intent.client_secret
-				? { type: "client_secret", clientSecret: intent.client_secret }
-				: { type: "none" },
+			/**
+			 * ⚠️ An off-session charge has already succeeded or failed by now, so it
+			 * has nothing for a browser to do. Handing back a client secret would
+			 * have a renewal wait for a confirmation nobody is there to give.
+			 */
+			nextAction:
+				!off && intent.client_secret
+					? { type: "client_secret", clientSecret: intent.client_secret }
+					: { type: "none" },
 		};
+	},
+
+	/**
+	 * What is needed to charge this customer again.
+	 *
+	 * 🔴 Read from the SUCCEEDED intent rather than remembered at creation.
+	 * Stripe attaches the customer and the payment method when the charge
+	 * actually completes, so anything captured earlier is a guess — and a
+	 * subscription built on a guess fails on its second month.
+	 */
+	async readSavedMethod(params) {
+		const intent = await (
+			await stripeFor(params.environment)
+		).paymentIntents.retrieve(params.externalPaymentId, {
+			stripeAccount: params.connectedAccountId,
+		});
+		const customer =
+			typeof intent.customer === "string"
+				? intent.customer
+				: intent.customer?.id;
+		const method =
+			typeof intent.payment_method === "string"
+				? intent.payment_method
+				: intent.payment_method?.id;
+		if (!customer || !method) return null;
+		return { providerCustomerId: customer, providerPaymentMethodId: method };
 	},
 
 	async refund(params) {

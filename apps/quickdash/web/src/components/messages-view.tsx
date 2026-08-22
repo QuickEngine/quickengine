@@ -188,7 +188,7 @@ function Thread({
 
 export function MessagesView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
-	const rowSignal = useRecordSignals();
+	const rowSignal = useRecordSignals(workspaceId);
 	const [search, setSearch] = useState("");
 	const [openId, setOpenId] = useState<string | null>(null);
 

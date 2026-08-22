@@ -37,4 +37,5 @@ export * from "./suppliers";
 export * from "./time-entries";
 export * from "./webhooks";
 export * from "./workspace-branding";
+export * from "./workspace-email-templates";
 export * from "./workspace-modules";

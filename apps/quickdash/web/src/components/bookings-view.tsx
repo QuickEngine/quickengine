@@ -78,7 +78,7 @@ const timeRange = (booking: Booking) =>
 
 export function BookingsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
-	const rowSignal = useRecordSignals();
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [search, setSearch] = useState("");

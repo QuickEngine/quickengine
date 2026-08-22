@@ -62,10 +62,15 @@ remain connected together, one is selected as the checkout default, and each his
 retains its processor so settlement and refunds never depend on whichever provider is active
 today. Test and live workspaces use separate provider credentials, webhook signatures and payment
 identity; a workspace locks to its mode when it enters the money lifecycle, so sandbox orders can
-never be promoted into real business history. Operators connect and resume Stripe's hosted setup
+never be promoted into real business history. Everything that reads those records — revenue,
+reports, the payment list, review verification and the notification bell — filters by mode, and a
+check on every build fails if a new query forgets. Operators connect and resume Stripe's hosted setup
 from the Payments module; custom storefronts receive the browser-safe account context required to
 confirm the resulting direct charge without receiving a server key. Customer confirmation is
-raised only after provider-verified settlement, never when an unpaid order is first drafted.
+raised only after provider-verified settlement, never when an unpaid order is first drafted. A
+customer buying on a recurring plan has their payment method kept on file at that first payment,
+with their agreement, and each renewal charged against it without them present; a failed renewal is
+retried and the subscription goes past due before it is ever cancelled.
 QuickDash reads each order as one operational record: purchased items and price breakdown,
 snapshotted destination, payment and refund state, and shipment progress. Shipment creation uses
 that destination as its editable starting point rather than duplicating data entry.
@@ -221,7 +226,13 @@ same panel. A catalog can be built from the console: products with pricing, stoc
 categories, the suppliers behind them, and a detail page for every other record a business keeps.
 QuickDash also tells you when something needs you: a paid order, a customer waiting on a reply, a
 disputed payment, a flagged shipment or stock running low reaches the bell, marks the sidebar row
-it belongs to, and appears briefly in the corner if you are watching.
+it belongs to, and appears briefly in the corner if you are watching. A sandbox workspace and a live one never share
+that bell, so a test order and a real customer paying are never the same news, while account-level
+notices such as an invitation appear in both.
+Customer email is the business’s own voice: a workspace sends from its own verified address, and every
+customer-facing message can be rewritten as a whole HTML document, previewed with realistic contents
+and test-sent to the operator before a customer sees it. Only the order details stay system-owned,
+so a template can never promise a total that was not charged.
 The frontends run on Vite and TanStack; **Next.js is gone entirely**. Automation and workflow
 orchestration stay deliberately out of the current delivery path — the goal is one complete,
 truthful business workflow before the ecosystem widens.

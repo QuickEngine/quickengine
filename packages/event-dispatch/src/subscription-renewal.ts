@@ -69,6 +69,25 @@ export async function renewDueSubscriptions(): Promise<{
 				currency: priced.currency,
 				lines: priced.lines,
 			});
+
+			/**
+			 * 🔴 The renewal CHARGES. Until this existed the engine created an order
+			 * and stopped — a subscription took a customer's details, promised them
+			 * coffee every month, and never took a penny after the first box. The
+			 * cycle was even marked "charged".
+			 *
+			 * ⚠️ Off-session: nobody is at a browser. A bank that wants the customer
+			 * to approve refuses instead, and that refusal is recorded on the cycle
+			 * so somebody can ask them to come back — rather than retried blindly
+			 * against a card that will keep saying no.
+			 */
+			await chargeRenewal({
+				workspaceId: subscription.workspaceId,
+				subscriptionId: subscription.id,
+				order,
+				currency: priced.currency,
+			});
+
 			await settleCycle({
 				subscriptionId: subscription.id,
 				periodStart: cycle.periodStart,
@@ -95,4 +114,93 @@ export async function renewDueSubscriptions(): Promise<{
 	}
 
 	return { claimed, ordered, failed };
+}
+
+/**
+ * Take the money for a renewal, with nobody present.
+ *
+ * ── Why this is separate from the loop ───────────────────────────────────────
+ *
+ * 🔴 A renewal that cannot be charged is not a crash — it is a customer whose
+ * card expired. So every failure returns rather than throwing, and the caller
+ * records it against the cycle where an operator can see it. Throwing would
+ * abandon the rest of the batch for one dead card.
+ *
+ * ⚠️ Reuses the ordinary checkout settlement path. The provider webhook that
+ * confirms this charge is the SAME one a shop checkout uses, so a renewal
+ * settles, notifies and hands off to suppliers exactly like any other order.
+ * A separate path would be a second implementation of the most important
+ * transaction in the product.
+ */
+async function chargeRenewal(input: {
+	workspaceId: string;
+	subscriptionId: string;
+	order: {
+		id: string;
+		number: string;
+		totalCents: number;
+		clientId: string | null;
+	};
+	currency: string;
+}): Promise<void> {
+	const { subscriptionChargeable } = await import("@quickengine/mod-orders");
+	const saved = await subscriptionChargeable(input.subscriptionId);
+	if (!saved) {
+		/**
+		 * ⚠️ A sentence, not a code. This lands on the cycle's `failureReason`,
+		 * which an OPERATOR reads in the dashboard — it never crosses an HTTP
+		 * boundary and has no error map to translate it.
+		 */
+		throw new Error(
+			"No saved payment method, so nothing could be charged. The customer needs to enter their card again.",
+		);
+	}
+
+	const {
+		getPaymentAccount,
+		getPaymentProvider,
+		recordPendingCheckoutPayment,
+	} = await import("@quickengine/mod-payments");
+	const account = await getPaymentAccount(input.workspaceId);
+	if (!account?.externalAccountId) {
+		throw new Error(
+			"This workspace has no connected payment account, so the renewal could not be charged.",
+		);
+	}
+
+	const { workspaceEnvironment } = await import("@quickengine/db");
+	const environment = await workspaceEnvironment(input.workspaceId);
+
+	const charge = await getPaymentProvider(account.provider).createCharge({
+		environment,
+		amountCents: input.order.totalCents,
+		currency: input.currency,
+		connectedAccountId: account.externalAccountId,
+		// Same rule as checkout: meter infrastructure, never a business outcome.
+		applicationFeeCents: 0,
+		metadata: {
+			orderId: input.order.id,
+			orderNumber: input.order.number,
+			workspaceId: input.workspaceId,
+			subscriptionId: input.subscriptionId,
+		},
+		offSession: saved,
+	});
+
+	/**
+	 * 🔴 The row that lets the provider's webhook find this order. Without it the
+	 * confirmation arrives signed and valid with nowhere to apply itself, and the
+	 * customer is charged for an order that stays a draft for ever.
+	 */
+	await recordPendingCheckoutPayment({
+		workspaceId: input.workspaceId,
+		orderId: input.order.id,
+		clientId: input.order.clientId,
+		clientEmail: null,
+		externalPaymentId: charge.externalPaymentId,
+		provider: account.provider,
+		amountCents: input.order.totalCents,
+		currency: input.currency,
+		environment,
+	});
 }

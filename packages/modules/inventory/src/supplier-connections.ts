@@ -48,6 +48,19 @@ export async function resolveSupplierConnection(input: {
 	workspaceId: string;
 	supplierId: string;
 	provider: string;
+	/**
+	 * 🔴 For the CHECK path only, and it is load-bearing.
+	 *
+	 * A connection is saved `pending` because nothing has proven the token yet,
+	 * and everything below refuses `pending` for exactly that reason. But the
+	 * check is the thing that PROVES it — so with a single strict rule the two
+	 * deadlock: pending cannot be checked, so it never becomes active, so it can
+	 * never be used. A connection could be saved and then never work.
+	 *
+	 * ⚠️ Never pass this from a dispatch path. Placing a real order against an
+	 * unverified credential is the failure this whole guard exists to prevent.
+	 */
+	allowUnverified?: boolean;
 }): Promise<SupplierConnection | null> {
 	const [row] = await db
 		.select()
@@ -63,8 +76,12 @@ export async function resolveSupplierConnection(input: {
 
 	// ⚠️ `pending` is deliberately refused alongside `failed`. A connection nobody
 	// has verified is not evidence that a token works, and finding out during a
-	// customer's order is the worst possible moment.
-	if (!row || row.status !== "active" || !row.credentials) return null;
+	// customer's order is the worst possible moment. The check path opts out —
+	// see `allowUnverified` above — because it is what does the verifying.
+	if (!row || !row.credentials) return null;
+	// Any stored status is worth CHECKING — `pending` has never been tried, and
+	// `failed` is exactly what somebody re-checks after fixing a token.
+	if (!input.allowUnverified && row.status !== "active") return null;
 
 	let credentials: SupplierCredentials;
 	try {

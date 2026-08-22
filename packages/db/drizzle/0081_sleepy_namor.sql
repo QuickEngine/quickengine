@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_branding" ADD COLUMN "sender_email" text;

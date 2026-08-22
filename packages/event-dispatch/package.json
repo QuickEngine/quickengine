@@ -24,6 +24,7 @@
 		"@quickengine/mod-files": "workspace:*",
 		"@quickengine/mod-inventory": "workspace:*",
 		"@quickengine/mod-orders": "workspace:*",
+		"@quickengine/mod-payments": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
 		"@quickengine/realtime": "workspace:*",
 		"@quickengine/search": "workspace:*",

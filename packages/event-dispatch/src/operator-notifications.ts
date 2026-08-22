@@ -96,6 +96,24 @@ async function noticeFor(event: OutboxEvent): Promise<Notice | null> {
 		};
 	}
 
+	/**
+	 * 🔴 The customer paid and got nothing recurring.
+	 *
+	 * A subscription that fails to start is money already taken for a promise
+	 * the system did not write down. It cannot fail the sale — that would be
+	 * worse — so it has to interrupt somebody instead, and it is a failure
+	 * rather than an attention because a customer is already affected.
+	 */
+	if (event.eventName === "subscription.start-failed") {
+		return {
+			type: "subscription.start-failed",
+			signal: "failure",
+			title: "A subscription was not set up",
+			body: "A customer paid for a recurring plan and the subscription could not be created. They will not be charged again, and nobody will be reminded.",
+			path: "/orders",
+		};
+	}
+
 	if (event.eventName === "customer.message.received") {
 		return {
 			type: "customer.message",
@@ -229,6 +247,8 @@ async function recipients(workspaceId: string) {
 		.select({
 			organizationId: quickengineWorkspaces.organizationId,
 			slug: quickengineWorkspaces.slug,
+			// 🔑 Read here so the notification can record whether it was real money.
+			environment: quickengineWorkspaces.environment,
 			id: quickengineWorkspaces.id,
 		})
 		.from(quickengineWorkspaces)
@@ -297,6 +317,9 @@ export function operatorNotificationHandler(
 				await createNotification({
 					userId: member.userId,
 					organizationId: target.workspace.organizationId,
+					// 🔴 Both, so the bell can tell a real sale from a test one.
+					workspaceId: event.workspaceId,
+					environment: target.workspace.environment ?? null,
 					type: notice.type,
 					signal: notice.signal,
 					title: notice.title,

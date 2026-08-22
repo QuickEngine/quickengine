@@ -11,6 +11,7 @@ import {
 	orders,
 	reviews,
 	sql,
+	workspaceEnvironment,
 } from "@quickengine/db";
 import { z } from "zod";
 
@@ -120,6 +121,12 @@ export async function createReview(input: {
 		.where(
 			and(
 				eq(orders.workspaceId, input.workspaceId),
+				/**
+				 * ⚠️ Same mode only. Without this a SANDBOX order badges a live
+				 * review as a verified purchase — the badge is a claim to a real
+				 * shopper that somebody really bought the thing.
+				 */
+				eq(orders.environment, await workspaceEnvironment(input.workspaceId)),
 				eq(orders.clientId, input.clientRecordId),
 				eq(orderLineItems.catalogItemId, parsed.catalogItemId),
 				// A cancelled order does not earn a verified badge.

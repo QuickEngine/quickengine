@@ -14,8 +14,8 @@ import { type NotificationSignal, quickDashQueries } from "./quickdash-api";
  * ⚠️ Reads the SAME query the bell does, so it costs no extra request and the
  * two can never show different answers.
  */
-export function useRecordSignals() {
-	const notifications = useQuery(quickDashQueries.notifications());
+export function useRecordSignals(workspaceId: string) {
+	const notifications = useQuery(quickDashQueries.notifications(workspaceId));
 
 	const byRecord = new Map<string, NotificationSignal>();
 	const rank: Record<NotificationSignal, number> = {

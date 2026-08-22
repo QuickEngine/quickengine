@@ -1,10 +1,21 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
 import { notifications } from "./schema/notifications";
 
 export type NotificationInput = {
 	userId: string;
 	organizationId?: string | null;
+	/** Which workspace this is about, where it is about one. */
+	workspaceId?: string | null;
+	/**
+	 * 🔴 Whether this happened with real money.
+	 *
+	 * A sandbox "New order" and a live "New order" are not the same news. Acting
+	 * on a test as though it were real, or ignoring a real one as though it were
+	 * a test, are both failures — and until this existed the bell could not tell
+	 * them apart.
+	 */
+	environment?: "test" | "live" | null;
 	type: string;
 	/**
 	 * How loudly to say it. Defaults to `news`, which is what most things are.
@@ -56,6 +67,8 @@ export async function createNotification(
 		.values({
 			userId: input.userId,
 			organizationId: input.organizationId ?? null,
+			workspaceId: input.workspaceId ?? null,
+			environment: input.environment ?? null,
 			type: input.type,
 			signal: input.signal ?? "news",
 			title: input.title,
@@ -76,13 +89,35 @@ export async function createNotification(
 }
 
 // A user's inbox, newest first. `unreadOnly` powers the badge/dropdown's unread view.
+/**
+ * What to tell somebody, newest first.
+ *
+ * 🔴 `environment` is a FILTER, not decoration. Sandbox and live notifications
+ * must never appear in the same list: "New order" meaning a real customer paid
+ * and "New order" meaning somebody pressed a test card look identical, and
+ * mixing them means either acting on a test or ignoring a real sale.
+ *
+ * ⚠️ Rows with no environment are account-level — an invitation, a billing
+ * notice — and belong in BOTH lists. They are not commerce and have no mode.
+ */
 export async function listNotifications(
 	userId: string,
-	options: { limit?: number; unreadOnly?: boolean } = {},
+	options: {
+		limit?: number;
+		unreadOnly?: boolean;
+		environment?: "test" | "live";
+	} = {},
 ): Promise<NotificationRow[]> {
-	const where = options.unreadOnly
-		? and(eq(notifications.userId, userId), isNull(notifications.readAt))
-		: eq(notifications.userId, userId);
+	const where = and(
+		eq(notifications.userId, userId),
+		options.unreadOnly ? isNull(notifications.readAt) : undefined,
+		options.environment
+			? or(
+					eq(notifications.environment, options.environment),
+					isNull(notifications.environment),
+				)
+			: undefined,
+	);
 	return db
 		.select()
 		.from(notifications)
@@ -93,11 +128,23 @@ export async function listNotifications(
 
 export async function countUnreadNotifications(
 	userId: string,
+	options: { environment?: "test" | "live" } = {},
 ): Promise<number> {
 	const [row] = await db
 		.select({ count: sql<number>`count(*)::int` })
 		.from(notifications)
-		.where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+		.where(
+			and(
+				eq(notifications.userId, userId),
+				isNull(notifications.readAt),
+				options.environment
+					? or(
+							eq(notifications.environment, options.environment),
+							isNull(notifications.environment),
+						)
+					: undefined,
+			),
+		);
 	return row?.count ?? 0;
 }
 

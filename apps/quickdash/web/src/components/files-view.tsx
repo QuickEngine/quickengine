@@ -42,7 +42,7 @@ const quiet =
 
 export function FilesView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
-	const rowSignal = useRecordSignals();
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const fileInput = useRef<HTMLInputElement>(null);
 	const [selectedId, setSelectedId] = useState<string | null>(null);

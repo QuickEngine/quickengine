@@ -108,15 +108,25 @@ export const quickDashQueries = {
 	 * drain's own cadence — polling faster cannot surface an event sooner, it
 	 * just asks a question the answer to which has not changed yet.
 	 */
-	notifications: () =>
+	notifications: (workspaceId: string) =>
 		queryOptions({
-			queryKey: ["quickdash", "notifications"],
+			/**
+			 * 🔴 Keyed on the workspace, and narrowed to its MODE.
+			 *
+			 * Sandbox and live records share the same tables, so without this a
+			 * test order's "New order" sits in the bell looking exactly like a real
+			 * customer paying. Keying on the workspace also stops one business's
+			 * cached notifications showing while you are standing in another.
+			 */
+			queryKey: ["quickdash", workspaceId, "notifications"],
 			queryFn: async () =>
 				(
 					await sessionApi.request<{
 						items: QuickDashNotification[];
 						unread: number;
-					}>("/account/notifications")
+					}>(
+						`/account/notifications?workspaceId=${encodeURIComponent(workspaceId)}`,
+					)
 				).data,
 			refetchInterval: 60_000,
 			// Coming back to the tab is exactly when you want to know what you

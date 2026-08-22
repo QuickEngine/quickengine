@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { createShopifyAdapter } from "./shopify";
+import { createShopifyAdapter, splitName } from "./shopify";
 
 const connection = {
 	id: "conn_1",
@@ -141,8 +141,38 @@ describe("placing an order with a Shopify supplier", () => {
 			.order;
 		expect(order.shippingAddress).toMatchObject({ city: "Sylvan Lake" });
 		expect(order).not.toHaveProperty("email");
+
+		/**
+		 * 🔴 Proven against a live Shopify store, 2026-08-21: an address with only
+		 * `firstName` is SILENTLY DISCARDED, and a line item defaults to not
+		 * requiring shipping. Either one alone leaves the supplier with nowhere to
+		 * ship and no error to explain it.
+		 */
+		expect(order.shippingAddress).toMatchObject({
+			lastName: expect.stringMatching(/\S/),
+		});
+		expect(order.lineItems).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ requiresShipping: true }),
+			]),
+		);
 		expect(order).not.toHaveProperty("customer");
 		expect(JSON.stringify(order)).not.toContain("@");
+
+		/**
+		 * 🔴 Nothing a supplier might read names the platform.
+		 *
+		 * Custom attributes are order DATA — they reach packing slips and exports,
+		 * so they can travel to a supplier. The business's own purchase order
+		 * number is fine for them to see; which software the business runs is not.
+		 * The correlation key lives in an app-scoped metafield instead.
+		 */
+		const attributes = JSON.stringify(order.customAttributes);
+		expect(attributes.toLowerCase()).not.toContain("quickdash");
+		expect(attributes.toLowerCase()).not.toContain("quickengine");
+		expect(order.customAttributes).toEqual([
+			{ key: "Purchase order", value: "PO-0001" },
+		]);
 	});
 
 	it("carries the correlation key as a tag so the search can find it", async () => {
@@ -437,5 +467,41 @@ describe("asking a supplier to fulfil when Collective did not", () => {
 				"gid://shopify/Order/999",
 			),
 		).toBe(0);
+	});
+});
+
+/**
+ * 🔴 The name split, tested directly because getting it wrong is invisible.
+ *
+ * Shopify accepts an address with no `lastName` and then throws it away —
+ * no error, no warning, and the order looks correct in every other respect
+ * until a supplier has nowhere to send the goods.
+ */
+describe("splitting a stored name for Shopify", () => {
+	it("puts the last word in lastName, which is the field that matters", () => {
+		expect(splitName("Ada Lovelace")).toEqual({
+			firstName: "Ada",
+			lastName: "Lovelace",
+		});
+	});
+
+	it("keeps every middle part with the first name", () => {
+		expect(splitName("Ada King Lovelace")).toEqual({
+			firstName: "Ada King",
+			lastName: "Lovelace",
+		});
+	});
+
+	/**
+	 * ⚠️ Reads backwards on purpose. A single word in `firstName` loses the whole
+	 * address; the same word in `lastName` keeps it.
+	 */
+	it("puts a single-word name in lastName, not firstName", () => {
+		expect(splitName("Prince")).toEqual({ lastName: "Prince" });
+	});
+
+	it("gives back nothing for a name it does not have", () => {
+		expect(splitName(null)).toEqual({});
+		expect(splitName("   ")).toEqual({});
 	});
 });

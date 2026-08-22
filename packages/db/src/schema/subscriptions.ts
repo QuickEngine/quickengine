@@ -8,8 +8,7 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 import { catalogItems } from "./catalog-items";
-import { clientAddresses } from "./client-records";
-import { workspaceCustomers } from "./customers";
+import { clientAddresses, clientRecords } from "./client-records";
 import { orders } from "./orders";
 import { quickengineWorkspaces } from "./quickengine";
 
@@ -161,14 +160,25 @@ export const subscriptions = pgTable(
 			.notNull()
 			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
 		/**
-		 * The customer AS KNOWN TO THIS WORKSPACE, not the global identity.
+		 * The client record this subscription belongs to.
 		 *
-		 * One person can hold accounts with several businesses on QuickDash; a
-		 * subscription belongs to the relationship, not to the human.
+		 * 🔴 This pointed at `workspace_customers` until 2026-08-21, and NOTHING
+		 * else agreed with it. Checkout passes the id `resolveCheckoutClient`
+		 * returns, which is a `client_records` row, and the renewal hands this
+		 * same column straight to `createOrder` as its `clientId`, which is also
+		 * a client record. So every insert violated the foreign key, the failure
+		 * was swallowed by the best-effort try/catch in `checkout-routes.ts`, and
+		 * **no subscription row had ever been created** — the table was empty when
+		 * this was found.
+		 *
+		 * An order belongs to a client record, and a subscription exists to
+		 * produce orders. Making the two the same id means the renewal needs no
+		 * mapping layer, which is one fewer place for a subscription to charge
+		 * somebody it does not belong to.
 		 */
 		customerId: uuid("customer_id")
 			.notNull()
-			.references(() => workspaceCustomers.id, { onDelete: "cascade" }),
+			.references(() => clientRecords.id, { onDelete: "cascade" }),
 		/**
 		 * A subscription exists BEFORE any of its orders, so it cannot inherit the
 		 * mode from one. A rehearsal subscription must never start charging a real

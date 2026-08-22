@@ -243,9 +243,18 @@ export function registerInventoryRoutes(
 				);
 			}
 
+			/**
+			 * 🔴 `allowUnverified`, because this route is what does the verifying.
+			 *
+			 * A connection is stored `pending` until something proves the token
+			 * works, and every other caller refuses `pending` for that reason. If
+			 * this one did too, a saved connection could never be checked, never
+			 * become active, and never be used at all.
+			 */
 			const connection = await resolveSupplierConnection({
 				workspaceId,
 				...body,
+				allowUnverified: true,
 			});
 			if (!connection) {
 				return respondError(

@@ -7,6 +7,7 @@ import {
 	discounts,
 	eq,
 	inArray,
+	ne,
 	REFERRAL_REWARD_TYPES,
 	referralCodes,
 	referrals,
@@ -250,17 +251,43 @@ export async function evaluateReferral(input: {
 	 * after — quietly, with no error, for as long as the arrangement lasted.
 	 */
 	if (!isPartner) {
+		/**
+		 * A customer is BROUGHT once, and that rule stands.
+		 *
+		 * 🔴 But it used to reject on any existing row, including a `pending` one
+		 * from an order that was never paid. A shopper who abandoned at payment
+		 * and came back could never be referred again — the first order never
+		 * settled so nobody was paid, the second carried no referral, and the
+		 * referrer silently lost the reward for the one case where somebody
+		 * hesitated.
+		 *
+		 * ⚠️ So the SAME referrer may try again, and a DIFFERENT one may not.
+		 * Alice introduced Bob; Bob's card being declined does not make him
+		 * available for Carol to claim. Only a settled reward, or a claim by
+		 * somebody else, closes the door.
+		 */
 		const [already] = await db
-			.select({ id: referrals.id })
+			.select({
+				id: referrals.id,
+				referrerClientRecordId: referrals.referrerClientRecordId,
+				status: referrals.status,
+			})
 			.from(referrals)
 			.where(
 				and(
 					eq(referrals.workspaceId, input.workspaceId),
 					eq(referrals.referredClientRecordId, input.referredClientRecordId),
+					ne(referrals.status, "cancelled"),
 				),
 			)
 			.limit(1);
-		if (already) return reject("ALREADY_REFERRED");
+		if (
+			already &&
+			(already.status === "completed" ||
+				already.referrerClientRecordId !== owner.ownerClientRecordId)
+		) {
+			return reject("ALREADY_REFERRED");
+		}
 	}
 
 	return {
@@ -306,6 +333,37 @@ export async function recordReferral(input: {
 		return false;
 	}
 	try {
+		/**
+		 * 🔴 MOVE an unsettled referral to the new order rather than adding one.
+		 *
+		 * `referrals` is unique on (workspace, customer) — a customer has exactly
+		 * one referral, ever. A referral is written at CHECKOUT though, before
+		 * payment, so an abandoned attempt leaves a `pending` row pinned to an
+		 * order that will never settle. The retry then could not insert, the
+		 * reward was attached to the dead order, and the referrer was never paid.
+		 *
+		 * ⚠️ Only `pending` rows move. A `completed` one has already paid out, and
+		 * re-pointing it would pay a second time for the same customer.
+		 */
+		const [moved] = await db
+			.update(referrals)
+			.set({
+				orderId: input.orderId,
+				referralCodeId: input.referralCodeId,
+				referrerClientRecordId: input.referrerClientRecordId,
+				rewardType: input.rewardType,
+				rewardAmountCents: input.rewardAmountCents,
+			})
+			.where(
+				and(
+					eq(referrals.workspaceId, input.workspaceId),
+					eq(referrals.referredClientRecordId, input.referredClientRecordId),
+					eq(referrals.status, "pending"),
+				),
+			)
+			.returning({ id: referrals.id });
+		if (moved) return true;
+
 		await db.insert(referrals).values({
 			workspaceId: input.workspaceId,
 			referralCodeId: input.referralCodeId,
@@ -573,7 +631,16 @@ export function partnerCommissionCents(
 	commissionBasisPoints: number | null | undefined,
 ): number {
 	if (!commissionBasisPoints || commissionBasisPoints <= 0) return 0;
-	return Math.round((subtotalCents * commissionBasisPoints) / 10_000);
+	/**
+	 * ⚠️ Rounds DOWN, matching `referralRewardCents` and the tax calculator.
+	 *
+	 * It used to round to nearest while the reward beside it floored, so the same
+	 * "percentage of subtotal" produced different answers a cent apart depending
+	 * on which one asked. This is money the business OWES somebody else, and
+	 * paying a cent more than the agreed rate is the business's loss to absorb —
+	 * so the direction is now deliberate rather than accidental.
+	 */
+	return Math.floor((subtotalCents * commissionBasisPoints) / 10_000);
 }
 
 /**

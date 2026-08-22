@@ -69,6 +69,34 @@ const FIND_BY_TAG = `
 	}
 `;
 
+/**
+ * Split a stored name into the two fields Shopify actually requires.
+ *
+ * 🔴 `lastName` is load-bearing. A `MailingAddressInput` carrying only
+ * `firstName` is SILENTLY DISCARDED — the whole shipping address vanishes, the
+ * mutation returns no `userErrors`, and the order looks fine until a supplier
+ * has nowhere to ship. Verified against a live store on 2026-08-21: firstName
+ * alone drops the address, lastName alone keeps it.
+ *
+ * ⚠️ So a single-word name goes in `lastName`, not `firstName`. That reads
+ * backwards and is deliberate; the alternative is an order nobody can deliver.
+ *
+ * QuickDash stores one `shipToName`, because most of the world does not split
+ * names the way this input wants.
+ */
+export function splitName(name: string | null): {
+	firstName?: string;
+	lastName?: string;
+} {
+	const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+	if (parts.length === 0) return {};
+	if (parts.length === 1) return { lastName: parts[0] };
+	return {
+		firstName: parts.slice(0, -1).join(" "),
+		lastName: parts[parts.length - 1],
+	};
+}
+
 const CREATE_ORDER = `
 	mutation PlaceSupplierOrder($order: OrderCreateOrderInput!) {
 		orderCreate(order: $order) {
@@ -241,9 +269,19 @@ export function createShopifyAdapter(
 						lineItems: request.lines.map((line) => ({
 							variantId: line.supplierSku,
 							quantity: line.quantity,
+							/**
+							 * 🔴 Explicit, and the whole order depends on it.
+							 *
+							 * `orderCreate` line items default to NOT requiring shipping,
+							 * whatever the variant says. An order of non-shippable lines
+							 * needs no address, so Shopify then discards the shipping
+							 * address as meaningless — silently, with no `userErrors`.
+							 * Proven against a live store 2026-08-21.
+							 */
+							requiresShipping: true,
 						})),
 						shippingAddress: {
-							firstName: request.shipTo.name ?? undefined,
+							...splitName(request.shipTo.name),
 							address1: request.shipTo.line1 ?? undefined,
 							address2: request.shipTo.line2 ?? undefined,
 							city: request.shipTo.city ?? undefined,
@@ -257,14 +295,35 @@ export function createShopifyAdapter(
 						 * suppression is having nothing to send to.
 						 */
 						tags: [request.correlationKey],
-						// The searchable key is the tag; this is the readable record, so a
-						// human in the Shopify admin can see which purchase order it is.
+						/**
+						 * 🔴 Readable, and deliberately says nothing about the platform.
+						 *
+						 * Custom attributes are order DATA, not admin chrome — they can
+						 * appear on packing slips and in exports, so they may travel to a
+						 * supplier. "Purchase order: PO-0004" is the business's own
+						 * reference and is fine for a supplier to see; `quickdash_*` told
+						 * them which software the business runs, which is nobody's
+						 * business but theirs.
+						 */
 						customAttributes: [
+							{ key: "Purchase order", value: request.purchaseOrderNumber },
+						],
+						/**
+						 * ⚠️ The correlation key lives in a METAFIELD, not an attribute.
+						 *
+						 * It is machine data — no human needs to read it, and it is the
+						 * one value that unambiguously identifies this system. A metafield
+						 * is app-scoped and is not rendered to a supplier the way an
+						 * attribute can be. The searchable copy is still the tag, which is
+						 * opaque.
+						 */
+						metafields: [
 							{
-								key: "quickdash_purchase_order",
-								value: request.purchaseOrderNumber,
+								namespace: "quickdash",
+								key: "correlation",
+								type: "single_line_text_field",
+								value: request.correlationKey,
 							},
-							{ key: "quickdash_correlation", value: request.correlationKey },
 						],
 						financialStatus: "PAID",
 					},

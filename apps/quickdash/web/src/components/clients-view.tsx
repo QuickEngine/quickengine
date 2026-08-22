@@ -31,7 +31,7 @@ const _field =
 
 export function ClientsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
-	const rowSignal = useRecordSignals();
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
 	const [selectedId, setSelectedId] = useState<string | null>(null);

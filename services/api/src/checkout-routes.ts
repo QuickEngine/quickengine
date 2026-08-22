@@ -6,6 +6,7 @@ import {
 	db,
 	eq,
 	quickengineWorkspaces,
+	recordOutboxEvent,
 } from "@quickengine/db";
 import {
 	CheckoutError,
@@ -486,12 +487,32 @@ export function registerCheckoutRoutes(
 					planId: parsed.data.subscriptionPlanId,
 					customerId: client.id,
 					environment: shop?.environment ?? "live",
+					firstOrderId: order.id,
 				});
 			} catch (error) {
 				options.logger.error("checkout.subscription_failed", {
 					orderId: order.id,
 					requestId: c.get("requestId"),
 					reason: error instanceof Error ? error.name : "unknown",
+				});
+				/**
+				 * 🔴 Swallowed, but never silent.
+				 *
+				 * A log line is not a person. This exact failure ran for weeks —
+				 * the customer paid, got a receipt, and no subscription row was
+				 * ever written — and nothing on any screen said so, because the
+				 * only trace was a log nobody reads. The sale still must not
+				 * fail, so the operator is told instead.
+				 */
+				await recordOutboxEvent({
+					workspaceId,
+					aggregateType: "order",
+					aggregateId: order.id,
+					eventName: "subscription.start-failed",
+					payload: { orderId: order.id, orderNumber: order.number },
+					requestId: c.get("requestId"),
+				}).catch(() => {
+					// The bell is best-effort too. Nothing here may fail the sale.
 				});
 			}
 		}
@@ -587,6 +608,18 @@ export function registerCheckoutRoutes(
 			// charges infrastructure, never a business outcome.
 			applicationFeeCents: 0,
 			metadata: { orderId: order.id, orderNumber: order.number, workspaceId },
+			/**
+			 * 🔴 Only when a subscription is being started, and the shopper chose it.
+			 *
+			 * This asks the provider to keep the card AND tells the bank a recurring
+			 * agreement is being set up. Without the second part the renewal is far
+			 * more likely to be declined months later, because the mandate the bank
+			 * expects was never established at the moment the customer agreed.
+			 *
+			 * ⚠️ Never set on an ordinary order. Saving a card because it might be
+			 * convenient later is how a business charges somebody who never agreed.
+			 */
+			saveForFutureUse: Boolean(parsed.data.subscriptionPlanId),
 		});
 
 		// 🔴 The row that links the provider's payment id to this order. Without it

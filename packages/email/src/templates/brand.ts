@@ -98,18 +98,83 @@ export type TemplateCopy = {
 };
 
 /**
+ * Schemes a link in an email may use. **An allowlist, deliberately.**
+ *
+ * 🔴 The previous version stripped the literal string `javascript:`, and that is
+ * exactly the trap this rule exists to catch. `java&#115;cript:` decodes to it
+ * only AFTER the strip has run; a tab inside the word survives it outright; and
+ * `javajavascript:script:` BECOMES it, because removing the middle joins the two
+ * halves. A blocklist has to be right about every disguise. An allowlist only
+ * has to be right about the five schemes an email actually needs.
+ */
+const SAFE_SCHEMES = new Set(["http", "https", "mailto", "tel", "cid"]);
+
+/** Attributes whose value is fetched or navigated to. */
+const URL_ATTRIBUTES =
+	/\s(href|src|action|formaction|background|poster)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
+
+/**
+ * The scheme of a URL, seen past the encodings that hide one.
+ *
+ * Returns null for a relative URL or an anchor, which carry no scheme and are
+ * safe. Entities and control characters are decoded FIRST, because a browser
+ * decodes them before it resolves the URL — a check that skips that step is
+ * inspecting a different string from the one that will actually be used.
+ */
+function schemeOf(rawValue: string): string | null {
+	const unquoted = rawValue.trim().replace(/^["']|["']$/g, "");
+	const decoded = unquoted
+		.replace(/&#x([0-9a-f]+);?/gi, (_m, hex: string) =>
+			String.fromCodePoint(Number.parseInt(hex, 16)),
+		)
+		.replace(/&#(\d+);?/g, (_m, dec: string) =>
+			String.fromCodePoint(Number.parseInt(dec, 10)),
+		)
+		// Browsers ignore these inside a scheme, which is how a tab in the middle
+		// of the word gets a link past a literal comparison.
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: that is the point
+		.replace(/[\u0000-\u0020]/g, "");
+	const match = /^([a-z][a-z0-9+.-]*):/i.exec(decoded);
+	return match ? match[1].toLowerCase() : null;
+}
+
+/**
  * Strip what must never reach a mail client or our own preview.
  *
- * ⚠️ Not a general-purpose sanitiser. Mail clients already refuse scripts, but
- * this HTML is rendered back into the QuickDash console in a preview — so a
- * `<script>` here is self-XSS even where no mail client would run it.
+ * ⚠️ Not a general-purpose sanitiser, and not the only defence. The console
+ * preview renders into an iframe with `sandbox=""`, so nothing can execute there
+ * whatever survives this, and mail clients refuse scripts on their own. This is
+ * the third layer, and it exists so that somebody with template access cannot
+ * reach an admin of the same workspace.
+ *
+ * 🔴 Every pass runs to a FIXPOINT. One pass over a tag whose name is split by
+ * another tag removes the inner one and leaves a whole new tag behind — the
+ * removal itself assembles the thing being removed. Repeating until nothing
+ * changes is the only way a replacement-based strip is sound.
  */
 export function sanitiseEmailHtml(html: string): string {
-	return html
-		.replace(/<\s*(script|iframe|object|embed)\b[\s\S]*?<\/\s*\1\s*>/gi, "")
-		.replace(/<\s*(script|iframe|object|embed)\b[^>]*\/?>/gi, "")
-		.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-		.replace(/javascript:/gi, "");
+	let out = html;
+	let previous: string;
+	do {
+		previous = out;
+		out = out
+			// Paired dangerous elements, contents included.
+			.replace(
+				/<\s*(script|iframe|object|embed|link|base)\b[\s\S]*?<\/\s*\1\s*>/gi,
+				"",
+			)
+			// …and unpaired, self-closing, or a stray closing tag.
+			.replace(/<\s*\/?\s*(script|iframe|object|embed|link|base)\b[^>]*>/gi, "")
+			// Inline handlers: onclick, onerror, onload, anything on*.
+			.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+			// A URL attribute keeps its value only when the scheme is one we allow.
+			.replace(URL_ATTRIBUTES, (whole, attribute: string, value: string) => {
+				const scheme = schemeOf(value);
+				if (scheme === null || SAFE_SCHEMES.has(scheme)) return whole;
+				return ` ${attribute}="#"`;
+			});
+	} while (out !== previous);
+	return out;
 }
 
 /**

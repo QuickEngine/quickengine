@@ -190,6 +190,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **One business's records can never reach another's.** Everything that runs on your behalf in the
+  background — the emails your customers receive, stock going back after a refund, a partner's
+  commission — now names the business it is acting for before it reads anything, rather than
+  trusting the record it was handed. Search works the same way: a business's own results are the
+  only ones it can be shown, and that is now impossible to write incorrectly rather than merely
+  checked. None of this was ever reachable from outside, and it is closed anyway, because "nobody
+  could have done it" is not the same as "nobody can".
+
 - **Two customers can never buy the last one.** Proven rather than assumed: ten people buying the same
   single item at the same instant now leaves exactly one sale and one item held, and five people
   buying from a shelf of ten all succeed. Counting stock by hand is protected the same way, so twenty

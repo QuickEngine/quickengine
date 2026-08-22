@@ -1,4 +1,5 @@
 import {
+	and,
 	bookings,
 	clientRecords,
 	db,
@@ -135,7 +136,12 @@ async function recordLifecycle(event: OutboxEvent) {
 			const [shipment] = await db
 				.select()
 				.from(shipments)
-				.where(eq(shipments.id, event.aggregateId))
+				.where(
+					and(
+						eq(shipments.workspaceId, event.workspaceId),
+						eq(shipments.id, event.aggregateId),
+					),
+				)
 				.limit(1);
 			if (!shipment?.orderId) return;
 			const [order] = await db
@@ -233,7 +239,16 @@ async function brandFor(
  * have the address the buyer typed. Falling back to the client record covers
  * rows written before the snapshot, or where only a link exists.
  */
+/**
+ * Who this email goes to.
+ *
+ * 🔴 `workspaceId` is not optional and must come from the EVENT. This resolves
+ * an address that a customer then receives an order's contents at, so an id from
+ * outside the workspace would send one business's order details to another
+ * business's customer. There is no session here for anything to refuse.
+ */
 async function recipientFor(
+	workspaceId: string,
 	snapshot: string | null,
 	clientId: string | null,
 ): Promise<string | null> {
@@ -242,7 +257,12 @@ async function recipientFor(
 	const [client] = await db
 		.select({ email: clientRecords.email })
 		.from(clientRecords)
-		.where(eq(clientRecords.id, clientId))
+		.where(
+			and(
+				eq(clientRecords.workspaceId, workspaceId),
+				eq(clientRecords.id, clientId),
+			),
+		)
 		.limit(1);
 	return client?.email ?? null;
 }
@@ -256,10 +276,19 @@ async function buildNotification(
 			const [order] = await db
 				.select()
 				.from(orders)
-				.where(eq(orders.id, event.aggregateId))
+				.where(
+					and(
+						eq(orders.workspaceId, event.workspaceId),
+						eq(orders.id, event.aggregateId),
+					),
+				)
 				.limit(1);
 			if (!order) return null;
-			const to = await recipientFor(order.clientEmail, order.clientId);
+			const to = await recipientFor(
+				event.workspaceId,
+				order.clientEmail,
+				order.clientId,
+			);
 			if (!to) return null;
 			return {
 				to,
@@ -277,6 +306,12 @@ async function buildNotification(
 							unitAmount: orderLineItems.unitPriceCents,
 						})
 						.from(orderLineItems)
+						/**
+						 * ⚠️ No workspace predicate, and correctly so: `order_line_items`
+						 * has no workspace column. It is scoped THROUGH its order, and the
+						 * order above is scoped to `event.workspaceId` — so a line can
+						 * only be reached via an order this workspace owns.
+						 */
 						.where(eq(orderLineItems.orderId, order.id))
 						.orderBy(orderLineItems.position),
 					subtotal: order.subtotalCents ?? 0,
@@ -290,10 +325,19 @@ async function buildNotification(
 			const [payment] = await db
 				.select()
 				.from(payments)
-				.where(eq(payments.id, event.aggregateId))
+				.where(
+					and(
+						eq(payments.workspaceId, event.workspaceId),
+						eq(payments.id, event.aggregateId),
+					),
+				)
 				.limit(1);
 			if (!payment) return null;
-			const to = await recipientFor(payment.clientEmail, payment.clientId);
+			const to = await recipientFor(
+				event.workspaceId,
+				payment.clientEmail,
+				payment.clientId,
+			);
 			if (!to) return null;
 			return {
 				to,
@@ -317,18 +361,29 @@ async function buildNotification(
 			const [shipment] = await db
 				.select()
 				.from(shipments)
-				.where(eq(shipments.id, event.aggregateId))
+				.where(
+					and(
+						eq(shipments.workspaceId, event.workspaceId),
+						eq(shipments.id, event.aggregateId),
+					),
+				)
 				.limit(1);
 			if (!shipment) return null;
 			const [order] = shipment.orderId
 				? await db
 						.select()
 						.from(orders)
-						.where(eq(orders.id, shipment.orderId))
+						.where(
+							and(
+								eq(orders.workspaceId, event.workspaceId),
+								eq(orders.id, shipment.orderId),
+							),
+						)
 						.limit(1)
 				: [];
 			// A shipment carries no email of its own; the order it belongs to does.
 			const to = await recipientFor(
+				event.workspaceId,
 				order?.clientEmail ?? null,
 				order?.clientId ?? null,
 			);
@@ -358,7 +413,11 @@ async function buildNotification(
 				.where(eq(invoices.id, event.aggregateId))
 				.limit(1);
 			if (!invoice) return null;
-			const to = await recipientFor(invoice.clientEmail, invoice.clientId);
+			const to = await recipientFor(
+				event.workspaceId,
+				invoice.clientEmail,
+				invoice.clientId,
+			);
 			if (!to) return null;
 
 			const lines = await db
@@ -394,7 +453,11 @@ async function buildNotification(
 				.where(eq(bookings.id, event.aggregateId))
 				.limit(1);
 			if (!booking) return null;
-			const to = await recipientFor(booking.clientEmail, booking.clientId);
+			const to = await recipientFor(
+				event.workspaceId,
+				booking.clientEmail,
+				booking.clientId,
+			);
 			if (!to) return null;
 			return {
 				to,

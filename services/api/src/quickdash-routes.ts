@@ -536,7 +536,8 @@ export function registerQuickDashRoutes(
 			index: "quickdash",
 			query,
 			limit: 8,
-			filters: { workspaceId: c.get("authorized").workspaceId },
+			// Required by the type now, rather than remembered by the caller.
+			workspaceId: c.get("authorized").workspaceId,
 		});
 		// 🔴 A failed search is a feature backlog written by users. The QUERY is
 		// deliberately never recorded — it is customer content and can quote a

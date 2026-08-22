@@ -57,11 +57,31 @@ export function referralSettlementHandler(
 			 */
 			let orderId = (event.payload as { orderId?: string } | null)?.orderId;
 			if (!orderId && event.aggregateType === "payment") {
-				const { db, eq, payments } = await import("@quickengine/db");
+				const { and, db, eq, payments } = await import("@quickengine/db");
+				/**
+				 * 🔴 Scoped to the EVENT'S workspace, not just the id.
+				 *
+				 * An outbox handler runs with no session. It is handed a workspace
+				 * and a payload, and the payload is data — an id in it is a claim,
+				 * not a fact. Looking a record up by id alone means a wrong or
+				 * malicious id reaches across a tenant boundary, and there is no
+				 * session for anything to refuse.
+				 *
+				 * Not reachable today: this id is written by the same authorized
+				 * mutation that emitted the event. That is an argument for why it
+				 * has not bitten, not for leaving it — the route layer already
+				 * refuses this shape everywhere, and the jobs are the half nobody
+				 * swept.
+				 */
 				const [payment] = await db
 					.select({ orderId: payments.orderId })
 					.from(payments)
-					.where(eq(payments.id, event.aggregateId))
+					.where(
+						and(
+							eq(payments.workspaceId, event.workspaceId),
+							eq(payments.id, event.aggregateId),
+						),
+					)
 					.limit(1);
 				orderId = payment?.orderId ?? undefined;
 			}

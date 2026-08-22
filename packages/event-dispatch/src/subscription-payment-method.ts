@@ -34,7 +34,7 @@ export function subscriptionPaymentMethodHandler(
 			// none of them should cost a provider round trip to find that out.
 			if (!(await subscriptionForOrder(event.workspaceId, orderId))) return;
 
-			const { db, eq, payments } = await import("@quickengine/db");
+			const { and, db, eq, payments } = await import("@quickengine/db");
 			const [payment] = await db
 				.select({
 					provider: payments.provider,
@@ -42,7 +42,20 @@ export function subscriptionPaymentMethodHandler(
 					environment: payments.environment,
 				})
 				.from(payments)
-				.where(eq(payments.id, payload.paymentId))
+				/**
+				 * 🔴 The id comes from the PAYLOAD, which makes this the weaker of
+				 * the two shapes: a payload is JSON somebody wrote, and an id in it
+				 * is a claim rather than a fact. Scoping to the event's workspace
+				 * means a wrong id finds nothing instead of finding somebody else's
+				 * payment and saving their card against this workspace's
+				 * subscription.
+				 */
+				.where(
+					and(
+						eq(payments.workspaceId, event.workspaceId),
+						eq(payments.id, payload.paymentId),
+					),
+				)
 				.limit(1);
 			if (!payment?.externalPaymentId) return;
 

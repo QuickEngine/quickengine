@@ -21,6 +21,7 @@ vi.mock("@quickengine/mod-orders", () => ({
 
 vi.mock("@quickengine/db", () => ({
 	payments: { id: "id", orderId: "order_id" },
+	and: (...parts: unknown[]) => parts,
 	eq: () => undefined,
 	db: {
 		select: () => ({

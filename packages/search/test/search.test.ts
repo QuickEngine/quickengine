@@ -80,7 +80,7 @@ describe("createAlgoliaSearchProvider", () => {
 			index: "quickdash",
 			query: "ada",
 			limit: 5,
-			filters: { workspaceId: "ws-1" },
+			workspaceId: "ws-1",
 		});
 
 		expect(fake.searchSingleIndex).toHaveBeenCalledWith({
@@ -92,6 +92,52 @@ describe("createAlgoliaSearchProvider", () => {
 			},
 		});
 		expect(results.map((r) => r.objectID)).toEqual(["rec-1", "rec-2"]);
+	});
+
+	/**
+	 * 🔴 Every workspace shares ONE index, so this filter is the only thing
+	 * between one business's records and another's. A caller passing their own
+	 * `workspaceId` in `filters` must not be able to displace the real one —
+	 * the spread order in the provider is what guarantees that, and this is the
+	 * test that keeps the spread in the right order.
+	 */
+	it("cannot be talked out of the workspace filter", async () => {
+		const fake = fakeClient();
+		const provider = createAlgoliaSearchProvider(fake.client);
+
+		await provider.search({
+			index: "quickdash",
+			query: "ada",
+			workspaceId: "ws-1",
+			// The attack: name somebody else's workspace in the free-form filters.
+			filters: { workspaceId: "ws-2" },
+		});
+
+		expect(fake.searchSingleIndex).toHaveBeenCalledWith(
+			expect.objectContaining({
+				searchParams: expect.objectContaining({
+					filters: 'workspaceId:"ws-1"',
+				}),
+			}),
+		);
+	});
+
+	it("ands extra filters with the workspace rather than replacing it", async () => {
+		const fake = fakeClient();
+		const provider = createAlgoliaSearchProvider(fake.client);
+
+		await provider.search({
+			index: "quickdash",
+			query: "ada",
+			workspaceId: "ws-1",
+			filters: { module: "orders" },
+		});
+
+		const call = fake.searchSingleIndex.mock.calls[0][0] as {
+			searchParams: { filters: string };
+		};
+		expect(call.searchParams.filters).toContain('workspaceId:"ws-1"');
+		expect(call.searchParams.filters).toContain('module:"orders"');
 	});
 
 	it("configures filterable attributes as filterOnly facets", async () => {

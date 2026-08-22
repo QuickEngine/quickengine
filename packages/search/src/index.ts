@@ -8,10 +8,29 @@ export type SearchRecord = {
 	metadata?: Record<string, unknown>;
 };
 
+/**
+ * One search, against one workspace.
+ *
+ * 🔴 `workspaceId` is REQUIRED, and that is the whole point of this type.
+ *
+ * Every workspace's records live in ONE shared Algolia index — one index is
+ * cheaper, and Algolia charges per index — so the only thing separating one
+ * business's orders from another's is a filter on the query. An optional filter
+ * is a filter somebody eventually omits, and omitting it here does not fail:
+ * it silently returns every workspace's records to whoever asked.
+ *
+ * Making it part of the type means a query without a workspace does not
+ * compile. That is a stronger guarantee than a review, a guard or a test,
+ * because there is no version of the mistake left to make.
+ *
+ * ⚠️ Extra `filters` are ANDed with the workspace, never instead of it.
+ */
 export type SearchQuery = {
 	index: SearchIndexName;
 	query: string;
 	limit?: number;
+	/** Whose records may be returned. Not optional. See above. */
+	workspaceId: string;
 	filters?: Record<string, string | number | boolean>;
 };
 

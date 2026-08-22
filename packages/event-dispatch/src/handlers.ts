@@ -10,6 +10,7 @@ import { getSearchProvider, type SearchProvider } from "@quickengine/search";
 import { customerNotificationHandler } from "./customer-notifications";
 import { operatorNotificationHandler } from "./operator-notifications";
 import { referralSettlementHandler } from "./referral-settlement";
+import { refundRestockHandler } from "./refund-restock";
 import { subscriptionPaymentMethodHandler } from "./subscription-payment-method";
 import { supplierHandoffHandler } from "./supplier-handoff";
 import { webhookFanoutHandler } from "./webhooks";
@@ -142,6 +143,10 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 		// signed up for can actually renew. Without it a subscription charges
 		// nothing on its second month and nothing says why.
 		subscriptionPaymentMethodHandler(),
+		// 🔴 Puts the goods back on the shelf when a refund goes out. Without it a
+		// refunded item stays sold as far as stock is concerned, and the count
+		// drifts quietly downwards for ever.
+		refundRestockHandler(),
 		webhookFanoutHandler(),
 	];
 }

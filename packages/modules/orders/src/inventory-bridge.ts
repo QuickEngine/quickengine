@@ -277,3 +277,111 @@ export async function consumeOrderStockInTx(
 		);
 	}
 }
+
+/**
+ * How much stock this order has actually taken off the shelf.
+ *
+ * Summing `onHandDelta` is the whole trick: `reserve` and `release` do not touch
+ * it, `fulfill_reserved` takes it, and a `customer_return` written by the restock
+ * below gives it back. So this reads zero once an order has been restocked, which
+ * is what makes restocking twice a no-op WITHOUT relying on the idempotency key —
+ * the balance itself remembers.
+ */
+async function consumedQuantity(
+	tx: OrderTransaction,
+	workspaceId: string,
+	orderId: string,
+	inventoryItemId: string,
+): Promise<number> {
+	const [totals] = await tx
+		.select({
+			taken: sql<number>`coalesce(sum(${inventoryAdjustments.onHandDelta}), 0)::int`,
+		})
+		.from(inventoryAdjustments)
+		.where(
+			and(
+				eq(inventoryAdjustments.workspaceId, workspaceId),
+				eq(inventoryAdjustments.referenceId, orderId),
+				eq(inventoryAdjustments.inventoryItemId, inventoryItemId),
+			),
+		);
+	return Math.max(0, -Number(totals?.taken ?? 0));
+}
+
+/**
+ * Put an order's stock back after the customer's money has been returned.
+ *
+ * 🔴 Refunding reversed the money and left the count alone until 2026-08-21, so a
+ * refunded item stayed sold as far as stock was concerned and the business
+ * undercounted what it could sell. Nobody noticed because the number stays
+ * plausible — it is just quietly too low, forever.
+ *
+ * ⚠️ The two states are genuinely different and both happen:
+ *
+ * - The order was placed but never shipped, so stock is still RESERVED. Nothing
+ *   left the shelf; the hold is simply given back (`release`).
+ * - The order shipped, so stock was CONSUMED. The goods are coming back to the
+ *   business, which is a `customer_return` and puts `onHand` up.
+ *
+ * Treating the second as a release would drive `reserved` negative and throw;
+ * treating the first as a return would invent stock that never left.
+ *
+ * ⚠️ Caller decides WHETHER to restock. A refund for something damaged in transit
+ * must not put it back on the shelf as sellable, and a system that always
+ * restocks is as wrong as one that never does.
+ */
+export async function restockOrderStockInTx(
+	tx: OrderTransaction,
+	workspaceId: string,
+	orderId: string,
+	options: { note?: string } = {},
+): Promise<void> {
+	const policy = await inventoryPolicy(tx, workspaceId);
+	if (!policy.enabled) return;
+
+	const note = options.note ?? "Returned to stock after refund";
+	for (const line of await stockedLines(tx, workspaceId, orderId)) {
+		const held = await outstandingReservation(
+			tx,
+			workspaceId,
+			orderId,
+			line.inventoryItemId,
+		);
+		if (held > 0) {
+			await applyInventoryAdjustmentInTx(
+				tx,
+				workspaceId,
+				line.inventoryItemId,
+				{
+					kind: "release",
+					quantity: Math.min(held, line.quantity),
+					referenceId: orderId,
+					idempotencyKey: movementKey(orderId, line.lineId, "refund-release"),
+					note,
+				},
+				{ allowNegativeStock: policy.allowNegativeStock },
+			);
+		}
+
+		const taken = await consumedQuantity(
+			tx,
+			workspaceId,
+			orderId,
+			line.inventoryItemId,
+		);
+		if (taken <= 0) continue;
+		await applyInventoryAdjustmentInTx(
+			tx,
+			workspaceId,
+			line.inventoryItemId,
+			{
+				kind: "customer_return",
+				quantity: Math.min(taken, line.quantity),
+				referenceId: orderId,
+				idempotencyKey: movementKey(orderId, line.lineId, "refund-return"),
+				note,
+			},
+			{ allowNegativeStock: policy.allowNegativeStock },
+		);
+	}
+}

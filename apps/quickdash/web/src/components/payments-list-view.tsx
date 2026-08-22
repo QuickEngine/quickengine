@@ -75,6 +75,16 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [refunding, setRefunding] = useState<string | null>(null);
 	const [amount, setAmount] = useState("");
+	/**
+	 * Whether the goods go back on the shelf.
+	 *
+	 * ⚠️ Defaults ON, because the ordinary refund is a customer changing their
+	 * mind and the item coming back. Turn it OFF when the goods are gone: damaged
+	 * in transit, lost by the carrier, or a goodwill refund where the customer
+	 * keeps what they bought. Restocking those invents stock that does not exist,
+	 * which is how a business oversells and disappoints the NEXT customer.
+	 */
+	const [restock, setRestock] = useState(true);
 	const [failure, setFailure] = useState<string | null>(null);
 
 	const payments = useQuery({
@@ -88,10 +98,14 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 	});
 
 	const refund = useMutation({
-		mutationFn: async (input: { id: string; amountCents: number }) => {
+		mutationFn: async (input: {
+			id: string;
+			amountCents: number;
+			restock: boolean;
+		}) => {
 			await workspaceApi(workspaceId).request(`/payments/${input.id}/refund`, {
 				method: "POST",
-				body: { amountCents: input.amountCents },
+				body: { amountCents: input.amountCents, restock: input.restock },
 				idempotencyKey: crypto.randomUUID(),
 			});
 		},
@@ -101,6 +115,7 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 		onSuccess: () => {
 			setRefunding(null);
 			setAmount("");
+			setRestock(true);
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "payments"],
 			});
@@ -263,6 +278,17 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 											Number.isFinite(entered) &&
 											entered > 0 &&
 											entered <= remaining;
+										/**
+										 * 🔴 Only a FULL refund can put stock back, so the choice
+										 * is only offered on one.
+										 *
+										 * A refund is an AMOUNT, not a list of items: "$5.00 back
+										 * on a $50 order" names nothing that could go on a shelf.
+										 * Showing the option on a partial refund would promise
+										 * something the system cannot do, and somebody would tick
+										 * it and believe their count was right.
+										 */
+										const fullRefund = validAmount && entered === remaining;
 										return (
 											<div className="flex items-center justify-end gap-1.5">
 												{open ? (
@@ -275,6 +301,19 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 															inputMode="decimal"
 															className={field}
 														/>
+														{fullRefund ? (
+															<label className="flex shrink-0 items-center gap-1 text-[11px] text-[var(--ink-30)]">
+																<input
+																	type="checkbox"
+																	checked={restock}
+																	onChange={(event) =>
+																		setRestock(event.target.checked)
+																	}
+																	className="size-3 accent-[var(--ink-30)]"
+																/>
+																Restock
+															</label>
+														) : null}
 														<button
 															type="button"
 															className={`${solid} ${refund.isPending ? "shimmer-busy" : ""}`}
@@ -283,6 +322,7 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 																refund.mutate({
 																	id: payment.id,
 																	amountCents: entered,
+																	restock: fullRefund && restock,
 																})
 															}
 														>
@@ -299,6 +339,7 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 														// a full refund is the common case and an empty box
 														// invites a typo against real money.
 														setAmount((remaining / 100).toFixed(2));
+														setRestock(true);
 														setFailure(null);
 													}}
 												>

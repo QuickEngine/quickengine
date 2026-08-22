@@ -41,7 +41,7 @@
 		"build": "turbo build",
 		"lint": "biome lint .",
 		"format": "biome format . --write",
-		"check": "biome check . && pnpm check:no-next && pnpm check:error-maps && pnpm check:test-db-names && pnpm check:security-headers && pnpm check:recovery-safety && pnpm check:environment-isolation",
+		"check": "biome check . && pnpm check:no-next && pnpm check:error-maps && pnpm check:test-db-names && pnpm check:security-headers && pnpm check:recovery-safety && pnpm check:environment-isolation && pnpm check:handler-isolation",
 		"check:error-maps": "node .github/ci/check-error-maps.mjs",
 		"brand:sync": "node packages/ui/sync-brand.mjs && biome check --write packages/ui/src/components",
 		"typecheck": "turbo typecheck",
@@ -82,7 +82,8 @@
 		"outbox:drain": "pnpm --filter @quickengine/api exec tsx scripts/drain-outbox.mts",
 		"order:paid": "pnpm --filter @quickengine/api exec tsx scripts/emit-order-paid.mts",
 		"supplier:webhook": "pnpm --filter @quickengine/api exec tsx scripts/deliver-supplier-webhook.mts",
-		"check:environment-isolation": "node .github/ci/check-environment-isolation.mjs"
+		"check:environment-isolation": "node .github/ci/check-environment-isolation.mjs",
+		"check:handler-isolation": "node .github/ci/check-handler-isolation.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",

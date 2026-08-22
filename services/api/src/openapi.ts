@@ -1407,6 +1407,69 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/shipping/carriers": {
+				get: {
+					operationId: "listCarrierConnections",
+					summary: "Which carrier accounts this business has connected",
+					responses: {
+						"200": {
+							description:
+								"Presence, mode and last verification for each carrier. Never the token itself.",
+						},
+					},
+				},
+				post: {
+					operationId: "saveCarrierConnection",
+					summary: "Connect a carrier account",
+					responses: {
+						"201": {
+							description:
+								"Stored, encrypted, and left pending until it has been checked.",
+						},
+					},
+				},
+			},
+			"/v1/shipping/carriers/check": {
+				post: {
+					operationId: "checkCarrierConnection",
+					summary: "Verify a carrier account actually works",
+					responses: {
+						"200": {
+							description:
+								"Whether the carrier answered, and its own words when it did not.",
+						},
+						"404": {
+							description: "No carrier account is saved for that mode.",
+						},
+					},
+				},
+			},
+			"/v1/shipping/carriers/{carrier}": {
+				delete: {
+					operationId: "deleteCarrierConnection",
+					summary: "Forget a carrier account",
+					parameters: [
+						{
+							in: "path",
+							name: "carrier",
+							required: true,
+							schema: { type: "string" },
+						},
+						{
+							in: "query",
+							name: "environment",
+							required: false,
+							schema: { type: "string", enum: ["test", "live"] },
+						},
+					],
+					responses: {
+						"200": { description: "The stored credential is gone." },
+						"404": {
+							description: "No carrier account is saved for that mode.",
+						},
+					},
+				},
+			},
 			"/v1/inventory/supplier-connections": {
 				get: {
 					operationId: "describeSupplierConnection",

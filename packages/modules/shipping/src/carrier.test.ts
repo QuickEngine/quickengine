@@ -21,22 +21,28 @@ describe("the shipping carrier seam", () => {
 	});
 
 	it("names a carrier it does not have rather than returning nothing", () => {
-		expect(() => getShippingCarrier("shippo")).toThrow(
+		// EasyPost is the recorded upgrade path and has no adapter. Asking for it
+		// gets a named refusal rather than a silent nothing.
+		expect(() => getShippingCarrier("easypost")).toThrow(
 			UnsupportedShippingCarrierError,
 		);
-		expect(() => getShippingCarrier("shippo")).toThrow(/shippo/);
+		expect(() => getShippingCarrier("easypost")).toThrow(/easypost/);
 	});
 
-	it("does not pretend manual is a connectable carrier", () => {
+	it("knows which carriers can actually be called", () => {
+		// ⚠️ `manual` is present in the registry but is NOT connectable: it is an
+		// arrangement, not an integration, and offering to connect it would ask a
+		// business for a credential that does not exist.
 		expect(isConnectableCarrier("manual")).toBe(false);
-		expect(isConnectableCarrier("shippo")).toBe(false);
+		expect(isConnectableCarrier("shippo")).toBe(true);
+		expect(isConnectableCarrier("easypost")).toBe(false);
 	});
 
 	it("refuses to quote without a carrier instead of returning no rates", async () => {
 		const carrier = getShippingCarrier("manual");
 		await expect(
 			carrier.quote({
-				workspaceId: "ws_1",
+				credentials: { apiToken: "unused" },
 				from: {
 					name: "Caffeinate",
 					line1: "1 Roastery Way",
@@ -73,7 +79,7 @@ describe("the shipping carrier seam", () => {
 		const carrier = getShippingCarrier("manual");
 		await carrier
 			.quote({
-				workspaceId: "ws_1",
+				credentials: { apiToken: "unused" },
 				from: {
 					name: "A",
 					line1: "1",
@@ -100,7 +106,10 @@ describe("the shipping carrier seam", () => {
 	it("refuses to spend money it has no carrier to spend with", async () => {
 		const carrier = getShippingCarrier("manual");
 		await expect(
-			carrier.buyLabel({ workspaceId: "ws_1", carrierRateId: "rate_1" }),
+			carrier.buyLabel({
+				credentials: { apiToken: "unused" },
+				carrierRateId: "rate_1",
+			}),
 		).rejects.toThrow(CarrierError);
 	});
 
@@ -109,7 +118,7 @@ describe("the shipping carrier seam", () => {
 		const carrier = getShippingCarrier("manual");
 		expect(
 			await carrier.voidLabel({
-				workspaceId: "ws_1",
+				credentials: { apiToken: "unused" },
 				externalLabelId: "label_1",
 			}),
 		).toBe(false);
@@ -119,7 +128,10 @@ describe("the shipping carrier seam", () => {
 	it("verifies no webhook and explains nothing", async () => {
 		const carrier = getShippingCarrier("manual");
 		expect(
-			await carrier.verifyWebhook({ rawBody: "{}", headers: {} }, "ws_1"),
+			await carrier.verifyWebhook(
+				{ rawBody: "{}", headers: {} },
+				{ apiToken: "unused" },
+			),
 		).toBeNull();
 	});
 });

@@ -62,7 +62,18 @@ export function createAlgoliaSearchProvider(
 				searchParams: {
 					query: query.query,
 					hitsPerPage: query.limit ?? 10,
-					filters: toFilters(query.filters),
+					/**
+					 * 🔴 The workspace goes in LAST and cannot be displaced.
+					 *
+					 * Every workspace shares one index, so this filter is the only
+					 * thing between one business's records and another's. Spreading
+					 * the caller's filters first means a caller cannot overwrite it,
+					 * even by passing `workspaceId` themselves.
+					 */
+					filters: toFilters({
+						...query.filters,
+						workspaceId: query.workspaceId,
+					}),
 				},
 			});
 			return hits.map((hit) => ({ ...hit }));

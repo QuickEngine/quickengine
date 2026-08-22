@@ -1,4 +1,5 @@
 import {
+	and,
 	catalogItems,
 	createNotification,
 	db,
@@ -183,7 +184,7 @@ async function noticeFor(event: OutboxEvent): Promise<Notice | null> {
 	}
 
 	if (event.eventName === "inventory-item.adjusted") {
-		return lowStockNotice(payload);
+		return lowStockNotice(event.workspaceId, payload);
 	}
 
 	return null;
@@ -197,6 +198,7 @@ async function noticeFor(event: OutboxEvent): Promise<Notice | null> {
  * fire on every item in the catalog the first time it sold out.
  */
 async function lowStockNotice(
+	workspaceId: string,
 	payload: Record<string, unknown>,
 ): Promise<Notice | null> {
 	const onHand = Number(payload.resultingOnHand);
@@ -211,7 +213,15 @@ async function lowStockNotice(
 		})
 		.from(inventoryItems)
 		.innerJoin(catalogItems, eq(inventoryItems.catalogItemId, catalogItems.id))
-		.where(eq(inventoryItems.id, itemId))
+		// 🔴 Scoped to the workspace as well as the id. A low-stock notice built
+		// from another tenant's item would put their product name on this
+		// business's screen.
+		.where(
+			and(
+				eq(inventoryItems.workspaceId, workspaceId),
+				eq(inventoryItems.id, itemId),
+			),
+		)
 		.limit(1);
 
 	if (item?.status !== "active") return null;

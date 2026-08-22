@@ -155,6 +155,15 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 	},
 	checkSupplierConnection: { supplierId: SUPPLIER, provider: "shopify" },
 
+	saveCarrierConnection: {
+		carrier: "shippo",
+		environment: "test",
+		// Illustrative only. The real token is write-only and no route ever
+		// returns one.
+		apiToken: "shippo_test_example_token",
+	},
+	checkCarrierConnection: { carrier: "shippo", environment: "test" },
+
 	createShipment: {
 		orderId: ORDER,
 		lines: [{ orderLineItemId: ORDER_LINE, quantity: 1 }],

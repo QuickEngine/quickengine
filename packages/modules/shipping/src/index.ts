@@ -1,5 +1,7 @@
 export * from "./application";
 export * from "./carrier";
+export * from "./carrier-connections";
+export * from "./carrier-credentials";
 export * from "./carriers";
 export * from "./module";
 export * from "./rates";

@@ -88,6 +88,14 @@ const FRIENDLY: Record<string, string> = {
 	ORDER_LINE_OVERSHIPPED:
 		"That would ship more units than the order has remaining.",
 	SHIPMENT_HAS_NO_LINES: "A shipment must contain at least one item.",
+	/**
+	 * ⚠️ Reachable only after the application secret is rotated, which makes
+	 * every stored credential unreadable. `resolveCarrierConnection` already
+	 * catches this and returns null, so it should never escape — but a code with
+	 * no friendly message is one raw exception away from a customer reading
+	 * CARRIER_CREDENTIALS_MALFORMED, and that is what this guard exists to stop.
+	 */
+	CARRIER_CREDENTIALS_MALFORMED: "That carrier account needs connecting again.",
 };
 
 function mapShipmentError(error: unknown): never {
@@ -96,6 +104,11 @@ function mapShipmentError(error: unknown): never {
 		const message = FRIENDLY[error.message] ?? error.message;
 		if (error.message.endsWith("NOT_FOUND")) {
 			throw new DomainError("NOT_FOUND", message);
+		}
+		if (/CREDENTIALS_MALFORMED/.test(error.message)) {
+			// Not the caller's fault and not a validation problem: the stored
+			// credential can no longer be read, and the fix is to reconnect.
+			throw new DomainError("CONFLICT", message);
 		}
 		if (/NOT_SHIPPABLE|ORDER_MISMATCH|ORDER_IMMUTABLE/.test(error.message)) {
 			throw new DomainError("VALIDATION_ERROR", message);

@@ -3,17 +3,28 @@ import type { MutationUnitOfWork } from "@quickengine/api-contracts/mutations";
 import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
 import {
+	CarrierError,
+	carrierConnectionCheckSchema,
+	carrierConnectionInputSchema,
+	carrierEnvironmentSchema,
+	carrierNameSchema,
 	createShipmentCommand,
 	createShippingRate,
 	createShippingZone,
+	deleteCarrierConnection,
 	deleteShipmentCommand,
 	deleteShippingRate,
 	deleteShippingZone,
 	getShipmentDto,
+	getShippingCarrier,
+	listCarrierConnections,
 	listShipmentsPage,
 	listShippingZones,
+	resolveCarrierConnection,
 	SHIPMENT_STATUSES,
 	ShippingRateConfigError,
+	saveCarrierConnection,
+	setCarrierConnectionState,
 	setShipmentStatusCommand,
 	shippingRateInputSchema,
 	shippingRatePatchSchema,
@@ -113,6 +124,137 @@ export function registerShippingRoutes(
 			notFound ? 404 : 409,
 		);
 	};
+
+	/* ── Carrier connections ───────────────────────────────────────────────────
+	 *
+	 * A business brings its OWN carrier account, the same answer Stripe Connect
+	 * gave, because that is what makes their negotiated carrier rates carry over.
+	 *
+	 * 🔴 The token never comes back out. `listCarrierConnections` answers whether
+	 * one is present and whether it last worked, never what it is. A screen able
+	 * to show it would turn a session hijack into the ability to print labels
+	 * billed to that business.
+	 */
+	app.get("/v1/shipping/carriers", readAccess, readLimit, async (c) =>
+		respond(c, {
+			items: await listCarrierConnections(c.get("authorized").workspaceId),
+		}),
+	);
+
+	app.post("/v1/shipping/carriers", writeAccess, writeLimit, async (c) => {
+		const body = carrierConnectionInputSchema.parse(await c.req.json());
+		const saved = await saveCarrierConnection({
+			workspaceId: c.get("authorized").workspaceId,
+			carrier: body.carrier,
+			environment: body.environment,
+			credentials: {
+				apiToken: body.apiToken,
+				...(body.webhookSecret ? { webhookSecret: body.webhookSecret } : {}),
+			},
+		});
+		// Lands `pending`: nothing has proven the token works, and calling it
+		// active before anything has spoken to the carrier is how a broken
+		// connection looks healthy on a settings screen.
+		return respond(c, { id: saved?.id ?? null, status: "pending" }, 201);
+	});
+
+	/**
+	 * Ask the carrier whether the token actually works.
+	 *
+	 * 🔴 Registered BEFORE `/:carrier` below. A param route declared first
+	 * captures the literal `check` as a carrier name — the same shadowing that
+	 * has broken this repo three times, most recently
+	 * `/v1/inventory/supplier-connections` behind `/v1/inventory/:id`.
+	 *
+	 * ⚠️ Uses `allowUnverified`, because a connection that has never been
+	 * checked is exactly what somebody is checking. Without it, saving a token
+	 * and immediately testing it reports that no connection exists.
+	 */
+	app.post(
+		"/v1/shipping/carriers/check",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			const body = carrierConnectionCheckSchema.parse(await c.req.json());
+			const workspaceId = c.get("authorized").workspaceId;
+
+			const connection = await resolveCarrierConnection({
+				workspaceId,
+				carrier: body.carrier,
+				environment: body.environment,
+				allowUnverified: true,
+			});
+			if (!connection) {
+				return respondError(
+					c,
+					"NOT_FOUND",
+					"No carrier account is saved for that mode.",
+					404,
+				);
+			}
+
+			try {
+				// Throws `UnsupportedShippingCarrierError` for a carrier with no adapter,
+				// which is a truthful answer rather than a pretend success.
+				await getShippingCarrier(body.carrier).verifyCredentials({
+					credentials: connection.credentials,
+				});
+				await setCarrierConnectionState({
+					workspaceId,
+					carrier: body.carrier,
+					environment: body.environment,
+					ok: true,
+				});
+				return respond(c, { ok: true, error: null });
+			} catch (error) {
+				/**
+				 * ⚠️ A refusal is recorded, not thrown. The point of a check button is
+				 * to put the carrier's own words on screen where somebody can act on
+				 * them, and a 500 with a stack trace is not that.
+				 */
+				const message =
+					error instanceof CarrierError
+						? error.message
+						: error instanceof Error
+							? error.message
+							: "The carrier could not be reached.";
+				await setCarrierConnectionState({
+					workspaceId,
+					carrier: body.carrier,
+					environment: body.environment,
+					ok: false,
+					error: message,
+				});
+				return respond(c, { ok: false, error: message });
+			}
+		},
+	);
+
+	app.delete(
+		"/v1/shipping/carriers/:carrier",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			const carrier = carrierNameSchema.parse(c.req.param("carrier"));
+			const environment = carrierEnvironmentSchema.parse(
+				c.req.query("environment") ?? "live",
+			);
+			const removed = await deleteCarrierConnection({
+				workspaceId: c.get("authorized").workspaceId,
+				carrier,
+				environment,
+			});
+			if (!removed) {
+				return respondError(
+					c,
+					"NOT_FOUND",
+					"No carrier account is saved for that mode.",
+					404,
+				);
+			}
+			return respond(c, { deleted: true });
+		},
+	);
 
 	/* Zones, rates, and storefront quotes */
 

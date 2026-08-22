@@ -128,7 +128,12 @@ describe("module registry policy", () => {
 
 	it("recognizes Shipping and protects its Orders dependency", () => {
 		expect(parseModuleSettings("shipping", {})).toEqual({
-			defaultOriginCountry: "US",
+			// No ship-from address by default: a business pricing delivery from its
+			// own bands never calls a carrier and has nothing to declare.
+			origin: null,
+			// A carrier cannot price a box whose size nobody declared, and the catalog
+			// carries weight only. Null until a business says which box it ships in.
+			defaultParcel: null,
 			defaultCarrier: null,
 			requireTracking: false,
 		});

@@ -8,6 +8,25 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Change how a module works for your business.** Every module carries settings — the prefix on your
+  order numbers, whether stock may go below zero, where your parcels ship from — and until now none of
+  them could be changed after a workspace was created. They can be saved now, and the first screen for
+  it is the shipping one below.
+
+- **Say where you ship from.** A carrier cannot price a parcel without knowing where it starts, so
+  Shipping now takes your business address and the size of the box you usually ship in. Leave both
+  empty if you price delivery with your own rates and never call a carrier.
+
+- **Real carrier prices at checkout.** A delivery zone can now ask a carrier what it actually costs to
+  send this parcel to this address, instead of using the bands you wrote by hand. It is chosen **per
+  zone**, so you decide where it applies, and the carrier account is yours rather than ours: your
+  negotiated rates come with you. Connect it once and the connection is checked before anything relies
+  on it.
+
+  🔴 **A zone set to ask a carrier never quietly falls back to your bands.** If the carrier cannot
+  answer, checkout says delivery cannot be priced right now. Free delivery is something you choose,
+  never something an outage decides for you.
+
 - **A subscription actually charges.** Renewals have been scheduled and priced correctly for a
   while, but nothing ever took the money, so every subscription in existence renewed for free. A
   customer's card is now kept on file when they first pay, with their agreement, and each renewal is
@@ -170,6 +189,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   button with it, so nothing is left offering to act on something that is not there.
 
 ### Fixed
+
+- **One business's records can never reach another's.** Everything that runs on your behalf in the
+  background — the emails your customers receive, stock going back after a refund, a partner's
+  commission — now names the business it is acting for before it reads anything, rather than
+  trusting the record it was handed. Search works the same way: a business's own results are the
+  only ones it can be shown, and that is now impossible to write incorrectly rather than merely
+  checked. None of this was ever reachable from outside, and it is closed anyway, because "nobody
+  could have done it" is not the same as "nobody can".
+
+- **Two customers can never buy the last one.** Proven rather than assumed: ten people buying the same
+  single item at the same instant now leaves exactly one sale and one item held, and five people
+  buying from a shelf of ten all succeed. Counting stock by hand is protected the same way, so twenty
+  simultaneous corrections all land and nothing can drive a count below zero.
 
 - **A refund puts the stock back.** Refunding a customer reversed the money and left the count
   alone, so a returned item stayed sold as far as stock was concerned and a business slowly

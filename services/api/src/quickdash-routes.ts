@@ -18,6 +18,7 @@ import {
 	saveFirstActionChecklistState,
 	saveQuickDashOrientationOutcome,
 	saveWorkspaceBranding,
+	setWorkspaceModuleSettings,
 } from "@quickengine/db";
 import {
 	declineContract,
@@ -32,6 +33,7 @@ import {
 import {
 	accountSecurityGuidedGoal,
 	findRecipe,
+	getModule,
 	getWorkspaceModules,
 	listModules,
 	resolveFirstActions,
@@ -332,6 +334,68 @@ export function registerQuickDashRoutes(
 	});
 
 	/**
+	 * Change how a module behaves for THIS business.
+	 *
+	 * 🔴 Until this existed there was no write path for module settings anywhere.
+	 * Every module carries a `settingsSchema` — an order number prefix, whether
+	 * stock may go negative, where parcels ship from — and every one of them was
+	 * frozen at whatever the workspace was created with. The schemas were real,
+	 * the screens were not, and nothing joined them.
+	 *
+	 * 🔴 Parsed against the MODULE'S OWN schema, not a schema written here. A
+	 * second copy of a module's settings shape in the API is a copy that drifts,
+	 * and the drift shows up as a setting that saves and then does nothing.
+	 *
+	 * ⚠️ `manage`, not `operate`. Configuring a module is a workspace decision
+	 * rather than a record write, and the `operate` authorizers each require
+	 * their own module to be enabled — reusing one made saving a support email
+	 * fail with "The contracts-esign module is not enabled".
+	 *
+	 * ⚠️ Whole-object replace, not a merge. A partial save cannot express
+	 * "clear this", and a settings screen that can set a value but never unset it
+	 * is one somebody has to edit the database to escape.
+	 */
+	app.patch("/v1/quickdash/modules/:moduleId/settings", manage, async (c) => {
+		const moduleId = c.req.param("moduleId");
+		const manifest = getModule(moduleId);
+		if (!manifest) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"That module does not exist.",
+				400,
+			);
+		}
+
+		const parsed = manifest.settingsSchema.safeParse(await c.req.json());
+		if (!parsed.success) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"Those settings are not valid for this module.",
+				400,
+			);
+		}
+
+		const settings = await setWorkspaceModuleSettings({
+			workspaceId: c.get("authorized").workspaceId,
+			moduleId,
+			settings: parsed.data as Record<string, unknown>,
+		});
+		if (!settings) {
+			// Not enabled here. A 404 rather than a 403: from the caller's side the
+			// thing they asked to configure genuinely is not there.
+			return respondError(
+				c,
+				"NOT_FOUND",
+				"That module is not switched on for this workspace.",
+				404,
+			);
+		}
+		return respond(c, { moduleId, settings });
+	});
+
+	/**
 	 * Every email a customer can receive, rendered with this business's brand.
 	 *
 	 * 🔑 Rendered SERVER-SIDE from the real templates rather than mocked up in the
@@ -472,7 +536,8 @@ export function registerQuickDashRoutes(
 			index: "quickdash",
 			query,
 			limit: 8,
-			filters: { workspaceId: c.get("authorized").workspaceId },
+			// Required by the type now, rather than remembered by the caller.
+			workspaceId: c.get("authorized").workspaceId,
 		});
 		// 🔴 A failed search is a feature backlog written by users. The QUERY is
 		// deliberately never recorded — it is customer content and can quote a

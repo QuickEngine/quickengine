@@ -30,6 +30,7 @@ export * from "./reporting-analytics";
 export * from "./reviews";
 export * from "./saved-views";
 export * from "./shipments";
+export * from "./shipping-carrier-connections";
 export * from "./shipping-rates";
 export * from "./subscriptions";
 export * from "./supplier-connections";

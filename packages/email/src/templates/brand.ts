@@ -109,6 +109,12 @@ export type TemplateCopy = {
  */
 const SAFE_SCHEMES = new Set(["http", "https", "mailto", "tel", "cid"]);
 
+const PAIRED_ELEMENTS =
+	/<\s*(script|iframe|object|embed|link|base)\b[\s\S]*?<\/\s*\1\s*>/gi;
+const LONE_ELEMENTS =
+	/<\s*\/?\s*(script|iframe|object|embed|link|base)\b[^>]*>/gi;
+const EVENT_HANDLERS = /\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
+
 /** Attributes whose value is fetched or navigated to. */
 const URL_ATTRIBUTES =
 	/\s(href|src|action|formaction|background|poster)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
@@ -154,27 +160,40 @@ function schemeOf(rawValue: string): string | null {
  */
 export function sanitiseEmailHtml(html: string): string {
 	let out = html;
-	let previous: string;
-	do {
-		previous = out;
-		out = out
-			// Paired dangerous elements, contents included.
-			.replace(
-				/<\s*(script|iframe|object|embed|link|base)\b[\s\S]*?<\/\s*\1\s*>/gi,
-				"",
-			)
-			// …and unpaired, self-closing, or a stray closing tag.
-			.replace(/<\s*\/?\s*(script|iframe|object|embed|link|base)\b[^>]*>/gi, "")
-			// Inline handlers: onclick, onerror, onload, anything on*.
-			.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-			// A URL attribute keeps its value only when the scheme is one we allow.
-			.replace(URL_ATTRIBUTES, (whole, attribute: string, value: string) => {
-				const scheme = schemeOf(value);
-				if (scheme === null || SAFE_SCHEMES.has(scheme)) return whole;
-				return ` ${attribute}="#"`;
-			});
-	} while (out !== previous);
-	return out;
+
+	// ⚠️ `while (s !== (s = s.replace(…)))` looks like a typo and is not. It is
+	// the recognised way to write "keep replacing until nothing changes": the
+	// assignment happens inside the comparison, so the loop ends only when a pass
+	// changed nothing. A plain `.replace()` runs once and leaves whatever its own
+	// removal assembled.
+
+	// Paired dangerous elements, contents included.
+	// biome-ignore lint/suspicious/noAssignInExpressions: the assignment IS the loop
+	while (out !== (out = out.replace(PAIRED_ELEMENTS, ""))) {
+		// Intentionally empty: the work happens in the condition.
+	}
+	// …and unpaired, self-closing, or a stray closing tag.
+	// biome-ignore lint/suspicious/noAssignInExpressions: the assignment IS the loop
+	while (out !== (out = out.replace(LONE_ELEMENTS, ""))) {
+		// Intentionally empty: the work happens in the condition.
+	}
+	// Inline handlers: onclick, onerror, onload, anything on*.
+	// biome-ignore lint/suspicious/noAssignInExpressions: the assignment IS the loop
+	while (out !== (out = out.replace(EVENT_HANDLERS, ""))) {
+		// Intentionally empty: the work happens in the condition.
+	}
+
+	// A URL attribute keeps its value only when the scheme is one we allow. This
+	// pass can only ever shorten a value to `#`, so it cannot assemble a new tag
+	// and does not need a fixpoint of its own.
+	return out.replace(
+		URL_ATTRIBUTES,
+		(whole, attribute: string, value: string) => {
+			const scheme = schemeOf(value);
+			if (scheme === null || SAFE_SCHEMES.has(scheme)) return whole;
+			return ` ${attribute}="#"`;
+		},
+	);
 }
 
 /**

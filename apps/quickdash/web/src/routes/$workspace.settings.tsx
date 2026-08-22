@@ -107,6 +107,66 @@ function SettingsPage() {
 		},
 	});
 
+	/**
+	 * Where parcels are sent FROM.
+	 *
+	 * 🔴 A carrier cannot price a parcel without an origin, so this is the first
+	 * thing a live-rate integration needs and the workspace had nowhere to put
+	 * it. Until 2026-08-21 no module setting could be written at all.
+	 */
+	const shippingModule = context.data?.modules?.find(
+		(module) => module.id === "shipping",
+	);
+	const storedOrigin =
+		(shippingModule?.settings as { origin?: ShippingOriginFields | null })
+			?.origin ?? null;
+
+	const [origin, setOrigin] = useState<ShippingOriginFields | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: seed the form once the workspace arrives
+	useEffect(() => {
+		if (shippingModule && !origin) setOrigin(storedOrigin ?? blankOrigin());
+	}, [shippingModule]);
+
+	const saveOrigin = useMutation({
+		mutationFn: async () => {
+			if (!origin) return;
+			const filled = originIsFilled(origin);
+			await workspaceApi(workspace).request(
+				"/quickdash/modules/shipping/settings",
+				{
+					method: "PATCH",
+					// ⚠️ WHOLE object. The route replaces rather than merges, because a
+					// partial save cannot express "clear this" — so the settings that
+					// are not on this screen have to travel with the ones that are, or
+					// saving an address would silently reset them.
+					body: {
+						...(shippingModule?.settings ?? {}),
+						origin: filled
+							? {
+									...origin,
+									line2: origin.line2 || null,
+									region: origin.region || null,
+									phone: origin.phone || null,
+								}
+							: null,
+					},
+				},
+			);
+		},
+		onSuccess: () => {
+			setFailure(null);
+			setSaved(true);
+			setTimeout(() => setSaved(false), 2500);
+			void queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspace, "context"],
+			});
+		},
+		onError: (error: { message?: string }) => {
+			setEnvironmentFailure(false);
+			setFailure(error?.message ?? "That could not be saved.");
+		},
+	});
+
 	const templates = useQuery({
 		queryKey: ["quickdash", workspace, "email-templates"],
 		queryFn: async () =>
@@ -378,6 +438,136 @@ function SettingsPage() {
 				</div>
 			</div>
 
+			{/*
+			 * Only for businesses that ship. A workspace selling appointments has
+			 * no parcels and should not be asked where they leave from.
+			 */}
+			{shippingModule ? (
+				<>
+					<p className="mt-9 mb-1 text-[12.5px] text-[var(--ink-45)]">
+						Where you ship from
+					</p>
+					<div className="max-w-2xl space-y-4 border-[var(--console-line-soft)] border-t py-4">
+						<p className="text-[11.5px] text-[var(--ink-35)] leading-5">
+							The return address on your labels, and where a carrier measures
+							delivery from. Leave it empty if you price delivery with your own
+							rates and never call a carrier.
+						</p>
+
+						<BrandField
+							label="Business name"
+							hint="the name on the label"
+							value={origin?.name ?? ""}
+							onChange={(value) =>
+								setOrigin((was) => ({ ...(was ?? blankOrigin()), name: value }))
+							}
+							placeholder="Caffeinate"
+						/>
+						<BrandField
+							label="Street address"
+							value={origin?.line1 ?? ""}
+							onChange={(value) =>
+								setOrigin((was) => ({
+									...(was ?? blankOrigin()),
+									line1: value,
+								}))
+							}
+							placeholder="1 Roastery Way"
+						/>
+						<BrandField
+							label="Unit or suite"
+							hint="optional"
+							value={origin?.line2 ?? ""}
+							onChange={(value) =>
+								setOrigin((was) => ({
+									...(was ?? blankOrigin()),
+									line2: value,
+								}))
+							}
+						/>
+						<BrandField
+							label="City"
+							value={origin?.city ?? ""}
+							onChange={(value) =>
+								setOrigin((was) => ({ ...(was ?? blankOrigin()), city: value }))
+							}
+							placeholder="Calgary"
+						/>
+						<BrandField
+							label="Province or state"
+							hint="the short form a carrier uses, like AB"
+							value={origin?.region ?? ""}
+							onChange={(value) =>
+								setOrigin((was) => ({
+									...(was ?? blankOrigin()),
+									region: value,
+								}))
+							}
+							placeholder="AB"
+						/>
+						<BrandField
+							label="Postal code"
+							value={origin?.postalCode ?? ""}
+							onChange={(value) =>
+								setOrigin((was) => ({
+									...(was ?? blankOrigin()),
+									postalCode: value,
+								}))
+							}
+							placeholder="T2P 1J9"
+						/>
+						<BrandField
+							label="Country"
+							hint="two letters"
+							value={origin?.countryCode ?? ""}
+							onChange={(value) =>
+								setOrigin((was) => ({
+									...(was ?? blankOrigin()),
+									countryCode: value.toUpperCase().slice(0, 2),
+								}))
+							}
+							placeholder="CA"
+						/>
+						{/*
+						 * ⚠️ Asked for, and said to be worth it, because the failure is
+						 * LATE: rates quote fine without it and the label purchase is
+						 * refused, after a customer has paid and picked a service.
+						 */}
+						<BrandField
+							label="Phone"
+							hint="more carriers need this than you would expect"
+							value={origin?.phone ?? ""}
+							onChange={(value) =>
+								setOrigin((was) => ({
+									...(was ?? blankOrigin()),
+									phone: value,
+								}))
+							}
+							placeholder="+1 403 555 0100"
+						/>
+
+						<div className="flex items-center gap-3">
+							<button
+								type="button"
+								disabled={
+									saveOrigin.isPending || !origin || !originIsUsable(origin)
+								}
+								onClick={() => saveOrigin.mutate()}
+								className={`${quietAction} ${saveOrigin.isPending ? "shimmer-busy" : ""}`}
+							>
+								{saveOrigin.isPending ? "Saving…" : "Save"}
+							</button>
+							{origin && originIsFilled(origin) && !originIsUsable(origin) ? (
+								<span className="text-[11.5px] text-[var(--ink-45)]">
+									A carrier needs the name, street, city, postal code and
+									country.
+								</span>
+							) : null}
+						</div>
+					</div>
+				</>
+			) : null}
+
 			<p className="mt-9 mb-1 text-[12.5px] text-[var(--ink-45)]">
 				Emails your customers receive
 			</p>
@@ -600,6 +790,47 @@ function SettingsPage() {
 }
 
 /** One labelled input. Matches the console's field shape without importing it. */
+/** The shape the shipping module stores. Mirrors `shippingOriginSchema`. */
+type ShippingOriginFields = {
+	name: string;
+	line1: string;
+	line2: string | null;
+	city: string;
+	region: string | null;
+	postalCode: string;
+	countryCode: string;
+	phone: string | null;
+};
+
+const blankOrigin = (): ShippingOriginFields => ({
+	name: "",
+	line1: "",
+	line2: "",
+	city: "",
+	region: "",
+	postalCode: "",
+	countryCode: "",
+	phone: "",
+});
+
+/** Has somebody typed anything at all? An untouched form saves null, not junk. */
+const originIsFilled = (origin: ShippingOriginFields): boolean =>
+	Object.values(origin).some((value) => (value ?? "").trim() !== "");
+
+/**
+ * Enough for a carrier to work with.
+ *
+ * ⚠️ Deliberately stricter than "not empty". A half-typed address saves, then
+ * fails at the carrier days later with a message about a field nobody
+ * remembers — better to refuse here, where the person can see what is missing.
+ */
+const originIsUsable = (origin: ShippingOriginFields): boolean =>
+	!originIsFilled(origin) ||
+	([origin.name, origin.line1, origin.city, origin.postalCode].every(
+		(value) => value.trim() !== "",
+	) &&
+		/^[A-Za-z]{2}$/.test(origin.countryCode.trim()));
+
 function BrandField({
 	label,
 	hint,

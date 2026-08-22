@@ -53,7 +53,10 @@ supplier ships, the tracking it reports becomes a shipment on the customer's ord
 through the same email and portal as anything the business ships itself.
 
 Shipping supports deterministic country and region zones, flat and weight-based delivery,
-order-value bands and free-shipping thresholds. Storefronts choose a quoted rate; QuickDash
+order-value bands and free-shipping thresholds. A zone can instead ask a real carrier what the parcel
+costs, using the business's own carrier account so negotiated rates carry over; that choice is made
+per zone, and a zone that asks a carrier never silently falls back to a hand-written band, because
+free delivery is a decision rather than the result of an outage. Storefronts choose a quoted rate; QuickDash
 re-prices catalog values, item weights and the selected rate before it records or charges the
 order.
 

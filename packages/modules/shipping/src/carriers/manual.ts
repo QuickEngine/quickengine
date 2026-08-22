@@ -28,6 +28,13 @@ import {
 export const manualShippingCarrier: ShippingCarrier = {
 	id: "manual",
 
+	async verifyCredentials(): Promise<void> {
+		throw new CarrierError(
+			"CARRIER_NOT_CONFIGURED",
+			"This business has not connected a carrier, so there is nothing to verify.",
+		);
+	},
+
 	async quote(): Promise<CarrierRate[]> {
 		throw new CarrierError(
 			"CARRIER_NOT_CONFIGURED",

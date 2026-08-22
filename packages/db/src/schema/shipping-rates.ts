@@ -89,6 +89,24 @@ export const shippingZones = pgTable(
 
 		active: boolean("active").notNull().default(true),
 
+		/**
+		 * Ask a carrier for real prices to this zone, instead of using the bands.
+		 *
+		 * 🔴 PER ZONE, and defaulting to false. Asher, 2026-08-21: live rates are
+		 * opt-in so a business chooses deliberately, and so a carrier outage falls
+		 * back to a price the merchant set rather than to nothing.
+		 *
+		 * ⚠️ This is the answer to "what wins when the two disagree", which is the
+		 * question that made a global switch unworkable: a customer seeing a
+		 * different price on two loads of the same basket is worse than either
+		 * source alone. Within one zone there is exactly one source of truth.
+		 *
+		 * ⚠️ Turning it on with no carrier connected does NOT silently fall back to
+		 * the bands. A zone that says "ask the carrier" and quietly answers with
+		 * something else is how a merchant ships at a loss without knowing.
+		 */
+		useCarrierRates: boolean("use_carrier_rates").notNull().default(false),
+
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

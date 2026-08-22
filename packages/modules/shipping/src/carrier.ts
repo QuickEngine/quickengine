@@ -1,3 +1,5 @@
+import type { CarrierCredentials } from "./carrier-credentials";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // THE SHIPPING CARRIER SEAM.
 //
@@ -137,8 +139,31 @@ export class CarrierError extends Error {
 	}
 }
 
+/**
+ * 🔴 Every method takes CREDENTIALS, never a workspace id.
+ *
+ * An adapter that looked its own credentials up would depend on the database,
+ * which makes it impossible to test against the real carrier without one — and
+ * an integration nobody can run is where this project's bugs have consistently
+ * hidden. Resolving the connection is the caller's job; calling the carrier is
+ * the adapter's.
+ */
 export interface ShippingCarrier {
 	readonly id: ShippingCarrierId;
+
+	/**
+	 * Does this token work at all?
+	 *
+	 * 🔴 Deliberately NOT "can it quote a parcel". A quote fails for a dozen
+	 * reasons that have nothing to do with the credential — an address the
+	 * carrier dislikes, a parcel nobody serves, a service unavailable to that
+	 * lane — and reporting any of those as "your token is wrong" sends somebody
+	 * to regenerate a key that was fine.
+	 *
+	 * Throws `CarrierError` when the account cannot be used. Returns quietly
+	 * when it can.
+	 */
+	verifyCredentials(params: { credentials: CarrierCredentials }): Promise<void>;
 
 	/**
 	 * What this parcel costs to send, as options to choose between.
@@ -149,7 +174,7 @@ export interface ShippingCarrier {
 	 * nothing and a customer leaves.
 	 */
 	quote(params: {
-		workspaceId: string;
+		credentials: CarrierCredentials;
 		from: CarrierAddress;
 		to: CarrierAddress;
 		parcels: Parcel[];
@@ -163,7 +188,7 @@ export interface ShippingCarrier {
 	 * parcel, which then disagree in front of the customer.
 	 */
 	buyLabel(params: {
-		workspaceId: string;
+		credentials: CarrierCredentials;
 		carrierRateId: string;
 	}): Promise<PurchasedLabel>;
 
@@ -175,7 +200,7 @@ export interface ShippingCarrier {
 	 * one.
 	 */
 	voidLabel(params: {
-		workspaceId: string;
+		credentials: CarrierCredentials;
 		externalLabelId: string;
 	}): Promise<boolean>;
 
@@ -188,6 +213,6 @@ export interface ShippingCarrier {
 	 */
 	verifyWebhook(
 		request: { rawBody: string; headers: Record<string, string> },
-		workspaceId: string,
+		credentials: CarrierCredentials,
 	): Promise<CarrierTrackingUpdate | null>;
 }

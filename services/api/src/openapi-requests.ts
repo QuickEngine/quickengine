@@ -73,6 +73,8 @@ import {
 } from "@quickengine/mod-quotes-estimates";
 import { trafficEventInputSchema } from "@quickengine/mod-reporting-analytics";
 import {
+	carrierConnectionCheckSchema,
+	carrierConnectionInputSchema,
 	shipmentInputSchema,
 	shipmentTrackingPatchSchema,
 	shippingDestinationSchema,
@@ -227,6 +229,8 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createSupplier: supplierInputSchema,
 	updateSupplier: supplierPatchSchema,
 	createSupplierSku: supplierSkuInputSchema,
+	saveCarrierConnection: carrierConnectionInputSchema,
+	checkCarrierConnection: carrierConnectionCheckSchema,
 	saveSupplierConnection: supplierConnectionInputSchema,
 	checkSupplierConnection: supplierConnectionCheckSchema,
 	updateSupplierSku: supplierSkuPatchSchema,

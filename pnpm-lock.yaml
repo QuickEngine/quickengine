@@ -996,6 +996,9 @@ importers:
       '@quickengine/mod-fulfillment':
         specifier: workspace:*
         version: link:../modules/fulfillment
+      '@quickengine/mod-inventory':
+        specifier: workspace:*
+        version: link:../modules/inventory
       '@quickengine/mod-invoicing':
         specifier: workspace:*
         version: link:../modules/invoicing

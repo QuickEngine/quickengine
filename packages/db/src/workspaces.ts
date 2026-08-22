@@ -294,6 +294,73 @@ export async function setWorkspaceModuleEnabled(input: {
 }
 
 /**
+ * Save a module's per-workspace settings.
+ *
+ * 🔴 Until 2026-08-21 there was NO write path at all. The column's own comment
+ * claimed settings were "validated against the schema on save", and there was
+ * no save: every module's settings were frozen at whatever the workspace was
+ * created with. Nothing could change an order number prefix, whether negative
+ * stock is allowed, or where parcels ship from — the schemas existed, the
+ * screens did not, and nothing joined them.
+ *
+ * ⚠️ Validation belongs to the CALLER, not here. The schema lives on the module
+ * manifest in `@quickengine/module-registry`, and `packages/db` must not depend
+ * on the registry — the API route parses with `getModule(id).settingsSchema` and
+ * hands the parsed object down. Storing unvalidated input here would let a
+ * malformed setting sit until the module next reads it, which is the wrong place
+ * to discover it.
+ *
+ * Returns null when the module is not enabled for the workspace. Configuring a
+ * module a business does not have is not an error worth throwing over; it is a
+ * request for something that is not there.
+ */
+export async function setWorkspaceModuleSettings(input: {
+	workspaceId: string;
+	moduleId: string;
+	/** ALREADY parsed against the module's own schema. See above. */
+	settings: Record<string, unknown>;
+}): Promise<Record<string, unknown> | null> {
+	const [row] = await db
+		.update(workspaceModules)
+		.set({ settings: input.settings, updatedAt: new Date() })
+		.where(
+			and(
+				eq(workspaceModules.workspaceId, input.workspaceId),
+				eq(workspaceModules.moduleId, input.moduleId),
+				eq(workspaceModules.enabled, true),
+			),
+		)
+		.returning({ settings: workspaceModules.settings });
+	return row?.settings ?? null;
+}
+
+/**
+ * A module's stored settings for one workspace, or null when it is not enabled.
+ *
+ * ⚠️ Returns what is STORED, which is not the same as what the module runs on.
+ * A row created before a setting existed simply lacks the key, and the module's
+ * own schema fills it in on parse. Callers that need effective values must parse
+ * through `settingsSchema`, never read a key straight off this object.
+ */
+export async function getWorkspaceModuleSettings(
+	workspaceId: string,
+	moduleId: string,
+): Promise<Record<string, unknown> | null> {
+	const [row] = await db
+		.select({ settings: workspaceModules.settings })
+		.from(workspaceModules)
+		.where(
+			and(
+				eq(workspaceModules.workspaceId, workspaceId),
+				eq(workspaceModules.moduleId, moduleId),
+				eq(workspaceModules.enabled, true),
+			),
+		)
+		.limit(1);
+	return row?.settings ?? null;
+}
+
+/**
  * Every workspace in an organization, newest first.
  *
  * Archived ones are included with their `archivedAt` set, so a caller can show

@@ -32,7 +32,13 @@ describe("shipping module", () => {
 
 	it("has conservative workspace defaults", () => {
 		expect(shippingSettingsSchema.parse({})).toEqual({
-			defaultOriginCountry: "US",
+			// ⚠️ No origin by default. A business that prices delivery from its own
+			// bands never calls a carrier, and demanding a warehouse address from it
+			// would be a tax on people this feature does not serve.
+			origin: null,
+			// A carrier cannot price a box whose size nobody declared, and the catalog
+			// carries weight only. Null until a business says which box it ships in.
+			defaultParcel: null,
 			defaultCarrier: null,
 			requireTracking: false,
 		});

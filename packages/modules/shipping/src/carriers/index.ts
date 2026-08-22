@@ -1,5 +1,10 @@
 import type { ShippingCarrier, ShippingCarrierId } from "../carrier";
 import { manualShippingCarrier } from "./manual";
+import {
+	decimalStringToCents,
+	mapTrackingStatus,
+	shippoCarrier,
+} from "./shippo";
 
 /**
  * Which carriers exist.
@@ -9,11 +14,9 @@ import { manualShippingCarrier } from "./manual";
  * `carrier.ts`, and the reason `DECISIONS.md` records the Shippo-over-EasyPost
  * choice as cheap to revisit.
  *
- * 🔴 `shippo` and `easypost` are absent because they are NOT WRITTEN. That is
- * deliberate, not an oversight: without an account there is nothing to prove an
- * adapter against, and this project's worst bugs have all been in integration
- * code nobody could run. Asking for one today gets a named refusal rather than
- * a silent nothing.
+ * 🔴 `easypost` is absent because it is NOT WRITTEN, and that is deliberate:
+ * without an account there is nothing to prove an adapter against. Asking for
+ * one gets a named refusal rather than a silent nothing.
  *
  * ⚠️ Unlike payments, `manual` IS present here. A manual payment already
  * happened in person and has nothing to implement; a manual SHIPMENT is an
@@ -22,6 +25,7 @@ import { manualShippingCarrier } from "./manual";
  */
 const CARRIERS: Partial<Record<ShippingCarrierId, ShippingCarrier>> = {
 	manual: manualShippingCarrier,
+	shippo: shippoCarrier,
 };
 
 export class UnsupportedShippingCarrierError extends Error {
@@ -49,4 +53,12 @@ export function isConnectableCarrier(carrier: string): boolean {
 	return carrier in CARRIERS && carrier !== "manual";
 }
 
-export { manualShippingCarrier };
+export {
+	// Exported for their own tests: the money parsing and the status mapping
+	// are the two places a carrier integration quietly gets a number or a state
+	// wrong, and both are pure.
+	decimalStringToCents,
+	manualShippingCarrier,
+	mapTrackingStatus,
+	shippoCarrier,
+};

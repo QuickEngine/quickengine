@@ -1,0 +1,1 @@
+ALTER TABLE "shipping_zones" ADD COLUMN "use_carrier_rates" boolean DEFAULT false NOT NULL;

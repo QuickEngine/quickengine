@@ -5,12 +5,18 @@ import {
 	catalogItemVariants,
 	db,
 	eq,
+	getWorkspaceModuleSettings,
 	inArray,
 	shippingRates,
 	shippingZones,
 	sql,
+	workspaceEnvironment,
 } from "@quickengine/db";
 import { z } from "zod";
+import type { CarrierRate } from "./carrier";
+import { resolveCarrierConnection } from "./carrier-connections";
+import { getShippingCarrier } from "./carriers";
+import { shippingSettingsSchema } from "./module";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHIPPING QUOTES — what it costs to deliver this basket to this address.
@@ -39,7 +45,13 @@ export class ShippingQuoteError extends Error {
 			| "NO_ZONE_FOR_DESTINATION"
 			| "NO_RATE_FOR_BASKET"
 			| "MISSING_ITEM_WEIGHT"
-			| "ITEM_NOT_FOUND",
+			| "ITEM_NOT_FOUND"
+			// ⚠️ Carrier refusals, all four of which mean "we cannot price this"
+			// and none of which may become a price. See `quoteFromCarrier`.
+			| "CARRIER_ORIGIN_MISSING"
+			| "CARRIER_PARCEL_MISSING"
+			| "CARRIER_NOT_CONNECTED"
+			| "CARRIER_UNAVAILABLE",
 		message: string,
 		readonly detail?: Record<string, unknown>,
 	) {
@@ -94,7 +106,24 @@ export const shippingQuoteInputSchema = z.object({
 export type ShippingQuoteInput = z.infer<typeof shippingQuoteInputSchema>;
 
 export type ShippingOption = {
+	/**
+	 * What the storefront sends back to choose this option.
+	 *
+	 * 🔴 STABLE across re-quotes. For a merchant band this is the rate's row id.
+	 * For a carrier it is `carrier:<carrier>:<service>` — deliberately NOT the
+	 * carrier's own rate id, which expires within minutes. `priceChosenRate`
+	 * re-quotes at order time and looks the choice up by this value; using the
+	 * volatile id would make every carrier checkout fail at the last step with
+	 * "that delivery option isn't available".
+	 */
 	rateId: string;
+	/**
+	 * The carrier's own id for this quote, when it came from a carrier.
+	 *
+	 * ⚠️ Short-lived, and only useful for buying a label right now. Null for a
+	 * merchant band, which has nothing to buy.
+	 */
+	carrierRateId?: string | null;
 	name: string;
 	description: string | null;
 	amountCents: number;
@@ -464,7 +493,12 @@ export async function deleteShippingRate(workspaceId: string, id: string) {
 export async function matchShippingZone(
 	workspaceId: string,
 	destination: ShippingDestination,
-): Promise<{ id: string; name: string; precedence: number } | null> {
+): Promise<{
+	id: string;
+	name: string;
+	precedence: number;
+	useCarrierRates: boolean;
+} | null> {
 	const parsed = shippingDestinationSchema.parse(destination);
 	const region = parsed.regionCode ?? null;
 
@@ -480,6 +514,7 @@ export async function matchShippingZone(
 		.select({
 			id: shippingZones.id,
 			name: shippingZones.name,
+			useCarrierRates: shippingZones.useCarrierRates,
 			precedence,
 		})
 		.from(shippingZones)
@@ -597,6 +632,151 @@ function withinBand(
 }
 
 /**
+ * A stable id for one carrier service, safe to re-quote against.
+ *
+ * 🔴 Shippo's own rate ids expire within minutes. The customer chooses a
+ * SERVICE — "USPS Ground Advantage" — and `priceChosenRate` re-prices that
+ * service at order time. Keying on the volatile id would fail every carrier
+ * checkout at the final step.
+ */
+function carrierOptionId(carrier: string, service: string): string {
+	const slug = (value: string) =>
+		value
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-|-$/g, "");
+	return `carrier:${slug(carrier)}:${slug(service)}`;
+}
+
+/**
+ * Real carrier prices for one zone.
+ *
+ * ⚠️ Every refusal below is deliberate and none of them fall back to a band.
+ * A zone set to ask a carrier has said the carrier is the source of truth for
+ * that destination; answering with something else would be answering a
+ * different question.
+ */
+async function quoteFromCarrier(input: {
+	workspaceId: string;
+	zone: { id: string; name: string };
+	destination: ShippingDestination;
+	lines: ShippingQuoteInput["lines"];
+}): Promise<ShippingQuote> {
+	const stored = await getWorkspaceModuleSettings(
+		input.workspaceId,
+		"shipping",
+	);
+	const settings = shippingSettingsSchema.parse(stored ?? {});
+
+	if (!settings.origin) {
+		throw new ShippingQuoteError(
+			"CARRIER_ORIGIN_MISSING",
+			"Delivery can't be priced until this business sets the address it ships from.",
+			{ zoneId: input.zone.id },
+		);
+	}
+	if (!settings.defaultParcel) {
+		throw new ShippingQuoteError(
+			"CARRIER_PARCEL_MISSING",
+			"Delivery can't be priced until this business sets the box size it ships in.",
+			{ zoneId: input.zone.id },
+		);
+	}
+
+	// 🔴 Every carrier prices by weight, so this is never optional here — unlike
+	// the band path, where a flat-rate shop must not be forced to weigh anything.
+	const weighed = await billableWeightGrams(input.workspaceId, input.lines);
+	if (weighed.grams === null) {
+		throw new ShippingQuoteError(
+			"MISSING_ITEM_WEIGHT",
+			"Some items don't have a shipping weight set, so delivery can't be priced.",
+			{ catalogItemIds: weighed.unweighed },
+		);
+	}
+
+	/**
+	 * ⚠️ The workspace's mode picks the token, and here deriving it IS right.
+	 * A sandbox workspace must quote with the test account: the connection rows
+	 * are stored per mode precisely so this choice can be made without a human
+	 * remembering to make it.
+	 */
+	const environment = await workspaceEnvironment(input.workspaceId);
+	const carrierId = settings.defaultCarrier ?? "shippo";
+
+	const connection = await resolveCarrierConnection({
+		workspaceId: input.workspaceId,
+		carrier: carrierId,
+		environment,
+	});
+	if (!connection) {
+		throw new ShippingQuoteError(
+			"CARRIER_NOT_CONNECTED",
+			"Delivery can't be priced right now.",
+			{ zoneId: input.zone.id, carrier: carrierId },
+		);
+	}
+
+	let rates: CarrierRate[];
+	try {
+		rates = await getShippingCarrier(carrierId).quote({
+			credentials: connection.credentials,
+			from: settings.origin,
+			/**
+			 * ⚠️ A checkout quote knows the COUNTRY, REGION and POSTAL CODE and
+			 * nothing else — there is no street or city until the customer places
+			 * the order. Verified against the live carrier on 2026-08-22: rating on
+			 * postal code and country alone returns the same eleven services as a
+			 * full address, because carriers rate by lane rather than by doorstep.
+			 */
+			to: {
+				name: "Customer",
+				line1: "",
+				city: "",
+				region: input.destination.regionCode ?? null,
+				postalCode: input.destination.postalCode ?? "",
+				countryCode: input.destination.countryCode,
+			},
+			parcels: [{ ...settings.defaultParcel, weightGrams: weighed.grams }],
+		});
+	} catch (error) {
+		/**
+		 * 🔴 The carrier's refusal becomes ours. Never an empty option list, which
+		 * a storefront would render as free shipping — the exact failure this
+		 * whole seam was built to prevent.
+		 */
+		throw new ShippingQuoteError(
+			"CARRIER_UNAVAILABLE",
+			"Delivery can't be priced right now. Try again in a moment.",
+			{
+				zoneId: input.zone.id,
+				carrier: carrierId,
+				reason: error instanceof Error ? error.message : "unknown",
+			},
+		);
+	}
+
+	const options: ShippingOption[] = rates.map((rate) => ({
+		rateId: carrierOptionId(rate.carrier, rate.service),
+		carrierRateId: rate.carrierRateId,
+		name: `${rate.carrier} ${rate.service}`,
+		description: null,
+		amountCents: rate.amountCents,
+		// A carrier never gives shipping away. Free delivery is a merchant's
+		// choice, expressed in their own bands.
+		free: false,
+		estimatedDaysMin: rate.estimatedDaysMin,
+		estimatedDaysMax: rate.estimatedDaysMax,
+	}));
+
+	options.sort((a, b) => a.amountCents - b.amountCents);
+	return {
+		zone: { id: input.zone.id, name: input.zone.name },
+		billableWeightGrams: weighed.grams,
+		options,
+	};
+}
+
+/**
  * What this basket costs to ship, as the options a customer chooses between.
  *
  * ⚠️ `discountedSubtotalCents` is the subtotal AFTER any discount. Both the
@@ -620,6 +800,23 @@ export async function quoteShipping(input: {
 			"This business doesn't ship to that address.",
 			{ countryCode: parsed.destination.countryCode },
 		);
+	}
+
+	/**
+	 * 🔴 A zone that asks a carrier does NOT fall back to the bands.
+	 *
+	 * Asher, 2026-08-21: live rates are opt-in per zone precisely so there is one
+	 * source of truth per destination. Quietly answering with a band when the
+	 * carrier cannot be reached is how a merchant ships at a loss without ever
+	 * finding out — the refusal is the feature.
+	 */
+	if (zone.useCarrierRates) {
+		return quoteFromCarrier({
+			workspaceId: input.workspaceId,
+			zone,
+			destination: parsed.destination,
+			lines: parsed.lines,
+		});
 	}
 
 	const rates = await db

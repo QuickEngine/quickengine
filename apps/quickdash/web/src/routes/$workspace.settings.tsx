@@ -127,6 +127,79 @@ function SettingsPage() {
 		if (shippingModule && !origin) setOrigin(storedOrigin ?? blankOrigin());
 	}, [shippingModule]);
 
+	/**
+	 * Settings that belong to a MODULE rather than to the workspace.
+	 *
+	 * 🔴 Every module has declared a settings schema since it was written, and the
+	 * save route validates against whichever module is named — so the backend has
+	 * always supported all of them. Only Shipping ever got a screen, which left
+	 * real settings unreachable: the order number prefix, whether stock may go
+	 * below zero, and **the sales tax rate**, which defaults to zero and is
+	 * applied to every order.
+	 *
+	 * ⚠️ Written by hand rather than generated from the schema. A generated form
+	 * renders `taxRateBasisPoints` as a number box labelled "taxRateBasisPoints",
+	 * and the one thing that setting needs is a person explaining that 5% is
+	 * typed as 5 and stored as 500.
+	 */
+	const ordersModule = context.data?.modules?.find(
+		(module) => module.id === "orders",
+	);
+	const inventoryModule = context.data?.modules?.find(
+		(module) => module.id === "inventory",
+	);
+
+	const [orderRules, setOrderRules] = useState<OrderRuleFields | null>(null);
+	const [stockRules, setStockRules] = useState<StockRuleFields | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: seed once the workspace arrives
+	useEffect(() => {
+		if (ordersModule && !orderRules) {
+			const stored = (ordersModule.settings ?? {}) as Record<string, unknown>;
+			setOrderRules({
+				numberPrefix: String(stored.numberPrefix ?? "ORD"),
+				defaultCurrency: String(stored.defaultCurrency ?? "USD"),
+				autoConfirm: Boolean(stored.autoConfirm),
+				// 🔑 Basis points in the database, PERCENT on screen. Nobody thinks in
+				// basis points, and money arithmetic must not think in floats.
+				taxPercent: String(Number(stored.taxRateBasisPoints ?? 0) / 100),
+			});
+		}
+		if (inventoryModule && !stockRules) {
+			const stored = (inventoryModule.settings ?? {}) as Record<
+				string,
+				unknown
+			>;
+			setStockRules({
+				defaultLowStockThreshold: String(stored.defaultLowStockThreshold ?? 5),
+				allowNegativeStock: Boolean(stored.allowNegativeStock),
+			});
+		}
+	}, [ordersModule, inventoryModule]);
+
+	const saveModule = useMutation({
+		mutationFn: async (input: { moduleId: string; settings: unknown }) => {
+			await workspaceApi(workspace).request(
+				`/quickdash/modules/${input.moduleId}/settings`,
+				// ⚠️ WHOLE object. The route replaces rather than merges, so anything
+				// not on this screen has to travel with what is, or saving a tax rate
+				// silently resets a setting nobody touched.
+				{ method: "PATCH", body: input.settings },
+			);
+		},
+		onSuccess: () => {
+			setFailure(null);
+			setSaved(true);
+			setTimeout(() => setSaved(false), 2500);
+			void queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspace, "context"],
+			});
+		},
+		onError: (error: { message?: string }) => {
+			setEnvironmentFailure(false);
+			setFailure(error?.message ?? "That could not be saved.");
+		},
+	});
+
 	const saveOrigin = useMutation({
 		mutationFn: async () => {
 			if (!origin) return;
@@ -437,6 +510,191 @@ function SettingsPage() {
 					) : null}
 				</div>
 			</div>
+
+			{/*
+			 * 🔴 Sales tax lives here, and until now it was unreachable.
+			 *
+			 * `taxRateBasisPoints` defaults to ZERO and is applied to every order —
+			 * so a business selling in a jurisdiction that charges tax collected
+			 * none of it, with no screen anywhere to say otherwise. Unremitted tax
+			 * comes out of the merchant's own pocket, months later.
+			 */}
+			{ordersModule ? (
+				<>
+					<p className="mt-9 mb-1 text-[12.5px] text-[var(--ink-45)]">
+						How your orders work
+					</p>
+					<div className="max-w-2xl space-y-4 border-[var(--console-line-soft)] border-t py-4">
+						<BrandField
+							label="Sales tax"
+							hint="as a percentage — 5 for GST, 13 for HST. Leave at 0 if you do not charge tax"
+							value={orderRules?.taxPercent ?? ""}
+							onChange={(value) =>
+								setOrderRules((was) =>
+									was ? { ...was, taxPercent: value } : was,
+								)
+							}
+							placeholder="0"
+						/>
+						{/* ⚠️ Says what it will DO, with the real numbers, before it is
+						    saved. A tax rate is the one setting where being one decimal
+						    place out is invisible until an accountant finds it. */}
+						<p className="text-[11.5px] text-[var(--ink-35)] leading-5">
+							{taxIsValid(orderRules?.taxPercent ?? "0")
+								? percentToBasisPoints(orderRules?.taxPercent ?? "0") === 0
+									? "No tax is added to an order."
+									: `A ${orderRules?.taxPercent}% tax is added to every order, calculated on the total after any discount and including delivery.`
+								: "That is not a tax rate between 0% and 100%."}
+						</p>
+
+						<BrandField
+							label="Order numbers start with"
+							hint="ORD-0001, CAF-0001 — changing it does not renumber past orders"
+							value={orderRules?.numberPrefix ?? ""}
+							onChange={(value) =>
+								setOrderRules((was) =>
+									was ? { ...was, numberPrefix: value } : was,
+								)
+							}
+							placeholder="ORD"
+						/>
+						<BrandField
+							label="Currency"
+							hint="three letters — the currency new products are priced in"
+							value={orderRules?.defaultCurrency ?? ""}
+							onChange={(value) =>
+								setOrderRules((was) =>
+									was ? { ...was, defaultCurrency: value.toUpperCase() } : was,
+								)
+							}
+							placeholder="CAD"
+						/>
+
+						<label className="flex items-start gap-3">
+							<input
+								type="checkbox"
+								checked={orderRules?.autoConfirm ?? false}
+								onChange={(event) =>
+									setOrderRules((was) =>
+										was ? { ...was, autoConfirm: event.target.checked } : was,
+									)
+								}
+								className="mt-0.5 size-3.5 shrink-0 accent-[rgb(var(--console-ink))]"
+							/>
+							<span>
+								<span className="block text-[11.5px] text-[var(--ink-60)]">
+									Confirm paid orders automatically
+								</span>
+								<span className="mt-1 block text-[11px] text-[var(--ink-30)] leading-5">
+									A paid order goes straight to confirmed instead of waiting for
+									somebody to accept it. Turn this off if you check stock or
+									availability by hand before committing.
+								</span>
+							</span>
+						</label>
+
+						<button
+							type="button"
+							disabled={
+								saveModule.isPending ||
+								!taxIsValid(orderRules?.taxPercent ?? "0")
+							}
+							onClick={() =>
+								orderRules &&
+								saveModule.mutate({
+									moduleId: "orders",
+									settings: {
+										...(ordersModule?.settings ?? {}),
+										numberPrefix: orderRules.numberPrefix,
+										defaultCurrency: orderRules.defaultCurrency,
+										autoConfirm: orderRules.autoConfirm,
+										taxRateBasisPoints: percentToBasisPoints(
+											orderRules.taxPercent,
+										),
+									},
+								})
+							}
+							className={quietAction}
+						>
+							{saveModule.isPending ? "Saving…" : "Save order settings"}
+						</button>
+					</div>
+				</>
+			) : null}
+
+			{inventoryModule ? (
+				<>
+					<p className="mt-9 mb-1 text-[12.5px] text-[var(--ink-45)]">
+						How your stock behaves
+					</p>
+					<div className="max-w-2xl space-y-4 border-[var(--console-line-soft)] border-t py-4">
+						<BrandField
+							label="Warn me when stock falls to"
+							hint="how many left before an item shows as running low"
+							value={stockRules?.defaultLowStockThreshold ?? ""}
+							onChange={(value) =>
+								setStockRules((was) =>
+									was ? { ...was, defaultLowStockThreshold: value } : was,
+								)
+							}
+							placeholder="5"
+						/>
+						<label className="flex items-start gap-3">
+							<input
+								type="checkbox"
+								checked={stockRules?.allowNegativeStock ?? false}
+								onChange={(event) =>
+									setStockRules((was) =>
+										was
+											? { ...was, allowNegativeStock: event.target.checked }
+											: was,
+									)
+								}
+								className="mt-0.5 size-3.5 shrink-0 accent-[rgb(var(--console-ink))]"
+							/>
+							<span>
+								<span className="block text-[11.5px] text-[var(--ink-60)]">
+									Let stock go below zero
+								</span>
+								{/* ⚠️ Says what it COSTS, not what it does. Somebody enabling
+								    this to stop checkout refusing a sale needs to know they
+								    have just agreed to sell things they do not have. */}
+								<span className="mt-1 block text-[11px] text-[var(--ink-30)] leading-5">
+									Customers can keep buying after you have run out, and you
+									fulfil when more arrives. Off, checkout refuses the sale
+									instead — which is the safer answer unless you make to order.
+								</span>
+							</span>
+						</label>
+
+						<button
+							type="button"
+							disabled={saveModule.isPending}
+							onClick={() =>
+								stockRules &&
+								saveModule.mutate({
+									moduleId: "inventory",
+									settings: {
+										...(inventoryModule?.settings ?? {}),
+										defaultLowStockThreshold: Math.max(
+											0,
+											Math.round(
+												Number.parseFloat(
+													stockRules.defaultLowStockThreshold || "0",
+												),
+											),
+										),
+										allowNegativeStock: stockRules.allowNegativeStock,
+									},
+								})
+							}
+							className={quietAction}
+						>
+							{saveModule.isPending ? "Saving…" : "Save stock settings"}
+						</button>
+					</div>
+				</>
+			) : null}
 
 			{/*
 			 * Only for businesses that ship. A workspace selling appointments has
@@ -790,6 +1048,35 @@ function SettingsPage() {
 }
 
 /** One labelled input. Matches the console's field shape without importing it. */
+/** What somebody types on the Orders settings section. */
+type OrderRuleFields = {
+	numberPrefix: string;
+	defaultCurrency: string;
+	autoConfirm: boolean;
+	/** PERCENT as typed — "5", "12.5". Converted to basis points on save. */
+	taxPercent: string;
+};
+
+type StockRuleFields = {
+	defaultLowStockThreshold: string;
+	allowNegativeStock: boolean;
+};
+
+/**
+ * 🔴 Percent in, integer BASIS POINTS out.
+ *
+ * 5% must be exactly 500, never 499.99999. A float rate compounds into a wrong
+ * cent on a large order and the customer's total stops adding up. Rounded rather
+ * than truncated, so 12.345% typed by hand becomes 1235 and not 1234.
+ */
+const percentToBasisPoints = (value: string): number =>
+	Math.round(Number.parseFloat(value || "0") * 100);
+
+const taxIsValid = (value: string): boolean => {
+	const points = percentToBasisPoints(value);
+	return Number.isFinite(points) && points >= 0 && points <= 10_000;
+};
+
 /** The shape the shipping module stores. Mirrors `shippingOriginSchema`. */
 type ShippingOriginFields = {
 	name: string;

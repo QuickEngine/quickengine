@@ -8,6 +8,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Charge sales tax.** Your tax rate has been applied to every order since the beginning and there
+  was no screen anywhere to set it, so it sat at zero — which means a business in a place that
+  charges tax collected none of it, and unremitted tax comes out of the owner's pocket months later.
+  Settings now takes it as a plain percentage, tells you in words what it will add before you save,
+  and refuses anything that is not a real rate. Order numbering, currency and whether a paid order
+  confirms itself are on the same screen, along with your low-stock warning level and whether stock
+  may go below zero.
+
+
 - **Test your whole shop, then go live, without reconnecting anything.** Sandbox exists so you can
   rehearse the real thing — take fake payments, place fake orders, break it, fix it — before asking a
   customer or a supplier to send real money. Until now the one part that could not follow you across

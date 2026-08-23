@@ -1,6 +1,7 @@
 import {
 	CaretRightIcon,
 	CaretUpIcon,
+	ClockCounterClockwiseIcon,
 	HouseIcon,
 	ImagesIcon,
 	PlugsIcon,
@@ -120,7 +121,19 @@ export const MODULE_CHILDREN: Readonly<
  * bottom strip, which is reserved for "do this or nothing works" (Connect). A
  * bottom strip that accumulates stops reading as a starting point.
  */
-type NavExtra = { id: string; label: string; path: string };
+type NavExtra = {
+	id: string;
+	label: string;
+	path: string;
+	/**
+	 * ⚠️ The route id, not an interpolated path. The router's types are what stop
+	 * a sidebar link outliving the page it points at — and this was hardcoded to
+	 * Media's route, which worked only because Media was the only extra there has
+	 * ever been. A second one silently linked to the first.
+	 */
+	to: "/$workspace/media" | "/$workspace/audit";
+	Icon: typeof ImagesIcon;
+};
 
 const GROUPS: ReadonlyArray<{
 	label: string;
@@ -169,10 +182,42 @@ const GROUPS: ReadonlyArray<{
 	{
 		label: "Website",
 		ids: ["content"],
-		extras: [{ id: "media", label: "Media", path: "media" }],
+		extras: [
+			{
+				id: "media",
+				label: "Media",
+				path: "media",
+				to: "/$workspace/media",
+				Icon: ImagesIcon,
+			},
+		],
 	},
 
 	{ label: "Documents", ids: ["files", "contracts-esign"] },
+
+	/**
+	 * 🔑 A group of one, which `HIDDEN_FROM_NAV` above rejects for Reporting —
+	 * and the difference is worth stating. Reporting was hidden because revenue
+	 * and traffic are things you READ about the workspace, which is what Home
+	 * already is; a second place to read them would disagree with the first.
+	 *
+	 * Activity is not a summary of anything. It is the only record of who changed
+	 * what, it is what somebody opens at 2am with a customer on the phone, and
+	 * there is nowhere else in the product it could live.
+	 */
+	{
+		label: "Workspace",
+		ids: [],
+		extras: [
+			{
+				id: "audit",
+				label: "Activity",
+				path: "audit",
+				to: "/$workspace/audit",
+				Icon: ClockCounterClockwiseIcon,
+			},
+		],
+	},
 ];
 
 /**
@@ -589,7 +634,7 @@ export function WorkspaceNav({
 								{group.extras.map((extra) => (
 									<Link
 										key={extra.id}
-										to="/$workspace/media"
+										to={extra.to}
 										params={{ workspace: workspaceId }}
 										className={`${row} ${
 											pathname === `/${workspaceId}/${extra.path}`
@@ -597,7 +642,7 @@ export function WorkspaceNav({
 												: idle
 										}`}
 									>
-										<ImagesIcon size={15} className="shrink-0" />
+										<extra.Icon size={15} className="shrink-0" />
 										<span className="min-w-0 flex-1 truncate">
 											{extra.label}
 										</span>

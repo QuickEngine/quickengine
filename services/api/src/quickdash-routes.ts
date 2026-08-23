@@ -8,6 +8,7 @@ import {
 	getQuickDashOrientationState,
 	getWorkspaceHome,
 	listAccessibleWorkspaces,
+	listWorkspaceAudit,
 	quickengineUsers,
 	readEmailTemplateCopy,
 	readWorkspaceBranding,
@@ -527,6 +528,37 @@ export function registerQuickDashRoutes(
 				502,
 			);
 		}
+	});
+
+	/**
+	 * Who did what, and when — this workspace's own record of its own records.
+	 *
+	 * 🔴 Every financial mutation has written an audit row since the beginning
+	 * and NOTHING could read one. The table had a writer, three purpose-built
+	 * indexes, and no query anywhere in the product — so "who refunded this
+	 * order" was answerable only with psql and the schema memorised. That is the
+	 * difference between keeping an audit trail and having evidence.
+	 *
+	 * ⚠️ `resourceId` narrows to one record, which is the question people
+	 * actually arrive with, and `requestId` narrows to one action — a single
+	 * click writes several rows and they share it, so following it reconstructs
+	 * what happened rather than guessing from timestamps a millisecond apart.
+	 */
+	app.get("/v1/quickdash/audit", view, async (c) => {
+		const before = c.req.query("before");
+		const parsed = before ? new Date(before) : undefined;
+		return respond(c, {
+			items: await listWorkspaceAudit(c.get("authorized").workspaceId, {
+				limit: Number(c.req.query("limit") ?? 50),
+				resourceType: c.req.query("resourceType") || undefined,
+				resourceId: c.req.query("resourceId") || undefined,
+				requestId: c.req.query("requestId") || undefined,
+				action: c.req.query("action") || undefined,
+				// An unparseable cursor must not silently return page one again —
+				// dropping it is the safe answer, and the list simply does not advance.
+				before: parsed && !Number.isNaN(parsed.getTime()) ? parsed : undefined,
+			}),
+		});
 	});
 
 	app.get("/v1/quickdash/search", view, async (c) => {

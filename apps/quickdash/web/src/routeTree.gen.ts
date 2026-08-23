@@ -14,6 +14,7 @@ import { Route as WorkspaceRouteImport } from './routes/$workspace'
 import { Route as NativeSigninRouteImport } from './routes/native-signin'
 import { Route as WorkspaceIndexRouteImport } from './routes/$workspace.index'
 import { Route as WorkspaceModuleRouteImport } from './routes/$workspace.$module'
+import { Route as WorkspaceAuditRouteImport } from './routes/$workspace.audit'
 import { Route as WorkspaceConnectRouteImport } from './routes/$workspace.connect'
 import { Route as WorkspaceMediaRouteImport } from './routes/$workspace.media'
 import { Route as WorkspaceSettingsRouteImport } from './routes/$workspace.settings'
@@ -45,6 +46,11 @@ const WorkspaceIndexRoute = WorkspaceIndexRouteImport.update({
 const WorkspaceModuleRoute = WorkspaceModuleRouteImport.update({
   id: '/$module',
   path: '/$module',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceAuditRoute = WorkspaceAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => WorkspaceRoute,
 } as any)
 const WorkspaceConnectRoute = WorkspaceConnectRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/$workspace': typeof WorkspaceRouteWithChildren
   '/native-signin': typeof NativeSigninRoute
   '/$workspace/$module': typeof WorkspaceModuleRouteWithChildren
+  '/$workspace/audit': typeof WorkspaceAuditRoute
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/native-signin': typeof NativeSigninRoute
+  '/$workspace/audit': typeof WorkspaceAuditRoute
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/$workspace': typeof WorkspaceRouteWithChildren
   '/native-signin': typeof NativeSigninRoute
   '/$workspace/$module': typeof WorkspaceModuleRouteWithChildren
+  '/$workspace/audit': typeof WorkspaceAuditRoute
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
   '/$workspace/settings': typeof WorkspaceSettingsRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/$workspace'
     | '/native-signin'
     | '/$workspace/$module'
+    | '/$workspace/audit'
     | '/$workspace/connect'
     | '/$workspace/media'
     | '/$workspace/settings'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/native-signin'
+    | '/$workspace/audit'
     | '/$workspace/connect'
     | '/$workspace/media'
     | '/$workspace/settings'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/$workspace'
     | '/native-signin'
     | '/$workspace/$module'
+    | '/$workspace/audit'
     | '/$workspace/connect'
     | '/$workspace/media'
     | '/$workspace/settings'
@@ -209,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/$module'
       fullPath: '/$workspace/$module'
       preLoaderRoute: typeof WorkspaceModuleRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/$workspace/audit': {
+      id: '/$workspace/audit'
+      path: '/audit'
+      fullPath: '/$workspace/audit'
+      preLoaderRoute: typeof WorkspaceAuditRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/$workspace/connect': {
@@ -279,6 +298,7 @@ const WorkspaceModuleRouteWithChildren = WorkspaceModuleRoute._addFileChildren(
 
 interface WorkspaceRouteChildren {
   WorkspaceModuleRoute: typeof WorkspaceModuleRouteWithChildren
+  WorkspaceAuditRoute: typeof WorkspaceAuditRoute
   WorkspaceConnectRoute: typeof WorkspaceConnectRoute
   WorkspaceMediaRoute: typeof WorkspaceMediaRoute
   WorkspaceSettingsRoute: typeof WorkspaceSettingsRoute
@@ -288,6 +308,7 @@ interface WorkspaceRouteChildren {
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceModuleRoute: WorkspaceModuleRouteWithChildren,
+  WorkspaceAuditRoute: WorkspaceAuditRoute,
   WorkspaceConnectRoute: WorkspaceConnectRoute,
   WorkspaceMediaRoute: WorkspaceMediaRoute,
   WorkspaceSettingsRoute: WorkspaceSettingsRoute,

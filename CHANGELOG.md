@@ -8,6 +8,22 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Test your whole shop, then go live, without reconnecting anything.** Sandbox exists so you can
+  rehearse the real thing — take fake payments, place fake orders, break it, fix it — before asking a
+  customer or a supplier to send real money. Until now the one part that could not follow you across
+  that switch was the payment connection itself: a workspace could hold a single connection for its
+  whole life, stamped with whichever mode it happened to be set up in, and switching afterwards left
+  you unable to reconnect at all. A workspace now keeps a sandbox connection and a live one side by
+  side, each with its own default, and flipping the switch changes which one takes the money. Neither
+  can see the other's.
+
+- **Activity: who changed what, and when.** Every change to an order, a payment, your stock or your
+  catalog has always been recorded — and until now nothing could show it to you. The record names the
+  person rather than an id, says where the change came from, and can pull up everything that happened
+  in a single action at once, because one click on a busy page writes several entries and reading
+  them apart tells you nothing. Nothing on it is written by hand and nothing can be edited.
+
+
 - **Change how a module works for your business.** Every module carries settings — the prefix on your
   order numbers, whether stock may go below zero, where your parcels ship from — and until now none of
   them could be changed after a workspace was created. They can be saved now, and the first screen for

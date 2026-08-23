@@ -37,6 +37,7 @@ export * from "./saved-views";
 export * from "./schema";
 export * from "./slug";
 export * from "./support-bundle";
+export * from "./workspace-audit";
 export * from "./workspace-branding";
 export * from "./workspace-email-templates";
 export * from "./workspace-home";

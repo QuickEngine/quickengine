@@ -85,23 +85,42 @@ export type RefundPaymentInput = z.input<typeof refundPaymentInputSchema>;
 type PaymentTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** The workspace's connected payment account (or undefined). */
+/**
+ * The connection to charge through, for the mode the workspace is in RIGHT NOW.
+ *
+ * 🔴 The environment is not optional detail, it is half the identity. A
+ * workspace holds one connection per provider per mode, so "the workspace's
+ * Stripe account" is an incomplete question — the sandbox one and the live one
+ * are different accounts holding different money.
+ *
+ * Defaults to the workspace's CURRENT mode rather than to `live`, so flipping
+ * the sandbox switch changes what every caller resolves without any of them
+ * having to know that. Pass `environment` explicitly only when settling a
+ * historical record, which must resolve the account it was actually taken
+ * through rather than whatever the workspace is set to today.
+ *
+ * Returning nothing for a mode with no connection is the honest answer, and the
+ * caller renders "not connected" — which is true. This used to look the row up
+ * ignoring mode and then THROW `PAYMENT_ENVIRONMENT_MISMATCH`, which surfaced as
+ * an error with no action attached to it.
+ */
 export async function getPaymentAccount(
 	workspaceId: string,
 	provider?: string,
+	environment?: "test" | "live",
 ) {
+	const mode = environment ?? (await workspaceEnvironment(workspaceId));
 	const [account] = await db
 		.select()
 		.from(paymentAccounts)
 		.where(
-			provider
-				? and(
-						eq(paymentAccounts.workspaceId, workspaceId),
-						eq(paymentAccounts.provider, provider),
-					)
-				: and(
-						eq(paymentAccounts.workspaceId, workspaceId),
-						eq(paymentAccounts.isDefault, true),
-					),
+			and(
+				eq(paymentAccounts.workspaceId, workspaceId),
+				eq(paymentAccounts.environment, mode),
+				provider
+					? eq(paymentAccounts.provider, provider)
+					: eq(paymentAccounts.isDefault, true),
+			),
 		)
 		.limit(1);
 	return account;
@@ -160,11 +179,17 @@ export async function upsertPaymentAccount(
 	if (patch.environment && patch.environment !== environment) {
 		throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
 	}
-	const existing = await getPaymentAccount(workspaceId, provider);
+	/**
+	 * 🔴 Scoped to the mode, and the mismatch throw is GONE.
+	 *
+	 * It used to find the workspace's only row for this provider and refuse if it
+	 * had been created in the other mode — so connecting Stripe in sandbox and
+	 * later switching to live left a business permanently unable to connect, with
+	 * no route out of it in the interface. There are two rows now, and connecting
+	 * in live simply creates the live one beside the sandbox one.
+	 */
+	const existing = await getPaymentAccount(workspaceId, provider, environment);
 	if (existing) {
-		if (existing.environment !== environment) {
-			throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
-		}
 		const [updated] = await db
 			.update(paymentAccounts)
 			.set({ ...patch, environment, updatedAt: new Date() })
@@ -172,6 +197,7 @@ export async function upsertPaymentAccount(
 				and(
 					eq(paymentAccounts.workspaceId, workspaceId),
 					eq(paymentAccounts.provider, provider),
+					eq(paymentAccounts.environment, environment),
 				),
 			)
 			.returning();
@@ -196,15 +222,28 @@ export async function workspaceEnvironment(
 	return workspace.environment;
 }
 
+/**
+ * ⚠️ Per MODE. Choosing PayPal as the live default must not silently change what
+ * a sandbox checkout runs through, and clearing every row in the workspace would
+ * do exactly that — leaving the other mode with no default and every lookup
+ * returning nothing.
+ */
 export async function setDefaultPaymentProvider(
 	workspaceId: string,
 	provider: string,
+	environment?: "test" | "live",
 ) {
+	const mode = environment ?? (await workspaceEnvironment(workspaceId));
 	return db.transaction(async (tx) => {
 		await tx
 			.update(paymentAccounts)
 			.set({ isDefault: false, updatedAt: new Date() })
-			.where(eq(paymentAccounts.workspaceId, workspaceId));
+			.where(
+				and(
+					eq(paymentAccounts.workspaceId, workspaceId),
+					eq(paymentAccounts.environment, mode),
+				),
+			);
 		const [selected] = await tx
 			.update(paymentAccounts)
 			.set({ isDefault: true, updatedAt: new Date() })
@@ -212,6 +251,7 @@ export async function setDefaultPaymentProvider(
 				and(
 					eq(paymentAccounts.workspaceId, workspaceId),
 					eq(paymentAccounts.provider, provider),
+					eq(paymentAccounts.environment, mode),
 				),
 			)
 			.returning();

@@ -64,8 +64,9 @@ Payments supports multiple connected merchant processors per workspace. Stripe a
 remain connected together, one is selected as the checkout default, and each historical payment
 retains its processor so settlement and refunds never depend on whichever provider is active
 today. Test and live workspaces use separate provider credentials, webhook signatures and payment
-identity; a workspace locks to its mode when it enters the money lifecycle, so sandbox orders can
-never be promoted into real business history. Everything that reads those records — the order list,
+identity, and a workspace keeps a sandbox connection and a live one side by side, so switching
+between them changes which money moves without reconnecting anything. Sandbox orders can never be
+promoted into real business history. Everything that reads those records — the order list,
 the payment list, the home screen's work queue, revenue, reports, review verification and the
 notification bell — filters by mode, and a check on every build fails if a new query forgets.
 Taking a payment selects the connected account matching that payment's own processor and mode, so a

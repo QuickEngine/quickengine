@@ -1165,6 +1165,24 @@ function declaredDocument(config: ApiConfig) {
 				},
 			},
 			// ── Checkout: the merchant's own website selling ─────────────────────
+			"/v1/checkout/quote": {
+				post: {
+					operationId: "quoteCheckoutTotal",
+					summary: "What this basket costs, without committing to anything",
+					description:
+						"Prices a basket exactly as `/v1/checkout` will — the same items, discount, delivery and tax, through the same code — and commits to nothing. No order, no reservation, no discount redemption, so a page may ask as often as somebody edits their basket. Everything except the items is optional, because a shopper asks for a total before choosing delivery. Exists because tax comes from the workspace's settings and depends on the destination, so a browser cannot work it out, and a checkout that shows a total excluding tax asks somebody to consent to the wrong number.",
+					responses: {
+						"200": {
+							description:
+								"Line prices, subtotal, discount, delivery, tax and the total.",
+						},
+						"400": {
+							description:
+								"An item is unavailable, the code is not valid, or that delivery option does not apply.",
+						},
+					},
+				},
+			},
 			"/v1/checkout": {
 				post: {
 					operationId: "createCheckout",

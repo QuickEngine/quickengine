@@ -40,6 +40,7 @@ import {
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
+import { quoteCheckout, taxableAmountCents } from "./checkout-pricing";
 import { settlePaidCheckout } from "./checkout-settlement";
 import type { ApiLogger } from "./logger";
 import { buildMutationContext } from "./mutation-policy";
@@ -99,6 +100,19 @@ export function registerCheckoutRoutes(
 		destination: shippingDestinationSchema,
 		discountCode: checkoutInputSchema.shape.discountCode,
 	});
+	/**
+	 * ⚠️ Every field optional except the basket itself. A quote is asked for while
+	 * somebody is still typing — before an address, before a delivery choice — and
+	 * refusing until the last step is the problem this route exists to solve.
+	 */
+	const checkoutQuoteInputSchema = z.object({
+		items: checkoutInputSchema.shape.items,
+		subscriptionPlanId: checkoutInputSchema.shape.subscriptionPlanId,
+		discountCode: checkoutInputSchema.shape.discountCode,
+		shippingRateId: checkoutInputSchema.shape.shippingRateId,
+		shippingAddress: checkoutInputSchema.shape.shippingAddress,
+	});
+
 	const providerPaymentIdSchema = z.string().trim().min(1).max(255);
 
 	app.post(
@@ -187,6 +201,56 @@ export function registerCheckoutRoutes(
 			}
 			throw error;
 		}
+	});
+
+	/**
+	 * What this basket costs, without committing to anything.
+	 *
+	 * 🔴 The storefront could not know the total until it had already created the
+	 * order, because tax comes from the workspace's settings and depends on the
+	 * delivery address. So the checkout showed `AUTHORIZE $12.50` on a charge of
+	 * `$13.12` — a consent button carrying the wrong number.
+	 *
+	 * 🔑 Runs `quoteCheckout`, which is the SAME function `/v1/checkout` prices
+	 * with. Two implementations of "what does this cost" is two answers that
+	 * eventually disagree, and the one the customer sees is the one they did not
+	 * agree to.
+	 *
+	 * ⚠️ Prices and nothing else — no order, no reservation, no discount
+	 * redemption — so a page may ask as often as somebody edits their basket.
+	 */
+	app.post("/v1/checkout/quote", access, limit, async (c) => {
+		const parsed = checkoutQuoteInputSchema.safeParse(await c.req.json());
+		if (!parsed.success) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"That basket could not be read.",
+				400,
+				parsed.error.issues,
+			);
+		}
+		const quote = await quoteCheckout({
+			workspaceId: c.get("authorized").workspaceId,
+			items: parsed.data.items,
+			subscriptionPlanId: parsed.data.subscriptionPlanId,
+			discountCode: parsed.data.discountCode,
+			shippingRateId: parsed.data.shippingRateId,
+			shippingAddress: parsed.data.shippingAddress,
+		});
+		// A refusal a SHOPPER should read — an item withdrawn, a code expired, a
+		// rate that no longer applies. Expected traffic, never a server fault.
+		if (!quote.ok) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				quote.message,
+				400,
+				quote.detail,
+			);
+		}
+		const { ok: _ok, ...priced } = quote;
+		return respond(c, priced);
 	});
 
 	app.post("/v1/checkout", access, limit, async (c: Context<PlatformEnv>) => {
@@ -393,9 +457,13 @@ export function registerCheckoutRoutes(
 				throw error;
 			}
 		}
-		const taxableCents =
-			Math.max(0, priced.subtotalCents - discountCents) +
-			(shipping?.amountCents ?? 0);
+		// 🔴 The SAME helper `/v1/checkout/quote` uses. Two copies of this line is
+		// how a checkout ends up charging a total the shopper never agreed to.
+		const taxableCents = taxableAmountCents({
+			subtotalCents: priced.subtotalCents,
+			discountCents,
+			shippingCents: shipping?.amountCents ?? 0,
+		});
 		const taxCents = await taxCalculatorFor(settings).calculate({
 			subtotalCents: taxableCents,
 			currency: priced.currency,

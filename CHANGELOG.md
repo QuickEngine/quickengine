@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Checkout shows the price you will actually pay.** Tax depends on your workspace settings and on
+  where the parcel is going, so a shop's website had no way to work it out — it added up what it
+  could see, called that the total, and then charged more. Checkout can now ask for a real price
+  before anything is committed, and it comes back with the tax and the true total. Nothing is
+  reserved or charged by asking, so a shop can re-price a basket as often as a customer changes it.
+
+
 - **Disconnect a payment provider.** There was no way to undo connecting one, and setting up a new
   connection refuses while an old one is present, so a business whose connection stopped working was
   stuck with it. Payments now has a Disconnect button. It forgets our record only: your account at

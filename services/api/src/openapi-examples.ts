@@ -477,6 +477,20 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 			postalCode: "T5J 0N3",
 		},
 	},
+	quoteCheckoutTotal: {
+		items: [
+			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },
+		],
+		shippingRateId: "8c2d4e6f-1a3b-4c5d-9e0f-7a8b9c0d1e2f",
+		shippingAddress: {
+			name: "Sam Rivera",
+			line1: "1 Hampton Crescent",
+			city: "Sylvan Lake",
+			region: "AB",
+			postalCode: "T4S 0N2",
+			countryCode: "CA",
+		},
+	},
 	createCheckout: {
 		items: [
 			{ catalogItemId: "3f1b7a52-6c2d-4f8e-9a10-2b5c6d7e8f90", quantity: 1 },

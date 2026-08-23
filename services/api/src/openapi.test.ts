@@ -67,6 +67,10 @@ const BODYLESS = new Set([
 	// account from that workspace's stored row. A body would only offer a caller
 	// somewhere to name somebody else's connected account.
 	"refreshPaymentConnectAccount",
+	// Which connection to forget is the workspace's current mode and, optionally,
+	// a provider named in the query. A body would only offer a caller somewhere to
+	// name another business's connected account.
+	"disconnectPaymentAccount",
 	// Nothing to send: which notification is in the path, and who is the session.
 	"markNotificationRead",
 	"markAllNotificationsRead",

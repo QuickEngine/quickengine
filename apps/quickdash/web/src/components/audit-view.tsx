@@ -37,30 +37,94 @@ type AuditEntry = {
  */
 
 /**
- * `<module>.<thing>.<verb>` turned into something a person reads.
+ * `thing.verb` turned into something a person reads.
  *
- * ⚠️ A map, not a formatter. Splitting on dots and title-casing produces
- * "Payment Refund Created", which is not how anybody describes what happened —
- * and every unmapped action still shows its raw name, which is honest and makes
- * the gap visible rather than papering over it.
+ * 🔴 The first version of this was a hand-written map of guesses — it had
+ * `catalog.item.created` when the real action is `catalog-item.created`, and
+ * `inventory.adjusted` for `inventory-item.adjusted`. Almost nothing matched, so
+ * almost every row rendered its raw slug. It was written by imagining the
+ * vocabulary instead of reading it, and it took querying the actual table to
+ * notice.
+ *
+ * 🔑 Derived rather than enumerated. There are ninety-five actions and the shape
+ * is completely regular, so a map would be ninety-five chances to make the same
+ * mistake again and would silently miss the ninety-sixth the day it ships.
+ *
+ * Two small vocabularies do the work: what a business CALLS the thing (nobody
+ * says "catalog item"), and what the verb means in plain English. Anything
+ * unrecognised still reads as words rather than as a slug.
  */
-const ACTION_LABELS: Record<string, string> = {
-	"order.created": "placed an order",
-	"order.updated": "changed an order",
-	"order.status.changed": "moved an order along",
-	"order.deleted": "deleted a draft order",
-	"payment.recorded": "took a payment",
-	"payment.refunded": "refunded a payment",
-	"payment.status.changed": "changed a payment's status",
-	"inventory.adjusted": "adjusted stock",
-	"catalog.item.created": "added a product",
-	"catalog.item.updated": "changed a product",
-	"catalog.item.deleted": "removed a product",
-	"discount.created": "created a discount",
-	"shipment.created": "created a shipment",
-	"subscription.started": "started a subscription",
-	"subscription.cancelled": "cancelled a subscription",
+const NOUNS: Record<string, string> = {
+	"catalog-item": "product",
+	"product-variant": "variant",
+	"inventory-item": "stock item",
+	"purchase-order": "purchase order",
+	"time-entry": "time entry",
+	"file-document": "file",
+	"file-folder": "folder",
+	"file-version": "file version",
+	"file-attachment": "attachment",
+	apikey: "API key",
+	client: "customer",
 };
+
+const VERBS: Record<string, string> = {
+	created: "added",
+	updated: "changed",
+	deleted: "deleted",
+	adjusted: "adjusted",
+	"status-changed": "changed the status of",
+	sent: "sent",
+	accepted: "accepted",
+	declined: "declined",
+	converted: "converted",
+	revised: "revised",
+	archived: "archived",
+	restored: "restored",
+	issued: "issued",
+	revoked: "revoked",
+	joined: "joined",
+	removed: "removed",
+	released: "released",
+	invoiced: "invoiced",
+	detached: "detached",
+	replayed: "replayed",
+	"tracking-updated": "added tracking to",
+	"deletion-requested": "asked to delete",
+	"fulfillment-ensured": "started fulfilling",
+};
+
+/**
+ * ⚠️ The ones where deriving gives the wrong meaning, not merely a clumsy one.
+ *
+ * `order.paid` is the important one: it is written by the payment provider's
+ * webhook, so "Stripe paid an order" inverts who did what. The customer paid;
+ * the provider told us.
+ */
+const PHRASES: Record<string, string> = {
+	"order.paid": "confirmed payment for order",
+	"payment.recorded": "took payment",
+	"payment.refunded": "refunded payment",
+	"payment.status-changed": "changed the status of payment",
+	"client.address.created": "added an address for customer",
+	"client.address.updated": "changed an address for customer",
+	"client.address.deleted": "removed an address for customer",
+	// ⚠️ Needs the noun in the MIDDLE, which the derivation cannot express — it
+	// produced "marked as shipped purchase order".
+	"purchase-order.shipped": "marked a purchase order shipped",
+	"workspace.deleted": "deleted the workspace",
+};
+
+function describe(action: string): string {
+	const phrase = PHRASES[action];
+	if (phrase) return phrase;
+	const split = action.lastIndexOf(".");
+	if (split < 1) return action;
+	const thing = action.slice(0, split);
+	const verb = action.slice(split + 1);
+	const noun = NOUNS[thing] ?? thing.replace(/-/g, " ");
+	return `${VERBS[verb] ?? verb.replace(/-/g, " ")} ${noun}`;
+}
 
 /** Where a change came from, said plainly. */
 const SOURCE_LABELS: Record<string, string> = {
@@ -81,6 +145,11 @@ function actorLabel(entry: AuditEntry): string {
 	if (entry.actorEmail) return entry.actorEmail;
 	if (entry.actorType === "api_key") return "An API key";
 	if (entry.actorType === "system") return "QuickDash";
+	// ⚠️ `order.paid` and `payment.status-changed` are both written by the
+	// provider's webhook, and they were reading as "Someone" — which is the one
+	// word that suggests a person nobody can identify, on the two entries where
+	// we know exactly what wrote them.
+	if (entry.actorType === "payment_provider") return "The payment provider";
 	return "Someone";
 }
 
@@ -156,7 +225,7 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 							? true
 							: [
 									actorLabel(row),
-									ACTION_LABELS[row.action] ?? row.action,
+									describe(row.action),
 									row.resourceType,
 									row.resourceId,
 									row.actorEmail ?? "",
@@ -184,12 +253,14 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 										{actorLabel(row)}
 									</span>
 									<span className="text-[12.5px] text-[var(--ink-55)]">
-										{ACTION_LABELS[row.action] ?? row.action}
+										{describe(row.action)}
 									</span>
-									{/* The record itself. Monospaced because it is an
-									    identifier somebody may need to copy, not prose. */}
+									{/* ⚠️ The id only. `resourceType` used to be printed here
+									    too, which said the same noun twice — "added a product
+									    catalog_item/3f2a1b9c". The action already names what
+									    it is; this is the handle somebody copies. */}
 									<span className="font-mono text-[11px] text-[var(--ink-35)]">
-										{row.resourceType}/{row.resourceId.slice(0, 8)}
+										{row.resourceId.slice(0, 8)}
 									</span>
 									<span className="text-[11.5px] text-[var(--ink-30)]">
 										{SOURCE_LABELS[row.source] ?? row.source}

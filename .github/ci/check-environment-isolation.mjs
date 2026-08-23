@@ -59,6 +59,15 @@ const ALLOWED = new Map([
 	],
 ]);
 
+/**
+ * Helpers that exist to apply the workspace mode, and are trusted to.
+ *
+ * ⚠️ Each one must apply BOTH the workspace and the environment, and must be
+ * short enough to check by eye. This list is the guard's blind spot, so it stays
+ * tiny — a helper here is a promise nothing verifies.
+ */
+const SCOPING_HELPERS = ["inCurrentMode("];
+
 const ROOTS = ["packages", "services", "apps"];
 const problems = [];
 
@@ -73,6 +82,24 @@ function walk(dir) {
 	}
 }
 
+/**
+ * Where the function containing `index` begins.
+ *
+ * 🔴 Bounding both windows to ONE function is the whole correctness of this
+ * guard. Its first version looked a fixed 900 characters forward and found a
+ * filter belonging to the next function down; looking backwards without a bound
+ * would make the same mistake in the other direction.
+ */
+function functionStart(source, index) {
+	const before = source.slice(0, index);
+	let best = 0;
+	for (const marker of ["\nexport ", "\nasync function ", "\nfunction "]) {
+		const at = before.lastIndexOf(marker);
+		if (at > best) best = at;
+	}
+	return best;
+}
+
 function inspect(path) {
 	const relative = path.replace(`${process.cwd()}/`, "");
 	if (ALLOWED.has(relative)) return;
@@ -83,14 +110,70 @@ function inspect(path) {
 		const pattern = new RegExp(`\\.from\\(\\s*${table}\\s*\\)`, "g");
 		let match = pattern.exec(source);
 		while (match) {
-			// The predicate usually follows within the same chained call.
-			const window = source.slice(match.index, match.index + 900);
+			/**
+			 * The rest of THIS statement, and nothing after it.
+			 *
+			 * ⚠️ This was a fixed 900 characters, which ran straight past the end of
+			 * the query into whatever came next. An unfiltered `listPayments` was
+			 * excused by an `eq(payments.id, id)` belonging to the `getPaymentDto`
+			 * defined below it — a filter in a different function entirely.
+			 */
+			const terminator = source.indexOf(";", match.index);
+			const statement = source.slice(
+				match.index,
+				terminator === -1 ? match.index + 900 : terminator,
+			);
+			/**
+			 * The function so far, because a filter is often built ABOVE the query.
+			 *
+			 * `listOrdersPage` assembles its predicate into a `where` constant and
+			 * then passes the name — so the statement itself contains no filter at
+			 * all, and reading only forward calls a correctly scoped query a leak.
+			 */
+			const preceding = source.slice(
+				functionStart(source, match.index),
+				match.index,
+			);
+			const region = `${preceding}${statement}`;
+
 			const filtered =
-				/environment/.test(window) ||
-				// A read of ONE row by primary key is already unambiguous.
-				/\.id\s*,/.test(window) ||
-				/eq\(\s*\w+\.id\s*,/.test(window);
-			if (!filtered) {
+				/**
+				 * The column in PREDICATE position, on THIS table.
+				 *
+				 * ⚠️ Not merely a mention of it. `listOrganizationSettlements` selects
+				 * `environment: payments.environment` so the operator can see which
+				 * mode each row is — displaying the column, filtering by nothing. A
+				 * looser test read that as scoped and cleared a genuinely cross-mode
+				 * list.
+				 */
+				new RegExp(
+					`(eq|ne|inArray|notInArray)\\(\\s*${table}\\.environment`,
+				).test(region) ||
+				// The same predicate written in raw sql, as the money aggregates are.
+				new RegExp(`\\$\\{${table}\\.environment\\}\\s*(=|in)`).test(region) ||
+				// One row of THIS table, by primary key, is already unambiguous.
+				new RegExp(`eq\\(\\s*${table}\\.id\\s*,`).test(region) ||
+				// A named helper whose whole job is applying the mode.
+				SCOPING_HELPERS.some((helper) => region.includes(helper));
+
+			/**
+			 * A deliberate cross-mode read, marked where it happens.
+			 *
+			 * The file-level allowlist is too blunt for a file that has both kinds:
+			 * allowlisting `organization-revenue.ts` for its two mode-labelled lists
+			 * would also excuse its revenue total, which must stay pinned to `live`.
+			 */
+			const declared = /environment-unfiltered:/.test(
+				// From ABOVE the function, because that is where its doc comment is —
+				// the marker belongs in the comment explaining the function, not
+				// buried in its body.
+				source.slice(
+					Math.max(0, functionStart(source, match.index) - 1200),
+					match.index,
+				),
+			);
+
+			if (!filtered && !declared) {
 				const line = source.slice(0, match.index).split("\n").length;
 				problems.push(
 					`${relative}:${line} reads ${table} without an environment filter`,

@@ -125,6 +125,22 @@ export const customerAuthDependencies: CustomerAuthDependencies = {
 
 		await getEmailProvider().send({
 			to: input.email,
+			/**
+			 * 🔴 FROM the business, not from us.
+			 *
+			 * The template above is already branded as the workspace, and this call
+			 * passed no sender — so the body said "Caffeinate" while the inbox said
+			 * "QuickEngine". A customer sees the sender first, which made a sign-in
+			 * link for a shop they know arrive from a company they have never heard
+			 * of. That is the shape of a phishing email, and the fastest possible
+			 * route to being marked spam.
+			 *
+			 * ⚠️ Undefined when the workspace has not set a sender, in which case
+			 * the platform address is used and the customer does see QuickEngine.
+			 * That is every workspace on day one, and it is what Connect should be
+			 * loudest about.
+			 */
+			from: brand?.sender,
 			subject: rendered.subject,
 			html: rendered.html,
 			text: rendered.text,

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
-import { useRecordSignals } from "../lib/record-signals";
+import { useAcknowledgeRecord, useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { ShipmentPanel } from "./module-panels";
@@ -57,6 +57,8 @@ export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
 	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	// Opening a record accounts for whatever it was flagged for.
+	useAcknowledgeRecord(workspaceId, selectedId);
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);

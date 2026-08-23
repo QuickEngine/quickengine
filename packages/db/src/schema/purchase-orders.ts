@@ -79,6 +79,20 @@ export const purchaseOrders = pgTable(
 				"received",
 				"cancelled",
 				"failed",
+				/**
+				 * 🔴 Refused on purpose, not broken.
+				 *
+				 * A sandbox order must never reach a real supplier — they would
+				 * pick, pack and ship real goods for a sale that never happened.
+				 * The purchase order is still raised so an operator can see what
+				 * WOULD have been asked for.
+				 *
+				 * ⚠️ Its own state rather than `failed`. In a live workspace
+				 * `failed` means a supplier genuinely never got an order and
+				 * somebody has to act; if a deliberate sandbox skip looks the same,
+				 * the real one gets scrolled past.
+				 */
+				"skipped_sandbox",
 			],
 		})
 			.notNull()
@@ -94,7 +108,7 @@ export const purchaseOrders = pgTable(
 		handoffMethod: text("handoff_method").notNull().default("unknown"),
 		/** Where it went: an address, an endpoint, a portal reference. */
 		handoffTarget: text("handoff_target"),
-		/** Why it could not be sent, when `status` is `failed`. */
+		/** Why it was not sent, for `failed` and `skipped_sandbox` alike. */
 		failureReason: text("failure_reason"),
 		/** What the supplier called it back, once they say. */
 		supplierReference: text("supplier_reference"),

@@ -63,17 +63,64 @@ export function createApp(
 				payment: [],
 				usb: [],
 			},
+			/**
+			 * 🔴 Set BELOW instead, per route, and here is why it cannot live here.
+			 *
+			 * Hono's `secureHeaders` writes its headers AFTER the handler returns,
+			 * unwinding in reverse registration order — so it overwrote a value set
+			 * by any middleware registered after it. The asset rule looked correct,
+			 * ran, and was silently replaced on the way out.
+			 *
+			 * Turning it off here and setting it explicitly in one place makes the
+			 * value obvious rather than order-dependent.
+			 */
+			crossOriginResourcePolicy: false,
 			referrerPolicy: "no-referrer",
 			strictTransportSecurity: "max-age=31536000; includeSubDomains",
 			xFrameOptions: "DENY",
 		}),
 	);
-	// API responses can contain workspace, customer, billing or session state.
-	// Never let a browser, shared proxy or deployment CDN reuse one for another
-	// request. Public catalog caching can return later with explicit tenant-aware
-	// cache keys; implicit caching is not a safe optimization.
+	/**
+	 * 🔴 A PUBLIC ASSET is not an API response, and must not be treated as one.
+	 *
+	 * Everything under `/assets/` is a product photograph a business uploaded to
+	 * be shown on its own storefront — a different origin by design.
+	 * `caffeinate.shop` loading an image from `api.quickdash.xyz` is the entire
+	 * point of the feature.
+	 *
+	 * Two defaults below were actively breaking that:
+	 *
+	 * · `secureHeaders()` sets `Cross-Origin-Resource-Policy: same-origin`, which
+	 *   tells the browser to refuse the image on any other origin. Chrome reports
+	 *   `ERR_BLOCKED_BY_RESPONSE.NotSameOrigin` and renders NOTHING — no console
+	 *   error on the page, no broken-image icon in some layouts, just an absence.
+	 *   Found on 2026-08-22, after the URL, the storage, the SDK, the image
+	 *   config and the CDN had each been cleared in turn.
+	 *
+	 * · `Cache-Control: no-store` made every storefront re-download every
+	 *   photograph on every page view. Asset names carry an upload timestamp and
+	 *   are never rewritten, so they are immutable and can be cached for a year.
+	 *
+	 * ⚠️ Scoped to `/assets/` and nothing else. Every API response stays
+	 * `same-origin` and `no-store`, because those genuinely can carry workspace,
+	 * customer, billing or session state.
+	 */
+	const PUBLIC_ASSET_PREFIX = "/assets/";
+
 	app.use("*", async (c, next) => {
 		await next();
+		if (c.req.path.startsWith(PUBLIC_ASSET_PREFIX)) {
+			// A product photograph exists to be shown on somebody else's domain.
+			c.header("Cross-Origin-Resource-Policy", "cross-origin");
+			c.header("Cache-Control", "public, max-age=31536000, immutable");
+			return;
+		}
+		// Everything else keeps the strict default it always had.
+		c.header("Cross-Origin-Resource-Policy", "same-origin");
+		// API responses can contain workspace, customer, billing or session state.
+		// Never let a browser, shared proxy or deployment CDN reuse one for another
+		// request. Public catalog caching can return later with explicit tenant-aware
+		// cache keys; implicit caching is not a safe optimization.
 		c.header("Cache-Control", "no-store");
 	});
 	app.use("*", async (c, next) => {

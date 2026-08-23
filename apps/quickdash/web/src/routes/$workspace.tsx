@@ -6,19 +6,11 @@ import {
 	SidebarName,
 } from "@quickengine/ui";
 import { useQuery } from "@tanstack/react-query";
-import {
-	createFileRoute,
-	Link,
-	Outlet,
-	useRouterState,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { type MouseEventHandler, useState } from "react";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { GoLive } from "../components/go-live";
-import {
-	HeaderActionProvider,
-	useHeaderSlots,
-} from "../components/header-action";
+import { HeaderActionProvider } from "../components/header-action";
 import { NotificationToasts } from "../components/notification-toasts";
 import { SidebarCard } from "../components/sidebar-card";
 import {
@@ -26,8 +18,7 @@ import {
 	rememberHelpOpen,
 	SupportBubble,
 } from "../components/support-bubble";
-import { WorkspaceHeader } from "../components/workspace-header";
-import { MODULE_CHILDREN, WorkspaceNav } from "../components/workspace-nav";
+import { WorkspaceNav } from "../components/workspace-nav";
 import { WorkspaceNotifications } from "../components/workspace-notifications";
 import { WorkspaceSearch } from "../components/workspace-search";
 import { sessionApi, workspaceApi } from "../lib/api";
@@ -50,11 +41,6 @@ function WorkspaceShell() {
 
 function WorkspaceFrame() {
 	const { workspace } = Route.useParams();
-	// Whatever the page on screen has published for the header.
-	const header = useHeaderSlots();
-	const pathname = useRouterState({
-		select: (state) => state.location.pathname,
-	});
 	const { user, workspaceId } = Route.useRouteContext();
 	const context = useQuery(quickDashQueries.context(workspaceId));
 	const plan = useQuery(
@@ -92,16 +78,27 @@ function WorkspaceFrame() {
 	 * only while nothing has called — once a key has been used the answer can
 	 * never revert.
 	 */
+	const organizationId = context.data?.workspace.organizationId ?? "";
 	const keys = useQuery({
 		queryKey: ["quickdash", workspaceId, "api-keys"],
 		queryFn: async () =>
 			(
 				await sessionApi.request<{
 					items: Array<{ lastUsedAt: string | null; revokedAt: string | null }>;
-				}>(`/account/api-keys?workspaceId=${encodeURIComponent(workspaceId)}`)
+				}>(
+					`/account/api-keys?workspaceId=${encodeURIComponent(workspaceId)}&organizationId=${encodeURIComponent(organizationId)}`,
+				)
 			).data,
-		// Same guard as Connect: no workspace, no question. See the note there.
-		enabled: workspaceId.length > 0,
+		/**
+		 * 🔴 `organizationId` is REQUIRED by `authorizeAccount`, not optional.
+		 *
+		 * Every account route resolves the caller's access through the
+		 * organization, so a request without it is refused with a 400 before the
+		 * handler runs. Both callers sent only `workspaceId` and both were
+		 * failing silently into the console — which is also why the storefront
+		 * key never appeared on the Connect page.
+		 */
+		enabled: workspaceId.length > 0 && organizationId.length > 0,
 		placeholderData: (previous) => previous,
 		/**
 		 * 🔴 Deliberately NOT polled here.
@@ -145,34 +142,6 @@ function WorkspaceFrame() {
 		0,
 	);
 
-	/**
-	 * What to call the page you are on.
-	 *
-	 * 🔑 Derived from the address and the module registry rather than each page
-	 * declaring its own title. A page that names itself is a page that can
-	 * disagree with the sidebar row that led to it.
-	 */
-	const segments = pathname.split("/").filter(Boolean).slice(1);
-	const currentModule = (context.data?.modules ?? []).find(
-		(module) => module.id === segments[0],
-	);
-	const sectionLabel = currentModule
-		? (MODULE_CHILDREN[currentModule.id] ?? []).find(
-				([segment]) => segment === (segments[1] ?? ""),
-			)?.[1]
-		: undefined;
-	const pageTitle = currentModule
-		? (sectionLabel ?? currentModule.name)
-		: segments.length === 0
-			? "Home"
-			: segments[0] === "media"
-				? "Media"
-				: segments[0] === "connect"
-					? "Connect"
-					: segments[0] === "settings"
-						? "Settings"
-						: undefined;
-
 	const liveKeys = (keys.data?.items ?? []).filter((key) => !key.revokedAt);
 	// Waiting only counts once a key EXISTS. A workspace with no keys has not
 	// started connecting, so a spinner there would be waiting on nothing.
@@ -215,13 +184,21 @@ function WorkspaceFrame() {
 
 	return (
 		<ConsoleShell
-			header={
-				<WorkspaceHeader
-					title={pageTitle}
-					crumb={header.crumb}
-					actions={header.action}
-				/>
-			}
+			/**
+			 * 🔴 No page header, deliberately.
+			 *
+			 * It carried a page title, a breadcrumb and one button. The sidebar
+			 * already says which page you are on, the create button now sits with
+			 * the search and view toggle it belongs beside, and a breadcrumb two
+			 * levels deep is a line of chrome above every screen restating what the
+			 * screen is.
+			 *
+			 * ⚠️ `WorkspaceHeader` is left on disk and still takes `crumb`. The open
+			 * record's name has nowhere to go now, and putting it back somewhere
+			 * sensible is a design decision rather than a deletion — so the
+			 * component stays ready rather than needing to be rebuilt.
+			 */
+			header={null}
 			// Driven by the workspace's own environment, so it cannot disagree with
 			// what the API will actually do with a payment.
 			banner={

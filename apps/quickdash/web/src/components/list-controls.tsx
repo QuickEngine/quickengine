@@ -6,7 +6,7 @@ import {
 	PopoverTrigger,
 } from "@quickengine/ui/components/ui/popover";
 import type { ReactNode } from "react";
-import { usePageTakenOver } from "./header-action";
+import { useHeaderSlots, usePageTakenOver } from "./header-action";
 
 /**
  * The bar above every list: search, filter, and the page's one create action.
@@ -40,6 +40,9 @@ export function ListControls({
 	/** The one create action, if the page has one. */
 	action?: ReactNode;
 }) {
+	// The page registers its action through `useHeaderAction`; this is where it
+	// now appears. The registration API is unchanged, so no page needed editing.
+	const { action: createAction } = useHeaderSlots();
 	/**
 	 * 🔴 Nothing to search, so nothing to search with.
 	 *
@@ -83,6 +86,16 @@ export function ListControls({
 								) : null}
 							</PopoverTrigger>
 							{action}
+							{/*
+							 * 🔴 The page's create action, moved out of the window header
+							 * and in beside the controls it belongs with.
+							 *
+							 * Search, view and "add one" are the three things somebody does
+							 * to a list, and two of them were here while the third sat in a
+							 * bar at the top of the window — so adding a record meant
+							 * leaving the row you were working in and coming back.
+							 */}
+							{createAction}
 						</div>
 					</PopoverAnchor>
 					<PopoverContent
@@ -106,7 +119,19 @@ export function ListControls({
 					</PopoverContent>
 				</Popover>
 			) : (
-				action
+				/**
+				 * ⚠️ The SAME group as the branch above, not a bare `action`.
+				 *
+				 * This branch renders on every page that has no filter, and it used
+				 * to drop the create button entirely — so moving the button out of
+				 * the header made it vanish on exactly those pages rather than move.
+				 * Two branches rendering different controls is how one of them ends
+				 * up forgotten.
+				 */
+				<div className="flex shrink-0 items-center gap-2">
+					{action}
+					{createAction}
+				</div>
 			)}
 		</div>
 	);

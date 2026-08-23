@@ -154,10 +154,17 @@ function HeaderAction({
 			type="button"
 			onClick={onClick}
 			disabled={busy}
-			className={`${busy ? "shimmer-busy" : ""} flex h-9 shrink-0 items-center gap-2 rounded-full bg-[rgb(var(--console-ink))] px-3.5 text-[12.5px] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85 disabled:opacity-60`}
+			/**
+			 * ⚠️ The label moves to `aria-label` and `title` rather than being
+			 * dropped. A bare icon is meaningless to a screen reader and ambiguous
+			 * on hover, and "add a product" and "add a supplier" are the same plus
+			 * sign — the words still have to exist, just not on screen.
+			 */
+			aria-label={busy ? `${label}…` : label}
+			title={label}
+			className={`${busy ? "shimmer-busy" : ""} flex size-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85 disabled:opacity-60`}
 		>
-			<PlusIcon size={14} />
-			{label}
+			<PlusIcon size={15} weight="bold" />
 		</button>
 	);
 }

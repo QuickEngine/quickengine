@@ -92,6 +92,14 @@ export type OrganizationSettlement = {
  * Ordered by `succeededAt`, and only settled money: a pending intent is not
  * revenue and does not belong in a list that sits under a revenue total.
  */
+/**
+ * environment-unfiltered: the organization control plane shows BOTH modes.
+ *
+ * This is the owner's cross-workspace view, and every row carries its own
+ * `environment` so a sandbox settlement is labelled as one rather than hidden.
+ * ⚠️ The MONEY TOTAL below is the opposite case and stays pinned to `live` — a
+ * figure has no room to label itself, so an unfiltered one is simply wrong.
+ */
 export async function listOrganizationSettlements(
 	organizationId: string,
 	options: { limit?: number } = {},
@@ -387,6 +395,13 @@ export type OrganizationIntegration = {
  * `status: "active"` with `chargesEnabled: false` is a real state, it means the
  * provider accepted onboarding and still will not take a card, and it is exactly
  * the state that looks fine on a badge and loses money in a checkout.
+ */
+/**
+ * environment-unfiltered: a workspace may have a sandbox AND a live connection.
+ *
+ * Both belong on the integrations page — the point of it is seeing which of the
+ * two is connected, so filtering to the current mode would hide exactly the row
+ * the operator came to check.
  */
 export async function listOrganizationIntegrations(
 	organizationId: string,

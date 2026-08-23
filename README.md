@@ -65,9 +65,12 @@ remain connected together, one is selected as the checkout default, and each his
 retains its processor so settlement and refunds never depend on whichever provider is active
 today. Test and live workspaces use separate provider credentials, webhook signatures and payment
 identity; a workspace locks to its mode when it enters the money lifecycle, so sandbox orders can
-never be promoted into real business history. Everything that reads those records — revenue,
-reports, the payment list, review verification and the notification bell — filters by mode, and a
-check on every build fails if a new query forgets. Operators connect and resume Stripe's hosted setup
+never be promoted into real business history. Everything that reads those records — the order list,
+the payment list, the home screen's work queue, revenue, reports, review verification and the
+notification bell — filters by mode, and a check on every build fails if a new query forgets.
+Taking a payment selects the connected account matching that payment's own processor and mode, so a
+business that tested before going live cannot have a real charge refused by a leftover sandbox
+connection. Operators connect and resume Stripe's hosted setup
 from the Payments module; custom storefronts receive the browser-safe account context required to
 confirm the resulting direct charge without receiving a server key. Customer confirmation is
 raised only after provider-verified settlement, never when an unpaid order is first drafted. A

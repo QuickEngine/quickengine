@@ -406,6 +406,17 @@ export async function markPurchaseOrderSent(input: {
 	workspaceId: string;
 	purchaseOrderId: string;
 	failureReason?: string | null;
+	/**
+	 * What state a non-send lands in. Defaults to `failed`.
+	 *
+	 * 🔴 `skipped_sandbox` for a deliberate refusal. A sandbox order is held
+	 * back on purpose so a test cannot make a real supplier ship real goods —
+	 * that is the guard working, not a fault. Recording it as `failed` puts a
+	 * red "could not be sent" beside every test order, and in a live workspace
+	 * `failed` means a supplier genuinely never got one and somebody must act.
+	 * Two very different things must not look identical.
+	 */
+	unsentStatus?: "failed" | "skipped_sandbox";
 	now?: Date;
 }) {
 	const now = input.now ?? new Date();
@@ -414,7 +425,7 @@ export async function markPurchaseOrderSent(input: {
 		.set(
 			input.failureReason
 				? {
-						status: "failed",
+						status: input.unsentStatus ?? "failed",
 						failureReason: input.failureReason,
 						updatedAt: now,
 					}

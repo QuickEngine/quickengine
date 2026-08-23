@@ -1,6 +1,7 @@
 import {
 	and,
 	db,
+	desc,
 	eq,
 	orders,
 	paymentAccounts,
@@ -395,6 +396,11 @@ export type CheckoutCaptureOutcome =
 /**
  * Complete a provider order after the buyer approves it in the provider UI.
  * The workspace and stored payment choose the provider; the browser cannot.
+ *
+ * environment-unfiltered: the payment is found by the PROVIDER's own id, which
+ * is issued per mode and never collides across them, so finding it at all
+ * settles which mode this is. Its `environment` is then what scopes everything
+ * below, including which connected account may capture it.
  */
 export async function captureCheckoutPayment(
 	input: {
@@ -418,6 +424,16 @@ export async function captureCheckoutPayment(
 		.limit(1);
 	if (!payment) return { captured: false, reason: "Payment not found." };
 
+	/**
+	 * 🔴 The connected account must be chosen BY the payment's provider and mode,
+	 * not found first and checked afterwards.
+	 *
+	 * This took the workspace's first account row and then refused if it happened
+	 * to be the wrong one. A workspace with both a sandbox and a live connection —
+	 * which is every workspace that tested before going live — would have a real
+	 * capture refused as "not connected" whenever the sandbox row sorted first.
+	 * The buyer's money is authorised and never taken, and nothing says why.
+	 */
 	const [connected] = await db
 		.select({
 			provider: paymentAccounts.provider,
@@ -425,13 +441,16 @@ export async function captureCheckoutPayment(
 			externalAccountId: paymentAccounts.externalAccountId,
 		})
 		.from(paymentAccounts)
-		.where(eq(paymentAccounts.workspaceId, input.workspaceId))
+		.where(
+			and(
+				eq(paymentAccounts.workspaceId, input.workspaceId),
+				eq(paymentAccounts.provider, payment.provider),
+				eq(paymentAccounts.environment, payment.environment),
+			),
+		)
+		.orderBy(desc(paymentAccounts.isDefault))
 		.limit(1);
-	if (
-		!connected?.externalAccountId ||
-		connected.provider !== payment.provider ||
-		connected.environment !== payment.environment
-	) {
+	if (!connected?.externalAccountId) {
 		return { captured: false, reason: "Payment account is not connected." };
 	}
 

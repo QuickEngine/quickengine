@@ -105,6 +105,8 @@ export function supplierHandoffHandler(
 					await markPurchaseOrderSent({
 						workspaceId: event.workspaceId,
 						purchaseOrderId: purchaseOrder.id,
+						// Refused on purpose. See the note on `unsentStatus`.
+						unsentStatus: "skipped_sandbox",
 						failureReason:
 							"This workspace is in sandbox, so nothing was sent to the supplier. Switch to live to place real orders.",
 					});

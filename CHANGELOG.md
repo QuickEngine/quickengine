@@ -197,12 +197,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   payments and Home now show only the money you are actually dealing in. Notifications already
   worked this way.
 
-- **A live payment can no longer be refused as "not connected".** Taking a payment picked the first
-  payment account on the workspace and then refused if it turned out to be the wrong one. Any
-  business that tested before going live has two, so which one was chosen came down to whichever
-  happened to be stored first. The payment is now matched to its own provider and mode, so the
-  customer's money is taken rather than authorised and abandoned with nothing on screen to explain
-  it.
+- **A payment can no longer be refused as "not connected" when it plainly is.** Taking a payment
+  picked whichever connected account came back first and then refused if it turned out to be the
+  wrong one. A business with both Stripe and PayPal connected has two, and keeping both is something
+  the product supports on purpose — so a perfectly good card could be refused on nothing more than
+  row order. The payment is now matched to its own provider and mode, so the customer's money is
+  taken rather than authorised and abandoned with nothing on screen to explain it.
 
 - **Orders opens again.** The list gained a "how much has been refunded" figure and stopped loading
   at all, because of how the query was written rather than what it asked for. It loads, and the

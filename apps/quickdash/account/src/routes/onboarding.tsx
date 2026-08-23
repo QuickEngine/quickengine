@@ -375,7 +375,7 @@ function OnboardingPage() {
 							aria-label="Business name"
 							value={businessName}
 							onChange={(event) => setBusinessName(event.target.value)}
-							placeholder="Acme Inc."
+							placeholder="Kestrel Audio"
 							className="h-12 w-full rounded-full border border-white/15 bg-black/45 px-5 font-body font-light text-[1rem] text-white outline-none backdrop-blur-sm transition-colors duration-300 placeholder:text-white/30 focus:border-white/35"
 						/>
 						<button

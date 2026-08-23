@@ -136,14 +136,14 @@ export function CategoryPanel({
 						label="Name"
 						value={draft.name}
 						onChange={(value) => set("name", value)}
-						placeholder="Rings"
+						placeholder="Monitors"
 					/>
 					<Text
 						label="Web address"
 						hint="the last part of the link"
 						value={draft.slug}
 						onChange={(value) => set("slug", value)}
-						placeholder="rings"
+						placeholder="monitors"
 					/>
 					<Area
 						label="Description"

@@ -229,6 +229,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **The examples in every empty field are a business nobody recognises, on purpose.** Placeholders
+  across the console were themed around one real customer's shop — its name, its address, its
+  product codes, even its brand colour — which reads oddly to everybody else who uses QuickDash. They
+  now all describe the same invented company, and none of them is anybody's actual business.
+
+
 - **Your customers' card payments belong to you, and so does the risk.** Connecting a card processor
   now creates a full account in the business's own name, with its own dashboard, rather than a
   lightweight one managed through us. The practical difference is who covers a loss: with the

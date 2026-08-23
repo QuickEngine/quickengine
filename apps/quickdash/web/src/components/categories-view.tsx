@@ -83,8 +83,8 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 					name: label,
 					kind,
 					// 🔑 Derived, not asked for. The slug is what appears in the shop's
-					// URL, and making somebody type "Rough Gemstones" then
-					// "rough-gemstones" is two chances to get it wrong for one fact.
+					// URL, and making somebody type "Studio Monitors" then
+					// "studio-monitors" is two chances to get it wrong for one fact.
 					// It stays editable later, when the URL actually matters to them.
 					slug: label
 						.toLowerCase()
@@ -163,7 +163,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 						label="Name"
 						value={name}
 						onChange={setName}
-						placeholder="Single origin"
+						placeholder="Studio monitors"
 					/>
 					<Choice
 						label="Kind"

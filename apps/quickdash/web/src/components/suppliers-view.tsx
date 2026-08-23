@@ -188,7 +188,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 						label="Name"
 						value={name}
 						onChange={setName}
-						placeholder="EZPZ Coffee"
+						placeholder="Northline Components"
 					/>
 					<TextField
 						label="Contact"
@@ -526,7 +526,7 @@ function SupplierPanel({
 								hint="sent to them verbatim, never parsed"
 								value={sku}
 								onChange={setSku}
-								placeholder="ETH-GUJI-340"
+								placeholder="KA-K2-BLK"
 							/>
 							<TextField
 								label="What you pay them"

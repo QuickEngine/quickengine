@@ -152,7 +152,7 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 						hint="becomes the web address, so letters, numbers and hyphens only"
 						value={code}
 						onChange={setCode}
-						placeholder="sarahbrews"
+						placeholder="jordanreviews"
 					/>
 					{/* The partner is a client record, because that is what they are:
 					    somebody the business has a relationship and contact details for. */}

@@ -144,7 +144,7 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 						label="Name"
 						value={name}
 						onChange={setName}
-						placeholder="Autumn blend launch"
+						placeholder="K2 launch"
 					/>
 				</CreatePanel>
 			) : null}

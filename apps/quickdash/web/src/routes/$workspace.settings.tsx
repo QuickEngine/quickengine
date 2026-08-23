@@ -440,7 +440,7 @@ function SettingsPage() {
 					onChange={(value) =>
 						setBrand((was) => (was ? { ...was, displayName: value } : was))
 					}
-					placeholder={brand?.workspaceName ?? "Caffeinate"}
+					placeholder={brand?.workspaceName ?? "Kestrel Audio"}
 				/>
 
 				{/* 🔴 The one that stops mail arriving from QuickEngine. */}
@@ -480,7 +480,7 @@ function SettingsPage() {
 					onChange={(value) =>
 						setBrand((was) => (was ? { ...was, tagline: value } : was))
 					}
-					placeholder="Coffee, delivered"
+					placeholder="Sound you can trust"
 				/>
 
 				<BrandField
@@ -490,7 +490,7 @@ function SettingsPage() {
 					onChange={(value) =>
 						setBrand((was) => (was ? { ...was, accentColor: value } : was))
 					}
-					placeholder="#6B4423"
+					placeholder="#2F5D62"
 				/>
 
 				<div className="flex items-center gap-3">
@@ -719,7 +719,7 @@ function SettingsPage() {
 							onChange={(value) =>
 								setOrigin((was) => ({ ...(was ?? blankOrigin()), name: value }))
 							}
-							placeholder="Caffeinate"
+							placeholder="Kestrel Audio"
 						/>
 						<BrandField
 							label="Street address"
@@ -730,7 +730,7 @@ function SettingsPage() {
 									line1: value,
 								}))
 							}
-							placeholder="1 Roastery Way"
+							placeholder="12 Foundry Lane"
 						/>
 						<BrandField
 							label="Unit or suite"

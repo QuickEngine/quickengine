@@ -50,11 +50,23 @@ const STATUS_LABELS: Record<string, string> = {
 	received: "Received",
 	cancelled: "Cancelled",
 	failed: "Could not be sent",
+	/**
+	 * ⚠️ Not a failure, and it must not look like one.
+	 *
+	 * A sandbox order is REFUSED on purpose so a test cannot make a real
+	 * supplier ship real goods. Recording that as `failed` and painting it red
+	 * says something broke — and in a live workspace `failed` means a supplier
+	 * genuinely never got the order, which somebody has to act on. If both look
+	 * identical the real one gets ignored.
+	 */
+	skipped_sandbox: "Held back — sandbox",
 };
 
 /** Only two states are worth colouring. Everything else is ordinary progress. */
 const STATUS_TONE: Record<string, string> = {
 	failed: "var(--signal-failure)",
+	// Deliberate, expected, and nothing to do about it while in sandbox.
+	skipped_sandbox: "var(--ink-45)",
 	shipped: "var(--signal-news)",
 };
 

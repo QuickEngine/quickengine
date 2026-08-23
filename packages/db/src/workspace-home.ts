@@ -9,6 +9,7 @@ import { orders } from "./schema/orders";
 import { payments } from "./schema/payments";
 import { projectTasks } from "./schema/projects-tasks";
 import { quoteEstimates } from "./schema/quotes-estimates";
+import { workspaceEnvironment } from "./workspaces-environment";
 
 /**
  * What needs a person today, in one workspace.
@@ -70,6 +71,18 @@ export async function getWorkspaceHome(
 	options: { modules: readonly string[]; timeZone?: string },
 ): Promise<WorkspaceHome> {
 	const enabled = new Set(options.modules);
+	/**
+	 * 🔴 Which money this workspace is dealing in TODAY.
+	 *
+	 * Sandbox and live records share these tables, and this screen is the first
+	 * thing an operator sees. Unfiltered, a live business opened its morning to a
+	 * queue of test orders to pack and test payments to chase — indistinguishable
+	 * from the real ones, because nothing on the panel says which is which.
+	 *
+	 * Read once here rather than per query: eight panels asking the same question
+	 * eight times is eight round trips for one answer that cannot change mid-load.
+	 */
+	const environment = await workspaceEnvironment(workspaceId);
 	const { start, end } = dayBounds(options.timeZone ?? "UTC");
 	const needsYou: HomeConcern[] = [];
 	const today: HomeToday[] = [];
@@ -87,6 +100,7 @@ export async function getWorkspaceHome(
 			.where(
 				and(
 					eq(orders.workspaceId, workspaceId),
+					eq(orders.environment, environment),
 					inArray(orders.status, ["placed", "confirmed", "processing"]),
 					isNull(orders.fulfillmentId),
 				),
@@ -150,6 +164,7 @@ export async function getWorkspaceHome(
 			.where(
 				and(
 					eq(payments.workspaceId, workspaceId),
+					eq(payments.environment, environment),
 					inArray(payments.status, ["pending", "processing"]),
 				),
 			)

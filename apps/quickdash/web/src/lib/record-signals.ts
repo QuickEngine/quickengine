@@ -1,4 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { sessionApi } from "./api";
 import { type NotificationSignal, quickDashQueries } from "./quickdash-api";
 
 /**
@@ -35,4 +37,54 @@ export function useRecordSignals(workspaceId: string) {
 
 	/** Pass straight to a table's `rowSignal`. */
 	return (row: { id: string }) => byRecord.get(row.id) ?? null;
+}
+
+/**
+ * Opening a record acknowledges what the notification was telling you.
+ *
+ * 🔴 The dot exists to say "something happened here that you have not seen".
+ * Once somebody opens the record, they have seen it — so leaving the dot lit
+ * means the console is still asking for attention it has already had. Worse,
+ * after refunding an order the row kept its mark, which reads as an order still
+ * needing something rather than one that is finished.
+ *
+ * ⚠️ Marks read by RECORD, not by notification, because a record can carry
+ * several. One order can be paid, disputed and refunded; opening it accounts
+ * for all of them, and clearing one of three would leave the dot lit anyway.
+ *
+ * ⚠️ Fire-and-forget. Failing to mark something read must never interrupt
+ * opening the thing somebody asked for — the worst case is a dot that stays a
+ * little longer, and the next poll corrects it.
+ */
+export function useAcknowledgeRecord(
+	workspaceId: string,
+	recordId: string | null,
+) {
+	const notifications = useQuery(quickDashQueries.notifications(workspaceId));
+	const queryClient = useQueryClient();
+	const unreadIds = (notifications.data?.items ?? [])
+		.filter((item) => !item.readAt && item.recordId === recordId)
+		.map((item) => item.id)
+		.join(",");
+
+	useEffect(() => {
+		if (!recordId || !unreadIds) return;
+		void Promise.all(
+			unreadIds.split(",").map((id) =>
+				sessionApi.request(`/account/notifications/${id}/read`, {
+					method: "POST",
+				}),
+			),
+		)
+			.then(() =>
+				queryClient.invalidateQueries({
+					predicate: (query) =>
+						query.queryKey[0] === "quickdash" &&
+						query.queryKey.includes("notifications"),
+				}),
+			)
+			.catch(() => {
+				// See above: a dot that lingers is not worth failing an open over.
+			});
+	}, [recordId, unreadIds, queryClient]);
 }

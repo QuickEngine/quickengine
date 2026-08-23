@@ -190,6 +190,48 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Sandbox records stay in the sandbox.** Switching a workspace to live used to show it every test
+  order ever placed in it, sitting in the same list as real ones with nothing to tell them apart.
+  Four screens were affected and the worst of them was the first one you see each morning: Home's
+  "needs your attention" listed sandbox orders to pack and sandbox payments to chase. Orders,
+  payments and Home now show only the money you are actually dealing in. Notifications already
+  worked this way.
+
+- **A live payment can no longer be refused as "not connected".** Taking a payment picked the first
+  payment account on the workspace and then refused if it turned out to be the wrong one. Any
+  business that tested before going live has two, so which one was chosen came down to whichever
+  happened to be stored first. The payment is now matched to its own provider and mode, so the
+  customer's money is taken rather than authorised and abandoned with nothing on screen to explain
+  it.
+
+- **Orders opens again.** The list gained a "how much has been refunded" figure and stopped loading
+  at all, because of how the query was written rather than what it asked for. It loads, and the
+  figure works.
+
+- **A refunded order says so.** An order's status describes fulfilment, so an order refunded in full
+  still read "placed" — and in a list of work to do that means somebody picks and packs a parcel for
+  a customer who already has their money back. Fully and partly refunded orders are now marked as
+  what they are.
+
+- **Opening a record clears its notification.** The dot beside an order stayed lit after the order
+  had been read, because the screen had no way to tell which notification belonged to what it was
+  showing.
+
+- **Product photographs appear on your own site.** Images served to a storefront were being blocked
+  by the browser before they were drawn — no error, no broken-image icon, just an absence.
+
+- **A sign-in link comes from the shop it signs you into.** The email was branded as the business but
+  arrived from QuickEngine, which is the shape of a phishing message and the fastest route to being
+  marked spam.
+
+- **A test order is not a failed order.** A sandbox sale is deliberately held back from reaching a
+  real supplier, and that refusal was recorded as a failure — putting a red "could not be sent"
+  beside every test, next to real ones that genuinely need somebody to act.
+
+- **Add a record from where you are looking at them.** The button to create one sat in a bar at the
+  top of the window, away from the search and view controls it belongs beside. That bar is gone; the
+  space belongs to your records.
+
 - **One business's records can never reach another's.** Everything that runs on your behalf in the
   background — the emails your customers receive, stock going back after a refund, a partner's
   commission — now names the business it is acting for before it reads anything, rather than

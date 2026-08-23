@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
-import { useRecordSignals } from "../lib/record-signals";
+import { useAcknowledgeRecord, useRecordSignals } from "../lib/record-signals";
 import { detailCard } from "./detail-panel";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
@@ -44,10 +44,31 @@ type OrderLine = {
 	id: string;
 	name: string;
 	quantity: number;
-	unitAmountCents: number;
+	/**
+	 * 🔴 `unitPriceCents`, which is what the API actually sends.
+	 *
+	 * This was declared as `unitAmountCents` — a field the API has never
+	 * returned. TypeScript was satisfied because the type asserted it existed,
+	 * so `undefined * quantity` reached the screen as "CA$NaN" on every line of
+	 * every order, from the day it was written until 2026-08-22.
+	 *
+	 * ⚠️ A hand-written type over a network response is an assertion, not a
+	 * check. It is only as true as the person who typed it.
+	 */
+	unitPriceCents: number;
 };
 
 type OrderRow = {
+	/**
+	 * What has been returned, and what was taken, in cents.
+	 *
+	 * 🔴 On the LIST row, not only the detail. An order's `status` is its
+	 * fulfilment lifecycle, so a fully refunded order still reads "placed" — and
+	 * in a list of work to do that means somebody picks and packs a parcel for a
+	 * customer who already has their money back.
+	 */
+	refundedCents?: number;
+	paidCents?: number;
 	id: string;
 	number: string;
 	status: string;
@@ -104,6 +125,49 @@ const when = (iso: string) =>
 		day: "numeric",
 		year: "numeric",
 	});
+
+/**
+ * How much of this order's money has gone back.
+ *
+ * 🔴 An order's `status` is its FULFILMENT lifecycle — placed, processing,
+ * fulfilled. Whether it was paid for lives on the payment, and whether that
+ * money was returned lives on the refunds. All three are separate facts and all
+ * three are correct.
+ *
+ * ⚠️ But an operator scanning a list does not think that way. A fully refunded
+ * order that still reads "placed" looks like work waiting to be done, and the
+ * one thing that mattered — the customer got their money back — is two clicks
+ * away. So the chip says what actually happened to the money once it has moved.
+ *
+ * Partial refunds deliberately do NOT take over the chip: half a refund is not
+ * a finished order, and calling it "refunded" would hide that the rest is still
+ * owed.
+ */
+function refundState(order: {
+	refundedCents?: number;
+	paidCents?: number;
+	payment?: {
+		amountCents: number;
+		refunds?: Array<{ amountCents: number }>;
+	} | null;
+}): "none" | "partial" | "full" {
+	/**
+	 * ⚠️ Two shapes, one answer.
+	 *
+	 * The LIST gets scalar totals from a correlated subquery; the DETAIL has the
+	 * payment and its refunds in full. Both must reach the same conclusion, so
+	 * the rule lives here once rather than being written twice and drifting.
+	 */
+	const returned =
+		order.refundedCents ??
+		(order.payment?.refunds ?? []).reduce(
+			(total, refund) => total + refund.amountCents,
+			0,
+		);
+	const taken = order.paidCents ?? order.payment?.amountCents ?? 0;
+	if (returned <= 0 || taken <= 0) return "none";
+	return returned >= taken ? "full" : "partial";
+}
 
 const chip =
 	"rounded-full bg-[rgb(var(--console-ink)/0.06)] px-2 py-0.5 text-[10.5px] text-[var(--ink-50)] capitalize";
@@ -234,7 +298,9 @@ function OrderPanel({
 					{(order) => (
 						<>
 							<div className="flex items-center gap-2">
-								<span className={chip}>{order.status}</span>
+								<span className={chip}>
+									{refundState(order) === "full" ? "refunded" : order.status}
+								</span>
 								<span className="text-[11px] text-[var(--ink-30)]">
 									{when(order.createdAt)}
 								</span>
@@ -299,7 +365,7 @@ function OrderPanel({
 											</span>
 											<span className="text-[12px] text-[var(--ink-60)]">
 												{money(
-													line.unitAmountCents * line.quantity,
+													line.unitPriceCents * line.quantity,
 													order.currency,
 												)}
 											</span>
@@ -417,6 +483,8 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 	const [query, setQuery] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	// Opening a record accounts for whatever it was flagged for.
+	useAcknowledgeRecord(workspaceId, selectedId);
 
 	const { layout, setLayout } = useListLayout(workspaceId);
 	// The dots come from the bell, so marking a notification read clears
@@ -530,7 +598,11 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 									width: "w-28",
 									tight: true,
 									render: (order) => (
-										<span className={chip}>{order.status}</span>
+										<span className={chip}>
+											{refundState(order) === "full"
+												? "refunded"
+												: order.status}
+										</span>
 									),
 								},
 								{

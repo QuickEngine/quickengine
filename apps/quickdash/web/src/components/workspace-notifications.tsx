@@ -48,8 +48,26 @@ export function WorkspaceNotifications({
 	unread: number;
 }) {
 	const queryClient = useQueryClient();
+	/**
+	 * 🔴 Matched by PREDICATE, not by prefix.
+	 *
+	 * The list is keyed `["quickdash", <workspaceId>, "notifications"]`, and this
+	 * invalidated `["quickdash", "notifications"]`. TanStack matches keys by
+	 * PREFIX, and that prefix does not match — the workspace id sits in the
+	 * middle. So marking one read, or all of them, refreshed nothing: the badge
+	 * kept its old count until the sixty-second poll came round, which reads as
+	 * the button not working.
+	 *
+	 * ⚠️ Deliberately not narrowed to the current workspace. Read state belongs
+	 * to the PERSON, so marking something read while standing in one workspace
+	 * must not leave a stale count waiting in another.
+	 */
 	const refresh = () =>
-		queryClient.invalidateQueries({ queryKey: ["quickdash", "notifications"] });
+		queryClient.invalidateQueries({
+			predicate: (query) =>
+				query.queryKey[0] === "quickdash" &&
+				query.queryKey.includes("notifications"),
+		});
 
 	const markRead = useMutation({
 		mutationFn: (id: string) =>

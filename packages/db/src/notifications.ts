@@ -42,6 +42,15 @@ export type NotificationRow = {
 	id: string;
 	userId: string;
 	organizationId: string | null;
+	/**
+	 * The record this is about — the order, the payment, the shipment.
+	 *
+	 * 🔴 Already selected and already returned; the type simply did not admit
+	 * it, so no caller could use it. That is why opening the order a
+	 * notification is about did nothing: the screen had no way to tell which
+	 * notification belonged to what it was showing.
+	 */
+	recordId: string | null;
 	type: string;
 	signal: "news" | "attention" | "failure";
 	title: string;

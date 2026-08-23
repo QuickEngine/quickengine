@@ -16,8 +16,12 @@ import {
 	orderLineItems,
 	orders,
 	pageOrder,
+	paymentRefunds,
+	payments,
 	resolveSort,
+	sql,
 	toPage,
+	workspaceEnvironment,
 } from "@quickengine/db";
 import { z } from "zod";
 import { redeemDiscountInTx } from "./discounts";
@@ -169,8 +173,22 @@ export async function listOrdersPage(
 	// Newest first by default: an operational list ordered by id is effectively
 	// random to the person reading it.
 	const sort = resolveSort(ORDER_SORTS, page.sort, "createdAt");
+	/**
+	 * 🔴 The workspace mode. Sandbox and live orders live in the SAME table.
+	 *
+	 * This filter did not exist, so switching a workspace to live listed every
+	 * test order ever placed in it — fake customers and fake money mixed into a
+	 * real business's work queue, with nothing on screen to tell them apart.
+	 *
+	 * ⚠️ `check:environment-isolation` did not catch it, and that half is worse.
+	 * Its heuristic treats a nearby `.id` as proof of a single-row read, and this
+	 * query names `orders.id` in both its cursor and its ORDER BY — so a full
+	 * table scan looked like a lookup by primary key and was waved through.
+	 */
+	const environment = await workspaceEnvironment(workspaceId);
 	const where = and(
 		eq(orders.workspaceId, workspaceId),
+		eq(orders.environment, environment),
 		afterCursor(
 			sort.column,
 			orders.id,
@@ -180,14 +198,70 @@ export async function listOrdersPage(
 		page.status ? eq(orders.status, page.status) : undefined,
 		page.clientId ? eq(orders.clientId, page.clientId) : undefined,
 	);
+	/**
+	 * How much of each order has been refunded, alongside the order itself.
+	 *
+	 * 🔴 Without this the list cannot tell a live order from a refunded one. An
+	 * order's `status` is its FULFILMENT lifecycle, so a fully refunded order
+	 * still reads "placed" — which in a list of work to do means somebody picks
+	 * and packs a parcel for a customer who has already had their money back.
+	 *
+	 * ⚠️ A correlated subquery rather than a join, deliberately. This list is
+	 * cursor-paginated and sorted; a join against payments and refunds
+	 * multiplies rows and silently breaks both. A scalar per order cannot.
+	 */
+	/**
+	 * ⚠️ Written as LITERAL sql with table aliases, not with drizzle column
+	 * references, and that is not a style choice.
+	 *
+	 * Interpolating `${payments.id}` into a raw fragment emits a BARE `"id"` with
+	 * no table qualifier. Inside a correlated subquery that sits in the same scope
+	 * as the outer `orders`, so `"id"` matched both and Postgres refused the whole
+	 * statement with `column reference "id" is ambiguous` — the orders list
+	 * returned 500 rather than anything wrong-but-plausible.
+	 *
+	 * DB_RULES has said "raw SQL subqueries do not survive the drizzle driver"
+	 * since before this was written. This is what that sentence means.
+	 *
+	 * 🔴 Both subqueries also match the order's own workspace, so a refund can
+	 * never be counted against an order in another workspace.
+	 */
+	const refundedCents = sql<number>`(
+		select coalesce(sum(r.amount_cents), 0)::int
+		from payment_refunds r
+		join payments p on p.id = r.payment_id
+		where p.order_id = orders.id
+		  and p.workspace_id = orders.workspace_id
+	)`.as("refunded_cents");
+
+	const paidCents = sql<number>`(
+		select coalesce(sum(p.amount_cents), 0)::int
+		from payments p
+		where p.order_id = orders.id
+		  and p.workspace_id = orders.workspace_id
+		  and p.status in ('succeeded', 'refunded')
+	)`.as("paid_cents");
+
 	const rows = await db
-		.select()
+		.select({ order: orders, refundedCents, paidCents })
 		.from(orders)
 		.where(where)
 		.orderBy(...pageOrder(sort.column, orders.id, page.direction))
 		.limit(page.limit + 1);
-	const paged = toPage(rows, page.limit, sort.key, "id");
-	return { items: paged.items.map(serializeOrder), page: paged.page };
+	const flattened = rows.map((row) => ({
+		...row.order,
+		refundedCents: Number(row.refundedCents ?? 0),
+		paidCents: Number(row.paidCents ?? 0),
+	}));
+	const paged = toPage(flattened, page.limit, sort.key, "id");
+	return {
+		items: paged.items.map((row) => ({
+			...serializeOrder(row),
+			refundedCents: row.refundedCents,
+			paidCents: row.paidCents,
+		})),
+		page: paged.page,
+	};
 }
 
 export async function getOrderDto(workspaceId: string, id: string) {

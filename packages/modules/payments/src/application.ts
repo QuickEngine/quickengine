@@ -18,6 +18,7 @@ import {
 	payments,
 	resolveSort,
 	toPage,
+	workspaceEnvironment,
 } from "@quickengine/db";
 import { z } from "zod";
 import {
@@ -152,8 +153,16 @@ export async function listPaymentsPage(
 	// Newest first by default: a list ordered by id is effectively random
 	// to the person reading it.
 	const sort = resolveSort(PAYMENT_SORTS, page.sort, "createdAt");
+	/**
+	 * 🔴 The workspace mode. Sandbox and live payments share this table.
+	 *
+	 * Without it, a live business's payments list showed every test card ever
+	 * run through the sandbox, next to real money and looking identical to it.
+	 */
+	const environment = await workspaceEnvironment(workspaceId);
 	const where = and(
 		eq(payments.workspaceId, workspaceId),
+		eq(payments.environment, environment),
 		afterCursor(
 			sort.column,
 			payments.id,
@@ -172,6 +181,15 @@ export async function listPaymentsPage(
 	return { items: paged.items.map(serializePayment), page: paged.page };
 }
 
+/**
+ * environment-unfiltered: both reads are pinned tighter than the mode.
+ *
+ * The payment is fetched by workspace AND primary key, and its refunds by that
+ * payment's id — a payment belongs to exactly one mode, so its refunds cannot
+ * belong to the other. Filtering here would only be able to hide a record
+ * somebody reached by its own id, which reads as "not found" for something that
+ * plainly exists.
+ */
 export async function getPaymentDto(workspaceId: string, id: string) {
 	const [payment] = await db
 		.select()

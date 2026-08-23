@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Disconnect a payment provider.** There was no way to undo connecting one, and setting up a new
+  connection refuses while an old one is present, so a business whose connection stopped working was
+  stuck with it. Payments now has a Disconnect button. It forgets our record only: your account at
+  the provider is untouched, your money and history stay where they are, and past payments still
+  refund through the account they were taken on.
+
+
 - **Charge sales tax.** Your tax rate has been applied to every order since the beginning and there
   was no screen anywhere to set it, so it sat at zero — which means a business in a place that
   charges tax collected none of it, and unremitted tax comes out of the owner's pocket months later.
@@ -214,6 +221,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   button with it, so nothing is left offering to act on something that is not there.
 
 ### Fixed
+
+- **Your customers' card payments belong to you, and so does the risk.** Connecting a card processor
+  now creates a full account in the business's own name, with its own dashboard, rather than a
+  lightweight one managed through us. The practical difference is who covers a loss: with the
+  lightweight kind, QuickEngine would have been liable for our customers' chargebacks and refunds,
+  with money held in reserve against them. We take no share of your sales, so we should carry no
+  share of that. This also removes a wall that stopped new businesses connecting a card processor at
+  all.
+
 
 - **Sandbox records stay in the sandbox.** Switching a workspace to live used to show it every test
   order ever placed in it, sitting in the same list as real ones with nothing to tell them apart.

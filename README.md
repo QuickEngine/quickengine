@@ -60,7 +60,11 @@ free delivery is a decision rather than the result of an outage. Storefronts cho
 re-prices catalog values, item weights and the selected rate before it records or charges the
 order.
 
-Payments supports multiple connected merchant processors per workspace. Stripe and PayPal can
+Payments supports multiple connected merchant processors per workspace, and a card processor is
+connected as an account in the business's own name: the business holds it, sees its own dashboard,
+receives its own payouts and handles its own disputes. QuickEngine takes no share of a sale and
+therefore carries no share of the losses. A connection can also be removed, which frees the workspace
+to connect a different one. Stripe and PayPal can
 remain connected together, one is selected as the checkout default, and each historical payment
 retains its processor so settlement and refunds never depend on whichever provider is active
 today. Test and live workspaces use separate provider credentials, webhook signatures and payment

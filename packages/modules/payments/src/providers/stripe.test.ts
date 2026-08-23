@@ -66,12 +66,37 @@ describe("Stripe connected accounts", () => {
 
 		expect(mocks.create).toHaveBeenCalledWith(
 			expect.objectContaining({
-				type: "express",
 				capabilities: {
 					card_payments: { requested: true },
 					transfers: { requested: true },
 				},
 			}),
+		);
+	});
+
+	/**
+	 * 🔴 STANDARD, and it is a liability decision rather than a preference.
+	 *
+	 * With Standard the merchant holds their own Stripe account and their own
+	 * disputes. With Express the PLATFORM carries the losses — Stripe refuses to
+	 * create one until the platform accepts "you'll be liable for seller losses"
+	 * and agrees to reserves being held against our balance.
+	 *
+	 * Absorbing a merchant's chargebacks is paying for a business outcome they
+	 * earned, which hard rule 7 exists to prevent, and QuickEngine takes no cut
+	 * of a sale to fund it. Asserted here because a one-word change back would
+	 * be invisible in review and would quietly move that liability onto us.
+	 */
+	it("creates a Standard account, so the merchant carries their own losses", async () => {
+		mocks.create.mockResolvedValue({ id: "acct_new" });
+
+		await onboard();
+
+		expect(mocks.create).toHaveBeenCalledWith(
+			expect.objectContaining({ type: "standard" }),
+		);
+		expect(mocks.create).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: "express" }),
 		);
 	});
 

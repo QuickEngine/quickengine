@@ -118,10 +118,31 @@ export const stripePaymentProvider: PaymentProvider = {
 					capabilities: CONNECT_CAPABILITIES,
 				})
 			: await stripe.accounts.create({
-					// Express: Stripe hosts onboarding and owns the compliance burden. A
-					// business that has outgrown it can be migrated; starting with Standard
-					// would put KYC, disputes and tax forms on us from day one.
-					type: "express",
+					/**
+					 * 🔴 STANDARD, and the liability is the whole reason.
+					 *
+					 * This was `express`, justified in a comment claiming Standard "would
+					 * put KYC, disputes and tax forms on us from day one". That had it
+					 * exactly backwards, and the mistake shaped the integration.
+					 *
+					 * With **Standard** the merchant holds a full Stripe account, their
+					 * own dashboard, and **their own disputes and losses**. With
+					 * **Express** the platform takes those on — Stripe will not even
+					 * create one until the platform acknowledges "you'll be liable for
+					 * seller losses" and agrees to Stripe holding reserves against our
+					 * balance to cover merchants' negative balances.
+					 *
+					 * ⚠️ Absorbing a merchant's chargebacks is paying for a business
+					 * outcome they earned, which is the thing hard rule 7 exists to
+					 * prevent — and it would scale with our customers' success while
+					 * earning nothing, because QuickEngine takes no cut of a sale.
+					 *
+					 * Proved by trying all three on 2026-08-23: `standard` creates
+					 * cleanly, `express` and `custom` are both refused until platform
+					 * liability is accepted. Hosted onboarding and capability requests
+					 * work identically on Standard, so nothing else here changes.
+					 */
+					type: "standard",
 					email: params.email,
 					country: params.country,
 					// 🔴 Capabilities have to be REQUESTED. Omit them and the account

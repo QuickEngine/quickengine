@@ -4,6 +4,7 @@ import type { CacheProvider } from "@quickengine/cache";
 import type { DatabaseTransaction } from "@quickengine/db";
 import {
 	connectProviderCredentials,
+	disconnectPaymentAccount,
 	getPaymentDto,
 	listPaymentsPage,
 	PAYMENT_STATUSES,
@@ -160,6 +161,32 @@ export function registerPaymentsRoutes(
 	 * at redirect time is already stale. Rate-limited on the WRITE policy
 	 * despite being a refresh, because it makes an outbound API call per hit.
 	 */
+	/**
+	 * Forget the connected account for the mode this workspace is in.
+	 *
+	 * 🔴 There was no way to do this at all, and `startOnboarding` refuses once
+	 * charges are enabled — so a workspace whose connection had become unusable
+	 * was stuck with it permanently and the only fix was a DELETE run against the
+	 * production database by hand. That happened on 2026-08-23.
+	 *
+	 * ⚠️ Forgets OUR record, never the account at the provider. The business keeps
+	 * its Stripe account, its money and its history; this only stops new charges
+	 * being routed through it.
+	 */
+	app.post(
+		"/v1/payments/connect/disconnect",
+		writeAccess,
+		writeLimit,
+		async (c) =>
+			respond(
+				c,
+				await disconnectPaymentAccount(
+					c.get("authorized").workspaceId,
+					c.req.query("provider"),
+				),
+			),
+	);
+
 	app.post("/v1/payments/connect/refresh", writeAccess, writeLimit, async (c) =>
 		respond(
 			c,

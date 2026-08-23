@@ -590,6 +590,27 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/payments/connect/disconnect": {
+				post: {
+					operationId: "disconnectPaymentAccount",
+					summary: "Forget a connected payment account",
+					description:
+						"Stops routing new charges through a connected account, for the mode the workspace is currently in. Omit `provider` to disconnect the default. Forgets OUR record only: the business keeps its account at the provider, along with its money and its history, and past payments still refund through the account they were taken on. Existed because there was previously no way out of a connection that had become unusable, and onboarding refuses while one is present.",
+					parameters: [
+						{
+							in: "query",
+							name: "provider",
+							schema: { type: "string", enum: ["stripe", "paypal"] },
+						},
+					],
+					responses: {
+						"200": {
+							description:
+								"Whether a connection was removed, and which provider it was.",
+						},
+					},
+				},
+			},
 			"/v1/payments/connect/refresh": {
 				post: {
 					operationId: "refreshPaymentConnectAccount",

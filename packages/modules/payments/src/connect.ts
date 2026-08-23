@@ -1,3 +1,4 @@
+import { and, db, eq, paymentAccounts } from "@quickengine/db";
 import { z } from "zod";
 import {
 	getPaymentAccount,
@@ -253,6 +254,49 @@ export async function refreshPaymentAccount(
 		environment,
 	);
 	return persist(workspaceId, providerId, environment, account);
+}
+
+/**
+ * Forget a connected account, so the business can connect a different one.
+ *
+ * ── Why this has to exist ────────────────────────────────────────────────────
+ *
+ * 🔴 There was no way out. `startOnboarding` refuses once charges are enabled,
+ * and nothing anywhere could remove the row — so a workspace whose connection
+ * had become unusable was stuck with it for ever, with no route through the
+ * interface. That is not hypothetical: on 2026-08-23 a connected account was
+ * orphaned when the Stripe sandbox that created it went away, every request for
+ * it answered 403, checkout could not take a payment, and the only fix was a
+ * DELETE run against the production database by hand.
+ *
+ * ⚠️ It removes OUR record, not the account at the provider. The business still
+ * owns that account and its money, its history and its payouts are untouched —
+ * this only stops QuickDash routing new charges through it. Deleting somebody's
+ * Stripe account is not ours to do.
+ *
+ * ⚠️ Scoped to ONE MODE. Disconnecting the sandbox connection must never take
+ * the live one with it, which is the whole reason the two are separate rows.
+ *
+ * 🔑 Past payments keep working. A refund resolves the account its own payment
+ * recorded, not whatever the workspace is connected to today.
+ */
+export async function disconnectPaymentAccount(
+	workspaceId: string,
+	provider?: string,
+): Promise<{ disconnected: boolean; provider: string | null }> {
+	const environment = await workspaceEnvironment(workspaceId);
+	const existing = await getPaymentAccount(workspaceId, provider, environment);
+	if (!existing) return { disconnected: false, provider: null };
+	await db
+		.delete(paymentAccounts)
+		.where(
+			and(
+				eq(paymentAccounts.workspaceId, workspaceId),
+				eq(paymentAccounts.provider, existing.provider),
+				eq(paymentAccounts.environment, environment),
+			),
+		);
+	return { disconnected: true, provider: existing.provider };
 }
 
 /** Our stored view, with no network call. */

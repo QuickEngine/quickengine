@@ -270,6 +270,33 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 		onSuccess: refresh,
 	});
 
+	/**
+	 * 🔴 The way out, which did not exist.
+	 *
+	 * Onboarding refuses once charges are enabled and nothing could remove the
+	 * record, so a workspace whose connection had become unusable was stuck with
+	 * it for good. On 2026-08-23 an account was orphaned when the Stripe sandbox
+	 * that created it went away: every request answered 403, checkout could not
+	 * take a payment, and the only fix was a DELETE against production by hand.
+	 *
+	 * ⚠️ Confirmed first. It is not destructive at the provider — the business
+	 * keeps its account, its money and its history — but it does stop the shop
+	 * taking payment until something is connected again, and that deserves a
+	 * deliberate answer rather than a stray click.
+	 */
+	const disconnect = useMutation({
+		mutationFn: async (provider: string) => {
+			await workspaceApi(workspaceId).request(
+				`/payments/connect/disconnect?provider=${provider}`,
+				{ method: "POST" },
+			);
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That could not be disconnected."),
+		onSuccess: refresh,
+	});
+
 	const connectCredentials = useMutation({
 		mutationFn: async (values: {
 			provider: string;
@@ -391,6 +418,27 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 														: "Check again"}
 												</button>
 											)}
+											{status.connected ? (
+												<button
+													type="button"
+													className={outlined}
+													disabled={busy}
+													onClick={() => {
+														if (
+															!window.confirm(
+																`Disconnect ${provider.name}? This shop stops taking payment until you connect one again. Your ${provider.name} account, its money and its history are not touched.`,
+															)
+														)
+															return;
+														disconnect.mutate(provider.id);
+													}}
+												>
+													{disconnect.isPending &&
+													disconnect.variables === provider.id
+														? "Disconnecting…"
+														: "Disconnect"}
+												</button>
+											) : null}
 											{!status.chargesEnabled && !wantsCredentials ? (
 												// Resumable: the hosted link expires long before a
 												// half-finished seller gives up, and minting a second

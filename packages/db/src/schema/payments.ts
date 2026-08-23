@@ -71,12 +71,36 @@ export const paymentAccounts = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("payment_accounts_workspace_provider_idx").on(
+		/**
+		 * 🔴 The MODE is part of the identity of a connection.
+		 *
+		 * This was unique on `(workspace, provider)` alone, which meant a workspace
+		 * could hold exactly one Stripe connection for its entire life — stamped
+		 * with whichever mode it happened to be connected in.
+		 *
+		 * That quietly cancelled the sandbox switch. A business could flip the
+		 * workspace between sandbox and live freely, but its payment connection
+		 * could not follow, and reconnecting threw `PAYMENT_ENVIRONMENT_MISMATCH`
+		 * with nothing in the interface offering a way out. Testing the whole
+		 * system before taking real money — which is the entire reason sandbox
+		 * exists — walked into a dead end at the one step that matters.
+		 *
+		 * One connection per provider PER MODE. The test connection and the live
+		 * connection are different objects, because they are: different keys,
+		 * different account, different money.
+		 */
+		uniqueIndex("payment_accounts_workspace_provider_env_idx").on(
 			table.workspaceId,
 			table.provider,
+			table.environment,
 		),
+		/**
+		 * ⚠️ A default PER MODE, for the same reason. One default for the whole
+		 * workspace would mean switching to sandbox either found the live account
+		 * or found nothing at all, depending on which was flagged.
+		 */
 		uniqueIndex("payment_accounts_workspace_default_idx")
-			.on(table.workspaceId)
+			.on(table.workspaceId, table.environment)
 			.where(sql`${table.isDefault} = true`),
 	],
 );

@@ -196,7 +196,13 @@ export async function startPaymentOnboarding(input: {
 	const providerId = input.provider ?? "stripe";
 	const environment = await workspaceEnvironment(input.workspaceId);
 	const provider = getPaymentProvider(providerId);
-	const existing = await getPaymentAccount(input.workspaceId, providerId);
+	// Already connected IN THIS MODE. A live connection must not stop somebody
+	// setting up a sandbox one, which is the whole point of having both.
+	const existing = await getPaymentAccount(
+		input.workspaceId,
+		providerId,
+		environment,
+	);
 
 	if (existing?.chargesEnabled) {
 		throw new Error("PAYMENT_ACCOUNT_ALREADY_CONNECTED");
@@ -231,11 +237,15 @@ export async function refreshPaymentAccount(
 	workspaceId: string,
 	provider?: string,
 ): Promise<ConnectStatus> {
-	const existing = await getPaymentAccount(workspaceId, provider);
 	const environment = await workspaceEnvironment(workspaceId);
+	/**
+	 * ⚠️ Resolved FOR this mode, so there is nothing left to mismatch. This used
+	 * to fetch the workspace's only row and throw if it belonged to the other
+	 * mode — an error with no action attached. Now a mode with no connection
+	 * simply reports itself as not connected, which is what it is.
+	 */
+	const existing = await getPaymentAccount(workspaceId, provider, environment);
 	if (!existing?.externalAccountId) return notConnected(environment, provider);
-	if (existing.environment !== environment)
-		throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
 
 	const providerId = existing.provider ?? "stripe";
 	const account = await getPaymentProvider(providerId).getAccount(
@@ -250,11 +260,9 @@ export async function readPaymentAccount(
 	workspaceId: string,
 	provider?: string,
 ): Promise<ConnectStatus> {
-	const existing = await getPaymentAccount(workspaceId, provider);
 	const environment = await workspaceEnvironment(workspaceId);
+	const existing = await getPaymentAccount(workspaceId, provider, environment);
 	if (!existing?.externalAccountId) return notConnected(environment, provider);
-	if (existing.environment !== environment)
-		throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
 	const { describeProviderCredentials } = await import(
 		"./provider-credentials"
 	);

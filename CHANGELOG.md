@@ -8,6 +8,31 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Charge sales tax.** Your tax rate has been applied to every order since the beginning and there
+  was no screen anywhere to set it, so it sat at zero — which means a business in a place that
+  charges tax collected none of it, and unremitted tax comes out of the owner's pocket months later.
+  Settings now takes it as a plain percentage, tells you in words what it will add before you save,
+  and refuses anything that is not a real rate. Order numbering, currency and whether a paid order
+  confirms itself are on the same screen, along with your low-stock warning level and whether stock
+  may go below zero.
+
+
+- **Test your whole shop, then go live, without reconnecting anything.** Sandbox exists so you can
+  rehearse the real thing — take fake payments, place fake orders, break it, fix it — before asking a
+  customer or a supplier to send real money. Until now the one part that could not follow you across
+  that switch was the payment connection itself: a workspace could hold a single connection for its
+  whole life, stamped with whichever mode it happened to be set up in, and switching afterwards left
+  you unable to reconnect at all. A workspace now keeps a sandbox connection and a live one side by
+  side, each with its own default, and flipping the switch changes which one takes the money. Neither
+  can see the other's.
+
+- **Activity: who changed what, and when.** Every change to an order, a payment, your stock or your
+  catalog has always been recorded — and until now nothing could show it to you. The record names the
+  person rather than an id, says where the change came from, and can pull up everything that happened
+  in a single action at once, because one click on a busy page writes several entries and reading
+  them apart tells you nothing. Nothing on it is written by hand and nothing can be edited.
+
+
 - **Change how a module works for your business.** Every module carries settings — the prefix on your
   order numbers, whether stock may go below zero, where your parcels ship from — and until now none of
   them could be changed after a workspace was created. They can be saved now, and the first screen for
@@ -197,12 +222,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   payments and Home now show only the money you are actually dealing in. Notifications already
   worked this way.
 
-- **A live payment can no longer be refused as "not connected".** Taking a payment picked the first
-  payment account on the workspace and then refused if it turned out to be the wrong one. Any
-  business that tested before going live has two, so which one was chosen came down to whichever
-  happened to be stored first. The payment is now matched to its own provider and mode, so the
-  customer's money is taken rather than authorised and abandoned with nothing on screen to explain
-  it.
+- **A payment can no longer be refused as "not connected" when it plainly is.** Taking a payment
+  picked whichever connected account came back first and then refused if it turned out to be the
+  wrong one. A business with both Stripe and PayPal connected has two, and keeping both is something
+  the product supports on purpose — so a perfectly good card could be refused on nothing more than
+  row order. The payment is now matched to its own provider and mode, so the customer's money is
+  taken rather than authorised and abandoned with nothing on screen to explain it.
 
 - **Orders opens again.** The list gained a "how much has been refunded" figure and stopped loading
   at all, because of how the query was written rather than what it asked for. It loads, and the

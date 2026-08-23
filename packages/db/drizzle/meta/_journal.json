@@ -610,6 +610,13 @@
 			"when": 1787380686946,
 			"tag": "0086_bouncy_demogoblin",
 			"breakpoints": true
+		},
+		{
+			"idx": 87,
+			"version": "7",
+			"when": 1787446685793,
+			"tag": "0087_damp_carnage",
+			"breakpoints": true
 		}
 	]
 }

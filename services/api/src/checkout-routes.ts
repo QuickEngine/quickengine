@@ -740,6 +740,8 @@ export function registerCheckoutRoutes(
 		 */
 		let chargeAmountCents = order.totalCents;
 		let chargeCurrency = priced.currency;
+		// Kept so the supplier hold-back can follow the SAME rate as the charge.
+		let presentmentRate: number | null = null;
 		const presentment = parsed.data.presentmentCurrency;
 		if (presentment && presentment !== priced.currency.toUpperCase()) {
 			const { exchangeRate, convertCents } = await import(
@@ -749,11 +751,55 @@ export function registerCheckoutRoutes(
 				const { rate } = await exchangeRate(priced.currency, presentment);
 				chargeAmountCents = convertCents(order.totalCents, rate);
 				chargeCurrency = presentment;
+				presentmentRate = rate;
 			} catch {
 				// 🔴 No rate means charge in the catalog's currency, never a guess.
 				// A shopper billed in the wrong currency at an invented rate is worse
 				// than one billed in the shop's own.
 			}
+		}
+
+		/**
+		 * Hold back what the suppliers on this basket are owed.
+		 *
+		 * 🔴 It has to be decided HERE. Stripe fixes the fee when the charge is
+		 * created, and the purchase order that states the obligation is not raised
+		 * until `order.paid` — after the money has already moved. Computed from the
+		 * same supplier rows the purchase order will snapshot moments later.
+		 *
+		 * ⚠️ Converted with the SAME rate as the charge. The fee must be in the
+		 * charge's currency; holding back a CAD amount against a USD charge would
+		 * take the wrong sum and nothing downstream would notice.
+		 */
+		let supplierFeeCents = 0;
+		try {
+			const { checkoutSupplierObligation } = await import(
+				"@quickengine/mod-inventory"
+			);
+			const obligation = await checkoutSupplierObligation({
+				workspaceId,
+				currency: priced.currency,
+				lines: priced.lines,
+			});
+			supplierFeeCents = obligation.totalCents;
+			if (supplierFeeCents > 0 && presentmentRate !== null) {
+				const { convertCents } = await import("@quickengine/mod-orders");
+				supplierFeeCents = convertCents(supplierFeeCents, presentmentRate);
+			}
+			/**
+			 * 🔴 A basket whose suppliers cost more than the customer paid.
+			 *
+			 * The provider would refuse a fee at or above the charge, taking the
+			 * whole sale down with it. The sale is allowed to complete and the
+			 * hold-back is abandoned: the purchase order is still raised, so the
+			 * obligation is visible and settles by hand. A shop selling below cost
+			 * has a pricing problem, and refusing its customers does not fix it.
+			 */
+			if (supplierFeeCents >= chargeAmountCents) supplierFeeCents = 0;
+		} catch {
+			// Never block a sale on the hold-back. Manual settlement is the fallback
+			// and the purchase order still records what is owed.
+			supplierFeeCents = 0;
 		}
 
 		const charge = await getPaymentProvider(account.provider).createCharge({
@@ -764,6 +810,9 @@ export function registerCheckoutRoutes(
 			// Platform fee stays zero until a workspace has one agreed. Metering
 			// charges infrastructure, never a business outcome.
 			applicationFeeCents: 0,
+			// Not revenue. The suppliers' money, held for the moment it takes to
+			// send it on. Recorded separately for exactly that reason.
+			supplierFeeCents,
 			metadata: { orderId: order.id, orderNumber: order.number, workspaceId },
 			/**
 			 * 🔴 Only when a subscription is being started, and the shopper chose it.
@@ -789,6 +838,9 @@ export function registerCheckoutRoutes(
 			clientEmail: parsed.data.email,
 			externalPaymentId: charge.externalPaymentId,
 			provider: account.provider,
+			// Held back by the charge above; stored so a refund knows how much of
+			// this money has already left for somebody else.
+			supplierFeeCents,
 			/**
 			 * 🔴 What the PROVIDER actually holds, not what the order is worth.
 			 *

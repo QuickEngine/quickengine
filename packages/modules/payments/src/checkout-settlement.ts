@@ -362,6 +362,15 @@ export async function recordPendingCheckoutPayment(input: {
 	provider: string;
 	amountCents: number;
 	currency: string;
+	/**
+	 * What the suppliers on this order are owed, already held back by the charge.
+	 *
+	 * 🔴 Stored so a refund can work out how much of the money has ALREADY left
+	 * for a third party. Refunding a customer in full without reversing the
+	 * supplier's share takes the difference out of the business's own balance,
+	 * and nothing would explain where it went.
+	 */
+	supplierFeeCents?: number;
 	environment: PaymentEnvironment;
 }): Promise<void> {
 	await db
@@ -376,6 +385,7 @@ export async function recordPendingCheckoutPayment(input: {
 			externalPaymentId: input.externalPaymentId,
 			amountCents: input.amountCents,
 			currency: input.currency,
+			supplierFeeCents: input.supplierFeeCents ?? 0,
 			status: "pending",
 		})
 		// A retried checkout with the same provider payment id must not create a

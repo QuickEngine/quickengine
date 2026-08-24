@@ -8,6 +8,24 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Pay your suppliers automatically when an order is paid.** A shop that has someone else ship its
+  goods owes that supplier for every sale, and until now settling up was a manual job: work out what
+  is owed, send an invoice or a transfer by hand, remember which orders you have already covered. The
+  money is now set aside the moment the customer pays and sent on to the supplier by itself. Your
+  customer's payment still lands in your own account, on your own statement, under your own name, and
+  the supplier's share simply passes through on its way to them.
+
+  What the supplier sees is your business and your order number, not ours. Nothing is ever sent
+  twice: each purchase order can settle exactly once, and a payment interrupted halfway is picked up
+  where it stopped rather than repeated. If a sale is refunded, the supplier's share is pulled back
+  automatically while it is still recoverable, and told to you plainly when it is not.
+
+  A shop that holds its own stock is unaffected, and so is an order with nothing dropshipped on it.
+  Where a supplier prices in a different currency than the sale, or the goods cost more than the
+  customer paid, the sale goes through untouched and the amount owed is left for you to settle by
+  hand rather than guessed at.
+
+
 - **Checkout shows the price you will actually pay.** Tax depends on your workspace settings and on
   where the parcel is going, so a shop's website had no way to work it out — it added up what it
   could see, called that the total, and then charged more. Checkout can now ask for a real price

@@ -34,6 +34,7 @@ export * from "./shipping-carrier-connections";
 export * from "./shipping-rates";
 export * from "./subscriptions";
 export * from "./supplier-connections";
+export * from "./supplier-payments";
 export * from "./suppliers";
 export * from "./time-entries";
 export * from "./webhooks";

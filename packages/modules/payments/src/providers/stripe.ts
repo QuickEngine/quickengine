@@ -175,11 +175,21 @@ export const stripePaymentProvider: PaymentProvider = {
 			{
 				amount: params.amountCents,
 				currency: params.currency.toLowerCase(),
-				// Omitted entirely when zero. Stripe rejects an explicit 0 here, and a
-				// workspace on no platform fee is the normal case.
+				/**
+				 * The platform's fee and the suppliers' money travel together.
+				 *
+				 * 🔴 A direct charge has exactly ONE fee field, so the supplier
+				 * pass-through has to ride it. They are summed HERE, at the last
+				 * possible moment, and never summed in storage — the payment row
+				 * keeps `applicationFeeCents` and `supplierFeeCents` apart so the
+				 * platform's revenue can never absorb a supplier's money.
+				 *
+				 * ⚠️ Omitted entirely when zero: Stripe rejects an explicit 0, and a
+				 * workspace on no platform fee with no supplier is the normal case.
+				 */
 				application_fee_amount:
-					params.applicationFeeCents > 0
-						? params.applicationFeeCents
+					params.applicationFeeCents + (params.supplierFeeCents ?? 0) > 0
+						? params.applicationFeeCents + (params.supplierFeeCents ?? 0)
 						: undefined,
 				metadata: params.metadata,
 				/**

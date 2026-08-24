@@ -30,6 +30,18 @@ function tooLarge(
  */
 const UPLOAD_PATHS = [
 	/^\/v1\/quickdash\/catalog\/[^/]+\/images$/,
+	/**
+	 * 🔴 A picture that belongs to the WORKSPACE — a category tile, a banner, an
+	 * About page photo — rather than to a product.
+	 *
+	 * ⚠️ Added late, and its absence produced exactly the failure this file was
+	 * written to prevent: the route advertised and validated a 10 MB maximum, and
+	 * the middleware refused anything over 1 MiB before the route ever ran. Every
+	 * real photograph failed with "The request body exceeds the allowed size."
+	 *
+	 * Whenever a route starts accepting a file, it has to be named here too.
+	 */
+	/^\/v1\/quickdash\/images$/,
 	/^\/v1\/files/,
 ];
 
@@ -59,7 +71,12 @@ export function createBodyLimit(maxBytes: number) {
 			if (done) break;
 			bytes += value.byteLength;
 			if (bytes > limit) {
-				await reader.cancel();
+				// Do not cancel the request stream here. Undici can keep feeding a
+				// multipart producer after cancellation and report an unhandled
+				// "ReadableStream is already closed" rejection, turning an otherwise
+				// correct 413 into a failed request. We return without replaying the
+				// body; the platform closes the original request after this response.
+				reader.releaseLock();
 				return tooLarge(c);
 			}
 			chunks.push(value);

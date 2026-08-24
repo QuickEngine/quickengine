@@ -1,6 +1,7 @@
 export * from "./application";
 export * from "./checkout";
 export * from "./discounts";
+export * from "./exchange";
 export * from "./inventory-bridge";
 export * from "./module";
 export * from "./order";

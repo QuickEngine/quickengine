@@ -48,6 +48,15 @@ export type CheckoutQuoteInput = {
 		region?: string | null;
 		postalCode?: string | null;
 	} | null;
+	/**
+	 * The currency the SHOPPER is looking at, if it is not the catalog's.
+	 *
+	 * 🔴 A shop that displays USD and charges CAD has the same consent problem as
+	 * one that displays a total without tax: somebody agrees to one number and a
+	 * different one leaves their account. Naming the presentment currency here
+	 * means the quote and the charge are converted by the same code, once.
+	 */
+	presentmentCurrency?: string | null;
 };
 
 export type CheckoutQuote = {
@@ -63,6 +72,19 @@ export type CheckoutQuote = {
 	totalCents: number;
 	/** Whether anything in the basket has to be delivered. */
 	physical: boolean;
+	/**
+	 * What the shopper is charged, when that is not the catalog currency.
+	 *
+	 * ⚠️ Present ONLY when a conversion actually happened, so a caller cannot
+	 * accidentally render a "converted" total identical to the real one and imply
+	 * a conversion that never took place.
+	 */
+	presentment?: {
+		currency: string;
+		totalCents: number;
+		rate: number;
+		asOf: string;
+	};
 };
 
 /**
@@ -257,6 +279,28 @@ export async function quoteCheckout(
 		currency: priced.currency,
 	});
 
+	/**
+	 * 🔑 Converted ONCE, on the total, at the very end.
+	 *
+	 * Converting each line and summing drifts from converting the sum — by a cent
+	 * or two, every time, in whichever direction the rounding falls. The total is
+	 * the number that is charged, so the total is the number that is converted.
+	 */
+	let presentment: CheckoutQuote["presentment"];
+	const wanted = input.presentmentCurrency?.toUpperCase();
+	if (wanted && wanted !== priced.currency.toUpperCase()) {
+		const { exchangeRate, convertCents } = await import(
+			"@quickengine/mod-orders"
+		);
+		const { rate, asOf } = await exchangeRate(priced.currency, wanted);
+		presentment = {
+			currency: wanted,
+			totalCents: convertCents(taxableCents + taxCents, rate),
+			rate,
+			asOf: asOf.toISOString(),
+		};
+	}
+
 	return {
 		ok: true,
 		currency: priced.currency,
@@ -270,5 +314,6 @@ export async function quoteCheckout(
 		taxCents,
 		totalCents: taxableCents + taxCents,
 		physical,
+		...(presentment ? { presentment } : {}),
 	};
 }

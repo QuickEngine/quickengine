@@ -78,7 +78,7 @@ export async function resolveSupplierConnection(input: {
 	// has verified is not evidence that a token works, and finding out during a
 	// customer's order is the worst possible moment. The check path opts out —
 	// see `allowUnverified` above — because it is what does the verifying.
-	if (!row || !row.credentials) return null;
+	if (!row?.credentials) return null;
 	// Any stored status is worth CHECKING — `pending` has never been tried, and
 	// `failed` is exactly what somebody re-checks after fixing a token.
 	if (!input.allowUnverified && row.status !== "active") return null;

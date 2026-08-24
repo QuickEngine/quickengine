@@ -48,6 +48,16 @@ export function WorkspaceSearch({
 
 	useEffect(() => {
 		const openSearch = (event: KeyboardEvent) => {
+			/**
+			 * 🔴 `event.key` can be UNDEFINED, and calling `.toLowerCase()` on it
+			 * throws out of a document-level listener.
+			 *
+			 * Chrome dispatches `keydown` with no `key` during autofill, so simply
+			 * having the browser fill a form on this page threw a TypeError — caught
+			 * by Sentry, and unexplainable from the stack because nothing about
+			 * autofill looks like a keyboard shortcut.
+			 */
+			if (typeof event.key !== "string") return;
 			if (event.key.toLowerCase() !== "k" || (!event.metaKey && !event.ctrlKey))
 				return;
 			event.preventDefault();

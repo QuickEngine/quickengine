@@ -22,6 +22,7 @@ import { registerCustomerRoutes } from "./customer-routes";
 import { registerDiscountRoutes } from "./discount-routes";
 import { registerFilesRoutes } from "./files-routes";
 import { registerFulfillmentRoutes } from "./fulfillment-routes";
+import { registerImageRoutes } from "./image-routes";
 import { registerInngestRoutes } from "./inngest-routes";
 import { registerIntegrationHealthRoutes } from "./integration-health-routes";
 import { registerInventoryRoutes } from "./inventory-routes";
@@ -98,6 +99,7 @@ export function registerAllRoutes(
 	registerCategoryRoutes(app, dependencies);
 	registerCheckoutRoutes(app, dependencies);
 	registerContentRoutes(app, dependencies);
+	registerImageRoutes(app, dependencies);
 	registerDiscountRoutes(app, dependencies);
 	registerCustomerRoutes(app, {
 		...dependencies,

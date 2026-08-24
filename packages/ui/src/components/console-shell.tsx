@@ -15,7 +15,14 @@ import {
 	PlusIcon,
 	SignOutIcon,
 } from "@phosphor-icons/react";
-import { type MouseEventHandler, type ReactNode, useState } from "react";
+import {
+	createContext,
+	type MouseEventHandler,
+	type ReactNode,
+	useContext,
+	useMemo,
+	useState,
+} from "react";
 import { InitialsAvatar } from "./initials-avatar";
 import {
 	Popover,
@@ -465,6 +472,27 @@ export function SidebarAccount({
 
 /** Shared authenticated frame. Account and QuickDash supply different sidebar
  * contents while retaining identical geometry and responsive behaviour. */
+/**
+ * Whether the console is in FOCUS MODE — chrome out of the way so one thing can
+ * have the screen.
+ *
+ * 🔴 A context rather than a prop, because the thing that wants the space is
+ * always several levels below the shell that owns the navigation. Threading a
+ * prop from a route, through a module switch, into a view would make every
+ * component in between carry a concern none of them have.
+ *
+ * ⚠️ Defaults to a no-op, so a surface that never calls it behaves exactly as
+ * before and the account app needs no change at all.
+ */
+const FocusContext = createContext<{
+	focused: boolean;
+	setFocused: (value: boolean) => void;
+}>({ focused: false, setFocused: () => {} });
+
+export function useConsoleFocus() {
+	return useContext(FocusContext);
+}
+
 export function ConsoleShell({
 	switcher,
 	account,
@@ -511,6 +539,8 @@ export function ConsoleShell({
 	children: ReactNode;
 }) {
 	const [menuOpen, setMenuOpen] = useState(false);
+	const [focused, setFocused] = useState(false);
+	const focus = useMemo(() => ({ focused, setFocused }), [focused]);
 
 	const sidebar = (
 		<>
@@ -556,11 +586,31 @@ export function ConsoleShell({
 				// With a banner the console sits INSIDE the window rather than being
 				// the window, so its top corners round and the banner shows through
 				// behind them.
-				banner ? "flex-1 rounded-t-2xl" : "h-svh"
+				/**
+				 * 🔴 `flex-1` only works INSIDE the banner's flex column.
+				 *
+				 * In focus mode the banner is not rendered, so this frame is returned
+				 * on its own — and `flex-1` with no flex parent contributes no height
+				 * at all. The console collapsed to roughly half the viewport: half a
+				 * preview, half a sidebar, and a band of nothing beneath.
+				 *
+				 * It only showed up in SANDBOX, because that is the only mode with a
+				 * banner to hide.
+				 */
+				banner && !focused ? "flex-1 rounded-t-2xl" : "h-svh"
 			}`}
 		>
 			<aside
-				className={`hidden w-60 shrink-0 flex-col border-[var(--console-line)] border-r bg-[var(--console-panel)] md:flex ${banner ? "rounded-tl-2xl" : ""}`}
+				/*
+				 * 🔑 Hidden in focus mode, not merely narrowed.
+				 *
+				 * A preview of the customer's own website is the one thing in the
+				 * console that is not console — it needs the width, and navigation
+				 * beside it is chrome around chrome around a page.
+				 */
+				className={`hidden w-60 shrink-0 flex-col border-[var(--console-line)] border-r bg-[var(--console-panel)] ${
+					focused ? "" : "md:flex"
+				} ${banner ? "rounded-tl-2xl" : ""}`}
 			>
 				{sidebar}
 			</aside>
@@ -616,12 +666,23 @@ export function ConsoleShell({
 		</div>
 	);
 
-	if (!banner) return frame;
+	/**
+	 * ⚠️ The banner is hidden in focus mode too.
+	 *
+	 * It is a strip of console above the page, and the page is what somebody
+	 * asked to look at. Leaving it would also shift the preview down by its
+	 * height, which is exactly the kind of small lie that makes a preview
+	 * untrustworthy.
+	 */
+	if (!banner || focused)
+		return <FocusContext.Provider value={focus}>{frame}</FocusContext.Provider>;
 
 	return (
-		<div className="flex h-svh min-h-0 flex-col overflow-hidden bg-[var(--console-banner)]">
-			{banner}
-			{frame}
-		</div>
+		<FocusContext.Provider value={focus}>
+			<div className="flex h-svh min-h-0 flex-col overflow-hidden bg-[var(--console-banner)]">
+				{banner}
+				{frame}
+			</div>
+		</FocusContext.Provider>
 	);
 }

@@ -95,6 +95,22 @@ export function registerCheckoutRoutes(
 		scope: "checkout.write",
 	});
 
+	/**
+	 * The currency the shopper is looking at.
+	 *
+	 * 🔴 Optional, and validated to three letters. A shop prices in its catalog's
+	 * currency; this says what the BUYER was shown, so the charge can be made in
+	 * the same units they agreed to instead of silently reverting to the
+	 * catalog's.
+	 */
+	const presentmentCurrencySchema = z
+		.string()
+		.trim()
+		.length(3)
+		.regex(/^[A-Za-z]{3}$/)
+		.transform((value) => value.toUpperCase())
+		.optional();
+
 	const quoteInputSchema = z.object({
 		items: checkoutInputSchema.shape.items,
 		destination: shippingDestinationSchema,
@@ -111,6 +127,7 @@ export function registerCheckoutRoutes(
 		discountCode: checkoutInputSchema.shape.discountCode,
 		shippingRateId: checkoutInputSchema.shape.shippingRateId,
 		shippingAddress: checkoutInputSchema.shape.shippingAddress,
+		presentmentCurrency: presentmentCurrencySchema,
 	});
 
 	const providerPaymentIdSchema = z.string().trim().min(1).max(255);
@@ -219,6 +236,46 @@ export function registerCheckoutRoutes(
 	 * ⚠️ Prices and nothing else — no order, no reservation, no discount
 	 * redemption — so a page may ask as often as somebody edits their basket.
 	 */
+	/**
+	 * What one currency is worth in another, for a shop that displays two.
+	 *
+	 * 🔴 Storefronts were calling a free public rate API straight from the
+	 * browser. It sends no CORS headers, so every request failed and the shop
+	 * fell back to a hardcoded number that never changed — every converted price
+	 * on the site was invented.
+	 *
+	 * 🔑 Served here instead: no CORS problem, one cached call shared by every
+	 * visitor rather than one per browser, and the SAME rate the checkout charges
+	 * with — so the figure on the button and the figure taken cannot disagree.
+	 *
+	 * ⚠️ Answers 503 rather than guessing. A shop that cannot get a rate must show
+	 * one currency; a confident wrong price is worse than no second currency.
+	 */
+	app.get("/v1/exchange-rate", access, async (c) => {
+		const from = (c.req.query("from") ?? "").trim().toUpperCase();
+		const to = (c.req.query("to") ?? "").trim().toUpperCase();
+		if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"from and to must each be a three letter currency code.",
+				400,
+			);
+		}
+		const { exchangeRate } = await import("@quickengine/mod-orders");
+		try {
+			const { rate, asOf } = await exchangeRate(from, to);
+			return respond(c, { from, to, rate, asOf: asOf.toISOString() });
+		} catch {
+			return respondError(
+				c,
+				"DEPENDENCY_UNAVAILABLE",
+				"An exchange rate is not available right now.",
+				503,
+			);
+		}
+	});
+
 	app.post("/v1/checkout/quote", access, limit, async (c) => {
 		const parsed = checkoutQuoteInputSchema.safeParse(await c.req.json());
 		if (!parsed.success) {
@@ -237,6 +294,7 @@ export function registerCheckoutRoutes(
 			discountCode: parsed.data.discountCode,
 			shippingRateId: parsed.data.shippingRateId,
 			shippingAddress: parsed.data.shippingAddress,
+			presentmentCurrency: parsed.data.presentmentCurrency,
 		});
 		// A refusal a SHOPPER should read — an item withdrawn, a code expired, a
 		// rate that no longer applies. Expected traffic, never a server fault.
@@ -667,10 +725,41 @@ export function registerCheckoutRoutes(
 			);
 		}
 
+		/**
+		 * 🔴 Charge in the currency the shopper was SHOWN.
+		 *
+		 * The order is recorded in the catalog's currency — that is what the shop
+		 * earns and what its reports must add up in — but the payment is taken in
+		 * the currency on the button. Anything else means somebody agrees to
+		 * `$168 USD` and finds `$240 CAD` on their statement.
+		 *
+		 * ⚠️ Converted by the SAME code the quote used, on the total, once. If the
+		 * rate moved between quoting and paying, the charge follows the rate at
+		 * pay time — the alternative is honouring a rate the shop no longer gets,
+		 * which is a loss it never agreed to.
+		 */
+		let chargeAmountCents = order.totalCents;
+		let chargeCurrency = priced.currency;
+		const presentment = parsed.data.presentmentCurrency;
+		if (presentment && presentment !== priced.currency.toUpperCase()) {
+			const { exchangeRate, convertCents } = await import(
+				"@quickengine/mod-orders"
+			);
+			try {
+				const { rate } = await exchangeRate(priced.currency, presentment);
+				chargeAmountCents = convertCents(order.totalCents, rate);
+				chargeCurrency = presentment;
+			} catch {
+				// 🔴 No rate means charge in the catalog's currency, never a guess.
+				// A shopper billed in the wrong currency at an invented rate is worse
+				// than one billed in the shop's own.
+			}
+		}
+
 		const charge = await getPaymentProvider(account.provider).createCharge({
 			environment: account.environment,
-			amountCents: order.totalCents,
-			currency: priced.currency,
+			amountCents: chargeAmountCents,
+			currency: chargeCurrency,
 			connectedAccountId: externalAccountId,
 			// Platform fee stays zero until a workspace has one agreed. Metering
 			// charges infrastructure, never a business outcome.
@@ -700,8 +789,17 @@ export function registerCheckoutRoutes(
 			clientEmail: parsed.data.email,
 			externalPaymentId: charge.externalPaymentId,
 			provider: account.provider,
-			amountCents: order.totalCents,
-			currency: priced.currency,
+			/**
+			 * 🔴 What the PROVIDER actually holds, not what the order is worth.
+			 *
+			 * The order stays in the catalog's currency — that is what the shop
+			 * earns and what its reports add up in. But the payment row is the
+			 * record of a real charge at a real provider, and a refund is issued
+			 * against THAT. Recording CAD while Stripe holds USD would mean a
+			 * refund asking for an amount the provider has no concept of.
+			 */
+			amountCents: chargeAmountCents,
+			currency: chargeCurrency,
 			environment: account.environment,
 		});
 

@@ -611,7 +611,7 @@ export async function resolvePartnerLink(input: {
 		)
 		.limit(1);
 
-	if (!row || !row.active) return null;
+	if (!row?.active) return null;
 	return {
 		code: row.code,
 		// A retired discount must not keep discounting. The link still attributes.

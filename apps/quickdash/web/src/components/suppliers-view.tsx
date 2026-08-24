@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
-import { isAmount, parseAmountCents } from "../lib/money-input";
+import { parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";

@@ -10,7 +10,7 @@ import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
-import { Text as TextField } from "./product-fields";
+import { Text as TextField, Toggle } from "./product-fields";
 
 /**
  * Shipping zones — where a business will send things.
@@ -58,6 +58,26 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 	const [search, setSearch] = useState("");
 	const [name, setName] = useState("");
 	const [countries, setCountries] = useState("");
+	/**
+	 * 🔴 Regions and priority existed on the table and had no field.
+	 *
+	 * A zone could only ever mean "this whole country", so a shop could not
+	 * charge differently for the territories, and two overlapping zones had no
+	 * way to say which one wins — the engine reads `priority`, and nothing could
+	 * set it.
+	 */
+	const [regions, setRegions] = useState("");
+	const [priority, setPriority] = useState("0");
+	const [carrierRates, setCarrierRates] = useState(false);
+	/**
+	 * The zone being edited, or null when the form is creating a new one.
+	 *
+	 * 🔴 A zone could be created and deleted but never CORRECTED. `PATCH
+	 * /v1/shipping/zones/:id` has existed all along with no control, so a
+	 * mistyped country code meant deleting the zone — which first means deleting
+	 * every rate under it — and building the whole thing again.
+	 */
+	const [editingId, setEditingId] = useState<string | null>(null);
 	const [failure, setFailure] = useState<string | null>(null);
 
 	const zones = useQuery({
@@ -77,27 +97,48 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 
 	const create = useMutation({
 		mutationFn: async () => {
-			await workspaceApi(workspaceId).request("/shipping/zones", {
-				method: "POST",
-				body: {
-					name: name.trim(),
-					// Two-letter ISO codes, upper-cased for them. Typing "ca, us" is
-					// what a person does; rejecting it for case would be pedantry.
-					countryCodes: countries
-						.split(",")
-						.map((code) => code.trim().toUpperCase())
-						.filter(Boolean),
-					active: true,
+			// 🔑 One form, two verbs — editing seeds this same state, so the fields
+			// cannot drift apart the way a separate edit form would.
+			await workspaceApi(workspaceId).request(
+				editingId ? `/shipping/zones/${editingId}` : "/shipping/zones",
+				{
+					method: editingId ? "PATCH" : "POST",
+					body: {
+						name: name.trim(),
+						// Two-letter ISO codes, upper-cased for them. Typing "ca, us" is
+						// what a person does; rejecting it for case would be pedantry.
+						countryCodes: countries
+							.split(",")
+							.map((code) => code.trim().toUpperCase())
+							.filter(Boolean),
+						// Empty means the whole country, which is why it is omitted rather
+						// than sent as an empty list.
+						...(regions.trim()
+							? {
+									regionCodes: regions
+										.split(",")
+										.map((code) => code.trim().toUpperCase())
+										.filter(Boolean),
+								}
+							: {}),
+						priority: Number.parseInt(priority, 10) || 0,
+						useCarrierRates: carrierRates,
+						active: true,
+					},
 				},
-			});
+			);
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
 			setFailure(error?.message ?? "That zone could not be created."),
 		onSuccess: () => {
 			setCreating(false);
+			setEditingId(null);
 			setName("");
 			setCountries("");
+			setRegions("");
+			setPriority("0");
+			setCarrierRates(false);
 			refresh();
 		},
 	});
@@ -127,12 +168,17 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			{creating ? (
 				<CreatePanel
-					title="New zone"
-					submitLabel="Add zone"
+					title={editingId ? "Edit zone" : "New zone"}
+					submitLabel={editingId ? "Save zone" : "Add zone"}
 					busy={create.isPending}
 					valid={name.trim().length > 0}
 					failure={failure}
-					onClose={() => setCreating(false)}
+					onClose={() => {
+						setCreating(false);
+						// 🔴 Or the next "New zone" would silently UPDATE the last one
+						// edited instead of creating anything.
+						setEditingId(null);
+					}}
 					onSubmit={() => create.mutate()}
 				>
 					<TextField
@@ -147,6 +193,27 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 						value={countries}
 						onChange={setCountries}
 						placeholder="CA, US"
+					/>
+					<TextField
+						label="Regions"
+						hint="optional — leave empty for the whole country"
+						value={regions}
+						onChange={setRegions}
+						placeholder="AB, BC"
+					/>
+					<TextField
+						label="Priority"
+						hint="when zones overlap, higher wins"
+						value={priority}
+						onChange={setPriority}
+						inputMode="decimal"
+						placeholder="0"
+					/>
+					<Toggle
+						label="Use carrier rates"
+						hint="price from the courier instead of your own rates"
+						value={carrierRates}
+						onChange={setCarrierRates}
 					/>
 				</CreatePanel>
 			) : null}
@@ -225,14 +292,28 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 									align: "right",
 									tight: true,
 									render: (zone) => (
-										<button
-											type="button"
-											className={quiet}
-											disabled={remove.isPending}
-											onClick={() => remove.mutate(zone.id)}
-										>
-											Delete
-										</button>
+										<div className="flex items-center justify-end gap-1.5">
+											<button
+												type="button"
+												className={quiet}
+												onClick={() => {
+													setEditingId(zone.id);
+													setName(zone.name);
+													setCountries((zone.countryCodes ?? []).join(", "));
+													setCreating(true);
+												}}
+											>
+												Edit
+											</button>
+											<button
+												type="button"
+												className={quiet}
+												disabled={remove.isPending}
+												onClick={() => remove.mutate(zone.id)}
+											>
+												Delete
+											</button>
+										</div>
 									),
 								},
 							]}

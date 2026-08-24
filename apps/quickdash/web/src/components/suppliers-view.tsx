@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
-import { isAmount, parseAmountCents } from "../lib/money-input";
+import { parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
@@ -188,7 +188,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 						label="Name"
 						value={name}
 						onChange={setName}
-						placeholder="EZPZ Coffee"
+						placeholder="Northline Components"
 					/>
 					<TextField
 						label="Contact"
@@ -526,7 +526,7 @@ function SupplierPanel({
 								hint="sent to them verbatim, never parsed"
 								value={sku}
 								onChange={setSku}
-								placeholder="ETH-GUJI-340"
+								placeholder="KA-K2-BLK"
 							/>
 							<TextField
 								label="What you pay them"

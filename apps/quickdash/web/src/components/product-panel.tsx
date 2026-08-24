@@ -496,7 +496,7 @@ export function ProductPanel({
 							hint="per what"
 							value={draft.unitLabel}
 							onChange={(value) => set("unitLabel", value)}
-							placeholder="bag, hour"
+							placeholder="unit, hour"
 						/>
 					</div>
 				</Section>
@@ -507,7 +507,7 @@ export function ProductPanel({
 						hint="grams, used to quote delivery"
 						value={draft.weightGrams}
 						onChange={(value) => set("weightGrams", value)}
-						placeholder="340"
+						placeholder="480"
 						inputMode="decimal"
 					/>
 					<Text
@@ -515,7 +515,7 @@ export function ProductPanel({
 						hint="your own code"
 						value={draft.sku}
 						onChange={(value) => set("sku", value)}
-						placeholder="ETH-GUJI-340"
+						placeholder="KA-K2-BLK"
 					/>
 				</Section>
 
@@ -562,7 +562,7 @@ export function ProductPanel({
 						hint="the last part of the link"
 						value={draft.slug}
 						onChange={(value) => set("slug", value)}
-						placeholder="ethiopia-guji"
+						placeholder="k2-studio-monitor"
 					/>
 					<Area
 						label="Short description"
@@ -576,7 +576,7 @@ export function ProductPanel({
 						hint="comma separated"
 						value={draft.tags}
 						onChange={(value) => set("tags", value)}
-						placeholder="single origin, light roast"
+						placeholder="studio, monitor"
 					/>
 					<Toggle
 						label="Feature this"

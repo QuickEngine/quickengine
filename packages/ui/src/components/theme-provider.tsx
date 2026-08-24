@@ -61,6 +61,7 @@ const readCookie = (): Theme | null => {
 
 const writeCookie = (theme: Theme) => {
 	// One year, `Lax` so a cross-subdomain navigation still sends it.
+	// biome-ignore lint/suspicious/noDocumentCookie: the Cookie Store API is async and not supported in Safari; the theme must be written synchronously so the value is present before the next paint
 	document.cookie = `${STORAGE_KEY}=${theme}; path=/; max-age=31536000; samesite=lax${cookieDomain()}${
 		window.location.protocol === "https:" ? "; secure" : ""
 	}`;

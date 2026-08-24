@@ -266,7 +266,7 @@ export function ShipmentComposer({
 				hint="grams, required by the carrier"
 				value={weight}
 				onChange={setWeight}
-				placeholder="340"
+				placeholder="480"
 				inputMode="decimal"
 			/>
 			<TextField

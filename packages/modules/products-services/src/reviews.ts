@@ -6,6 +6,7 @@ import {
 	desc,
 	eq,
 	inArray,
+	isNull,
 	ne,
 	orderLineItems,
 	orders,
@@ -197,14 +198,65 @@ export async function listPublishedReviews(
 			body: reviews.body,
 			verifiedPurchase: reviews.verifiedPurchase,
 			createdAt: reviews.createdAt,
-			authorName: clientRecords.name,
+			authorName: sql<
+				string | null
+			>`coalesce(${clientRecords.name}, ${reviews.authorName})`,
+			source: reviews.source,
 		})
 		.from(reviews)
-		.innerJoin(clientRecords, eq(clientRecords.id, reviews.clientRecordId))
+		// 🔴 LEFT, for the same reason the moderation queue needed it: an imported
+		// review has no customer record, and an inner join hides it completely.
+		.leftJoin(clientRecords, eq(clientRecords.id, reviews.clientRecordId))
 		.where(
 			and(
 				eq(reviews.workspaceId, workspaceId),
 				eq(reviews.catalogItemId, catalogItemId),
+				eq(reviews.status, "published"),
+			),
+		)
+		.orderBy(desc(reviews.createdAt))
+		.limit(Math.min(Math.max(limit, 1), 200));
+
+	return rows.map((row) => ({
+		...row,
+		authorName: displayName(row.authorName),
+	}));
+}
+
+/**
+ * Published reviews of the SHOP, not of one product.
+ *
+ * 🔴 Nothing exposed these. `listPublishedReviews` takes a catalog item id, so a
+ * seller's imported ratings — the Gem Rock feedback, the Etsy shop reviews —
+ * existed in the database, passed moderation, and had no way to reach a page.
+ *
+ * ⚠️ `catalogItemId IS NULL` is the whole definition. A review about a product
+ * belongs on that product; mixing them here would show "great packaging" under
+ * a heading about the business.
+ */
+export async function listShopReviews(
+	workspaceId: string,
+	limit = 50,
+): Promise<PublicReview[]> {
+	const rows = await db
+		.select({
+			id: reviews.id,
+			rating: reviews.rating,
+			title: reviews.title,
+			body: reviews.body,
+			verifiedPurchase: reviews.verifiedPurchase,
+			createdAt: reviews.createdAt,
+			authorName: sql<
+				string | null
+			>`coalesce(${clientRecords.name}, ${reviews.authorName})`,
+			source: reviews.source,
+		})
+		.from(reviews)
+		.leftJoin(clientRecords, eq(clientRecords.id, reviews.clientRecordId))
+		.where(
+			and(
+				eq(reviews.workspaceId, workspaceId),
+				isNull(reviews.catalogItemId),
 				eq(reviews.status, "published"),
 			),
 		)
@@ -247,10 +299,21 @@ export async function reviewSummary(
 		.groupBy(reviews.catalogItemId);
 
 	return new Map(
-		rows.map((row) => [
-			row.catalogItemId,
-			{ average: row.average, count: row.count },
-		]),
+		/**
+		 * ⚠️ Only product reviews carry a summary. `catalogItemId` became nullable
+		 * when shop-level reviews arrived, and a rating "for the shop" is not part
+		 * of any product's average — including it would quietly inflate every item
+		 * on the page.
+		 */
+		rows
+			.filter(
+				(row): row is typeof row & { catalogItemId: string } =>
+					row.catalogItemId !== null,
+			)
+			.map((row) => [
+				row.catalogItemId,
+				{ average: row.average, count: row.count },
+			]),
 	);
 }
 
@@ -268,34 +331,52 @@ export async function listReviewsForModeration(
 		limit?: number;
 	} = {},
 ) {
-	return db
-		.select({
-			id: reviews.id,
-			catalogItemId: reviews.catalogItemId,
-			itemName: catalogItems.name,
-			rating: reviews.rating,
-			title: reviews.title,
-			body: reviews.body,
-			status: reviews.status,
-			verifiedPurchase: reviews.verifiedPurchase,
-			authorName: clientRecords.name,
-			authorEmail: clientRecords.email,
-			moderatedByUserId: reviews.moderatedByUserId,
-			moderatedAt: reviews.moderatedAt,
-			moderationNote: reviews.moderationNote,
-			createdAt: reviews.createdAt,
-		})
-		.from(reviews)
-		.innerJoin(catalogItems, eq(catalogItems.id, reviews.catalogItemId))
-		.innerJoin(clientRecords, eq(clientRecords.id, reviews.clientRecordId))
-		.where(
-			and(
-				eq(reviews.workspaceId, workspaceId),
-				eq(reviews.status, options.status ?? "pending"),
-			),
-		)
-		.orderBy(reviews.createdAt)
-		.limit(Math.min(Math.max(options.limit ?? 50, 1), 200));
+	return (
+		db
+			.select({
+				id: reviews.id,
+				catalogItemId: reviews.catalogItemId,
+				itemName: catalogItems.name,
+				rating: reviews.rating,
+				title: reviews.title,
+				body: reviews.body,
+				status: reviews.status,
+				verifiedPurchase: reviews.verifiedPurchase,
+				/**
+				 * 🔑 The customer's name when there is one, the recorded name when the
+				 * review was imported from somewhere else.
+				 */
+				authorName: sql<
+					string | null
+				>`coalesce(${clientRecords.name}, ${reviews.authorName})`,
+				authorEmail: clientRecords.email,
+				source: reviews.source,
+				sourceUrl: reviews.sourceUrl,
+				moderatedByUserId: reviews.moderatedByUserId,
+				moderatedAt: reviews.moderatedAt,
+				moderationNote: reviews.moderationNote,
+				createdAt: reviews.createdAt,
+			})
+			.from(reviews)
+			/**
+			 * 🔴 LEFT joins, not inner.
+			 *
+			 * A shop-level review has no product and an imported one has no customer,
+			 * so an inner join silently DROPS exactly the reviews that need moderating
+			 * most — a seller's twenty imported ratings simply never appeared in the
+			 * queue, with no error to explain the empty screen.
+			 */
+			.leftJoin(catalogItems, eq(catalogItems.id, reviews.catalogItemId))
+			.leftJoin(clientRecords, eq(clientRecords.id, reviews.clientRecordId))
+			.where(
+				and(
+					eq(reviews.workspaceId, workspaceId),
+					eq(reviews.status, options.status ?? "pending"),
+				),
+			)
+			.orderBy(reviews.createdAt)
+			.limit(Math.min(Math.max(options.limit ?? 50, 1), 200))
+	);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { detailCard } from "./detail-panel";
 import { Area, Choice, Section, Text, Toggle } from "./product-fields";
@@ -78,6 +78,64 @@ export function CategoryPanel({
 		value: CategoryDraft[K],
 	) => setDraft((current) => ({ ...current, [key]: value }));
 
+	/**
+	 * 🔴 A category tile needs a PICTURE, and the only way in was to paste a URL.
+	 *
+	 * That is not something a shop owner can do for a photograph sitting on their
+	 * desktop, so browse tiles stayed blank on a shop whose whole appeal is what
+	 * the things look like. The upload existed — it just had no control here.
+	 *
+	 * ⚠️ Fills the address field rather than saving on its own, so the picture is
+	 * committed with the rest of the form. An upload that saved immediately would
+	 * make a cancelled edit still have changed something.
+	 */
+	const fileInput = useRef<HTMLInputElement | null>(null);
+	const [dragging, setDragging] = useState(false);
+
+	const uploadImage = useMutation({
+		mutationFn: async (file: File) => {
+			const form = new FormData();
+			form.set("file", file);
+			const result = await workspaceApi(workspaceId).request<{ url: string }>(
+				"/quickdash/images",
+				{ method: "POST", body: form },
+			);
+			return result.data.url;
+		},
+		onSuccess: (url) => set("imageUrl", url),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That picture could not be uploaded."),
+	});
+
+	/**
+	 * 🔴 Deleting a category lived in the list's table row, and the list is now
+	 * cards — so for a while there was NO way to delete one at all.
+	 *
+	 * It belongs here anyway: deleting is a decision you make while looking at
+	 * the thing, not while scanning a list, and a destructive action one stray
+	 * click from a row is a destructive action somebody performs by accident.
+	 *
+	 * ⚠️ Confirmed before it runs. Deleting a category unfiles every product in
+	 * it, which is invisible from this panel and not obviously undoable.
+	 */
+	const remove = useMutation({
+		mutationFn: async () => {
+			await workspaceApi(workspaceId).catalog.deleteCategory(
+				node.id,
+				crypto.randomUUID(),
+			);
+		},
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That could not be deleted."),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspaceId, "categories"],
+			});
+			onClose();
+		},
+	});
+
 	const save = useMutation({
 		mutationFn: async () => {
 			const order = Number(draft.sortOrder.trim());
@@ -136,14 +194,14 @@ export function CategoryPanel({
 						label="Name"
 						value={draft.name}
 						onChange={(value) => set("name", value)}
-						placeholder="Rings"
+						placeholder="Monitors"
 					/>
 					<Text
 						label="Web address"
 						hint="the last part of the link"
 						value={draft.slug}
 						onChange={(value) => set("slug", value)}
-						placeholder="rings"
+						placeholder="monitors"
 					/>
 					<Area
 						label="Description"
@@ -165,13 +223,83 @@ export function CategoryPanel({
 						value={draft.kind}
 						onChange={(value) => set("kind", value)}
 					/>
-					<Text
-						label="Image address"
-						hint="shown on browse tiles"
-						value={draft.imageUrl}
-						onChange={(value) => set("imageUrl", value)}
-						placeholder="https://…"
-					/>
+					<div>
+						<Text
+							label="Image address"
+							hint="shown on browse tiles"
+							value={draft.imageUrl}
+							onChange={(value) => set("imageUrl", value)}
+							placeholder="https://…"
+						/>
+
+						{draft.imageUrl ? (
+							<div className="mt-1.5 flex items-center gap-2">
+								<img
+									src={draft.imageUrl}
+									alt=""
+									className="h-16 w-16 shrink-0 rounded-lg border border-[var(--console-line)] object-cover"
+								/>
+								<button
+									type="button"
+									className="inline-flex h-7 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+									onClick={() => set("imageUrl", "")}
+								>
+									Remove
+								</button>
+							</div>
+						) : null}
+
+						{/* The same drop target the product panel uses, because half of
+						    people will drag and half will click, and neither should have
+						    to discover the other. A category tile with no picture is a
+						    blank square on a shop whose whole appeal is what the things
+						    look like. */}
+						<button
+							type="button"
+							onClick={() => fileInput.current?.click()}
+							onDragOver={(event) => {
+								event.preventDefault();
+								setDragging(true);
+							}}
+							onDragLeave={() => setDragging(false)}
+							onDrop={(event) => {
+								event.preventDefault();
+								setDragging(false);
+								// Snapshotted: the mutation body runs after this handler
+								// returns, and `dataTransfer` may not still be readable.
+								const file = Array.from(event.dataTransfer.files)[0];
+								if (file) uploadImage.mutate(file);
+							}}
+							className={`${uploadImage.isPending ? "shimmer-busy" : ""} mt-1.5 flex h-24 w-full items-center justify-center rounded-xl border border-dashed text-[11.5px] transition-colors ${
+								dragging
+									? "border-[rgb(var(--console-ink)/0.4)] bg-[rgb(var(--console-ink)/0.05)] text-[var(--ink-85)]"
+									: "border-[var(--console-line-strong)] text-[var(--ink-30)] hover:text-[var(--ink-60)]"
+							}`}
+						>
+							{uploadImage.isPending
+								? "Uploading…"
+								: draft.imageUrl
+									? "Drop a new image here, or click to pick"
+									: "Drop an image here, or click to pick"}
+						</button>
+
+						<input
+							ref={fileInput}
+							type="file"
+							accept="image/*"
+							hidden
+							onChange={(event) => {
+								/**
+								 * 🔴 SNAPSHOT FIRST. `FileList` is LIVE — a view onto the
+								 * input, not a copy — so clearing `value` empties the list
+								 * the mutation is about to read.
+								 */
+								const file = event.target.files?.[0];
+								event.target.value = "";
+								if (file) uploadImage.mutate(file);
+							}}
+						/>
+					</div>
 					<Text
 						label="Order"
 						hint="lower shows first"
@@ -208,6 +336,22 @@ export function CategoryPanel({
 					className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 				>
 					{save.isPending ? "Saving…" : "Save"}
+				</button>
+				<button
+					type="button"
+					disabled={remove.isPending}
+					onClick={() => {
+						if (
+							window.confirm(
+								`Delete “${node.name}”? Products in it stay, but they stop being filed under it.`,
+							)
+						) {
+							remove.mutate();
+						}
+					}}
+					className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-full border border-[var(--console-line-strong)] text-[12.5px] text-[var(--ink-50)] transition-colors hover:text-[var(--signal-failure)] disabled:opacity-40"
+				>
+					{remove.isPending ? "Deleting…" : "Delete category"}
 				</button>
 			</footer>
 		</aside>

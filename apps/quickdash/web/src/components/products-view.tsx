@@ -20,7 +20,10 @@ function Thumb({ item, size }: { item: CatalogItem; size: "sm" | "lg" }) {
 	const url = imagesOf(item.metadata)[0];
 	const box =
 		size === "lg"
-			? "aspect-[4/3] w-full rounded-lg"
+			? // Square, matching the category tiles — the two grids sit one click
+				// apart and a card that changes shape between them reads as a
+				// different kind of thing. Square is also what a browse page uses.
+				"aspect-square w-full rounded-lg"
 			: "size-9 shrink-0 rounded-md";
 
 	// 🔴 A missing image is the NORMAL state here, not an error: an imported

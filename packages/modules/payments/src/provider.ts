@@ -144,6 +144,21 @@ export interface PaymentProvider {
 		currency: string;
 		connectedAccountId: string;
 		applicationFeeCents: number;
+		/**
+		 * What the SUPPLIERS on this order are owed, passing through.
+		 *
+		 * 🔴 Not revenue, and never to be added to `applicationFeeCents`. Both
+		 * ride the same provider mechanism (there is only one fee field on a
+		 * direct charge), but they answer different questions: one is what the
+		 * platform EARNED, the other is money it merely HOLDS on its way to a
+		 * third party. Summing them into a single stored number makes it
+		 * impossible to say afterwards which was which, and the platform's own
+		 * revenue reporting would count a supplier's money as income.
+		 *
+		 * ⚠️ Zero for the overwhelming majority of orders — a workspace with no
+		 * dropship supplier on the basket owes nobody anything.
+		 */
+		supplierFeeCents?: number;
 		metadata?: Record<string, string>;
 		/**
 		 * Keep the payment method for later charges, with the shopper's agreement.

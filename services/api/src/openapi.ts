@@ -876,6 +876,32 @@ function declaredDocument(config: ApiConfig) {
 			},
 			// ── Reviews and the moderation queue ─────────────────────────────────
 			// Nothing a customer writes is public until an operator publishes it.
+			"/v1/exchange-rate": {
+				get: {
+					operationId: "getExchangeRate",
+					summary: "What one currency is worth in another",
+					description:
+						"Readable with a storefront credential. A shop that displays two currencies needs a rate, and fetching one from a public API in the browser fails on CORS and silently falls back to a hardcoded number — every converted price on the site then being invented. Served here it is fetched once server-side, cached, and is the SAME rate the checkout charges with, so the figure on the button and the figure taken cannot disagree. Answers 503 rather than guessing: a confident wrong price is worse than showing one currency.",
+					parameters: [
+						{
+							in: "query",
+							name: "from",
+							required: true,
+							schema: { type: "string", minLength: 3, maxLength: 3 },
+						},
+						{
+							in: "query",
+							name: "to",
+							required: true,
+							schema: { type: "string", minLength: 3, maxLength: 3 },
+						},
+					],
+					responses: {
+						"200": { description: "The rate, and when it was fetched." },
+						"503": { description: "No rate is available right now." },
+					},
+				},
+			},
 			"/v1/catalog/{id}/reviews": {
 				parameters: [
 					{
@@ -892,6 +918,25 @@ function declaredDocument(config: ApiConfig) {
 						"Readable with a storefront credential. Pending and rejected reviews are excluded in SQL rather than filtered after — a moderation queue that leaks its contents is not a queue. Reviewers are credited as a first name and last initial, because a review page showing a full email publishes a customer's address to the internet.",
 					responses: {
 						"200": { description: "Published reviews, newest first." },
+					},
+				},
+			},
+			"/v1/reviews": {
+				get: {
+					operationId: "listShopReviews",
+					summary: "Published reviews of the shop",
+					description:
+						"Readable with a storefront credential. Reviews about the BUSINESS rather than one product — the shop rating a seller carries on a marketplace, often imported from elsewhere. The only public read used to be per-product, so a seller's imported ratings passed moderation and then had nowhere to be shown. Pending and rejected are excluded in SQL, and each review carries its source so an imported one can be labelled rather than passed off as a verified purchase.",
+					parameters: [
+						{
+							in: "query",
+							name: "limit",
+							required: false,
+							schema: { type: "integer", minimum: 1, maximum: 200 },
+						},
+					],
+					responses: {
+						"200": { description: "Published shop reviews, newest first." },
 					},
 				},
 			},
@@ -1165,6 +1210,24 @@ function declaredDocument(config: ApiConfig) {
 				},
 			},
 			// ── Checkout: the merchant's own website selling ─────────────────────
+			"/v1/checkout/quote": {
+				post: {
+					operationId: "quoteCheckoutTotal",
+					summary: "What this basket costs, without committing to anything",
+					description:
+						"Prices a basket exactly as `/v1/checkout` will — the same items, discount, delivery and tax, through the same code — and commits to nothing. No order, no reservation, no discount redemption, so a page may ask as often as somebody edits their basket. Everything except the items is optional, because a shopper asks for a total before choosing delivery. Exists because tax comes from the workspace's settings and depends on the destination, so a browser cannot work it out, and a checkout that shows a total excluding tax asks somebody to consent to the wrong number.",
+					responses: {
+						"200": {
+							description:
+								"Line prices, subtotal, discount, delivery, tax and the total.",
+						},
+						"400": {
+							description:
+								"An item is unavailable, the code is not valid, or that delivery option does not apply.",
+						},
+					},
+				},
+			},
 			"/v1/checkout": {
 				post: {
 					operationId: "createCheckout",

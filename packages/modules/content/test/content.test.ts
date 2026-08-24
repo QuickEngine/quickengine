@@ -139,6 +139,105 @@ describe("a manifest declares shape, never content", () => {
 	});
 });
 
+describe("a manifest may seed the copy the site already ships", () => {
+	it("fills an EMPTY slot and publishes it", async () => {
+		// 🔴 The operator used to open Content to a column of blank boxes with no
+		// way to tell which was which. A site can now ship its existing hardcoded
+		// copy as the slot's starting value.
+		await registerContentManifest(workspaceId, [
+			{
+				key: "home.hero.headline",
+				type: "text",
+				label: "Headline",
+				group: "Home",
+				value: "COFFEE FOR LONG SESSIONS.",
+			},
+		]);
+
+		// Published, because it is what the site already renders from its own
+		// code — publishing it changes nothing a visitor can see, and leaving it
+		// dark would make the CMS look broken on the day it is switched on.
+		expect(await getPublishedContent(workspaceId, "home.hero.headline")).toBe(
+			"COFFEE FOR LONG SESSIONS.",
+		);
+	});
+
+	it("seeds a slot that already exists but is EMPTY", async () => {
+		/**
+		 * 🔴 The bug a test caught and reading could not: seeding only on INSERT
+		 * looks equivalent and is not. A slot registered before anybody wrote
+		 * anything already EXISTS with a null value, so the insert never runs
+		 * again and it stays blank for ever.
+		 */
+		await registerContentManifest(workspaceId, [
+			{ key: "home.hero.headline", type: "text", label: "Headline" },
+		]);
+		expect((await listAllContent(workspaceId))[0].value).toBeNull();
+
+		await registerContentManifest(workspaceId, [
+			{
+				key: "home.hero.headline",
+				type: "text",
+				label: "Headline",
+				value: "COFFEE FOR LONG SESSIONS.",
+			},
+		]);
+
+		expect(await getPublishedContent(workspaceId, "home.hero.headline")).toBe(
+			"COFFEE FOR LONG SESSIONS.",
+		);
+	});
+
+	it("a redeploy cannot overwrite what the operator wrote", async () => {
+		await upsertContentEntry(workspaceId, {
+			key: "home.hero.headline",
+			type: "text",
+			value: "WAKE UP AND BUILD.",
+			published: true,
+		});
+
+		await registerContentManifest(workspaceId, [
+			{
+				key: "home.hero.headline",
+				type: "text",
+				label: "Headline",
+				value: "COFFEE FOR LONG SESSIONS.",
+			},
+		]);
+
+		expect(await getPublishedContent(workspaceId, "home.hero.headline")).toBe(
+			"WAKE UP AND BUILD.",
+		);
+	});
+
+	it("does not publish a deliberate draft, or a slot seeded empty", async () => {
+		await upsertContentEntry(workspaceId, {
+			key: "home.hero.headline",
+			type: "text",
+			value: "Not ready to say this yet",
+			published: false,
+		});
+
+		await registerContentManifest(workspaceId, [
+			{
+				key: "home.hero.headline",
+				type: "text",
+				value: "COFFEE FOR LONG SESSIONS.",
+			},
+			// An image slot with nothing chosen: publishing a blank is how a
+			// headline disappears.
+			{ key: "home.hero.backdrops", type: "image", kind: "list", value: "" },
+		]);
+
+		const entries = await listAllContent(workspaceId);
+		const headline = entries.find((e) => e.key === "home.hero.headline");
+		const backdrops = entries.find((e) => e.key === "home.hero.backdrops");
+		expect(headline?.published).toBe(false);
+		expect(headline?.value).toBe("Not ready to say this yet");
+		expect(backdrops?.published).toBe(false);
+	});
+});
+
 describe("lists", () => {
 	it("stores an ordered list in one slot", async () => {
 		// FAQ and testimonials are lists, which is why `kind` exists from the

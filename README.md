@@ -50,7 +50,11 @@ itself out of it, and hands it over the way that supplier is reached. A supplier
 connected and checked before anyone relies on it, so an unrecognised product code is caught on a
 settings screen rather than by a customer waiting for something that was never ordered. When that
 supplier ships, the tracking it reports becomes a shipment on the customer's order and reaches them
-through the same email and portal as anything the business ships itself.
+through the same email and portal as anything the business ships itself. What a purchase order says
+is owed is also settled automatically: the supplier's share is set aside when the customer pays and
+sent on to them, once per purchase order, without the business raising an invoice or moving money by
+hand. The customer's payment still belongs to the business throughout, and a refund pulls the
+supplier's share back while it is still recoverable.
 
 Shipping supports deterministic country and region zones, flat and weight-based delivery,
 order-value bands and free-shipping thresholds. A zone can instead ask a real carrier what the parcel

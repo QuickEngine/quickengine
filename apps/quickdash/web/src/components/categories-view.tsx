@@ -1,18 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
-import { useListLayout } from "../lib/list-view";
-import { useAcknowledgeRecord, useRecordSignals } from "../lib/record-signals";
+import { useAcknowledgeRecord } from "../lib/record-signals";
 import { type CategoryNode, CategoryPanel } from "./category-panel";
-import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
-import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import { EmptyState, PageState, WriteFailure } from "./page-state";
+
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
-import { Choice, Text as TextField } from "./product-fields";
 
 /**
  * Categories and collections — how a shop is organised.
@@ -22,16 +19,13 @@ import { Choice, Text as TextField } from "./product-fields";
  * backend models them as one tree with a `kind`, and splitting them here would
  * invent a distinction the data does not have.
  *
- * ⚠️ Reads with `visibleOnly=false`. A storefront must see only visible ones;
+ * ⚠️ Reads with `includeHidden=true`. A storefront must see only visible ones;
  * an operator managing them must see the hidden ones too, or a category they
  * just hid vanishes from the page that hid it.
  */
 
 const _pill =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85 disabled:opacity-40";
-
-const quiet =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
 
 const _field =
 	"h-9 w-full rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
@@ -48,12 +42,7 @@ function flatten(
 }
 
 export function CategoriesView({ workspaceId }: { workspaceId: string }) {
-	const { layout, setLayout } = useListLayout(workspaceId);
-	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
-	const [creating, setCreating] = useState(false);
-	const [name, setName] = useState("");
-	const [kind, setKind] = useState<"category" | "collection">("category");
 	const [failure, setFailure] = useState<string | null>(null);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	// Opening a record accounts for whatever it was flagged for.
@@ -65,7 +54,20 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 		queryFn: async () =>
 			(
 				await workspaceApi(workspaceId).request<{ items: CategoryNode[] }>(
-					"/categories?visibleOnly=false",
+					/*
+					 * 🔴 `includeHidden`, NOT `visibleOnly`.
+					 *
+					 * The route reads `includeHidden !== "true"`. Sending
+					 * `visibleOnly=false` matched nothing, so the parameter was
+					 * ignored, hidden categories were filtered out server-side, and
+					 * hiding one made its row VANISH from the operator's own list —
+					 * with no way to find it again and unhide it.
+					 *
+					 * ⚠️ A silently ignored query parameter is the worst kind: the
+					 * request succeeds, the response is well-formed, and it is simply
+					 * answering a different question.
+					 */
+					"/categories?includeHidden=true",
 				)
 			).data,
 	});
@@ -75,33 +77,73 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 			queryKey: ["quickdash", workspaceId, "categories"],
 		});
 
-	const create = useMutation({
-		mutationFn: async () => {
-			const label = name.trim();
-			await workspaceApi(workspaceId).catalog.createCategory(
-				{
-					name: label,
-					kind,
-					// 🔑 Derived, not asked for. The slug is what appears in the shop's
-					// URL, and making somebody type "Rough Gemstones" then
-					// "rough-gemstones" is two chances to get it wrong for one fact.
-					// It stays editable later, when the URL actually matters to them.
-					slug: label
-						.toLowerCase()
-						.replace(/[^a-z0-9]+/g, "-")
-						.replace(/^-|-$/g, "")
-						.slice(0, 60),
-				},
-				crypto.randomUUID(),
-			);
+	/**
+	 * 🔴 Creates the category and OPENS it, rather than asking for a name first.
+	 *
+	 * The old flow was: press +, type a name, save, close, find it in the list,
+	 * open it — and only then meet description, picture, ordering and
+	 * visibility. Six steps to reach the fields that matter, and no way to add
+	 * the picture at the moment you were thinking about it.
+	 *
+	 * Products already work this way, so this is the console being consistent
+	 * with itself rather than a new idea.
+	 *
+	 * ⚠️ The placeholder name is deliberate and visible. Saving blank would leave
+	 * a nameless row if somebody wandered off; "Untitled" reads as unfinished.
+	 */
+	/**
+	 * Drag a tile to change the order the shop browses in.
+	 *
+	 * 🔴 `sort_order` already existed and was already honoured — `listCategoryTree`
+	 * orders by it and the storefront passes it straight through — but the only
+	 * way to set it was to TYPE a number into the panel. The feature worked and
+	 * nobody could reach it the way anybody would expect to.
+	 *
+	 * ⚠️ EVERY card is renumbered, not just the two that swapped. Writing one
+	 * row's number leaves ties, and a tie falls back to name order — so the drag
+	 * would appear to do nothing, or something arbitrary.
+	 */
+	const reorder = useMutation({
+		mutationFn: async (ordered: CategoryNode[]) => {
+			const api = workspaceApi(workspaceId);
+			for (const [index, node] of ordered.entries()) {
+				if (node.sortOrder === index) continue;
+				await api.catalog.updateCategory(
+					node.id,
+					{ sortOrder: index },
+					crypto.randomUUID(),
+				);
+			}
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That order could not be saved."),
+		onSuccess: () => refresh(),
+	});
+
+	/** Which card is being dragged, by its index in the visible list. */
+	const [held, setHeld] = useState<number | null>(null);
+
+	const create = useMutation({
+		mutationFn: async () =>
+			(
+				await workspaceApi(workspaceId).catalog.createCategory(
+					{
+						name: "Untitled category",
+						kind: "category",
+						// Unique by construction: two untitled categories made moments
+						// apart must not collide on a slug the shop routes by.
+						slug: `untitled-${Date.now().toString(36)}`,
+					},
+					crypto.randomUUID(),
+				)
+			).data,
+		onMutate: () => setFailure(null),
+		onError: (error: { message?: string }) =>
 			setFailure(error?.message ?? "That could not be created."),
-		onSuccess: () => {
-			setCreating(false);
-			setName("");
-			refresh();
+		onSuccess: async (created: { id: string }) => {
+			await refresh();
+			setSelectedId(created.id);
 		},
 	});
 
@@ -111,20 +153,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 	// visible.
 	useHeaderAction({
 		label: "New category",
-		onClick: () => setCreating((open) => !open),
-	});
-
-	const setVisible = useMutation({
-		mutationFn: async (input: { id: string; visible: boolean }) => {
-			await workspaceApi(workspaceId).catalog.updateCategory(
-				input.id,
-				{ visible: input.visible },
-				crypto.randomUUID(),
-			);
-		},
-		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That change did not save."),
-		onSuccess: refresh,
+		onClick: () => create.mutate(),
 	});
 
 	// The tree is nested, so the selected node has to be found through it rather
@@ -134,49 +163,9 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 			({ node }) => node.id === selectedId,
 		)?.node ?? null;
 
-	const remove = useMutation({
-		mutationFn: async (id: string) => {
-			await workspaceApi(workspaceId).catalog.deleteCategory(
-				id,
-				crypto.randomUUID(),
-			);
-		},
-		onMutate: () => setFailure(null),
-		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be deleted."),
-		onSuccess: refresh,
-	});
-
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			{creating ? (
-				<CreatePanel
-					title="New category"
-					submitLabel="Add"
-					busy={create.isPending}
-					valid={name.trim().length > 0}
-					failure={failure}
-					onClose={() => setCreating(false)}
-					onSubmit={() => create.mutate()}
-				>
-					<TextField
-						label="Name"
-						value={name}
-						onChange={setName}
-						placeholder="Single origin"
-					/>
-					<Choice
-						label="Kind"
-						hint="a collection is curated"
-						options={["category", "collection"]}
-						value={kind}
-						onChange={(value) => setKind(value as "category" | "collection")}
-					/>
-				</CreatePanel>
-			) : null}
-
 			<ListControls
-				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search categories"
@@ -212,93 +201,72 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 						);
 					}
 					return (
-						<PagedTable
-							rowSignal={rowSignal}
-							workspaceId={workspaceId}
-							layout={layout}
-							caption="Categories"
-							rows={rows.map(({ node, depth }) => ({ ...node, depth }))}
-							selectedId={selectedId}
-							onOpen={(node) => setSelectedId(node.id)}
-							columns={[
-								{
-									key: "name",
-									header: "Name",
-									render: (node) => (
-										// Depth as indentation, so a child reads as belonging to
-										// its parent rather than as a sibling.
-										<span style={{ paddingLeft: `${node.depth * 18}px` }}>
+						<>
+							{/*
+							  🔴 The SAME grid the products page uses.
+
+							  Categories were a table of names while the products they group were
+							  cards with pictures — so the one page whose whole job is merchandising
+							  browse tiles never showed you the tiles. A category is a picture and a
+							  name, exactly like a product.
+							*/}
+							<div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-3">
+								{rows.map(({ node }, index) => (
+									<button
+										type="button"
+										key={node.id}
+										draggable
+										onDragStart={() => setHeld(index)}
+										onDragOver={(event) => event.preventDefault()}
+										onDrop={() => {
+											if (held === null || held === index) return;
+											const next = rows.map(({ node: n }) => n);
+											const [moved] = next.splice(held, 1);
+											next.splice(index, 0, moved);
+											setHeld(null);
+											reorder.mutate(next);
+										}}
+										onDragEnd={() => setHeld(null)}
+										onClick={() => setSelectedId(node.id)}
+										className={`cursor-pointer rounded-xl border p-2.5 text-left transition-colors ${
+											selectedId === node.id
+												? "border-[rgb(var(--console-ink)/0.35)]"
+												: "border-[var(--console-line-soft)] hover:border-[var(--console-line-strong)]"
+										}`}
+									>
+										{/* Square tile, because that is the shape a browse page uses. */}
+										{node.imageUrl ? (
+											<img
+												src={node.imageUrl}
+												alt=""
+												className="aspect-square w-full rounded-lg border border-[var(--console-line-soft)] object-cover"
+											/>
+										) : (
+											<div className="flex aspect-square w-full items-center justify-center rounded-lg border border-[var(--console-line-soft)] border-dashed text-[11px] text-[var(--ink-25)]">
+												No picture
+											</div>
+										)}
+										<p className="mt-2.5 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
 											{node.name}
-											{node.kind === "collection" ? (
-												<span className="ml-2 rounded-full bg-[rgb(var(--console-ink)/0.06)] px-2 py-0.5 text-[10.5px] text-[var(--ink-50)]">
-													collection
-												</span>
-											) : null}
-										</span>
-									),
-								},
-								{
-									key: "slug",
-									header: "Address",
-									width: "w-48",
-									render: (node) => (
-										<span className="font-mono text-[10.5px] text-[var(--ink-30)]">
-											/{node.slug}
-										</span>
-									),
-								},
-								{
-									key: "items",
-									header: "Items",
-									width: "w-20",
-									align: "right",
-									tight: true,
-									render: (node) => (
-										<span className="text-[11px] text-[var(--ink-30)]">
-											{node.itemCount}
-										</span>
-									),
-								},
-								{
-									key: "actions",
-									header: "",
-									align: "right",
-									tight: true,
-									render: (node) => (
-										<div className="flex items-center justify-end gap-1.5">
-											<button
-												type="button"
-												className={quiet}
-												disabled={rowBusy(setVisible, node.id)}
-												onClick={() =>
-													setVisible.mutate({
-														id: node.id,
-														visible: !node.visible,
-													})
-												}
-											>
-												{node.visible ? "Visible" : "Hidden"}
-											</button>
-											<button
-												type="button"
-												className={quiet}
-												onClick={() => setSelectedId(node.id)}
-											>
-												Edit
-											</button>
-											<button
-												type="button"
-												className={quiet}
-												disabled={rowBusy(remove, node.id)}
-												onClick={() => remove.mutate(node.id)}
-											>
-												Delete
-											</button>
+										</p>
+										<div className="mt-1.5 flex items-center gap-1.5">
+											<span className="font-mono text-[10.5px] text-[var(--ink-30)]">
+												/{node.slug}
+											</span>
+											<span className="ml-auto text-[11px] text-[var(--ink-30)]">
+												{node.itemCount}{" "}
+												{node.itemCount === 1 ? "item" : "items"}
+											</span>
 										</div>
-									),
-								},
-							]}
-						/>
+										{!node.visible ? (
+											<span className="mt-1.5 inline-block rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[#f5b44a]">
+												Hidden
+											</span>
+										) : null}
+									</button>
+								))}
+							</div>
+						</>
 					);
 				}}
 			</PageState>

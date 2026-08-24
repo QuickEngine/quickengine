@@ -6,4 +6,6 @@ export * from "./module";
 export * from "./purchase-orders";
 export * from "./supplier-connections";
 export * from "./supplier-credentials";
+export * from "./supplier-settlement";
+export * from "./supplier-settlement-run";
 export * from "./suppliers";

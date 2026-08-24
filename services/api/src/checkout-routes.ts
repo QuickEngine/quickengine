@@ -40,6 +40,7 @@ import {
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
+import { quoteCheckout, taxableAmountCents } from "./checkout-pricing";
 import { settlePaidCheckout } from "./checkout-settlement";
 import type { ApiLogger } from "./logger";
 import { buildMutationContext } from "./mutation-policy";
@@ -94,11 +95,41 @@ export function registerCheckoutRoutes(
 		scope: "checkout.write",
 	});
 
+	/**
+	 * The currency the shopper is looking at.
+	 *
+	 * 🔴 Optional, and validated to three letters. A shop prices in its catalog's
+	 * currency; this says what the BUYER was shown, so the charge can be made in
+	 * the same units they agreed to instead of silently reverting to the
+	 * catalog's.
+	 */
+	const presentmentCurrencySchema = z
+		.string()
+		.trim()
+		.length(3)
+		.regex(/^[A-Za-z]{3}$/)
+		.transform((value) => value.toUpperCase())
+		.optional();
+
 	const quoteInputSchema = z.object({
 		items: checkoutInputSchema.shape.items,
 		destination: shippingDestinationSchema,
 		discountCode: checkoutInputSchema.shape.discountCode,
 	});
+	/**
+	 * ⚠️ Every field optional except the basket itself. A quote is asked for while
+	 * somebody is still typing — before an address, before a delivery choice — and
+	 * refusing until the last step is the problem this route exists to solve.
+	 */
+	const checkoutQuoteInputSchema = z.object({
+		items: checkoutInputSchema.shape.items,
+		subscriptionPlanId: checkoutInputSchema.shape.subscriptionPlanId,
+		discountCode: checkoutInputSchema.shape.discountCode,
+		shippingRateId: checkoutInputSchema.shape.shippingRateId,
+		shippingAddress: checkoutInputSchema.shape.shippingAddress,
+		presentmentCurrency: presentmentCurrencySchema,
+	});
+
 	const providerPaymentIdSchema = z.string().trim().min(1).max(255);
 
 	app.post(
@@ -187,6 +218,97 @@ export function registerCheckoutRoutes(
 			}
 			throw error;
 		}
+	});
+
+	/**
+	 * What this basket costs, without committing to anything.
+	 *
+	 * 🔴 The storefront could not know the total until it had already created the
+	 * order, because tax comes from the workspace's settings and depends on the
+	 * delivery address. So the checkout showed `AUTHORIZE $12.50` on a charge of
+	 * `$13.12` — a consent button carrying the wrong number.
+	 *
+	 * 🔑 Runs `quoteCheckout`, which is the SAME function `/v1/checkout` prices
+	 * with. Two implementations of "what does this cost" is two answers that
+	 * eventually disagree, and the one the customer sees is the one they did not
+	 * agree to.
+	 *
+	 * ⚠️ Prices and nothing else — no order, no reservation, no discount
+	 * redemption — so a page may ask as often as somebody edits their basket.
+	 */
+	/**
+	 * What one currency is worth in another, for a shop that displays two.
+	 *
+	 * 🔴 Storefronts were calling a free public rate API straight from the
+	 * browser. It sends no CORS headers, so every request failed and the shop
+	 * fell back to a hardcoded number that never changed — every converted price
+	 * on the site was invented.
+	 *
+	 * 🔑 Served here instead: no CORS problem, one cached call shared by every
+	 * visitor rather than one per browser, and the SAME rate the checkout charges
+	 * with — so the figure on the button and the figure taken cannot disagree.
+	 *
+	 * ⚠️ Answers 503 rather than guessing. A shop that cannot get a rate must show
+	 * one currency; a confident wrong price is worse than no second currency.
+	 */
+	app.get("/v1/exchange-rate", access, async (c) => {
+		const from = (c.req.query("from") ?? "").trim().toUpperCase();
+		const to = (c.req.query("to") ?? "").trim().toUpperCase();
+		if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"from and to must each be a three letter currency code.",
+				400,
+			);
+		}
+		const { exchangeRate } = await import("@quickengine/mod-orders");
+		try {
+			const { rate, asOf } = await exchangeRate(from, to);
+			return respond(c, { from, to, rate, asOf: asOf.toISOString() });
+		} catch {
+			return respondError(
+				c,
+				"DEPENDENCY_UNAVAILABLE",
+				"An exchange rate is not available right now.",
+				503,
+			);
+		}
+	});
+
+	app.post("/v1/checkout/quote", access, limit, async (c) => {
+		const parsed = checkoutQuoteInputSchema.safeParse(await c.req.json());
+		if (!parsed.success) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"That basket could not be read.",
+				400,
+				parsed.error.issues,
+			);
+		}
+		const quote = await quoteCheckout({
+			workspaceId: c.get("authorized").workspaceId,
+			items: parsed.data.items,
+			subscriptionPlanId: parsed.data.subscriptionPlanId,
+			discountCode: parsed.data.discountCode,
+			shippingRateId: parsed.data.shippingRateId,
+			shippingAddress: parsed.data.shippingAddress,
+			presentmentCurrency: parsed.data.presentmentCurrency,
+		});
+		// A refusal a SHOPPER should read — an item withdrawn, a code expired, a
+		// rate that no longer applies. Expected traffic, never a server fault.
+		if (!quote.ok) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				quote.message,
+				400,
+				quote.detail,
+			);
+		}
+		const { ok: _ok, ...priced } = quote;
+		return respond(c, priced);
 	});
 
 	app.post("/v1/checkout", access, limit, async (c: Context<PlatformEnv>) => {
@@ -393,9 +515,13 @@ export function registerCheckoutRoutes(
 				throw error;
 			}
 		}
-		const taxableCents =
-			Math.max(0, priced.subtotalCents - discountCents) +
-			(shipping?.amountCents ?? 0);
+		// 🔴 The SAME helper `/v1/checkout/quote` uses. Two copies of this line is
+		// how a checkout ends up charging a total the shopper never agreed to.
+		const taxableCents = taxableAmountCents({
+			subtotalCents: priced.subtotalCents,
+			discountCents,
+			shippingCents: shipping?.amountCents ?? 0,
+		});
 		const taxCents = await taxCalculatorFor(settings).calculate({
 			subtotalCents: taxableCents,
 			currency: priced.currency,
@@ -599,14 +725,94 @@ export function registerCheckoutRoutes(
 			);
 		}
 
+		/**
+		 * 🔴 Charge in the currency the shopper was SHOWN.
+		 *
+		 * The order is recorded in the catalog's currency — that is what the shop
+		 * earns and what its reports must add up in — but the payment is taken in
+		 * the currency on the button. Anything else means somebody agrees to
+		 * `$168 USD` and finds `$240 CAD` on their statement.
+		 *
+		 * ⚠️ Converted by the SAME code the quote used, on the total, once. If the
+		 * rate moved between quoting and paying, the charge follows the rate at
+		 * pay time — the alternative is honouring a rate the shop no longer gets,
+		 * which is a loss it never agreed to.
+		 */
+		let chargeAmountCents = order.totalCents;
+		let chargeCurrency = priced.currency;
+		// Kept so the supplier hold-back can follow the SAME rate as the charge.
+		let presentmentRate: number | null = null;
+		const presentment = parsed.data.presentmentCurrency;
+		if (presentment && presentment !== priced.currency.toUpperCase()) {
+			const { exchangeRate, convertCents } = await import(
+				"@quickengine/mod-orders"
+			);
+			try {
+				const { rate } = await exchangeRate(priced.currency, presentment);
+				chargeAmountCents = convertCents(order.totalCents, rate);
+				chargeCurrency = presentment;
+				presentmentRate = rate;
+			} catch {
+				// 🔴 No rate means charge in the catalog's currency, never a guess.
+				// A shopper billed in the wrong currency at an invented rate is worse
+				// than one billed in the shop's own.
+			}
+		}
+
+		/**
+		 * Hold back what the suppliers on this basket are owed.
+		 *
+		 * 🔴 It has to be decided HERE. Stripe fixes the fee when the charge is
+		 * created, and the purchase order that states the obligation is not raised
+		 * until `order.paid` — after the money has already moved. Computed from the
+		 * same supplier rows the purchase order will snapshot moments later.
+		 *
+		 * ⚠️ Converted with the SAME rate as the charge. The fee must be in the
+		 * charge's currency; holding back a CAD amount against a USD charge would
+		 * take the wrong sum and nothing downstream would notice.
+		 */
+		let supplierFeeCents = 0;
+		try {
+			const { checkoutSupplierObligation } = await import(
+				"@quickengine/mod-inventory"
+			);
+			const obligation = await checkoutSupplierObligation({
+				workspaceId,
+				currency: priced.currency,
+				lines: priced.lines,
+			});
+			supplierFeeCents = obligation.totalCents;
+			if (supplierFeeCents > 0 && presentmentRate !== null) {
+				const { convertCents } = await import("@quickengine/mod-orders");
+				supplierFeeCents = convertCents(supplierFeeCents, presentmentRate);
+			}
+			/**
+			 * 🔴 A basket whose suppliers cost more than the customer paid.
+			 *
+			 * The provider would refuse a fee at or above the charge, taking the
+			 * whole sale down with it. The sale is allowed to complete and the
+			 * hold-back is abandoned: the purchase order is still raised, so the
+			 * obligation is visible and settles by hand. A shop selling below cost
+			 * has a pricing problem, and refusing its customers does not fix it.
+			 */
+			if (supplierFeeCents >= chargeAmountCents) supplierFeeCents = 0;
+		} catch {
+			// Never block a sale on the hold-back. Manual settlement is the fallback
+			// and the purchase order still records what is owed.
+			supplierFeeCents = 0;
+		}
+
 		const charge = await getPaymentProvider(account.provider).createCharge({
 			environment: account.environment,
-			amountCents: order.totalCents,
-			currency: priced.currency,
+			amountCents: chargeAmountCents,
+			currency: chargeCurrency,
 			connectedAccountId: externalAccountId,
 			// Platform fee stays zero until a workspace has one agreed. Metering
 			// charges infrastructure, never a business outcome.
 			applicationFeeCents: 0,
+			// Not revenue. The suppliers' money, held for the moment it takes to
+			// send it on. Recorded separately for exactly that reason.
+			supplierFeeCents,
 			metadata: { orderId: order.id, orderNumber: order.number, workspaceId },
 			/**
 			 * 🔴 Only when a subscription is being started, and the shopper chose it.
@@ -632,8 +838,20 @@ export function registerCheckoutRoutes(
 			clientEmail: parsed.data.email,
 			externalPaymentId: charge.externalPaymentId,
 			provider: account.provider,
-			amountCents: order.totalCents,
-			currency: priced.currency,
+			// Held back by the charge above; stored so a refund knows how much of
+			// this money has already left for somebody else.
+			supplierFeeCents,
+			/**
+			 * 🔴 What the PROVIDER actually holds, not what the order is worth.
+			 *
+			 * The order stays in the catalog's currency — that is what the shop
+			 * earns and what its reports add up in. But the payment row is the
+			 * record of a real charge at a real provider, and a refund is issued
+			 * against THAT. Recording CAD while Stripe holds USD would mean a
+			 * refund asking for an amount the provider has no concept of.
+			 */
+			amountCents: chargeAmountCents,
+			currency: chargeCurrency,
 			environment: account.environment,
 		});
 

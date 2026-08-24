@@ -21,6 +21,7 @@ export {
 	SidebarBadge,
 	SidebarName,
 	SidebarSwitcher,
+	useConsoleFocus,
 } from "./components/console-shell";
 export { GlobalErrorScreen } from "./components/global-error-screen";
 export { InitialsAvatar } from "./components/initials-avatar";

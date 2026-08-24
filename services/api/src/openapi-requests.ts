@@ -248,6 +248,18 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 		discountCode: checkoutInputSchema.shape.discountCode,
 	}),
 
+	/**
+	 * ⚠️ Everything optional except the basket. A total is asked for while
+	 * somebody is still typing — before an address, before a delivery choice.
+	 */
+	quoteCheckoutTotal: z.object({
+		items: checkoutInputSchema.shape.items,
+		subscriptionPlanId: checkoutInputSchema.shape.subscriptionPlanId,
+		discountCode: checkoutInputSchema.shape.discountCode,
+		shippingRateId: checkoutInputSchema.shape.shippingRateId,
+		shippingAddress: checkoutInputSchema.shape.shippingAddress,
+	}),
+
 	// Service operations
 	createProject: projectInputSchema,
 	updateProject: projectDetailsInputSchema,

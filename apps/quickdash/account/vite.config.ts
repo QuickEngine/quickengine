@@ -54,6 +54,22 @@ export default defineConfig(({ mode }) => {
 			},
 		},
 		server: {
+			/**
+			 * 🔴 Vite must NOT answer the CORS preflight for the proxied auth calls.
+			 *
+			 * Its built-in CORS middleware runs BEFORE the proxy and ends the
+			 * `OPTIONS` request itself, replying with its own headers — which do not
+			 * include `Access-Control-Allow-Credentials`. Better Auth is called with
+			 * `credentials: "include"`, so the browser rejects the response and the
+			 * real request is never sent. The symptom is a flat refusal to save
+			 * anything on an account screen, with the API completely innocent: it
+			 * returns `allow-credentials: true` when asked directly.
+			 *
+			 * 🔑 `false` lets the preflight fall through to the proxy and be answered
+			 * by the API — which is exactly what happens in production, where there is
+			 * no dev server and `vercel.json` rewrites straight through.
+			 */
+			cors: false,
 			port: 3001,
 			strictPort: true,
 			// In production `vercel.json` rewrites these to the API. Locally there is no

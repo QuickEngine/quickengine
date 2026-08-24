@@ -6,7 +6,42 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **The website preview only ever loads a website.** The address the content preview points at is
+  typed in by hand, and nothing checked that it was a web address at all. Something that merely
+  looked like one could have been left in a workspace's settings and then run code against the next
+  person who opened the preview, inside QuickDash rather than inside the previewed site. Only
+  `http://` and `https://` addresses are loaded now, and anything else says so plainly instead of
+  being opened.
+
+
 ### Added
+
+- **Pay your suppliers automatically when an order is paid.** A shop that has someone else ship its
+  goods owes that supplier for every sale, and until now settling up was a manual job: work out what
+  is owed, send an invoice or a transfer by hand, remember which orders you have already covered. The
+  money is now set aside the moment the customer pays and sent on to the supplier by itself. Your
+  customer's payment still lands in your own account, on your own statement, under your own name, and
+  the supplier's share simply passes through on its way to them.
+
+  What the supplier sees is your business and your order number, not ours. Nothing is ever sent
+  twice: each purchase order can settle exactly once, and a payment interrupted halfway is picked up
+  where it stopped rather than repeated. If a sale is refunded, the supplier's share is pulled back
+  automatically while it is still recoverable, and told to you plainly when it is not.
+
+  A shop that holds its own stock is unaffected, and so is an order with nothing dropshipped on it.
+  Where a supplier prices in a different currency than the sale, or the goods cost more than the
+  customer paid, the sale goes through untouched and the amount owed is left for you to settle by
+  hand rather than guessed at.
+
+
+- **Checkout shows the price you will actually pay.** Tax depends on your workspace settings and on
+  where the parcel is going, so a shop's website had no way to work it out — it added up what it
+  could see, called that the total, and then charged more. Checkout can now ask for a real price
+  before anything is committed, and it comes back with the tax and the true total. Nothing is
+  reserved or charged by asking, so a shop can re-price a basket as often as a customer changes it.
+
 
 - **Disconnect a payment provider.** There was no way to undo connecting one, and setting up a new
   connection refuses while an old one is present, so a business whose connection stopped working was
@@ -221,6 +256,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   button with it, so nothing is left offering to act on something that is not there.
 
 ### Fixed
+
+- **The examples in every empty field are a business nobody recognises, on purpose.** Placeholders
+  across the console were themed around one real customer's shop — its name, its address, its
+  product codes, even its brand colour — which reads oddly to everybody else who uses QuickDash. They
+  now all describe the same invented company, and none of them is anybody's actual business.
+
 
 - **Your customers' card payments belong to you, and so does the risk.** Connecting a card processor
   now creates a full account in the business's own name, with its own dashboard, rather than a

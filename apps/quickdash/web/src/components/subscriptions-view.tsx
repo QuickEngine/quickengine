@@ -189,7 +189,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 						hint="what a shopper sees"
 						value={name}
 						onChange={setName}
-						placeholder="Monthly coffee"
+						placeholder="Studio essentials"
 					/>
 					<Choice
 						label="Billed"

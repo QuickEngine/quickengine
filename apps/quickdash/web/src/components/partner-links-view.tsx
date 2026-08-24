@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
-import { isAmount, parseAmountCents } from "../lib/money-input";
+import { parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls } from "./list-controls";
@@ -152,7 +152,7 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 						hint="becomes the web address, so letters, numbers and hyphens only"
 						value={code}
 						onChange={setCode}
-						placeholder="sarahbrews"
+						placeholder="jordanreviews"
 					/>
 					{/* The partner is a client record, because that is what they are:
 					    somebody the business has a relationship and contact details for. */}

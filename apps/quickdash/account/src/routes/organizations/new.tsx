@@ -69,7 +69,7 @@ function NewOrganizationPage() {
 					<input
 						value={name}
 						onChange={(event) => setName(event.target.value)}
-						placeholder="Northwind Trading"
+						placeholder="Kestrel Audio"
 						aria-label="Organization name"
 						className={field}
 					/>

@@ -51,6 +51,85 @@ beforeEach(async () => {
 	await sql`insert into catalog_items (id, workspace_id, name, type, status, sku, pricing_model, price_cents, currency) values (${itemId}, ${workspaceId}, 'Printed cards', 'physical', 'active', 'CARDS', 'fixed', 1500, 'USD')`;
 });
 
+/**
+ * Put the workspace in sandbox mode.
+ *
+ * ⚠️ `environment` belongs to the WORKSPACE and is copied onto each order as it
+ * is created — it is not something a caller passes per order. An earlier version
+ * of these tests handed `environment: "test"` to `createOrder`, where it was
+ * silently dropped and every assertion then described live behaviour.
+ */
+async function sandboxMode() {
+	const sql = testDbClient();
+	await sql`update quickengine_workspaces set environment = 'test' where id = ${workspaceId}`;
+}
+
+describe("a sandbox order never touches real stock", () => {
+	/**
+	 * 🔴 Observed on 2026-08-23: a test checkout produced `reserve:1` against the
+	 * LIVE inventory record, and only the refund gave it back. A rehearsal that
+	 * stopped after the purchase would leave a real unit reserved for an order
+	 * that never existed, and the shop would show one fewer to real buyers.
+	 */
+	it("does not reserve when the order is in test mode", async () => {
+		await enableInventory();
+		await stock(10);
+		await sandboxMode();
+		const order = await createOrder(workspaceId, order2Physical);
+
+		await setOrderStatus(workspaceId, order.id, "placed");
+
+		expect(await balance()).toEqual({ onHand: 10, reserved: 0 });
+	});
+
+	/**
+	 * 🔴 The half that would be worse than the bug. Skipping `reserve` while
+	 * honouring `release` would CREATE stock out of a cancelled test order — so
+	 * every movement has to be guarded, not just the one that was noticed.
+	 */
+	it("does not release stock it never reserved", async () => {
+		await enableInventory();
+		await stock(10);
+		await sandboxMode();
+		const order = await createOrder(workspaceId, order2Physical);
+
+		await setOrderStatus(workspaceId, order.id, "placed");
+		await setOrderStatus(workspaceId, order.id, "cancelled");
+
+		// Not 12. A cancelled test order must not invent two units.
+		expect(await balance()).toEqual({ onHand: 10, reserved: 0 });
+	});
+
+	it("still reserves for a live order", async () => {
+		await enableInventory();
+		await stock(10);
+		// Left in its default live mode.
+		const order = await createOrder(workspaceId, order2Physical);
+
+		await setOrderStatus(workspaceId, order.id, "placed");
+
+		expect(await balance()).toEqual({ onHand: 10, reserved: 2 });
+	});
+
+	/**
+	 * ⚠️ A test order cannot oversell either, because it never counts against
+	 * stock at all — which is the correct behaviour and worth pinning: somebody
+	 * rehearsing must not be blocked by their own real stock level.
+	 */
+	it("cannot be blocked by real stock running out", async () => {
+		await enableInventory();
+		await stock(1);
+		await sandboxMode();
+		const first = await createOrder(workspaceId, order2Physical);
+		const second = await createOrder(workspaceId, order2Physical);
+
+		await setOrderStatus(workspaceId, first.id, "placed");
+		await setOrderStatus(workspaceId, second.id, "placed");
+
+		expect(await balance()).toEqual({ onHand: 1, reserved: 0 });
+	});
+});
+
 describe("Order stock reservation", () => {
 	it("reserves on placed, without changing what is on hand", async () => {
 		await enableInventory();

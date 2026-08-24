@@ -45,9 +45,18 @@ export const reviews = pgTable(
 			.notNull()
 			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
 
-		catalogItemId: uuid("catalog_item_id")
-			.notNull()
-			.references(() => catalogItems.id, { onDelete: "cascade" }),
+		/**
+		 * What it is about, when it is about one product.
+		 *
+		 * 🔴 NULL means the review is about the SHOP, not an item — the Etsy shop
+		 * review, the eBay feedback, the Gem Rock seller rating. Every commerce
+		 * platform models these separately, and this column being NOT NULL meant
+		 * QuickDash could only ever hold the product kind. A seller with twenty
+		 * glowing shop reviews had nowhere to put a single one.
+		 */
+		catalogItemId: uuid("catalog_item_id").references(() => catalogItems.id, {
+			onDelete: "cascade",
+		}),
 
 		/**
 		 * Who wrote it.
@@ -56,9 +65,38 @@ export const reviews = pgTable(
 		 * later verifies their email keeps authorship, because the order already
 		 * points at the same record.
 		 */
-		clientRecordId: uuid("client_record_id")
-			.notNull()
-			.references(() => clientRecords.id, { onDelete: "cascade" }),
+		/**
+		 * 🔴 NULL for a review IMPORTED from somewhere else.
+		 *
+		 * A Gem Rock buyer is not a customer in this system and never will be, so
+		 * requiring a client record meant inventing one per reviewer — fabricating
+		 * customers to hold quotes. `authorName` carries the name instead.
+		 */
+		clientRecordId: uuid("client_record_id").references(
+			() => clientRecords.id,
+			{
+				onDelete: "cascade",
+			},
+		),
+
+		/**
+		 * The name to show when there is no client record behind it.
+		 *
+		 * ⚠️ Only ever used for imported reviews. A native review still reads its
+		 * author from the client record, so a customer renaming themselves is
+		 * reflected rather than frozen at write time.
+		 */
+		authorName: text("author_name"),
+
+		/**
+		 * Where it came from.
+		 *
+		 * 🔑 So an imported review can be LABELLED as imported. Showing a Gem Rock
+		 * quote beside a verified purchase with no distinction is the sort of
+		 * thing review regulators care about, and it is dishonest besides.
+		 */
+		source: text("source").notNull().default("storefront"),
+		sourceUrl: text("source_url"),
 
 		/**
 		 * The order that proves they bought it.

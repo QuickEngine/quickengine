@@ -1,6 +1,7 @@
 import {
 	listPublishedReviews,
 	listReviewsForModeration,
+	listShopReviews,
 	moderateReview,
 	reviewModerationSchema,
 	reviewSummary,
@@ -49,6 +50,21 @@ export function registerReviewRoutes(
 	});
 
 	/** Published reviews for one product. */
+	/**
+	 * What people say about the SHOP.
+	 *
+	 * 🔴 The only public read was per-product, so a seller's imported ratings had
+	 * nowhere to be shown — they passed moderation and then sat unreachable.
+	 */
+	app.get("/v1/reviews", publicRead, async (c) =>
+		respond(c, {
+			items: await listShopReviews(
+				c.get("authorized").workspaceId,
+				Number(c.req.query("limit") ?? 50),
+			),
+		}),
+	);
+
 	app.get("/v1/catalog/:id/reviews", publicRead, async (c) =>
 		respond(c, {
 			items: await listPublishedReviews(

@@ -5,6 +5,7 @@ import {
 	inventoryItems,
 	isNull,
 	orderLineItems,
+	orders,
 	sql,
 	workspaceModules,
 } from "@quickengine/db";
@@ -40,6 +41,38 @@ import type { OrderTransaction } from "./orders";
  * Reserving at `placed` rather than `confirmed` is the whole point: the gap between
  * a customer paying and an operator confirming is exactly where overselling happens.
  */
+
+/**
+ * 🔴 A SANDBOX order must never touch real stock.
+ *
+ * Observed 2026-08-23: a test checkout produced `reserve:1` against the live
+ * inventory record, and only the refund gave it back with `release:1`. Had the
+ * rehearsal stopped after the purchase — which is exactly what a rehearsal often
+ * does — a unit of real coffee would sit reserved for an order that never
+ * existed, and the shop would show one fewer available to real buyers.
+ *
+ * `inventory_items` has no `environment` of its own, and giving it one would
+ * mean maintaining two stock counts for one shelf — which is not what a sandbox
+ * is for. Refusing to move real stock for a fake order is both cheaper and more
+ * honest, and there is already a precedent: the supplier handoff refuses in
+ * sandbox rather than placing a genuine order with a genuine supplier.
+ *
+ * 🔑 Guarded HERE rather than at the four call sites, so a fifth movement added
+ * later inherits it. Consistency matters more than usual: skipping `reserve` but
+ * honouring `release` would CREATE stock out of a cancelled test order.
+ */
+async function isSandboxOrder(
+	tx: OrderTransaction,
+	workspaceId: string,
+	orderId: string,
+): Promise<boolean> {
+	const [row] = await tx
+		.select({ environment: orders.environment })
+		.from(orders)
+		.where(and(eq(orders.workspaceId, workspaceId), eq(orders.id, orderId)))
+		.limit(1);
+	return row?.environment === "test";
+}
 
 /** Line types that consume physical stock. Digital, service, and package do not. */
 const STOCKED_TYPES = new Set(["physical", "rental"]);
@@ -158,6 +191,7 @@ export async function reserveOrderStockInTx(
 	workspaceId: string,
 	orderId: string,
 ): Promise<void> {
+	if (await isSandboxOrder(tx, workspaceId, orderId)) return;
 	const policy = await inventoryPolicy(tx, workspaceId);
 	if (!policy.enabled) return;
 
@@ -213,6 +247,7 @@ export async function releaseOrderStockInTx(
 	workspaceId: string,
 	orderId: string,
 ): Promise<void> {
+	if (await isSandboxOrder(tx, workspaceId, orderId)) return;
 	const policy = await inventoryPolicy(tx, workspaceId);
 	if (!policy.enabled) return;
 
@@ -251,6 +286,7 @@ export async function consumeOrderStockInTx(
 	workspaceId: string,
 	orderId: string,
 ): Promise<void> {
+	if (await isSandboxOrder(tx, workspaceId, orderId)) return;
 	const policy = await inventoryPolicy(tx, workspaceId);
 	if (!policy.enabled) return;
 
@@ -336,6 +372,7 @@ export async function restockOrderStockInTx(
 	orderId: string,
 	options: { note?: string } = {},
 ): Promise<void> {
+	if (await isSandboxOrder(tx, workspaceId, orderId)) return;
 	const policy = await inventoryPolicy(tx, workspaceId);
 	if (!policy.enabled) return;
 

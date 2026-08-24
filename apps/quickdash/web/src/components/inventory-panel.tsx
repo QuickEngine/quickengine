@@ -225,7 +225,7 @@ export function InventoryPanel({
 							hint="optional, for whoever reads this later"
 							value={note}
 							onChange={setNote}
-							placeholder="Box arrived crushed"
+							placeholder="Arrived with a bent connector"
 						/>
 						<button
 							type="button"

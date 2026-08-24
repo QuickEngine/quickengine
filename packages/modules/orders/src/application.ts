@@ -16,8 +16,6 @@ import {
 	orderLineItems,
 	orders,
 	pageOrder,
-	paymentRefunds,
-	payments,
 	resolveSort,
 	sql,
 	toPage,

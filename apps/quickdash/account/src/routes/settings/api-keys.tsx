@@ -352,7 +352,7 @@ function ApiKeysPage() {
 						<input
 							value={origins}
 							onChange={(event) => setOrigins(event.target.value)}
-							placeholder="https://caffeinate.ca, https://www.caffeinate.ca"
+							placeholder="https://kestrelaudio.com, https://www.kestrelaudio.com"
 							aria-label="Allowed origins"
 							className={`${field} w-full max-w-2xl`}
 						/>

@@ -92,6 +92,24 @@ export const checkoutInputSchema = z
 		/** The browser chooses an offered rate; the server recomputes its amount. */
 		shippingRateId: z.uuid().optional(),
 		shippingAddress: checkoutShippingAddressSchema.optional(),
+		/**
+		 * The currency the shopper was SHOWN, when it is not the catalog's.
+		 *
+		 * 🔴 Names what the buyer agreed to, so the charge can be taken in those
+		 * units. Without it a shop that displays USD still bills CAD, and somebody
+		 * consents to one figure and finds another on their statement.
+		 *
+		 * ⚠️ Never a PRICE. The caller still cannot name an amount — only which
+		 * currency it should be expressed in. Everything is still priced from the
+		 * catalog and converted server-side.
+		 */
+		presentmentCurrency: z
+			.string()
+			.trim()
+			.length(3)
+			.regex(/^[A-Za-z]{3}$/)
+			.transform((value) => value.toUpperCase())
+			.optional(),
 		// ⚠️ NOT accepted, deliberately, and each one is a way to steal:
 		// · any price, subtotal, total, tax or discount field
 		// · clientId — a caller naming somebody else's client record attaches a

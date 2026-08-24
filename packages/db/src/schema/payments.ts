@@ -145,6 +145,25 @@ export const payments = pgTable(
 		amountCents: integer("amount_cents").notNull(),
 		// QuickEngine's optional platform share of this payment, in cents (default 0).
 		applicationFeeCents: integer("application_fee_cents").notNull().default(0),
+
+		/**
+		 * The part of this charge that belongs to a SUPPLIER, not to the business.
+		 *
+		 * 🔴 Separate from `applicationFeeCents` deliberately, even though both are
+		 * carried to Stripe in the same field. They mean opposite things: an
+		 * application fee is what the platform EARNS; this is money the platform
+		 * merely holds on its way to somebody else. Overloading one column would
+		 * make "what did QuickEngine make" unanswerable the day a real platform
+		 * fee exists, and would report pass-through money as revenue in the
+		 * meantime.
+		 *
+		 * ⚠️ Computed at CHECKOUT from supplier SKU costs, because Stripe fixes the
+		 * application fee when the charge is created and the purchase order does
+		 * not exist until the order is paid. The purchase order snapshots the same
+		 * source moments later; a difference between the two is recorded on the
+		 * supplier payment rather than silently resolved.
+		 */
+		supplierFeeCents: integer("supplier_fee_cents").notNull().default(0),
 		currency: text("currency").notNull().default("USD"),
 		status: text("status", {
 			enum: [

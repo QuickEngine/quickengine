@@ -60,10 +60,23 @@ function Thread({
 		queryKey: ["quickdash", workspaceId, "conversation", conversationId],
 		queryFn: async () => {
 			const api = workspaceApi(workspaceId);
-			const detail = await api.request<{
-				conversation: Conversation;
-				messages: Message[];
-			}>(`/customer-conversations/${conversationId}`);
+			/**
+			 * 🔴 FLAT, because that is what the route returns.
+			 *
+			 * This declared `{ conversation, messages }` and the route returns
+			 * `{ ...conversation, messages }` — so `data.conversation` was always
+			 * undefined and reading a field off it crashed the panel with
+			 * "Cannot read properties of undefined". Opening any conversation
+			 * threw, and the type said it was fine.
+			 *
+			 * ⚠️ A hand-written type over a network response is an ASSERTION, not
+			 * a check. TypeScript proved the code matched a shape somebody typed
+			 * out, never that the server sends it. Same defect as the order panel's
+			 * `unitAmountCents`, found the same way — by reading the route.
+			 */
+			const detail = await api.request<Conversation & { messages: Message[] }>(
+				`/customer-conversations/${conversationId}`,
+			);
 			// Opening IS the read. Done here rather than on the list so an unread
 			// count can never be cleared by a page somebody merely walked past.
 			await api
@@ -111,7 +124,7 @@ function Thread({
 		<aside className={detailCard}>
 			<header className="flex items-center gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
 				<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
-					{thread.data?.conversation.customerName ?? "Conversation"}
+					{thread.data?.customerName ?? "Conversation"}
 				</p>
 				<button type="button" onClick={onClose} className={quiet}>
 					Close

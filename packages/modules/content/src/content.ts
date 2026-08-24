@@ -5,6 +5,7 @@ import {
 	db,
 	eq,
 	inArray,
+	sql,
 } from "@quickengine/db";
 import { z } from "zod";
 
@@ -154,7 +155,7 @@ export async function listAllContent(
 export async function upsertContentEntry(
 	workspaceId: string,
 	input: ContentEntryInput,
-	options: { publishOnSave?: boolean } = {},
+	options: { publishOnSave?: boolean; seedOnly?: boolean } = {},
 ): Promise<ContentEntry> {
 	const parsed = contentEntryInputSchema.parse(input);
 	const now = new Date();
@@ -170,7 +171,20 @@ export async function upsertContentEntry(
 			type: parsed.type,
 			kind: parsed.kind,
 			value: parsed.value ?? null,
-			published: published ?? false,
+			/**
+			 * 🔴 A SEEDED slot is published immediately; an empty one is not.
+			 *
+			 * The seed is the copy the site is ALREADY rendering from its own code, so
+			 * publishing it changes nothing a visitor can see. Leaving it unpublished
+			 * would mean the public read returns nothing, every slot needs a manual
+			 * publish before the site matches what it showed yesterday, and the CMS
+			 * appears broken on the day it is switched on.
+			 *
+			 * ⚠️ A slot seeded EMPTY stays unpublished — there is nothing to show, and
+			 * publishing a blank is how a headline disappears.
+			 */
+			published:
+				published ?? (options.seedOnly ? Boolean(parsed.value) : false),
 			label: parsed.label ?? null,
 			description: parsed.description ?? null,
 			group: parsed.group ?? null,
@@ -181,9 +195,51 @@ export async function upsertContentEntry(
 			set: {
 				type: parsed.type,
 				kind: parsed.kind,
-				// Undefined means "not supplied" and leaves the stored value alone.
-				...(parsed.value !== undefined ? { value: parsed.value } : {}),
-				...(published !== undefined ? { published } : {}),
+				/**
+				 * Undefined means "not supplied" and leaves the stored value alone.
+				 *
+				 * 🔴 `seedOnly` means "supplied, but only as a STARTING POINT" — take
+				 * it if the slot is EMPTY, keep what is there otherwise.
+				 *
+				 * ⚠️ Emptiness, not newness. Seeding only on INSERT looks equivalent
+				 * and is not: a slot registered before anybody wrote anything already
+				 * exists with a null value, so the insert never runs again and it
+				 * stays blank for ever. `coalesce` is the difference, and a test
+				 * caught it.
+				 *
+				 * That is what lets a site ship the copy it already has hardcoded as
+				 * the initial value — the operator opens Content and sees their real
+				 * words instead of a column of empty boxes they cannot identify —
+				 * while a redeploy re-registering the same manifest can never
+				 * overwrite what they have since written.
+				 *
+				 * 🔑 Literal SQL, no interpolated columns. `${contentEntries.value}`
+				 * would emit a BARE `"value"`, which is ambiguous between the target
+				 * row and `excluded` — the same trap that took the orders list down
+				 * with `column reference "id" is ambiguous`.
+				 */
+				...(parsed.value === undefined
+					? {}
+					: options.seedOnly
+						? {
+								value: sql`coalesce(content_entries.value, excluded.value)`,
+							}
+						: { value: parsed.value }),
+				/**
+				 * 🔑 Publish ONLY the slot this registration actually filled.
+				 *
+				 * `content_entries.value` is the value BEFORE this update, so "was null"
+				 * means the coalesce above just took the seed. Anything the operator had
+				 * already written keeps whatever publish state they chose — including a
+				 * deliberate draft, which a redeploy must never push live.
+				 */
+				...(published !== undefined
+					? { published }
+					: options.seedOnly && parsed.value
+						? {
+								published: sql`case when content_entries.value is null then true else content_entries.published end`,
+							}
+						: {}),
 				...(parsed.label !== undefined ? { label: parsed.label } : {}),
 				...(parsed.description !== undefined
 					? { description: parsed.description }
@@ -213,12 +269,25 @@ export async function registerContentManifest(
 	options: { publishOnSave?: boolean } = {},
 ): Promise<{ registered: number }> {
 	for (const slot of slots) {
-		await upsertContentEntry(
-			workspaceId,
-			// Never carry a value through a manifest — a manifest declares SHAPE.
-			{ ...slot, value: undefined },
-			options,
-		);
+		/**
+		 * 🔴 A manifest declares SHAPE, and may seed a STARTING VALUE.
+		 *
+		 * It used to strip the value entirely, so that redeploying a site could
+		 * never wipe the words its owner had written. That reasoning was right and
+		 * the consequence was wrong: the operator opened Content to a column of
+		 * empty boxes with no way to tell which was which, and no idea what any of
+		 * them currently said on the site.
+		 *
+		 * `seedOnly` keeps the protection and removes the problem — the value is
+		 * used when the slot is FIRST created and ignored on every registration
+		 * afterwards. A site can therefore ship the copy it already has hardcoded,
+		 * the operator sees their real words on day one, and the next deploy
+		 * cannot clobber their edits.
+		 */
+		await upsertContentEntry(workspaceId, slot, {
+			...options,
+			seedOnly: true,
+		});
 	}
 	return { registered: slots.length };
 }

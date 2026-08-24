@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { webAddress } from "../lib/web-address";
 
 /**
  * The customer's own website, beside the words that produce it.
@@ -124,7 +125,8 @@ export function ContentPreview({
 		return () => observer.disconnect();
 	});
 
-	const target = (override || branding.data?.websiteUrl || "").trim();
+	const typedAddress = (override || branding.data?.websiteUrl || "").trim();
+	const target = webAddress(typedAddress);
 
 	/**
 	 * 🔴 `postMessage` with an EXPLICIT target origin, never `"*"`.
@@ -198,10 +200,14 @@ export function ContentPreview({
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
 				<p className="text-[12.5px] text-[var(--ink-60)]">
-					No website address for this workspace yet.
+					{typedAddress
+						? "That address cannot be previewed."
+						: "No website address for this workspace yet."}
 				</p>
 				<p className="max-w-[280px] text-[11.5px] text-[var(--ink-30)]">
-					Add one in Settings, or point the preview somewhere for now.
+					{typedAddress
+						? "A preview needs a full web address starting with http:// or https://."
+						: "Add one in Settings, or point the preview somewhere for now."}
 				</p>
 				<input
 					type="url"

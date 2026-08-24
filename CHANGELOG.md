@@ -6,6 +6,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **The website preview only ever loads a website.** The address the content preview points at is
+  typed in by hand, and nothing checked that it was a web address at all. Something that merely
+  looked like one could have been left in a workspace's settings and then run code against the next
+  person who opened the preview, inside QuickDash rather than inside the previewed site. Only
+  `http://` and `https://` addresses are loaded now, and anything else says so plainly instead of
+  being opened.
+
+
 ### Added
 
 - **Pay your suppliers automatically when an order is paid.** A shop that has someone else ship its

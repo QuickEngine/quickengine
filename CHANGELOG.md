@@ -6,6 +6,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Your customer hears back when you answer them.** Replying to a message left it sitting in a portal
+  the customer had no reason to open again, so from their side the question went unanswered. They now
+  get an email telling them there is a reply. It carries a notice rather than the message itself, so
+  the conversation stays behind their own sign-in.
+
+### Fixed
+
+- **Your supplier is told when an order is canceled.** The notice was written but never sent: it
+  looked up the business it belonged to in a way that always came back empty, and gave up silently.
+  So a supplier could have made and shipped an order that no longer existed, after their payment had
+  already been taken back.
+
+
 ### Fixed
 
 - **API keys can do what they say they can.** A secret key was described as having full workspace

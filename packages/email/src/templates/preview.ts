@@ -2,6 +2,7 @@ import type { EmailBrand, TemplateCopy } from "./brand";
 import {
 	bookingConfirmationEmail,
 	invoiceSentEmail,
+	messageReplyEmail,
 	orderConfirmationEmail,
 	paymentReceiptEmail,
 	type RenderedEmail,
@@ -35,6 +36,7 @@ export type EmailTemplateKey =
 	| "shipping-notice"
 	| "payment-receipt"
 	| "refund-notice"
+	| "message-reply"
 	| "subscription-payment-failed"
 	| "invoice-sent"
 	| "booking-confirmation"
@@ -155,6 +157,17 @@ export function emailTemplatePreviews(
 				copy: override["subscription-payment-failed"],
 				planName: "Monthly coffee",
 				outcome: "past_due",
+			}),
+		},
+		{
+			key: "message-reply",
+			tokens: ["messageSubject", "businessName"],
+			name: "Reply to a message",
+			sentWhen: "When you reply to a customer's message.",
+			rendered: messageReplyEmail({
+				brand,
+				copy: override["message-reply"],
+				subject: "Where is my order?",
 			}),
 		},
 		{

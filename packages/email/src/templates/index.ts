@@ -584,6 +584,58 @@ export function subscriptionPaymentFailedEmail(input: {
 }
 
 /**
+ * Sent when the business replies to a customer's message.
+ *
+ * 🔴 Nothing used to tell them. A customer wrote in, the business answered in
+ * its dashboard, and the reply sat in a portal the customer had no reason to
+ * open again — so from their side the question was simply never answered.
+ *
+ * ⚠️ Carries a NOTICE, not the reply itself. The message lives behind the
+ * customer's own sign-in; putting it in an email would send a conversation to
+ * whatever address was on file, which may no longer be theirs, and would put
+ * private correspondence into a channel neither party chose.
+ */
+export function messageReplyEmail(input: {
+	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
+	subject: string;
+	viewUrl?: string;
+}): RenderedEmail {
+	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const COPY_TOKENS = {
+		businessName: input.brand.name,
+		messageSubject: input.subject,
+	};
+	const body = [
+		heading("You have a reply"),
+		paragraph(
+			`${escapeHtml(input.brand.name)} has replied to your message about ${escapeHtml(input.subject)}.`,
+		),
+		detailRows([{ label: "Message", value: input.subject }]),
+		input.viewUrl ? button("Read the reply", input.viewUrl, accent) : "",
+	]
+		.filter(Boolean)
+		.join("\n");
+
+	return {
+		subject: applyCopy(
+			`Re: ${input.subject}`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: `${input.brand.name} replied to your message.`,
+					body,
+				}),
+		text: `You have a reply\n\n${input.brand.name} has replied to your message about ${input.subject}.${input.viewUrl ? `\n\n${input.viewUrl}` : ""}`,
+	};
+}
+
+/**
  * Sent when an invoice moves from draft to SENT.
  *
  * 🔴 Deliberately not sent on `invoice.created`. An invoice is drafted, edited,

@@ -54,6 +54,36 @@ export const customerMessageInputSchema = z.object({
  * it plainly did. The cost is a missed notification, which the Messages page
  * still shows.
  */
+/**
+ * Announce that the BUSINESS replied, so the customer can be emailed.
+ *
+ * ⚠️ Same shape and same silence as `announceCustomerMessage` below: a reply
+ * that saved must not fail because the announcement did, or the operator is
+ * told their message did not send when it plainly did.
+ */
+async function announceOperatorReply(
+	c: { get(name: "requestId"): string },
+	workspaceId: string,
+	conversation: { id: string },
+) {
+	try {
+		const { recordOutboxEvent } = await import("@quickengine/db");
+		await recordOutboxEvent({
+			workspaceId,
+			aggregateType: "customer-conversation",
+			aggregateId: conversation.id,
+			eventName: "customer.message.replied",
+			// Identity only — a customer's words never enter an event payload that
+			// fans out to third-party webhooks.
+			payload: { conversationId: conversation.id },
+			requestId: c.get("requestId"),
+			actorType: "user",
+		});
+	} catch {
+		// Deliberately silent — see above.
+	}
+}
+
 async function announceCustomerMessage(
 	c: { get(name: "requestId"): string },
 	workspaceId: string,
@@ -214,6 +244,14 @@ export function registerCustomerMessageRoutes(
 						: null,
 				body: parsed.data.body,
 			});
+			/**
+			 * 🔴 Tell the customer somebody answered.
+			 *
+			 * Nothing did. A customer wrote in, the business replied here, and the
+			 * reply sat in a portal the customer had no reason to open again — so
+			 * from their side the question went unanswered.
+			 */
+			await announceOperatorReply(c, authorized.workspaceId, conversation);
 			return respond(c, message, 201);
 		},
 	);

@@ -1,6 +1,19 @@
 import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
 
 /**
+ * How the supplier is actually told. Injected so the path can be asserted —
+ * it was broken for a week and no test could have noticed.
+ */
+export type SupplierNotifier = (input: {
+	to: string;
+	from?: string;
+	replyTo?: string;
+	subject: string;
+	html: string;
+	text: string;
+}) => Promise<unknown>;
+
+/**
  * The customer's money went back. Pull the supplier's share back to match.
  *
  * ── The loss this prevents ───────────────────────────────────────────────────
@@ -37,6 +50,7 @@ export function supplierRefundHandler(
 		idempotencyKey: string;
 		reason: string;
 	}) => Promise<{ reversedCents: number }>,
+	notify?: SupplierNotifier,
 ): OutboxHandler {
 	return {
 		name: "supplier-refund",
@@ -151,7 +165,7 @@ export function supplierRefundHandler(
 					 * had the payment reversed — out the goods AND the money, and the
 					 * first they would hear of it is an invoice nobody pays.
 					 */
-					await tellSupplier(po, refundId, log);
+					await tellSupplier(event.workspaceId, po, refundId, log, notify);
 
 					if (result.outcome === "unrecoverable") {
 						/**
@@ -234,6 +248,7 @@ async function supplierShare(input: {
  * not make the refund handler look like it failed and re-run.
  */
 async function tellSupplier(
+	workspaceId: string,
 	po: {
 		id: string;
 		number: string;
@@ -246,6 +261,7 @@ async function tellSupplier(
 	},
 	refundId: string,
 	log: (message: string, detail: Record<string, unknown>) => void,
+	notify?: SupplierNotifier,
 ): Promise<void> {
 	// Only email suppliers who are emailed in the first place.
 	if (po.handoffMethod !== "email") return;
@@ -256,20 +272,28 @@ async function tellSupplier(
 	if (!to) return;
 
 	try {
-		const [{ getEmailProvider }, { resolveBrand }] = await Promise.all([
+		const [emails, { resolveBrand }] = await Promise.all([
 			import("@quickengine/email"),
 			import("@quickengine/db"),
 		]);
-		const brand = await resolveBrand(
-			(po as unknown as { workspaceId: string }).workspaceId,
-		);
+		const send = notify ?? emails.getEmailProvider().send;
+		/**
+		 * 🔴 The workspace is PASSED IN, not dug out of the row.
+		 *
+		 * This read `po.workspaceId` through a cast, and the query never selected
+		 * that column — so it was `undefined`, `resolveBrand` returned null, and
+		 * the function returned silently. A supplier was never told an order was
+		 * cancelled, and nothing anywhere said so. The cast is what stopped the
+		 * type checker seeing it; the fix is to stop lying to it.
+		 */
+		const brand = await resolveBrand(workspaceId);
 		// Fails closed on the sender, exactly as the purchase order does: a
 		// supplier has no relationship with the platform and must never be
 		// emailed as it.
 		if (!brand?.sender) return;
 
 		const body = [
-			`Order ${po.number} has been cancelled.`,
+			`Order ${po.number} has been canceled.`,
 			"",
 			"The customer has been refunded, so please do not make or ship this order.",
 			"If it has already gone out, reply to this email and we will sort it out.",
@@ -277,11 +301,11 @@ async function tellSupplier(
 			`Reference: ${refundId}`,
 		].join("\n");
 
-		await getEmailProvider().send({
+		await send({
 			to,
 			from: brand.sender,
 			replyTo: brand.supportEmail,
-			subject: `Cancelled: purchase order ${po.number} from ${brand.name}`,
+			subject: `Canceled: purchase order ${po.number} from ${brand.name}`,
 			html: `<pre style="font:14px/1.5 monospace;white-space:pre-wrap">${body}</pre>`,
 			text: body,
 		});

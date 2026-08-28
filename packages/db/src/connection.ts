@@ -23,6 +23,8 @@ export const databaseConnection =
 		serverEnv.DATABASE_URL,
 		createDatabaseClientOptions({
 			connectTimeoutSeconds: serverEnv.DATABASE_CONNECT_TIMEOUT_SECONDS,
+			// Read only to detect a transaction-mode pooler; never logged.
+			connectionUrl: serverEnv.DATABASE_URL,
 			environment: serverEnv.NODE_ENV,
 			idleInTransactionTimeoutMs:
 				serverEnv.DATABASE_IDLE_TRANSACTION_TIMEOUT_MS,
@@ -30,6 +32,10 @@ export const databaseConnection =
 			lockTimeoutMs: serverEnv.DATABASE_LOCK_TIMEOUT_MS,
 			maxLifetimeSeconds: serverEnv.DATABASE_MAX_LIFETIME_SECONDS,
 			poolMax: serverEnv.DATABASE_POOL_MAX,
+			preparedStatements:
+				serverEnv.DATABASE_PREPARED_STATEMENTS === undefined
+					? undefined
+					: serverEnv.DATABASE_PREPARED_STATEMENTS === "true",
 			statementTimeoutMs: serverEnv.DATABASE_STATEMENT_TIMEOUT_MS,
 		}),
 	);

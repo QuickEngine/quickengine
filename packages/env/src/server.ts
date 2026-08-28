@@ -51,6 +51,15 @@ export const serverEnvSchema = clientEnvSchema.extend({
 	DATABASE_POOL_MAX: emptyStringAsUndefined(
 		z.coerce.number().int().min(1).max(20),
 	),
+	/**
+	 * Escape hatch for prepared-statement detection.
+	 *
+	 * ⚠️ Normally unset: the client works this out from the connection URL. Set
+	 * it to "false" only to recover from a pooler it does not recognise.
+	 */
+	DATABASE_PREPARED_STATEMENTS: emptyStringAsUndefined(
+		z.enum(["true", "false"]),
+	),
 	DATABASE_CONNECT_TIMEOUT_SECONDS: emptyStringAsUndefined(
 		z.coerce.number().int().min(1).max(60),
 	),
@@ -164,6 +173,7 @@ export const serverEnv = serverEnvSchema.parse({
 	NODE_ENV: process.env.NODE_ENV,
 	DATABASE_URL: process.env.DATABASE_URL,
 	DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX,
+	DATABASE_PREPARED_STATEMENTS: process.env.DATABASE_PREPARED_STATEMENTS,
 	DATABASE_CONNECT_TIMEOUT_SECONDS:
 		process.env.DATABASE_CONNECT_TIMEOUT_SECONDS,
 	DATABASE_IDLE_TIMEOUT_SECONDS: process.env.DATABASE_IDLE_TIMEOUT_SECONDS,

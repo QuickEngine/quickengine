@@ -209,11 +209,44 @@ export function renderAuthored(
 	details: string,
 	tokens: Record<string, string>,
 ): string {
-	return sanitiseEmailHtml(html)
-		.replace(/\{\{\s*details\s*\}\}/gi, details)
-		.replace(/\{\{\s*(\w+)\s*\}\}/g, (whole, token: string) =>
-			token in tokens ? tokens[token] : whole,
-		);
+	const clean = sanitiseEmailHtml(html);
+	const hasDetails = /\{\{\s*details\s*\}\}/i.test(clean);
+
+	/**
+	 * 🔴 The generated block is APPENDED when the author left no place for it.
+	 *
+	 * It used to be dropped. A business pasting a designed template that did not
+	 * happen to include `{{details}}` sent every customer an email with no order
+	 * on it — and because most sample templates carry example products and
+	 * totals, what the customer actually received was somebody else's fictional
+	 * order. Confirmed on 2026-08-28: a real order for one bag at $29.00 arrived
+	 * showing three different products and a $72.50 total.
+	 *
+	 * ⚠️ Appending can look untidy against a carefully designed email. That is a
+	 * far smaller problem than a customer being told they bought something they
+	 * did not, and it is visible the first time it happens rather than silent.
+	 */
+	const body = hasDetails
+		? clean.replace(/\{\{\s*details\s*\}\}/gi, details)
+		: appendDetails(clean, details);
+
+	return body.replace(/\{\{\s*(\w+)\s*\}\}/g, (whole, token: string) =>
+		token in tokens ? tokens[token] : whole,
+	);
+}
+
+/**
+ * Put the generated block at the end of the author's document.
+ *
+ * ⚠️ Inside `</body>` where there is one, so it lands within the styled shell
+ * rather than after the closing tag where clients may drop it.
+ */
+function appendDetails(html: string, details: string): string {
+	const block = `\n<div class="qe-order-details">\n${details}\n</div>\n`;
+	const closing = /<\/body\s*>/i;
+	return closing.test(html)
+		? html.replace(closing, `${block}</body>`)
+		: `${html}${block}`;
 }
 
 /** Apply an override to a single line of text, substituting `{{token}}`. */

@@ -6,6 +6,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **Your customer always sees their own order.** A rewritten email that did not say where the order
+  details should go had them left out entirely, so whatever example products and totals came with the
+  template were what the customer received. A real order for one bag arrived showing three other
+  products and the wrong total. The order is now always included, placed where you ask for it if you
+  say, and added at the end if you do not.
+
+
 ### Added
 
 - **Everyone finds out what happened.** Several things could happen to an order and reach nobody. A

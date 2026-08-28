@@ -58,6 +58,54 @@ const field =
  * server clamps whatever arrives to the same ceiling, so drift here can only
  * ever grant LESS than intended, never more.
  */
+/**
+ * Every capability a server-side key may hold.
+ *
+ * ⚠️ Mirrors `API_CAPABILITIES` in `@quickengine/auth/api-keys`, duplicated for
+ * the same reason the two browser sets are: that module reaches for Node's
+ * crypto and must never enter a browser bundle. The server clamps whatever
+ * arrives to the same ceiling, so drift here can only ever grant LESS than
+ * intended, never more.
+ */
+const SERVER_CAPABILITIES = [
+	"analytics:read",
+	"bookings:read",
+	"bookings:write",
+	"catalog:read",
+	"catalog:write",
+	"checkout:write",
+	"clients:read",
+	"clients:write",
+	"contracts:read",
+	"contracts:write",
+	"events:write",
+	"files:read",
+	"files:write",
+	"fulfillment:read",
+	"fulfillment:write",
+	"inventory:read",
+	"inventory:write",
+	"invoicing:read",
+	"invoicing:write",
+	"orders:read",
+	"orders:write",
+	"payments:read",
+	"payments:write",
+	"projects:read",
+	"projects:write",
+	"quotes:read",
+	"quotes:write",
+	"realtime:read",
+	"roles:read",
+	"roles:write",
+	"shipping:read",
+	"shipping:write",
+	"time:read",
+	"time:write",
+	"webhooks:read",
+	"webhooks:write",
+] as const;
+
 const KEY_TYPES = [
 	{
 		id: "publishable",
@@ -78,14 +126,29 @@ const KEY_TYPES = [
 		label: "Secret",
 		detail: "Server only. Full workspace access — never ship it to a browser.",
 		browser: false,
-		capabilities: ["catalog:read", "events:write", "checkout:write"],
+		/**
+		 * 🔴 Actually full access, because that is what the label promises.
+		 *
+		 * It used to send the STOREFRONT set, so a key described as full workspace
+		 * access could read the catalog and take a checkout and nothing else. On
+		 * 2026-08-28 one was issued to onboard a supplier and refused with
+		 * CAPABILITY_DENIED — a credential that lied about what it could do, which
+		 * is worse than one that refuses to be created.
+		 */
+		capabilities: SERVER_CAPABILITIES,
 	},
 	{
 		id: "scoped",
 		label: "Scoped",
 		detail: "Server only, limited to the capabilities you tick.",
 		browser: false,
+		/**
+		 * ⚠️ The starting selection, not a ceiling. A scoped key is meant to be
+		 * narrowed by hand; the picker below is what does the narrowing, and
+		 * without it this type could be chosen but never configured.
+		 */
 		capabilities: ["catalog:read"],
+		pickable: SERVER_CAPABILITIES,
 	},
 ] as const;
 
@@ -147,6 +210,17 @@ function ApiKeysPage() {
 			queryKey: ["account", organizationId, "api-keys", chosen],
 		});
 
+	/**
+	 * Which capabilities a SCOPED key will carry.
+	 *
+	 * 🔴 Scoped keys were described as "limited to the capabilities you tick" and
+	 * there was nothing to tick, so the type could be chosen and never
+	 * configured. Anybody needing one narrow permission had to mint a `secret`
+	 * key instead — least privilege was offered, described, and unavailable.
+	 */
+	const [picked, setPicked] = useState<string[]>([]);
+	const scoped = type === "scoped";
+
 	const create = useMutation({
 		mutationFn: async () =>
 			// 🔴 `plaintext`, which is what `issueApiKey` actually returns and what
@@ -164,9 +238,15 @@ function ApiKeysPage() {
 						workspaceId: chosen,
 						name: name.trim(),
 						type,
-						// The chosen type's own set, never an empty list.
-						capabilities:
-							KEY_TYPES.find((entry) => entry.id === type)?.capabilities ?? [],
+						/**
+						 * A scoped key carries what was ticked; every other type carries
+						 * its own set. Never an empty list — the server refuses that
+						 * rather than quietly granting the ceiling.
+						 */
+						capabilities: scoped
+							? picked
+							: (KEY_TYPES.find((entry) => entry.id === type)?.capabilities ??
+								[]),
 						allowedOrigins: origins
 							.split(/[,\s]+/)
 							.map((value) => value.trim())
@@ -338,7 +418,12 @@ function ApiKeysPage() {
 					</Popover>
 					<button
 						type="submit"
-						disabled={!name.trim() || !chosen || create.isPending}
+						disabled={
+							!name.trim() ||
+							!chosen ||
+							create.isPending ||
+							(scoped && picked.length === 0)
+						}
 						className={`${primaryAction} ${create.isPending ? "shimmer-busy" : ""}`}
 					>
 						{create.isPending ? "Issuing…" : "Issue key"}
@@ -367,6 +452,47 @@ function ApiKeysPage() {
 						repository.
 					</p>
 				)}
+
+				{/* 🔴 The ticks a scoped key is defined by. Without them the type
+				    could be chosen and never configured, so anybody needing one
+				    narrow permission minted a full-access secret key instead. */}
+				{scoped ? (
+					<div className="mt-3">
+						<p className="mb-1.5 text-[11px] text-[var(--ink-45)]">
+							Tick what this key may do. A key with nothing ticked is refused.
+						</p>
+						<div className="flex max-w-2xl flex-wrap gap-1.5">
+							{SERVER_CAPABILITIES.map((capability) => {
+								const on = picked.includes(capability);
+								return (
+									<button
+										key={capability}
+										type="button"
+										onClick={() =>
+											setPicked((current) =>
+												on
+													? current.filter((value) => value !== capability)
+													: [...current, capability],
+											)
+										}
+										className={`rounded-full border px-2 py-0.5 text-[10.5px] transition-colors ${
+											on
+												? "border-transparent bg-[rgb(var(--console-ink)/0.12)] text-[var(--ink-85)]"
+												: "border-[var(--console-line-strong)] text-[var(--ink-30)] hover:text-[var(--ink-60)]"
+										}`}
+									>
+										{capability}
+									</button>
+								);
+							})}
+						</div>
+						{picked.length === 0 ? (
+							<p className="mt-1.5 text-[11px] text-[var(--ink-30)]">
+								Nothing ticked yet.
+							</p>
+						) : null}
+					</div>
+				) : null}
 			</form>
 
 			<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">

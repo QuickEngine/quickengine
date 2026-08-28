@@ -8,6 +8,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Works behind a shared connection pooler.** Some hosted Postgres providers put a
+  transaction-mode pooler in front of the database, where a saved query plan cannot be relied on
+  between statements. QuickEngine now notices when it is talking to one and stops reusing plans,
+  which prevents intermittent database errors that would otherwise only appear once a site got busy
+  enough for connections to be shared. Direct connections are unchanged and keep the faster path.
+
+
 - **A refund takes the supplier's share back too.** Your supplier is paid the moment an order is
   paid, so refunding that customer afterwards left you out of pocket by whatever the supplier had
   already been sent, with nothing anywhere explaining where the money went. Refunding now pulls the

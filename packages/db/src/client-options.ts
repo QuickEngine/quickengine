@@ -41,10 +41,20 @@ function isTransactionPooler(url: string | undefined): boolean {
 	try {
 		const parsed = new URL(url);
 		if (parsed.port === "6543") return true;
-		return (
-			parsed.hostname.includes("pooler.supabase.com") &&
-			parsed.searchParams.get("pgbouncer") === "true"
-		);
+		/**
+		 * 🔴 Suffix match on a DOT boundary, never `includes`.
+		 *
+		 * `hostname.includes("pooler.supabase.com")` also matches
+		 * `pooler.supabase.com.example.net`, which is a host somebody else
+		 * controls. CodeQL flagged it as `js/incomplete-url-substring-sanitization`
+		 * and was right: the consequence here is only a wrong pooling decision,
+		 * but the pattern is the one that becomes a real hole the moment it is
+		 * copied somewhere that grants trust.
+		 */
+		const host = parsed.hostname.toLowerCase();
+		const isKnownPoolerHost =
+			host === "pooler.supabase.com" || host.endsWith(".pooler.supabase.com");
+		return isKnownPoolerHost && parsed.searchParams.get("pgbouncer") === "true";
 	} catch {
 		// An unparseable URL is the connection's problem, not this function's.
 		return false;

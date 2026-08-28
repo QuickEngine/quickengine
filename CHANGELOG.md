@@ -8,6 +8,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **API keys can do what they say they can.** A secret key was described as having full workspace
+  access and was issued with the same permissions as a browser key, so it was refused the moment it
+  tried to do anything a server key exists for. A scoped key was described as being limited to the
+  permissions you tick, and there was nothing to tick. Secret keys now carry full access, scoped keys
+  show the list, and a scoped key with nothing selected cannot be issued.
+
+- **A supplier can finish connecting the account they get paid into.** Inviting one failed outright:
+  we asked the payment provider for the ability to receive money without the ability to take card
+  payments, which it refuses for the kind of account a supplier holds. Both are now requested
+  together, which is what makes the account work. Suppliers still own their own account, and none of
+  their banking details pass through QuickEngine.
+
+
+### Fixed
+
 - **Your customer always sees their own order.** A rewritten email that did not say where the order
   details should go had them left out entirely, so whatever example products and totals came with the
   template were what the customer received. A real order for one bag arrived showing three other

@@ -8,11 +8,11 @@ import type { PaymentEnvironment } from "./provider";
  *
  * ── Why this is not the merchant onboarding ──────────────────────────────────
  *
- * 🔴 A supplier only ever receives. Requesting `card_payments` for them, as the
- * merchant flow does, would demand the full payments KYC — processing history,
- * refund policy, customer service details — from somebody who will never take a
- * card. Asking only for `transfers` is a materially shorter form, and a supplier
- * who abandons onboarding halfway never gets paid.
+ * ⚠️ This was written believing a supplier could be onboarded with `transfers`
+ * alone, sparing them the full payments verification. Stripe refuses that on a
+ * Standard account — see `SUPPLIER_CAPABILITIES`. The distinction that survives
+ * is not a lighter form but WHO the account belongs to: the supplier holds it,
+ * and QuickEngine never touches their banking details.
  *
  * ── Standard, for the same reason merchants are ──────────────────────────────
  *
@@ -55,8 +55,29 @@ async function stripeFor(environment: PaymentEnvironment) {
 	return new Stripe(secret);
 }
 
-/** Only what a supplier actually needs. See the note above. */
-const SUPPLIER_CAPABILITIES = { transfers: { requested: true } } as const;
+/**
+ * What Stripe will actually grant a supplier.
+ *
+ * 🔴 `card_payments` is here because Stripe REFUSES to grant `transfers`
+ * without it on a Standard account: "You cannot request the `transfers`
+ * capability without the `card_payments` capability for accounts when
+ * controller[stripe_dashboard][type]=full, which includes Standard accounts."
+ *
+ * ⚠️ So the "supplier only receives, therefore lighter onboarding" idea does
+ * not survive contact with Stripe. It is true of Express and Custom, and both
+ * of those require the platform to accept liability for seller losses — which
+ * is exactly the trade hard rule 7 exists to refuse. Standard keeps the supplier
+ * owning their own account, their own disputes and their own losses, and the
+ * price is that they complete the full payments verification.
+ *
+ * 🔑 The practical difference for a supplier is a few more fields, once. It is
+ * not a different KIND of onboarding, and they end up with a full Stripe account
+ * they can use for anything.
+ */
+const SUPPLIER_CAPABILITIES = {
+	card_payments: { requested: true },
+	transfers: { requested: true },
+} as const;
 
 export type SupplierAccountState = {
 	externalAccountId: string;

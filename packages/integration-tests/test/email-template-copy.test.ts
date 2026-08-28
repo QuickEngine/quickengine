@@ -105,6 +105,67 @@ describe("a business's own email wording", () => {
 		expect(sent?.to).toBe("ada@example.com");
 	});
 
+	/**
+	 * 🔴 The failure that reached a real customer on 2026-08-28.
+	 *
+	 * A designed template pasted in without a `{{details}}` token had its
+	 * generated block DROPPED, so the sample products and totals baked into that
+	 * template were what the customer received. A real order for one bag at
+	 * $29.00 arrived showing three other products and a $72.50 total.
+	 */
+	it("still shows the real order when the template forgot the details token", async () => {
+		const sql = testDbClient();
+		await sql`
+			insert into workspace_email_templates (workspace_id, template_key, subject, html)
+			values (
+				${workspaceId},
+				'order-confirmation',
+				'Your order',
+				'<html><body><h1>CAFFEINATE</h1><p>Ethiopia Guji x2 — $44.00</p><p>TOTAL $72.50</p></body></html>'
+			)
+		`;
+
+		const send = capture();
+		await customerNotificationHandler(send, () => {}).handle(paidEvent());
+
+		const sent = send.mock.calls[0]?.[0];
+		// The customer's ACTUAL order is present, whatever the author forgot.
+		expect(sent?.html).toContain("Dark Mode");
+		// And it lands inside the styled shell, not after it.
+		expect(sent?.html).toContain("qe-order-details");
+		expect(sent?.html?.indexOf("qe-order-details")).toBeLessThan(
+			sent?.html?.indexOf("</body>") ?? Number.POSITIVE_INFINITY,
+		);
+	});
+
+	/** A template that DOES place the token keeps full control of the layout. */
+	it("puts the details exactly where the template asks for them", async () => {
+		const sql = testDbClient();
+		await sql`
+			insert into workspace_email_templates (workspace_id, template_key, subject, html)
+			values (
+				${workspaceId},
+				'order-confirmation',
+				'Your order',
+				'<html><body><p>BEFORE</p>{{details}}<p>AFTER</p></body></html>'
+			)
+		`;
+
+		const send = capture();
+		await customerNotificationHandler(send, () => {}).handle(paidEvent());
+
+		const sent = send.mock.calls[0]?.[0] ?? { html: "" };
+		expect(sent.html).toContain("Dark Mode");
+		// Not appended: it went where the author put the token.
+		expect(sent.html).not.toContain("qe-order-details");
+		expect(sent.html.indexOf("BEFORE")).toBeLessThan(
+			sent.html.indexOf("Dark Mode"),
+		);
+		expect(sent.html.indexOf("Dark Mode")).toBeLessThan(
+			sent.html.indexOf("AFTER"),
+		);
+	});
+
 	/** ⚠️ A workspace that has never touched a template must still be emailed. */
 	it("falls back to the built-in wording when nothing was written", async () => {
 		const send = capture();

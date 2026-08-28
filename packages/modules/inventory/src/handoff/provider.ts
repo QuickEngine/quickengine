@@ -49,7 +49,10 @@ export type SupplierConnection = {
 	provider: SupplierHandoffMethod;
 	shopDomain: string;
 	apiVersion: string;
-	adminAccessToken: string;
+	/** Legacy permanent token, or client credentials below. One is required. */
+	adminAccessToken?: string;
+	clientId?: string;
+	clientSecret?: string;
 	webhookSecret?: string;
 };
 

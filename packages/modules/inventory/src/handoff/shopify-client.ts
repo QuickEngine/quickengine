@@ -27,12 +27,100 @@ export class ShopifyApiError extends Error {
  */
 export type ShopifyConfig = {
 	shopDomain: string;
-	adminAccessToken: string;
+	/**
+	 * A legacy permanent `shpat_…` token. Preferred when present so stores
+	 * connected before the deprecation keep working untouched.
+	 */
+	adminAccessToken?: string;
+	/** Dev Dashboard credential, exchanged for a short-lived token. */
+	clientId?: string;
+	clientSecret?: string;
 	apiVersion: string;
 	fetchImpl?: ShopifyFetch;
 	/** Injectable so backoff is testable without actually waiting. */
 	sleepImpl?: (ms: number) => Promise<void>;
 };
+
+/**
+ * Where the access token comes from.
+ *
+ * 🔴 Shopify deprecated admin-created custom apps, and with them the permanent
+ * `shpat_…` token. A Dev Dashboard app is issued a client id and secret and
+ * exchanges them for an Admin API token that **expires in 24 hours**
+ * (`expires_in: 86399`). Storing a minted token is therefore a bug with a
+ * one-day fuse: it works the evening an operator pastes it in and 401s the next
+ * morning — which is precisely when somebody is watching a demo.
+ *
+ * So a connection stores the CREDENTIAL, never the token. The token is minted on
+ * demand and cached in memory until shortly before it expires.
+ *
+ * ⚠️ The cache is per process and deliberately not persisted. A token is cheap
+ * to re-mint, a stale one written to a database is not, and a serverless process
+ * that dies takes nothing with it that matters.
+ */
+type CachedToken = { token: string; expiresAt: number };
+
+const tokenCache = new Map<string, CachedToken>();
+
+/** Refresh a minute early: a token that expires in flight reads as a 401. */
+const EXPIRY_MARGIN_MS = 60_000;
+
+/** Drop a cached token — used when Shopify rejects one we believed was live. */
+export function forgetShopifyToken(shopDomain: string, clientId: string): void {
+	tokenCache.delete(`${shopDomain}:${clientId}`);
+}
+
+export async function resolveAccessToken(
+	config: ShopifyConfig,
+): Promise<string> {
+	if (config.adminAccessToken) return config.adminAccessToken;
+
+	const { clientId, clientSecret } = config;
+	if (!clientId || !clientSecret) {
+		throw new ShopifyApiError(
+			"access token",
+			401,
+			"No Shopify credential is configured for this supplier.",
+		);
+	}
+
+	const key = `${config.shopDomain}:${clientId}`;
+	const cached = tokenCache.get(key);
+	if (cached && cached.expiresAt > Date.now()) return cached.token;
+
+	const call = config.fetchImpl ?? fetch;
+	const response = await call(
+		`https://${config.shopDomain}/admin/oauth/access_token`,
+		{
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: new URLSearchParams({
+				grant_type: "client_credentials",
+				client_id: clientId,
+				client_secret: clientSecret,
+			}).toString(),
+		},
+	);
+
+	// 🔴 The body is withheld from the error on purpose: a failed token exchange
+	// can echo the request back, and this string reaches logs and Sentry.
+	if (!response.ok) throw new ShopifyApiError("access token", response.status);
+
+	const body = (await response.json()) as {
+		access_token?: string;
+		expires_in?: number;
+	};
+	if (!body.access_token) {
+		throw new ShopifyApiError("access token", 200, "No token returned.");
+	}
+
+	const lifetimeMs = (body.expires_in ?? 86_399) * 1000;
+	tokenCache.set(key, {
+		token: body.access_token,
+		expiresAt: Date.now() + Math.max(lifetimeMs - EXPIRY_MARGIN_MS, 0),
+	});
+	return body.access_token;
+}
 
 type GraphQLResponse<T> = {
 	data?: T;
@@ -76,6 +164,7 @@ export async function shopifyGraphQL<T>(
 ): Promise<T> {
 	const call = config.fetchImpl ?? fetch;
 	const pause = config.sleepImpl ?? sleep;
+	const accessToken = await resolveAccessToken(config);
 	let lastThrottle: ShopifyApiError | undefined;
 
 	for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
@@ -85,7 +174,7 @@ export async function shopifyGraphQL<T>(
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"X-Shopify-Access-Token": config.adminAccessToken,
+					"X-Shopify-Access-Token": accessToken,
 				},
 				body: JSON.stringify({ query, variables }),
 			},

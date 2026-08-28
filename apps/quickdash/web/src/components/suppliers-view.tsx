@@ -599,6 +599,8 @@ function ConnectionSection({
 	const queryClient = useQueryClient();
 	const [shopDomain, setShopDomain] = useState("");
 	const [token, setToken] = useState("");
+	const [clientId, setClientId] = useState("");
+	const [clientSecret, setClientSecret] = useState("");
 	const [apiVersion, setApiVersion] = useState("2026-07");
 	const [webhookSecret, setWebhookSecret] = useState("");
 	const [replacing, setReplacing] = useState(false);
@@ -642,7 +644,19 @@ function ConnectionSection({
 					supplierId: supplier.id,
 					provider,
 					shopDomain: shopDomain.trim(),
-					adminAccessToken: token.trim(),
+					/**
+					 * 🔴 Shopify deprecated admin-created custom apps, so a permanent
+					 * `shpat_…` cannot be issued for a new store at all. A Dev Dashboard
+					 * app holds a client id and secret and exchanges them for a token
+					 * that expires in 24 hours, which is why the credential is stored
+					 * and the token never is.
+					 *
+					 * The legacy field stays for stores connected before that change.
+					 * Either form is accepted; the API refuses a half-filled one.
+					 */
+					adminAccessToken: token.trim() || undefined,
+					clientId: clientId.trim() || undefined,
+					clientSecret: clientSecret.trim() || undefined,
 					apiVersion: apiVersion.trim(),
 					/**
 					 * 🔴 Without this, tracking never comes back.
@@ -663,6 +677,8 @@ function ConnectionSection({
 		onSuccess: () => {
 			// Cleared immediately. Neither secret has reason to sit in a form field.
 			setToken("");
+			setClientId("");
+			setClientSecret("");
 			setWebhookSecret("");
 			setReplacing(false);
 			setChecked(null);
@@ -722,7 +738,7 @@ function ConnectionSection({
 				<div className="space-y-2">
 					<p className="text-[11.5px] text-[var(--ink-30)] leading-5">
 						{state?.present
-							? "Everything is replaced together. Enter the current store address and a token, whether or not either has changed."
+							? "Everything is replaced together. Enter the current store address and credentials, whether or not either has changed."
 							: "Not connected yet. Orders for this supplier will wait for you to send them by hand."}
 					</p>
 					<TextField
@@ -732,10 +748,25 @@ function ConnectionSection({
 						placeholder="example.myshopify.com"
 					/>
 					<TextField
+						label="Client ID"
+						hint="Dev Dashboard, App settings, Credentials"
+						value={clientId}
+						onChange={setClientId}
+						placeholder="00d61188089568061450ba284d1f9e87"
+					/>
+					<TextField
+						label="Client secret"
+						hint="shown once when you rotate it"
+						value={clientSecret}
+						onChange={setClientSecret}
+						placeholder="shpss_…"
+					/>
+					<TextField
 						label="Access token"
+						hint="only for stores connected before Shopify retired custom apps"
 						value={token}
 						onChange={setToken}
-						placeholder="shpat_…"
+						placeholder="shpat_… (leave empty)"
 					/>
 					<TextField
 						label="API version"
@@ -760,7 +791,9 @@ function ConnectionSection({
 						disabled={
 							connect.isPending ||
 							shopDomain.trim() === "" ||
-							token.trim() === ""
+							// Either credential form, never half of one.
+							(token.trim() === "" &&
+								(clientId.trim() === "" || clientSecret.trim() === ""))
 						}
 						onClick={() => connect.mutate()}
 					>

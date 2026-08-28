@@ -7,6 +7,7 @@ import { inngest } from "@quickengine/jobs";
 import { defaultOutboxHandlers } from "./handlers";
 import { mutationRetention, storageCleanup } from "./storage-cleanup";
 import { renewDueSubscriptions } from "./subscription-renewal";
+import { settlePendingSupplierPayments } from "./supplier-settlement-sweep";
 import { deliverPendingWebhooks } from "./webhooks";
 
 /**
@@ -115,9 +116,35 @@ export const subscriptionRenewal = inngest.createFunction(
 	async () => renewDueSubscriptions(),
 );
 
+/**
+ * The scheduled supplier settlement sweep.
+ *
+ * 🔴 This is the ONLY thing that pays a supplier who was not ready when the
+ * order was. `order.paid` records the obligation and attempts it once; if the
+ * supplier has not finished connecting their payout account it stays
+ * `calculated`, and nothing else would ever come back to it — the outbox gives
+ * up after eight attempts, so an order paid on Monday would never settle for a
+ * supplier who onboarded on Wednesday.
+ *
+ * ⚠️ Every fifteen minutes, not every minute. A supplier finishing onboarding is
+ * a human action measured in days; checking sixty times an hour buys nothing and
+ * multiplies contention. `concurrency: 1` because each row is claimed before the
+ * provider is called and serialising removes the rest.
+ */
+export const supplierSettlementSweep = inngest.createFunction(
+	{
+		id: "supplier-settlement-sweep",
+		concurrency: 1,
+		retries: 0, // A failed cycle is recorded on the row; the next cycle retries.
+		triggers: [{ cron: "*/15 * * * *" }],
+	},
+	async () => settlePendingSupplierPayments(),
+);
+
 /** Durable functions this package contributes to the Inngest serve endpoint. */
 export const eventDispatchFunctions = [
 	outboxDispatch,
+	supplierSettlementSweep,
 	subscriptionRenewal,
 	webhookDelivery,
 	storageCleanup,

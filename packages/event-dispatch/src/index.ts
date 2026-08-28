@@ -16,5 +16,6 @@ export * from "./subscription-renewal";
 export * from "./supplier-handoff";
 export * from "./supplier-refund";
 export * from "./supplier-settlement";
+export * from "./supplier-settlement-sweep";
 export * from "./webhook-security";
 export * from "./webhooks";

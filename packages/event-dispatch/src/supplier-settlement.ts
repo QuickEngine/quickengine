@@ -160,11 +160,31 @@ export function supplierSettlementHandler(
 				}
 			}
 
-			// Hands the retry to the outbox, which already has backoff and a cap.
+			/**
+			 * 🔴 NEVER THROWS, however retryable the refusal.
+			 *
+			 * This used to throw so the outbox would retry. That was wrong, and it
+			 * caused real harm on 2026-08-28: the drain re-runs EVERY handler when
+			 * any one of them fails, so a supplier who had not finished connecting
+			 * their payout account made `order.paid` retry once a minute — and the
+			 * customer was emailed their order confirmation again on every attempt.
+			 * Four identical emails before it was stopped by hand.
+			 *
+			 * ⚠️ "Handlers must be idempotent" cannot save this. Sending an email is
+			 * not idempotent — there is no un-send — so a handler that forces a
+			 * retry is charging every other handler for its own incompleteness.
+			 *
+			 * 🔑 The obligation stays `calculated` and `settlePendingSupplierPayments`
+			 * picks it up on its own schedule. That is a better retry anyway: it
+			 * survives the outbox exhausting its eight attempts, and it settles a
+			 * supplier who finishes onboarding days after the order was placed.
+			 */
 			if (retryable) {
-				throw new Error(
-					`Supplier settlement for order ${orderId} could not complete yet.`,
-				);
+				log("supplier-settlement.deferred", {
+					eventId: event.id,
+					orderId,
+					note: "left calculated for the settlement sweep",
+				});
 			}
 		},
 	};

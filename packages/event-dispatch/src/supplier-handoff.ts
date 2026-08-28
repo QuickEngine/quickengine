@@ -100,28 +100,52 @@ export function supplierHandoffHandler(
 			 */
 			const { workspaceEnvironment } = await import("@quickengine/db");
 			const environment = await workspaceEnvironment(event.workspaceId);
-			if (environment === "test") {
-				for (const purchaseOrder of raised) {
-					await markPurchaseOrderSent({
-						workspaceId: event.workspaceId,
-						purchaseOrderId: purchaseOrder.id,
-						// Refused on purpose. See the note on `unsentStatus`.
-						unsentStatus: "skipped_sandbox",
-						failureReason:
-							"This workspace is in sandbox, so nothing was sent to the supplier. Switch to live to place real orders.",
-					});
-				}
+
+			/**
+			 * 🔑 The exception, and the ONLY one: a supplier who has agreed.
+			 *
+			 * The danger the guard prevents is a supplier who does not know a
+			 * rehearsal is coming. Once one has said yes, that danger is gone for
+			 * them and for nobody else — which is why the opt-in lives on the
+			 * supplier rather than on the workspace. A workspace-wide switch would
+			 * also un-guard every other supplier, including ones added later by
+			 * somebody who never saw this conversation.
+			 */
+			const sendable =
+				environment === "test"
+					? raised.filter(
+							(purchaseOrder) => purchaseOrder.sandboxHandoffEnabled,
+						)
+					: raised;
+			const withheld =
+				environment === "test"
+					? raised.filter(
+							(purchaseOrder) => !purchaseOrder.sandboxHandoffEnabled,
+						)
+					: [];
+
+			for (const purchaseOrder of withheld) {
+				await markPurchaseOrderSent({
+					workspaceId: event.workspaceId,
+					purchaseOrderId: purchaseOrder.id,
+					// Refused on purpose. See the note on `unsentStatus`.
+					unsentStatus: "skipped_sandbox",
+					failureReason:
+						"This workspace is in sandbox, so nothing was sent to the supplier. Switch to live, or let this supplier receive rehearsals, to place orders.",
+				});
+			}
+			if (withheld.length > 0) {
 				log("supplier-handoff.skipped_sandbox", {
 					eventId: event.id,
 					orderId,
-					raised: raised.length,
+					raised: withheld.length,
 				});
-				return;
 			}
+			if (sendable.length === 0) return;
 
-			for (const purchaseOrder of raised) {
+			for (const purchaseOrder of sendable) {
 				if (purchaseOrder.handoffMethod === "email") {
-					await sendByEmail(event, purchaseOrder, log);
+					await sendByEmail(event, purchaseOrder, log, environment);
 					continue;
 				}
 				if (isAutomatedHandoff(purchaseOrder.handoffMethod)) {
@@ -141,6 +165,7 @@ async function sendByEmail(
 	event: OutboxEvent,
 	purchaseOrder: RaisedPurchaseOrder,
 	log: (message: string, detail: Record<string, unknown>) => void,
+	environment: "test" | "live",
 ) {
 	// A redelivery of an order already emailed must not email it twice.
 	if (purchaseOrder.alreadyExisted && purchaseOrder.status !== "draft") return;
@@ -180,14 +205,28 @@ async function sendByEmail(
 			return;
 		}
 
-		const body = renderPurchaseOrder(purchaseOrder);
+		/**
+		 * 🔴 A rehearsal must be impossible to mistake for a real order.
+		 *
+		 * A supplier who agreed to receive tests last week can still forget this
+		 * morning, and the cost of them forgetting is real coffee roasted, bagged
+		 * and shipped for a sale that never happened. So it is said in the SUBJECT
+		 * — where it cannot be missed by someone skim-reading an inbox — and again
+		 * at the top of the body, rather than in a footer nobody reads.
+		 */
+		const rehearsal = environment === "test";
+		const body = rehearsal
+			? `*** TEST ORDER — DO NOT FULFIL ***\n\nThis is a rehearsal from a sandbox workspace. No customer has paid for this and nothing should be roasted, packed or shipped.\n\n${renderPurchaseOrder(purchaseOrder)}`
+			: renderPurchaseOrder(purchaseOrder);
 		await getEmailProvider().send({
 			to,
 			// 🔑 From the BUSINESS. A supplier has no relationship with the platform.
 			from: brand.sender,
 			// Replies go to the humans, not to the sending mailbox.
 			replyTo: brand.supportEmail,
-			subject: `Purchase order ${purchaseOrder.number} from ${brand.name}`,
+			subject: rehearsal
+				? `[TEST — DO NOT FULFIL] Purchase order ${purchaseOrder.number} from ${brand.name}`
+				: `Purchase order ${purchaseOrder.number} from ${brand.name}`,
 			// Plain text on purpose: a purchase order is read by somebody keying it
 			// into their own system, and no branding of ours belongs anywhere near it.
 			html: `<pre style="font:14px/1.5 monospace;white-space:pre-wrap">${body}</pre>`,

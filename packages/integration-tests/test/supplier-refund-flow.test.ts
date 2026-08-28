@@ -186,12 +186,15 @@ describe("a refunded customer pulls the supplier's share back", () => {
 			update supplier_payment_accounts set transfers_enabled = 'no'
 			where workspace_id = ${workspaceId}
 		`;
+		// ⚠️ Resolves rather than throws: forcing an outbox retry re-ran every other
+		// handler and emailed the customer once per attempt. See the settlement
+		// handler's note. The obligation is left `calculated` for the sweep.
 		await expect(
 			supplierSettlementHandler(
 				() => {},
 				vi.fn(async () => ({ externalTransferId: "x", amountCents: 0 })),
 			).handle(paidEvent()),
-		).rejects.toThrow();
+		).resolves.toBeUndefined();
 
 		const reverse = vi.fn(async (i: { amountCents: number }) => ({
 			reversedCents: i.amountCents,

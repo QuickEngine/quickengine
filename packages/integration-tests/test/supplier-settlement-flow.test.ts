@@ -1,5 +1,8 @@
 import { testDbClient } from "@quickengine/db/testing";
-import { supplierSettlementHandler } from "@quickengine/event-dispatch";
+import {
+	settlePendingSupplierPayments,
+	supplierSettlementHandler,
+} from "@quickengine/event-dispatch";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -163,7 +166,13 @@ describe("a paid order settles its supplier", () => {
 	 * ⚠️ A supplier who has not finished connecting is a RETRYABLE refusal: the
 	 * handler throws so the outbox tries again with backoff, and no money moves.
 	 */
-	it("does not pay a supplier who cannot receive yet", async () => {
+	/**
+	 * 🔴 It must NOT throw. This handler used to, so the outbox would retry — and
+	 * the drain re-runs every OTHER handler on retry, so the customer was emailed
+	 * their order confirmation once per attempt. Four identical emails reached a
+	 * real inbox on 2026-08-28 before it was stopped by hand.
+	 */
+	it("does not pay, and does not throw, when the supplier cannot receive yet", async () => {
 		const sql = testDbClient();
 		await sql`
 			update supplier_payment_accounts set transfers_enabled = 'no'
@@ -172,7 +181,56 @@ describe("a paid order settles its supplier", () => {
 		const transfer = transferOk();
 		await expect(
 			supplierSettlementHandler(() => {}, transfer).handle(paidEvent()),
-		).rejects.toThrow();
+		).resolves.toBeUndefined();
+		expect(transfer).not.toHaveBeenCalled();
+
+		// Left for the sweep, not abandoned.
+		const [row] = await sql`
+			select status from supplier_payments where workspace_id = ${workspaceId}
+		`;
+		expect(row.status).toBe("calculated");
+	});
+
+	/**
+	 * 🔑 The sweep is the only thing that pays a supplier who finishes onboarding
+	 * after the order was placed. The outbox gives up after eight attempts; this
+	 * has no such horizon.
+	 */
+	it("settles later, once the supplier can receive", async () => {
+		const sql = testDbClient();
+		await sql`
+			update supplier_payment_accounts set transfers_enabled = 'no'
+			where workspace_id = ${workspaceId}
+		`;
+		await supplierSettlementHandler(() => {}, transferOk()).handle(paidEvent());
+
+		// The supplier finishes connecting their account, days later.
+		await sql`
+			update supplier_payment_accounts set transfers_enabled = 'yes'
+			where workspace_id = ${workspaceId}
+		`;
+		const transfer = transferOk();
+		const result = await settlePendingSupplierPayments({
+			transferer: transfer,
+		});
+
+		expect(result.settled).toBe(1);
+		expect(transfer).toHaveBeenCalledTimes(1);
+		expect(transfer.mock.calls[0]?.[0]?.amountCents).toBe(1500);
+
+		const [row] = await sql`
+			select status from supplier_payments where workspace_id = ${workspaceId}
+		`;
+		expect(row.status).toBe("succeeded");
+	});
+
+	/** ⚠️ Running the sweep repeatedly must never pay twice. */
+	it("is safe to sweep again", async () => {
+		await supplierSettlementHandler(() => {}, transferOk()).handle(paidEvent());
+		const transfer = transferOk();
+		await settlePendingSupplierPayments({ transferer: transfer });
+		await settlePendingSupplierPayments({ transferer: transfer });
+		// Already succeeded during the handler, so the sweep has nothing to do.
 		expect(transfer).not.toHaveBeenCalled();
 	});
 });

@@ -1,4 +1,5 @@
 import {
+	boolean,
 	index,
 	integer,
 	pgTable,
@@ -87,6 +88,27 @@ export const suppliers = pgTable(
 		/** Working days between the supplier receiving an order and shipping it. */
 		leadTimeDays: integer("lead_time_days"),
 		notes: text("notes"),
+		/**
+		 * Let a SANDBOX order actually reach this supplier.
+		 *
+		 * 🔴 Off by default, and it must stay that way. The sandbox guard exists
+		 * because supplier connections carry no mode — one Shopify store, one
+		 * token, one Collective link — so without it a test checkout placed a
+		 * genuine order and a supplier shipped real goods for a sale that never
+		 * happened.
+		 *
+		 * 🔑 The danger is a supplier who does not KNOW a rehearsal is coming. Once
+		 * one has agreed to receive tests, that danger is gone for them and nobody
+		 * else, which is why this is per-supplier rather than a workspace switch —
+		 * a workspace-wide flag would also un-guard every supplier who never
+		 * agreed to anything.
+		 *
+		 * ⚠️ What is sent while this is on is marked as a test in its subject and
+		 * body, so a supplier who forgets cannot mistake it for a real order.
+		 */
+		sandboxHandoffEnabled: boolean("sandbox_handoff_enabled")
+			.notNull()
+			.default(false),
 		/**
 		 * Archived rather than deleted: orders already sent to a supplier must keep
 		 * naming who fulfilled them long after the relationship ends.

@@ -66,6 +66,15 @@ export type RaisedPurchaseOrder = {
 	supplierName: string;
 	handoffMethod: string;
 	handoffTarget: string | null;
+	/**
+	 * Whether this supplier has agreed to receive SANDBOX orders.
+	 *
+	 * 🔑 Read from the supplier, never snapshotted onto the purchase order:
+	 * agreeing to rehearsals is a fact about the relationship right now, and
+	 * withdrawing it must take effect immediately rather than when the next
+	 * order happens to be raised.
+	 */
+	sandboxHandoffEnabled: boolean;
 	contactEmail: string | null;
 	lines: Array<{
 		supplierSku: string;
@@ -275,6 +284,7 @@ export async function raisePurchaseOrdersForOrder(input: {
 				supplierName: supplier.name,
 				handoffMethod: existing.handoffMethod,
 				handoffTarget: existing.handoffTarget,
+				sandboxHandoffEnabled: supplier.sandboxHandoffEnabled,
 				contactEmail: supplier.contactEmail,
 				lines: group.map((row) => ({
 					supplierSku: row.supplierSku,
@@ -309,6 +319,7 @@ export async function raisePurchaseOrdersForOrder(input: {
 			supplierName: supplier.name,
 			handoffMethod: supplier.handoffMethod,
 			handoffTarget: created.handoffTarget,
+			sandboxHandoffEnabled: supplier.sandboxHandoffEnabled,
 			contactEmail: supplier.contactEmail,
 			lines: group.map((row) => ({
 				supplierSku: row.supplierSku,

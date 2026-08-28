@@ -8,6 +8,12 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Connecting a Shopify supplier works on stores created today.** Shopify has retired the kind of app
+  that hands you a permanent access token, so a newly created store had no way to give us one at all.
+  You now connect with the client ID and secret from your app's settings, and the access token is
+  fetched behind the scenes and renewed before it runs out. Stores connected the old way keep working
+  exactly as they did.
+
 - **Your customer hears back when you answer them.** Replying to a message left it sitting in a portal
   the customer had no reason to open again, so from their side the question went unanswered. They now
   get an email telling them there is a reply. It carries a notice rather than the message itself, so

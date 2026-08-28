@@ -153,9 +153,14 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		supplierId: SUPPLIER,
 		provider: "shopify",
 		shopDomain: "example.myshopify.com",
-		// Illustrative only. The real token is write-only and no route ever
-		// returns one.
-		adminAccessToken: "shpat_example_token",
+		// Illustrative only. Both are write-only and no route ever returns them.
+		//
+		// Client credentials rather than a token: Shopify retired admin-created
+		// custom apps, so a new store cannot be issued a permanent one. These are
+		// exchanged for a token that expires in 24 hours. `adminAccessToken` is
+		// still accepted for stores connected before that change.
+		clientId: "00000000000000000000000000000000",
+		clientSecret: "shpss_example_secret",
 		apiVersion: "2026-07",
 	},
 	checkSupplierConnection: { supplierId: SUPPLIER, provider: "shopify" },

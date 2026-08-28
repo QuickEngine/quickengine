@@ -56,6 +56,8 @@ const configFor = (
 ): ShopifyConfig => ({
 	shopDomain: connection.shopDomain,
 	adminAccessToken: connection.adminAccessToken,
+	clientId: connection.clientId,
+	clientSecret: connection.clientSecret,
 	apiVersion: connection.apiVersion,
 	fetchImpl,
 	sleepImpl,

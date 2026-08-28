@@ -26,16 +26,37 @@ import {
  * `openapi-examples.ts` are linked by operationId STRINGS, which no import graph
  * can see — see hard rule 13.
  */
-export const supplierConnectionInputSchema = z.object({
-	supplierId: z.uuid(),
-	provider: z.string().min(1).max(40),
-	shopDomain: z.string().min(1).max(255),
-	/** 🔴 Write-only. Never echoed back by any route. */
-	adminAccessToken: z.string().min(1).max(500),
-	webhookSecret: z.string().max(500).optional(),
-	/** Pinned, so a provider moving its API forward does not move ours. */
-	apiVersion: z.string().min(1).max(20),
-});
+export const supplierConnectionInputSchema = z
+	.object({
+		supplierId: z.uuid(),
+		provider: z.string().min(1).max(40),
+		shopDomain: z.string().min(1).max(255),
+		/**
+		 * 🔴 Write-only. Never echoed back by any route.
+		 *
+		 * Optional since Shopify deprecated admin-created custom apps: a Dev
+		 * Dashboard app has no permanent token, only a client id and secret it
+		 * exchanges for a 24-hour one. Either form is accepted, and the refine below
+		 * insists on exactly one being usable so a half-filled form cannot be saved
+		 * as a working connection.
+		 */
+		adminAccessToken: z.string().min(1).max(500).optional(),
+		clientId: z.string().min(1).max(255).optional(),
+		clientSecret: z.string().min(1).max(500).optional(),
+		webhookSecret: z.string().max(500).optional(),
+		/** Pinned, so a provider moving its API forward does not move ours. */
+		apiVersion: z.string().min(1).max(20),
+	})
+	.refine(
+		(input) =>
+			Boolean(input.adminAccessToken) ||
+			Boolean(input.clientId && input.clientSecret),
+		{
+			message:
+				"Provide an admin access token, or both a client id and client secret.",
+			path: ["adminAccessToken"],
+		},
+	);
 
 /** Which connection to verify. */
 export const supplierConnectionCheckSchema = z.object({
@@ -99,6 +120,8 @@ export async function resolveSupplierConnection(input: {
 		shopDomain: credentials.shopDomain,
 		apiVersion: credentials.apiVersion,
 		adminAccessToken: credentials.adminAccessToken,
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret,
 		webhookSecret: credentials.webhookSecret,
 	};
 }

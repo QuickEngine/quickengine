@@ -64,8 +64,18 @@ function encryptionKey(): Buffer {
  * are in the webhook path rather than in its body.
  */
 export type SupplierCredentials = {
-	/** The Admin API access token. Never leaves the server. */
-	adminAccessToken: string;
+	/**
+	 * A legacy permanent Admin API token. Never leaves the server.
+	 *
+	 * 🔴 Optional since Shopify deprecated admin-created custom apps. A Dev
+	 * Dashboard app has no permanent token at all — it holds a client id and
+	 * secret and mints a 24-hour token on demand. Stores connected before that
+	 * change still carry a token here and must keep working.
+	 */
+	adminAccessToken?: string;
+	/** Dev Dashboard client credentials, exchanged for a short-lived token. */
+	clientId?: string;
+	clientSecret?: string;
 	/** Shared secret used to verify that supplier's inbound webhooks. */
 	webhookSecret?: string;
 	/** The account the token belongs to — a shop domain, an API base. */

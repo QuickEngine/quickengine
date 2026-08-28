@@ -6,10 +6,7 @@ import {
 	purgeDeletingFileDocument,
 	type StorageProviderResolver,
 } from "@quickengine/mod-files";
-import {
-	createLocalStorageProvider,
-	createVercelBlobStorageProvider,
-} from "@quickengine/storage";
+import { resolveStorageProviderByName } from "@quickengine/storage";
 
 /**
  * Free the bytes behind documents that were permanently deleted.
@@ -41,25 +38,16 @@ import {
 /**
  * The provider a stored version belongs to.
  *
- * Matches the selection in `quickdash-routes.ts`: Vercel Blob when a token is
- * configured, otherwise local. Resolved by NAME rather than assumed, because a
- * workspace may hold versions written before the provider changed, and deleting
- * with the wrong one silently leaves bytes behind.
+ * 🔴 Resolved by the NAME recorded beside the object, never assumed. A workspace
+ * holds versions written before the provider changed, and deleting with the
+ * wrong one silently leaves the bytes behind — the storage bill keeps growing
+ * for files everybody believes are gone.
  */
-const resolveProvider: StorageProviderResolver = (name) => {
-	const blob = process.env.BLOB_READ_WRITE_TOKEN
-		? createVercelBlobStorageProvider({
-				token: process.env.BLOB_READ_WRITE_TOKEN,
-				storeId: process.env.BLOB_STORE_ID,
-			})
-		: undefined;
-	const local = createLocalStorageProvider(
+const resolveProvider: StorageProviderResolver = (name) =>
+	resolveStorageProviderByName(
+		name,
 		process.env.QUICKDASH_ADMIN_URL ?? "http://localhost:3011",
 	);
-	if (blob && name === blob.name) return blob;
-	if (name === local.name) return local;
-	return undefined;
-};
 
 /** How many documents one cycle will purge. Bounded so a backlog cannot hold the worker. */
 const BATCH = 25;

@@ -7,6 +7,7 @@ import {
 	isNull,
 	supplierSkus,
 	suppliers,
+	workspaceCurrency,
 } from "@quickengine/db";
 import { z } from "zod";
 
@@ -48,6 +49,14 @@ export const supplierInputSchema = z.object({
 	handoffTarget: z.string().trim().max(500).nullish(),
 	leadTimeDays: z.number().int().min(0).max(365).nullish(),
 	notes: z.string().trim().max(5000).nullish(),
+	/**
+	 * Let SANDBOX orders reach this supplier.
+	 *
+	 * ⚠️ Only for a supplier who has agreed to receive rehearsals. What they get
+	 * is marked as a test in its subject and body, but the real protection is
+	 * that somebody asked them first.
+	 */
+	sandboxHandoffEnabled: z.boolean().optional(),
 });
 
 export const supplierPatchSchema = supplierInputSchema.partial().extend({
@@ -61,7 +70,14 @@ export const supplierSkuInputSchema = z.object({
 	supplierName: z.string().trim().max(200).nullish(),
 	/** Integer cents, matching every other money value in this schema. */
 	unitCostCents: z.number().int().min(0).nullish(),
-	currency: z.string().trim().length(3).default("USD"),
+	/**
+	 * 🔴 NO DEFAULT. It used to default to `"USD"`, and a supplier SKU whose
+	 * currency does not match its product is SKIPPED at checkout rather than
+	 * converted — so the supplier is never paid and nothing reports it. A
+	 * default that silently disables payment is worse than an absent value.
+	 * Left out, it is filled from the WORKSPACE's currency on write.
+	 */
+	currency: z.string().trim().length(3).optional(),
 	leadTimeDays: z.number().int().min(0).max(365).nullish(),
 });
 
@@ -200,10 +216,19 @@ export async function createSupplierSku(
 		.limit(1);
 	if (!item) throw new SupplierError("CATALOG_ITEM_NOT_FOUND");
 
+	/**
+	 * 🔑 The workspace's own currency, not a hard-coded one.
+	 *
+	 * A caller that names a currency is believed — a supplier genuinely may
+	 * invoice in another one, and that case is refused later, loudly, rather
+	 * than converted. What must never happen is a currency nobody chose.
+	 */
+	const currency = input.currency ?? (await workspaceCurrency(workspaceId));
+
 	try {
 		const [row] = await db
 			.insert(supplierSkus)
-			.values({ ...input, workspaceId })
+			.values({ ...input, currency, workspaceId })
 			.returning();
 		return row;
 	} catch (error) {

@@ -216,19 +216,11 @@ export function registerProductsServicesRoutes(
 
 	/** Provider for things the public web reads. Loaded lazily — hard rule 12. */
 	const publicAssets = async (origin: string) => {
-		const { createLocalStorageProvider, createVercelBlobStorageProvider } =
-			await import("@quickengine/storage");
-		// 🔴 A SEPARATE Blob store from the private one, not a flag on it: public
-		// and private access is fixed per store at creation. Separate credentials
-		// mean a signed contract has no route into the public store at all.
-		return process.env.PUBLIC_BLOB_READ_WRITE_TOKEN ||
-			process.env.PUBLIC_BLOB_STORE_ID
-			? createVercelBlobStorageProvider({
-					token: process.env.PUBLIC_BLOB_READ_WRITE_TOKEN,
-					oidcToken: process.env.VERCEL_OIDC_TOKEN,
-					storeId: process.env.PUBLIC_BLOB_STORE_ID,
-				})
-			: createLocalStorageProvider(origin);
+		const { publicAssetProviderFromEnv } = await import("@quickengine/storage");
+		// 🔴 A SEPARATE bucket from the private one, not a flag on it. Public and
+		// private access is fixed per bucket, so a signed contract has no route
+		// into the public one at all. See `publicAssetProviderFromEnv`.
+		return publicAssetProviderFromEnv(origin);
 	};
 
 	const imagesOf = (metadata: unknown) => {

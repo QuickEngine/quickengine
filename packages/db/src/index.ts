@@ -39,6 +39,7 @@ export * from "./slug";
 export * from "./support-bundle";
 export * from "./workspace-audit";
 export * from "./workspace-branding";
+export * from "./workspace-currency";
 export * from "./workspace-email-templates";
 export * from "./workspace-home";
 export * from "./workspace-input";

@@ -40,10 +40,7 @@ import {
 	resolveFirstActions,
 } from "@quickengine/module-registry";
 import { getSearchProvider } from "@quickengine/search";
-import {
-	createLocalStorageProvider,
-	createVercelBlobStorageProvider,
-} from "@quickengine/storage";
+import { storageProviderFromEnv } from "@quickengine/storage";
 import type { Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
@@ -102,13 +99,7 @@ export function registerQuickDashRoutes(
 		sessionCapability: "workspace.view",
 	});
 
-	const storageProvider = (origin: string) =>
-		process.env.BLOB_READ_WRITE_TOKEN
-			? createVercelBlobStorageProvider({
-					token: process.env.BLOB_READ_WRITE_TOKEN,
-					storeId: process.env.BLOB_STORE_ID,
-				})
-			: createLocalStorageProvider(origin);
+	const storageProvider = (origin: string) => storageProviderFromEnv(origin);
 
 	const sessionIdentity = (c: {
 		get(name: "authorized"): {

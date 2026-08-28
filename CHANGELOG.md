@@ -8,6 +8,57 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **One order, one confirmation email.** A supplier who had not finished connecting the account they
+  get paid into caused a paid order to be retried again and again, and the customer received their
+  order confirmation on every attempt. Supplier payment is now retried on its own, quietly, without
+  making anything else happen twice.
+
+- **A supplier still gets paid if they finish setting up later.** Payment for an order used to be
+  attempted a fixed number of times and then abandoned, so a supplier who connected their account a
+  few days after the sale would never have been paid for it. What is owed is now revisited regularly
+  until it settles, however long that takes.
+
+
+### Added
+
+- **Rehearse a real order with a supplier who has agreed to it.** Sandbox deliberately never sends
+  anything to a supplier, because nothing downstream can tell a rehearsal from a real order and a
+  supplier could end up shipping goods for a sale that never happened. You can now let one specific
+  supplier receive sandbox orders, so you can prove the whole flow together before going live. It is
+  off for every supplier until you turn it on, it applies to that supplier alone, and what they
+  receive says clearly in its subject and its first line that it is a test and must not be fulfilled.
+
+
+### Fixed
+
+- **The currency you set is the currency your workspace uses.** Each part of the product kept its own
+  idea of which money you deal in, all of them starting at US dollars, and the setting only changed
+  one of them. That was not just a display problem: a supplier cost saved in a currency your product
+  does not share is skipped rather than converted, so that supplier would never have been paid and
+  nothing would have said why. Supplier costs now take the workspace's own currency unless you name a
+  different one deliberately.
+
+
+### Added
+
+- **A rehearsal that proves supplier payments against the real payment provider.** The existing tests
+  prove the logic by standing in for the provider, which cannot catch something the provider itself
+  would reject. An opt-in rehearsal now runs the whole path for real in test mode: a paid order pays
+  its supplier, the same order arriving three times pays them once, the supplier's own statement
+  names the business and the order, and a refund pulls the money back. It is skipped unless
+  deliberately switched on, so ordinary test runs never depend on the provider being reachable.
+
+
+- **Take a verified backup of your database.** `pnpm db:backup --out <directory>` writes a compressed
+  dump, then reads it back and refuses to keep one it cannot open, so a backup can never quietly be
+  unusable. It writes only what QuickEngine owns rather than anything the hosting provider keeps
+  alongside it, which is what lets the same file be restored somewhere else entirely. Old backups are
+  pruned only after a new one has been written and checked, and files are readable only by the person
+  who took them.
+
+
+### Fixed
+
 - **Works behind a shared connection pooler.** Some hosted Postgres providers put a
   transaction-mode pooler in front of the database, where a saved query plan cannot be relied on
   between statements. QuickEngine now notices when it is talking to one and stops reusing plans,

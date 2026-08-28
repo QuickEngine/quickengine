@@ -1,0 +1,1 @@
+ALTER TABLE "suppliers" ADD COLUMN "sandbox_handoff_enabled" boolean DEFAULT false NOT NULL;

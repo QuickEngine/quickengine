@@ -54,6 +54,7 @@
 		"ci:local:secrets": "act push --workflows .github/workflows/secrets-scan.yml",
 		"db:generate": "pnpm --filter @quickengine/db db:generate",
 		"db:restore-drill": "pnpm --filter @quickengine/db db:restore-drill",
+		"db:backup": "node packages/db/backup.mjs",
 		"db:migrate": "pnpm --filter @quickengine/db db:migrate",
 		"db:push": "pnpm --filter @quickengine/db db:push",
 		"db:studio": "pnpm --filter @quickengine/db db:studio",

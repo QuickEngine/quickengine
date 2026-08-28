@@ -25,6 +25,7 @@ import {
 	supplierConnectionInputSchema,
 	supplierInputSchema,
 	supplierPatchSchema,
+	supplierPayoutOnboardingSchema,
 	supplierSkuInputSchema,
 	supplierSkuPatchSchema,
 } from "@quickengine/mod-inventory";
@@ -226,6 +227,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createFulfillment: createFulfillmentInputSchema,
 	createInventoryItem: inventoryItemInputSchema,
 	updateInventoryItem: inventoryItemInputSchema,
+	connectSupplierPaymentAccount: supplierPayoutOnboardingSchema,
 	createSupplier: supplierInputSchema,
 	updateSupplier: supplierPatchSchema,
 	createSupplierSku: supplierSkuInputSchema,

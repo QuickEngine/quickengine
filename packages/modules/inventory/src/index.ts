@@ -4,6 +4,7 @@ export * from "./inventory";
 export * from "./inventory-items";
 export * from "./module";
 export * from "./purchase-orders";
+export * from "./supplier-accounts";
 export * from "./supplier-connections";
 export * from "./supplier-credentials";
 export * from "./supplier-settlement";

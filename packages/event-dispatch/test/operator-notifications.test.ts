@@ -93,7 +93,9 @@ describe("operator notifications", () => {
 		expect(rows.map((row) => row.userId).sort()).toEqual(
 			[ownerId, secondId].sort(),
 		);
-		expect(rows[0].signal).toBe("news");
+		// 🔴 `attention`, not `news`: a paid order reaches an inbox, because
+		// money has changed hands and somebody is now owed a parcel.
+		expect(rows[0].signal).toBe("attention");
 		// Slug, not uuid — the link has to read as the business.
 		expect(rows[0].href).toBe("/coffee-shop/orders");
 	});
@@ -114,8 +116,11 @@ describe("operator notifications", () => {
 		expect(await inbox()).toHaveLength(2);
 	});
 
-	it("carries the three signals, and stays quiet about everything else", async () => {
+	it("carries its signals, and stays quiet about everything else", async () => {
 		await emit("order.paid", {});
+		// `news` still exists as a level; nothing in this set currently uses it,
+		// which is the point — routine progress does not interrupt anybody.
+		await emit("customer.message.received", { conversationId: null });
 		await emit("payment.status-changed", { status: "disputed" });
 		await emit("shipment.status-changed", { status: "exception" });
 		// Ordinary bookkeeping. The activity feed has it; the bell should not.
@@ -128,9 +133,9 @@ describe("operator notifications", () => {
 
 		const rows = await inbox();
 		const signals = new Set(rows.map((row) => row.signal));
-		expect(signals).toEqual(new Set(["news", "attention", "failure"]));
-		// Three qualifying events, two members.
-		expect(rows).toHaveLength(6);
+		expect(signals).toEqual(new Set(["attention", "failure"]));
+		// Four qualifying events, two members.
+		expect(rows).toHaveLength(8);
 	});
 
 	it("warns when an adjustment leaves an item at or below its threshold", async () => {

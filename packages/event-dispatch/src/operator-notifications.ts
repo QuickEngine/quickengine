@@ -28,7 +28,7 @@ import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
  * emailing itself.
  */
 
-type Notice = {
+export type Notice = {
 	type: string;
 	/** How loudly to say it. See the column comment on `notifications.signal`. */
 	signal: "news" | "attention" | "failure";
@@ -67,10 +67,42 @@ async function noticeFor(event: OutboxEvent): Promise<Notice | null> {
 	if (event.eventName === "order.paid") {
 		return {
 			type: "order.paid",
-			signal: "news",
+			/**
+			 * 🔴 `attention`, so it reaches an inbox and not only the bell.
+			 *
+			 * It was `news`, which meant a business running its first orders was
+			 * never told one had arrived unless it happened to have the dashboard
+			 * open. A paid order is the one notice where somebody is waiting: money
+			 * has changed hands and a person now owes them a parcel. That is a
+			 * decision needed soon, which is exactly what `attention` means.
+			 *
+			 * ⚠️ Revisit at volume. The reasoning behind keeping routine progress
+			 * out of the inbox is sound — three notices per order times a hundred
+			 * orders a day is a channel people filter — but shipped and delivered
+			 * remain `news`, so this adds ONE email per order rather than three.
+			 */
+			signal: "attention",
 			title: "New order",
 			body: "An order has been paid for and is ready to work on.",
 			path: "/orders",
+		};
+	}
+
+	/**
+	 * 🔴 Money leaving the business, which nothing used to report.
+	 *
+	 * A refund is usually deliberate, so this is `attention` rather than
+	 * `failure` — but it is never routine. A team member refunding an order, or a
+	 * dispute resolving against the business, both move real money out, and
+	 * before this the only way to find out was the bank statement.
+	 */
+	if (event.eventName === "payment.refunded") {
+		return {
+			type: "payment.refunded",
+			signal: "attention",
+			title: "A refund was issued",
+			body: "Money has been returned to a customer. If the order had a supplier, their share has been pulled back too.",
+			path: "/payments",
 		};
 	}
 
@@ -118,7 +150,13 @@ async function noticeFor(event: OutboxEvent): Promise<Notice | null> {
 	if (event.eventName === "customer.message.received") {
 		return {
 			type: "customer.message",
-			signal: "news",
+			/**
+			 * 🔴 `attention`, not `news`. Somebody has asked a question and is
+			 * waiting for an answer — the definition of needing a decision soon.
+			 * As `news` it reached the bell only, so a customer emailing at the
+			 * weekend went unanswered until somebody happened to open the tab.
+			 */
+			signal: "attention",
 			title: "New message",
 			body: "A customer is waiting on a reply.",
 			path: "/client-records/messages",
@@ -165,7 +203,19 @@ async function noticeFor(event: OutboxEvent): Promise<Notice | null> {
 		if (status === "shipped") {
 			return {
 				type: "shipment.shipped",
-				signal: "news",
+				/**
+				 * 🔴 `attention`, so it reaches an inbox.
+				 *
+				 * This is the supplier's half of the loop closing: they have made
+				 * and sent the goods. Once a supplier reports tracking automatically
+				 * it is the first the business hears of it, and waiting to notice it
+				 * in a tab is how a customer ends up chasing.
+				 *
+				 * ⚠️ While the handoff is by EMAIL the operator records the shipment
+				 * themselves, so this notifies them of their own action. That is the
+				 * cost of having it ready for when the supplier reports it instead.
+				 */
+				signal: "attention",
 				title: "Order shipped",
 				body: "A parcel is on its way to a customer.",
 				path: "/shipping",
@@ -174,7 +224,9 @@ async function noticeFor(event: OutboxEvent): Promise<Notice | null> {
 		if (status === "delivered") {
 			return {
 				type: "shipment.delivered",
-				signal: "news",
+				// The order is complete and nothing is owed. Emailed because a solo
+				// operator is watching for the loop to close, not only for failures.
+				signal: "attention",
 				title: "Order delivered",
 				body: "A parcel reached its customer.",
 				path: "/shipping",
@@ -294,6 +346,83 @@ async function defaultSendNotice(input: {
 	// mail SDK into its module graph.
 	const { getEmailProvider } = await import("@quickengine/email");
 	return getEmailProvider().send(input);
+}
+
+/**
+ * Tell everyone who runs a workspace about something.
+ *
+ * 🔴 Extracted so a producer that is NOT an outbox event can raise a notice.
+ * Supplier settlement is the case that forced it: an obligation that cannot be
+ * paid is discovered by a background sweep, not by an event, and before this
+ * existed nobody was ever told — money sat held back and the only trace was a
+ * log line.
+ *
+ * ⚠️ `sourceKey` is what stops it being said twice. A sweep runs every fifteen
+ * minutes; keyed on the supplier payment, a supplier who never onboards is
+ * reported ONCE rather than ninety-six times a day.
+ */
+export async function raiseOperatorNotice(
+	workspaceId: string,
+	notice: Notice,
+	options?: {
+		send?: (input: {
+			to: string;
+			subject: string;
+			html: string;
+			text: string;
+		}) => Promise<unknown>;
+		log?: (message: string, detail: Record<string, unknown>) => void;
+	},
+): Promise<void> {
+	const send = options?.send ?? defaultSendNotice;
+	const log = options?.log ?? (() => {});
+	const target = await recipients(workspaceId);
+	if (!target || target.members.length === 0) return;
+	const base = `/${target.workspace.slug ?? target.workspace.id}`;
+
+	for (const member of target.members) {
+		await createNotification({
+			userId: member.userId,
+			organizationId: target.workspace.organizationId,
+			workspaceId,
+			environment: target.workspace.environment ?? null,
+			type: notice.type,
+			signal: notice.signal,
+			title: notice.title,
+			body: notice.body ?? null,
+			href: notice.path ? `${base}${notice.path}` : null,
+			sourceKey: notice.sourceKey ?? null,
+			recordId: notice.recordId ?? null,
+		});
+
+		if (EMAILED_SIGNALS.has(notice.signal) && member.email) {
+			try {
+				const { operatorNotificationEmail } = await import(
+					"@quickengine/email/templates"
+				);
+				const rendered = operatorNotificationEmail({
+					// The PLATFORM brand: this is QuickDash telling an operator about
+					// their own business, the inverse of a customer email.
+					brand: {
+						name: "QuickDash",
+						supportEmail:
+							process.env.CUSTOMER_SUPPORT_EMAIL ?? "support@quickdash.xyz",
+					},
+					title: notice.title,
+					body: notice.body ?? null,
+					url: notice.path ? `${base}${notice.path}` : null,
+				});
+				await send({
+					to: member.email,
+					subject: rendered.subject,
+					html: rendered.html,
+					text: rendered.text,
+				});
+			} catch (error) {
+				log("operator-notification.email_failed", { error, type: notice.type });
+			}
+		}
+	}
 }
 
 export function operatorNotificationHandler(

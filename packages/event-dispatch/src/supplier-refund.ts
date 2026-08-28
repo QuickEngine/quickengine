@@ -97,9 +97,20 @@ export function supplierRefundHandler(
 			// A refund against an invoice with no order commits no supplier.
 			if (!payment?.orderId || payment.amountCents <= 0) return;
 
+			const { suppliers } = dbm;
 			const pos = await db
-				.select({ id: purchaseOrders.id })
+				.select({
+					id: purchaseOrders.id,
+					number: purchaseOrders.number,
+					status: purchaseOrders.status,
+					handoffMethod: purchaseOrders.handoffMethod,
+					handoffTarget: purchaseOrders.handoffTarget,
+					supplierName: suppliers.name,
+					supplierEmail: suppliers.contactEmail,
+					sandboxHandoffEnabled: suppliers.sandboxHandoffEnabled,
+				})
 				.from(purchaseOrders)
+				.innerJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
 				.where(
 					and(
 						eq(purchaseOrders.workspaceId, event.workspaceId),
@@ -130,6 +141,17 @@ export function supplierRefundHandler(
 						reason: `Customer refund ${refundId}`,
 						reverse,
 					});
+
+					/**
+					 * 🔴 Tell the supplier BEFORE anything else.
+					 *
+					 * Their money has just been pulled back, and until this existed
+					 * nothing told them the order was off. A supplier could roast, bag
+					 * and ship coffee for a sale that no longer exists, having already
+					 * had the payment reversed — out the goods AND the money, and the
+					 * first they would hear of it is an invoice nobody pays.
+					 */
+					await tellSupplier(po, refundId, log);
 
 					if (result.outcome === "unrecoverable") {
 						/**
@@ -189,4 +211,84 @@ async function supplierShare(input: {
 	// A full refund reverses the whole obligation without depending on rounding.
 	if (input.refundCents >= input.paymentCents) return row.amountCents;
 	return Math.floor((row.amountCents * input.refundCents) / input.paymentCents);
+}
+
+/**
+ * Tell a supplier an order they were asked to make is off.
+ *
+ * ── Why this is not optional ─────────────────────────────────────────────────
+ *
+ * 🔴 The refund has already reversed their payment. Without this they keep the
+ * purchase order, roast and ship it, and discover weeks later that the money
+ * came back. They are out the goods and the money, and the only thing that went
+ * wrong is that nobody told them.
+ *
+ * ── What it deliberately does not do ─────────────────────────────────────────
+ *
+ * ⚠️ Never sent for a purchase order that was never sent. A supplier who never
+ * received the order does not need to be told it is cancelled — that is noise
+ * about something they never knew existed, including every sandbox rehearsal
+ * that was withheld.
+ *
+ * ⚠️ Swallows its own failures. The money has already moved; a mail outage must
+ * not make the refund handler look like it failed and re-run.
+ */
+async function tellSupplier(
+	po: {
+		id: string;
+		number: string;
+		status: string;
+		handoffMethod: string;
+		handoffTarget: string | null;
+		supplierName: string;
+		supplierEmail: string | null;
+		sandboxHandoffEnabled: boolean;
+	},
+	refundId: string,
+	log: (message: string, detail: Record<string, unknown>) => void,
+): Promise<void> {
+	// Only email suppliers who are emailed in the first place.
+	if (po.handoffMethod !== "email") return;
+	// 🔑 It never reached them, so there is nothing to take back.
+	if (po.status === "draft" || po.status === "skipped_sandbox") return;
+
+	const to = po.handoffTarget ?? po.supplierEmail;
+	if (!to) return;
+
+	try {
+		const [{ getEmailProvider }, { resolveBrand }] = await Promise.all([
+			import("@quickengine/email"),
+			import("@quickengine/db"),
+		]);
+		const brand = await resolveBrand(
+			(po as unknown as { workspaceId: string }).workspaceId,
+		);
+		// Fails closed on the sender, exactly as the purchase order does: a
+		// supplier has no relationship with the platform and must never be
+		// emailed as it.
+		if (!brand?.sender) return;
+
+		const body = [
+			`Order ${po.number} has been cancelled.`,
+			"",
+			"The customer has been refunded, so please do not make or ship this order.",
+			"If it has already gone out, reply to this email and we will sort it out.",
+			"",
+			`Reference: ${refundId}`,
+		].join("\n");
+
+		await getEmailProvider().send({
+			to,
+			from: brand.sender,
+			replyTo: brand.supportEmail,
+			subject: `Cancelled: purchase order ${po.number} from ${brand.name}`,
+			html: `<pre style="font:14px/1.5 monospace;white-space:pre-wrap">${body}</pre>`,
+			text: body,
+		});
+	} catch (error) {
+		log("supplier-refund.notice_failed", {
+			error,
+			purchaseOrderId: po.id,
+		});
+	}
 }

@@ -10,6 +10,7 @@ import {
 	invoices,
 	orderLineItems,
 	orders,
+	paymentRefunds,
 	payments,
 	readEmailTemplateCopy,
 	recordCustomerLifecycleMessage,
@@ -29,6 +30,7 @@ import {
 	invoiceSentEmail,
 	orderConfirmationEmail,
 	paymentReceiptEmail,
+	refundNoticeEmail,
 	shippingNoticeEmail,
 } from "@quickengine/email/templates";
 import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
@@ -74,6 +76,13 @@ type Notification = { to: string; email: RenderedEmail };
 const NOTIFIED_EVENTS = new Set([
 	"order.paid",
 	"payment.recorded",
+	/**
+	 * 🔴 Money going BACK is as much a customer's business as money going out.
+	 *
+	 * Nothing told them. A refund reversed the charge and the customer saw an
+	 * unexplained movement days later, or wrote in asking where their order was.
+	 */
+	"payment.refunded",
 	/**
 	 * 🔴 `shipment.status-changed`, NOT `shipment.created`.
 	 *
@@ -365,6 +374,73 @@ async function buildNotification(
 					// written — they differ for anything recorded after the fact.
 					paidAt: payment.succeededAt ?? payment.createdAt,
 					method: payment.paymentMethod ?? undefined,
+				}),
+			};
+		}
+
+		case "payment.refunded": {
+			const payload = (event.payload ?? {}) as { refundId?: string };
+			const [payment] = await db
+				.select()
+				.from(payments)
+				.where(
+					and(
+						eq(payments.workspaceId, event.workspaceId),
+						eq(payments.id, event.aggregateId),
+					),
+				)
+				.limit(1);
+			if (!payment) return null;
+
+			/**
+			 * ⚠️ The REFUND's amount, not the payment's. A partial refund that
+			 * announced the full order value would be telling somebody they are
+			 * getting back more than they are.
+			 */
+			const [refund] = payload.refundId
+				? await db
+						.select()
+						.from(paymentRefunds)
+						.where(
+							and(
+								eq(paymentRefunds.workspaceId, event.workspaceId),
+								eq(paymentRefunds.id, payload.refundId),
+							),
+						)
+						.limit(1)
+				: [];
+			if (!refund) return null;
+
+			const to = await recipientFor(
+				event.workspaceId,
+				payment.clientEmail,
+				payment.clientId,
+			);
+			if (!to) return null;
+
+			const [order] = payment.orderId
+				? await db
+						.select({ number: orders.number })
+						.from(orders)
+						.where(
+							and(
+								eq(orders.workspaceId, event.workspaceId),
+								eq(orders.id, payment.orderId),
+							),
+						)
+						.limit(1)
+				: [];
+
+			return {
+				to,
+				email: refundNoticeEmail({
+					brand,
+					copy: copy["refund-notice"],
+					reference: refund.id,
+					amount: refund.amountCents,
+					currency: payment.currency,
+					refundedAt: refund.createdAt ?? new Date(),
+					orderNumber: order?.number,
 				}),
 			};
 		}

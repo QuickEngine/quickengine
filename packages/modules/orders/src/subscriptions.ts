@@ -496,13 +496,20 @@ export async function claimNextCycle(subscriptionId: string) {
 	});
 }
 
-/** Record what happened to a cycle, and what it means for the subscription. */
+/**
+ * Record what happened to a cycle, and what it means for the subscription.
+ *
+ * 🔑 Returns the resulting status so the caller can tell the CUSTOMER. Without
+ * it the caller knows a charge failed but not whether the subscription survived,
+ * and "please update your card" and "your subscription has ended" are very
+ * different messages to send somebody.
+ */
 export async function settleCycle(input: {
 	subscriptionId: string;
 	periodStart: Date;
 	orderId?: string | null;
 	failureReason?: string | null;
-}) {
+}): Promise<{ status: "active" | "past_due" | "cancelled"; attempts: number }> {
 	return db.transaction(async (tx) => {
 		await tx
 			.update(subscriptionCycles)
@@ -526,7 +533,7 @@ export async function settleCycle(input: {
 				.update(subscriptions)
 				.set({ failedAttempts: 0, status: "active", updatedAt: new Date() })
 				.where(eq(subscriptions.id, input.subscriptionId));
-			return;
+			return { status: "active" as const, attempts: 0 };
 		}
 
 		const [current] = await tx
@@ -550,6 +557,14 @@ export async function settleCycle(input: {
 				updatedAt: new Date(),
 			})
 			.where(eq(subscriptions.id, input.subscriptionId));
+
+		return {
+			status:
+				attempts >= MAX_FAILED_ATTEMPTS
+					? ("cancelled" as const)
+					: ("past_due" as const),
+			attempts,
+		};
 	});
 }
 

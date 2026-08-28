@@ -125,6 +125,11 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		quantity: 25,
 		note: "Restock from supplier",
 	},
+	connectSupplierPaymentAccount: {
+		returnUrl: "https://quickdash.xyz/suppliers/connected",
+		refreshUrl: "https://quickdash.xyz/suppliers/reconnect",
+		country: "CA",
+	},
 	createSupplier: {
 		name: "EZPZ Coffee",
 		contactName: "Liam Garneau",

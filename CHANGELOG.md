@@ -8,6 +8,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **A refund takes the supplier's share back too.** Your supplier is paid the moment an order is
+  paid, so refunding that customer afterwards left you out of pocket by whatever the supplier had
+  already been sent, with nothing anywhere explaining where the money went. Refunding now pulls the
+  supplier's share back automatically, in proportion to what you gave back, and never more than was
+  sent. If their money has already reached their bank and cannot be recovered, you are told that
+  plainly instead of it looking like it worked.
+
+
+- **Suppliers actually get paid now.** Money was being set aside from every sale for the supplier who
+  ships it, exactly as intended, and then nothing sent it on. The step that hands it over existed but
+  was never connected to anything, so a paid order left the supplier's share sitting with us instead
+  of reaching them. A paid order now settles its supplier by itself, once, and an order redelivered
+  by our own retries still pays them exactly once.
+
+
 - **The website preview only ever loads a website.** The address the content preview points at is
   typed in by hand, and nothing checked that it was a web address at all. Something that merely
   looked like one could have been left in a workspace's settings and then run code against the next
@@ -17,6 +32,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 
 ### Added
+
+- **Invite a supplier to get paid automatically.** There was no way to record where a supplier's
+  money should go, so nothing could ever be sent to them however well the rest worked. You can now
+  send a supplier a link that connects the account they get paid into. They verify their own identity
+  with the payment provider and hold their own account, so their bank details, tax id and documents
+  never pass through QuickEngine. Sending the link again to somebody who started but did not finish
+  picks up where they left off rather than starting a second account. Your sandbox and your live
+  business keep separate supplier accounts, so a rehearsal can never pay a real supplier.
+
 
 - **Pay your suppliers automatically when an order is paid.** A shop that has someone else ship its
   goods owes that supplier for every sale, and until now settling up was a manual job: work out what

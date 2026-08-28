@@ -9,4 +9,5 @@ export * from "./provider-credentials";
 export * from "./providers";
 export * from "./refund-provider";
 export * from "./status";
+export * from "./supplier-onboarding";
 export * from "./supplier-transfers";

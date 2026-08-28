@@ -13,6 +13,8 @@ import { referralSettlementHandler } from "./referral-settlement";
 import { refundRestockHandler } from "./refund-restock";
 import { subscriptionPaymentMethodHandler } from "./subscription-payment-method";
 import { supplierHandoffHandler } from "./supplier-handoff";
+import { supplierRefundHandler } from "./supplier-refund";
+import { supplierSettlementHandler } from "./supplier-settlement";
 import { webhookFanoutHandler } from "./webhooks";
 
 /**
@@ -135,6 +137,12 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 		// Routes a paid order to whoever actually ships it. Writes the record
 		// whatever happens; only the notifying varies by handoff method.
 		supplierHandoffHandler(),
+		// 🔴 Pays that supplier what the purchase order says they are owed. The
+		// money was already held back at checkout as the charge's application fee,
+		// so without this QuickEngine COLLECTS a supplier's share and never sends
+		// it on. Registered after the handoff so the purchase orders it settles
+		// already exist.
+		supplierSettlementHandler(),
 		// 🔴 Credits the partner who brought the sale, and takes it back on a
 		// refund. Until this was registered the two functions that do it had no
 		// caller at all, so a partner earned nothing however much they sold.
@@ -147,6 +155,10 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 		// refunded item stays sold as far as stock is concerned, and the count
 		// drifts quietly downwards for ever.
 		refundRestockHandler(),
+		// 🔴 Pulls the supplier's share back when the customer's money goes back.
+		// Without it a full refund came out of the BUSINESS's own balance, because
+		// the supplier had already been paid automatically and kept it.
+		supplierRefundHandler(),
 		webhookFanoutHandler(),
 	];
 }

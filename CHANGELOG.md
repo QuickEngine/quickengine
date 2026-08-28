@@ -8,6 +8,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Your own email wording now reaches your customers.** Rewriting an email in settings changed the
+  preview and the test message you sent yourself, and nothing else, so every real customer kept
+  receiving the built-in wording. Your version is now used for the real thing. What you bought and
+  what you paid is still generated from the order itself, so a receipt can never disagree with the
+  charge.
+
+
+### Fixed
+
 - **One order, one confirmation email.** A supplier who had not finished connecting the account they
   get paid into caused a paid order to be retried again and again, and the customer received their
   order confirmation on every attempt. Supplier payment is now retried on its own, quietly, without

@@ -1,3 +1,5 @@
+// Type-only: erased at compile time, so it adds nothing to the module graph.
+import type { EmailTemplateCopy } from "@quickengine/db";
 import {
 	and,
 	bookings,
@@ -9,6 +11,7 @@ import {
 	orderLineItems,
 	orders,
 	payments,
+	readEmailTemplateCopy,
 	recordCustomerLifecycleMessage,
 	resolveBrand,
 	shipments,
@@ -267,9 +270,19 @@ async function recipientFor(
 	return client?.email ?? null;
 }
 
+/**
+ * ⚠️ `copy` is the business's OWN wording, keyed by template.
+ *
+ * 🔴 It used to be read only by the preview and the test send, so editing a
+ * template in settings changed what the operator saw and what a test email
+ * looked like — and every real customer kept receiving the built-in default.
+ * Found on 2026-08-28 after a workspace customised its templates and the live
+ * order confirmation ignored all of it.
+ */
 async function buildNotification(
 	event: OutboxEvent,
 	brand: EmailBrand,
+	copy: Record<string, EmailTemplateCopy>,
 ): Promise<Notification | null> {
 	switch (event.eventName) {
 		case "order.paid": {
@@ -294,6 +307,7 @@ async function buildNotification(
 				to,
 				email: orderConfirmationEmail({
 					brand,
+					copy: copy["order-confirmation"],
 					orderNumber: order.number,
 					customerName: order.clientName || undefined,
 					// Loaded in `position` order, which is the order the customer built
@@ -343,6 +357,7 @@ async function buildNotification(
 				to,
 				email: paymentReceiptEmail({
 					brand,
+					copy: copy["payment-receipt"],
 					reference: payment.reference ?? payment.id,
 					amount: payment.amountCents ?? 0,
 					currency: payment.currency ?? "CAD",
@@ -392,6 +407,7 @@ async function buildNotification(
 				to,
 				email: shippingNoticeEmail({
 					brand,
+					copy: copy["shipping-notice"],
 					orderNumber: order?.number ?? shipment.id,
 					carrier: shipment.carrier ?? undefined,
 					trackingNumber: shipment.trackingNumber ?? undefined,
@@ -434,6 +450,7 @@ async function buildNotification(
 				to,
 				email: invoiceSentEmail({
 					brand,
+					copy: copy["invoice-sent"],
 					invoiceNumber: invoice.number,
 					customerName: invoice.clientName || undefined,
 					lines,
@@ -463,6 +480,7 @@ async function buildNotification(
 				to,
 				email: bookingConfirmationEmail({
 					brand,
+					copy: copy["booking-confirmation"],
 					serviceName: booking.title || "your appointment",
 					startsAt: booking.startsAt,
 					location: booking.location ?? undefined,
@@ -525,7 +543,10 @@ export function customerNotificationHandler(
 				const brand = await brandFor(event.workspaceId);
 				if (!brand) return;
 
-				const notification = await buildNotification(event, brand);
+				// Read once per event rather than per template: one row set covers
+				// every email this workspace has rewritten.
+				const copy = await readEmailTemplateCopy(event.workspaceId);
+				const notification = await buildNotification(event, brand, copy);
 				if (!notification) return;
 
 				/**

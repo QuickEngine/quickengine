@@ -1479,6 +1479,56 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/inventory/suppliers/{id}/payment-account": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "getSupplierPaymentAccount",
+					summary: "Whether a supplier can be paid automatically yet",
+					parameters: [
+						{
+							in: "query",
+							name: "refresh",
+							required: false,
+							description:
+								"Set to 1 to ask the payment provider rather than trusting the stored copy. Onboarding finishes in the provider's own interface and nothing tells this workspace when.",
+							schema: { type: "string", enum: ["1"] },
+						},
+					],
+					responses: {
+						"200": {
+							description:
+								"The supplier's payout account for this workspace's current mode, or null when they have never started connecting one.",
+						},
+						"404": { description: "No such supplier in this workspace." },
+						"409": {
+							description:
+								"A refresh was asked for but this supplier has no payout account yet.",
+						},
+					},
+				},
+				post: {
+					operationId: "connectSupplierPaymentAccount",
+					summary:
+						"Invite a supplier to connect the account they get paid into",
+					description:
+						"Returns a provider-hosted onboarding link to send to the supplier. They verify their own identity with the provider; no bank details, tax id or documents pass through QuickEngine. Calling it again for a supplier who has already started resumes the same account rather than creating a second one.",
+					responses: {
+						"201": {
+							description:
+								"An onboarding link to send the supplier, with the account state as it stands.",
+						},
+						"400": { description: "The return addresses are not valid." },
+						"404": { description: "No such supplier in this workspace." },
+					},
+				},
+			},
 			"/v1/inventory/purchase-orders": {
 				get: {
 					operationId: "listPurchaseOrders",

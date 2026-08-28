@@ -5,6 +5,7 @@ import type { DatabaseTransaction } from "@quickengine/db";
 import {
 	applyInventoryAdjustmentCommand,
 	archiveSupplier,
+	connectSupplierPaymentAccount,
 	createInventoryItemCommand,
 	createSupplier,
 	createSupplierSku,
@@ -13,6 +14,7 @@ import {
 	describeSupplierConnection,
 	getInventoryItemDto,
 	getSupplierAdapter,
+	getSupplierPaymentAccount,
 	INVENTORY_ITEM_STATUSES,
 	inventorySettingsSchema,
 	isAutomatedHandoff,
@@ -21,7 +23,9 @@ import {
 	listPurchaseOrders,
 	listSupplierSkus,
 	listSuppliers,
+	refreshSupplierPaymentAccount,
 	resolveSupplierConnection,
+	SupplierAccountError,
 	SupplierError,
 	saveSupplierConnection,
 	setInventoryItemStatusCommand,
@@ -30,6 +34,7 @@ import {
 	supplierConnectionInputSchema,
 	supplierInputSchema,
 	supplierPatchSchema,
+	supplierPayoutOnboardingSchema,
 	supplierSkuInputSchema,
 	supplierSkuPatchSchema,
 	updateInventoryItemCommand,
@@ -334,6 +339,89 @@ export function registerInventoryRoutes(
 				);
 			} catch (error) {
 				return supplierError(c, error);
+			}
+		},
+	);
+
+	/* ── Paying a supplier ─────────────────────────────────────────────────────
+	 *
+	 * 🔴 Without a connected account, settlement answers SUPPLIER_NOT_ONBOARDED
+	 * for ever and a supplier can never be paid automatically however complete
+	 * the rest of the rail is. This is the only thing that writes that record.
+	 *
+	 * 🔑 Onboarding is STRIPE-HOSTED. The supplier verifies their identity with
+	 * Stripe directly and their bank details, tax id and documents never pass
+	 * through QuickEngine, so no screen here has to collect or store any of it.
+	 */
+	const supplierAccountError = (c: Context<PlatformEnv>, error: unknown) => {
+		if (!(error instanceof SupplierAccountError)) throw error;
+		if (error.code === "NOT_CONNECTED") {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"This supplier has not started connecting a payout account yet.",
+				409,
+			);
+		}
+		return respondError(c, "NOT_FOUND", "Supplier record not found.", 404);
+	};
+
+	app.get(
+		"/v1/inventory/suppliers/:id/payment-account",
+		readAccess,
+		readLimit,
+		async (c) => {
+			try {
+				const workspaceId = c.get("authorized").workspaceId;
+				const supplierId = uuid.parse(c.req.param("id"));
+				// `refresh=1` asks the provider rather than trusting our stored copy:
+				// onboarding finishes in Stripe's UI and nothing tells us when.
+				if (c.req.query("refresh") === "1") {
+					const { readSupplierAccount } = await import(
+						"@quickengine/mod-payments"
+					);
+					return respond(
+						c,
+						await refreshSupplierPaymentAccount(
+							workspaceId,
+							supplierId,
+							readSupplierAccount,
+						),
+					);
+				}
+				return respond(c, {
+					account: await getSupplierPaymentAccount(workspaceId, supplierId),
+				});
+			} catch (error) {
+				return supplierAccountError(c, error);
+			}
+		},
+	);
+
+	app.post(
+		"/v1/inventory/suppliers/:id/payment-account",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			try {
+				const body = supplierPayoutOnboardingSchema.parse(await c.req.json());
+				const { startSupplierOnboarding } = await import(
+					"@quickengine/mod-payments"
+				);
+				return respond(
+					c,
+					await connectSupplierPaymentAccount({
+						workspaceId: c.get("authorized").workspaceId,
+						supplierId: uuid.parse(c.req.param("id")),
+						refreshUrl: body.refreshUrl,
+						returnUrl: body.returnUrl,
+						country: body.country ?? null,
+						onboard: startSupplierOnboarding,
+					}),
+					201,
+				);
+			} catch (error) {
+				return supplierAccountError(c, error);
 			}
 		},
 	);

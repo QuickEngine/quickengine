@@ -17,6 +17,7 @@
 	},
 	"dependencies": {
 		"@vercel/blob": "^2.6.1",
+		"aws4fetch": "^1.0.20",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

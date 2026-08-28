@@ -411,3 +411,296 @@ export function createVercelBlobStorageProvider(
 		},
 	};
 }
+
+export type R2StorageProviderOptions = {
+	/** `https://<account>.r2.cloudflarestorage.com` — no bucket in the path. */
+	endpoint: string;
+	accessKeyId: string;
+	secretAccessKey: string;
+	/** Private objects. Public access MUST be off on this bucket. */
+	bucket: string;
+	/** Public web assets. Public access is on, served from `publicBaseUrl`. */
+	publicBucket: string;
+	/** e.g. `https://pub-xxxx.r2.dev`, or a custom domain later. */
+	publicBaseUrl: string;
+};
+
+/**
+ * Cloudflare R2, through the S3-compatible API.
+ *
+ * ── Why two buckets rather than one ──────────────────────────────────────────
+ *
+ * 🔴 A signed contract and a product photograph are both "a file the workspace
+ * uploaded". The only thing keeping them apart is that they live in different
+ * buckets with different public-access settings — not a flag on a call, which is
+ * a thing somebody eventually passes wrongly. The private bucket must have
+ * public access DISABLED; if that is ever switched on, every stored document
+ * becomes world-readable and nothing in this code would notice.
+ *
+ * ── Why aws4fetch and not the AWS SDK ────────────────────────────────────────
+ *
+ * 🔑 About five kilobytes against several megabytes, on a runtime that pays for
+ * every cold start. It signs with SigV4 and presigns query URLs, which is the
+ * entire surface this provider needs.
+ *
+ * ── Why our own checksum ─────────────────────────────────────────────────────
+ *
+ * ⚠️ The provider's ETag is NOT a content hash once an upload is multipart, so a
+ * caller comparing it against a re-computed sha256 would see spurious
+ * mismatches on exactly the large files that matter most. The hash returned here
+ * is always computed from the bytes we sent.
+ */
+export function createR2StorageProvider(
+	options: R2StorageProviderOptions,
+): StorageProvider {
+	const name = "r2";
+	const base = options.endpoint.replace(/\/$/, "");
+	const publicBase = options.publicBaseUrl.replace(/\/$/, "");
+
+	// Lazily imported so the signer never enters the module graph of route
+	// registration (hard rule 12).
+	const client = async () => {
+		const { AwsClient } = await import("aws4fetch");
+		return new AwsClient({
+			accessKeyId: options.accessKeyId,
+			secretAccessKey: options.secretAccessKey,
+			// R2 has no regions; "auto" is what Cloudflare's own docs sign with.
+			region: "auto",
+			service: "s3",
+		});
+	};
+
+	const objectUrl = (bucket: string, path: string) =>
+		`${base}/${bucket}/${path
+			.split("/")
+			.map((segment) => encodeURIComponent(segment))
+			.join("/")}`;
+
+	async function upload(
+		bucket: string,
+		path: string,
+		bytes: Uint8Array,
+		contentType?: string,
+	) {
+		const body = new ArrayBuffer(bytes.byteLength);
+		new Uint8Array(body).set(bytes);
+		const aws = await client();
+		const response = await aws.fetch(objectUrl(bucket, path), {
+			method: "PUT",
+			body,
+			headers: contentType ? { "content-type": contentType } : undefined,
+		});
+		if (!response.ok) {
+			throw new Error(
+				`STORAGE_PUT_FAILED_${response.status}: ${(await response.text()).slice(0, 200)}`,
+			);
+		}
+	}
+
+	async function remove(bucket: string, path: string) {
+		const aws = await client();
+		const response = await aws.fetch(objectUrl(bucket, path), {
+			method: "DELETE",
+		});
+		/**
+		 * ⚠️ 404 is SUCCESS here. Cleanup jobs retry after an interrupted run, and
+		 * the caller wants the object gone — which it is. Treating "already absent"
+		 * as a failure would leave those jobs retrying for ever.
+		 */
+		if (!response.ok && response.status !== 404) {
+			throw new Error(
+				`STORAGE_DELETE_FAILED_${response.status}: ${(await response.text()).slice(0, 200)}`,
+			);
+		}
+	}
+
+	return {
+		name,
+		async put(input) {
+			const locator = {
+				provider: name,
+				bucket: input.bucket,
+				key: input.key,
+			} satisfies StorageObjectLocator;
+			assertLocator(locator, name);
+			const bytes = await bodyBytes(input.body);
+			await upload(options.bucket, blobPath(locator), bytes, input.contentType);
+			return {
+				...locator,
+				contentType: input.contentType,
+				size: bytes.byteLength,
+				checksumSha256: await sha256(bytes),
+			};
+		},
+
+		async putPublicAsset(input) {
+			const path = publicAssetPath(input.workspaceId, input.key);
+			const bytes = await bodyBytes(input.body);
+			await upload(options.publicBucket, path, bytes, input.contentType);
+			return {
+				provider: name,
+				bucket: PUBLIC_BUCKET,
+				key: `${input.workspaceId}/${input.key}`,
+				/**
+				 * 🔴 A DURABLE url, and deliberately not a signed one. This is written
+				 * into a catalog item and served from a customer's own website, where
+				 * an `<img src>` cannot re-authorize itself every five minutes. Re-
+				 * uploading a corrected photograph overwrites in place rather than
+				 * minting a new address that orphans the one already published.
+				 */
+				url: `${publicBase}/${path}`,
+				contentType: input.contentType,
+				size: bytes.byteLength,
+				checksumSha256: await sha256(bytes),
+			};
+		},
+
+		async deletePublicAsset(asset) {
+			if (asset.provider !== name) {
+				throw new Error("STORAGE_PROVIDER_MISMATCH");
+			}
+			await remove(options.publicBucket, `${PUBLIC_BUCKET}/${asset.key}`);
+		},
+
+		async delete(locator) {
+			assertLocator(locator, name);
+			await remove(options.bucket, blobPath(locator));
+		},
+
+		async createDownloadAccess(locator, downloadOptions = {}) {
+			assertLocator(locator, name);
+			const expiresInSeconds = downloadOptions.expiresInSeconds ?? 300;
+			// Same bounds the Vercel provider enforces, so switching providers
+			// cannot quietly widen how long a link stays valid.
+			if (expiresInSeconds < 30 || expiresInSeconds > 3_600) {
+				throw new Error("STORAGE_DOWNLOAD_EXPIRY_INVALID");
+			}
+			const aws = await client();
+			const url = new URL(objectUrl(options.bucket, blobPath(locator)));
+			// aws4fetch reads the expiry from the query string when presigning.
+			url.searchParams.set("X-Amz-Expires", String(expiresInSeconds));
+			const signed = await aws.sign(url.toString(), {
+				method: "GET",
+				aws: { signQuery: true },
+			});
+			return {
+				url: signed.url,
+				expiresAt: new Date(Date.now() + expiresInSeconds * 1_000),
+			};
+		},
+	};
+}
+
+/**
+ * Which provider a deployment actually uses.
+ *
+ * ── Why this is one function and not three ───────────────────────────────────
+ *
+ * 🔴 The choice was made independently in `quickdash-routes.ts`,
+ * `products-services-routes.ts` and `storage-cleanup.ts`. Three copies of a
+ * precedence rule drift, and the way this one drifts is silent: writes go to the
+ * new provider while cleanup still resolves the old one, so deleted documents
+ * leave their bytes behind for ever and the storage bill never goes down.
+ *
+ * ── Precedence ──────────────────────────────────────────────────────────────
+ *
+ * R2 when configured, then Vercel Blob, then local disk. R2 first because it is
+ * where new writes are meant to go; Blob remains reachable so objects written
+ * before the switch still resolve.
+ */
+export function storageProviderFromEnv(
+	origin: string,
+	env: Record<string, string | undefined> = process.env,
+): StorageProvider {
+	if (
+		env.R2_ENDPOINT &&
+		env.R2_ACCESS_KEY_ID &&
+		env.R2_SECRET_ACCESS_KEY &&
+		env.R2_BUCKET
+	) {
+		return createR2StorageProvider({
+			endpoint: env.R2_ENDPOINT,
+			accessKeyId: env.R2_ACCESS_KEY_ID,
+			secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+			bucket: env.R2_BUCKET,
+			publicBucket: env.R2_PUBLIC_BUCKET ?? env.R2_BUCKET,
+			publicBaseUrl: env.R2_PUBLIC_BASE_URL ?? origin,
+		});
+	}
+	if (env.BLOB_READ_WRITE_TOKEN) {
+		return createVercelBlobStorageProvider({
+			token: env.BLOB_READ_WRITE_TOKEN,
+			storeId: env.BLOB_STORE_ID,
+		});
+	}
+	return createLocalStorageProvider(origin);
+}
+
+/**
+ * The provider for things the public web reads.
+ *
+ * ⚠️ Separate from the private one because Vercel Blob fixes public/private per
+ * STORE, so the two need different credentials there. R2 draws the same line
+ * with two buckets, which is why one R2 provider answers both — the split is in
+ * `bucket` versus `publicBucket`, not in a flag a caller could pass wrongly.
+ */
+export function publicAssetProviderFromEnv(
+	origin: string,
+	env: Record<string, string | undefined> = process.env,
+): StorageProvider {
+	if (
+		env.R2_ENDPOINT &&
+		env.R2_ACCESS_KEY_ID &&
+		env.R2_SECRET_ACCESS_KEY &&
+		env.R2_PUBLIC_BUCKET &&
+		env.R2_PUBLIC_BASE_URL
+	) {
+		return createR2StorageProvider({
+			endpoint: env.R2_ENDPOINT,
+			accessKeyId: env.R2_ACCESS_KEY_ID,
+			secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+			bucket: env.R2_BUCKET ?? env.R2_PUBLIC_BUCKET,
+			publicBucket: env.R2_PUBLIC_BUCKET,
+			publicBaseUrl: env.R2_PUBLIC_BASE_URL,
+		});
+	}
+	if (env.PUBLIC_BLOB_READ_WRITE_TOKEN || env.PUBLIC_BLOB_STORE_ID) {
+		return createVercelBlobStorageProvider({
+			token: env.PUBLIC_BLOB_READ_WRITE_TOKEN,
+			oidcToken: env.VERCEL_OIDC_TOKEN,
+			storeId: env.PUBLIC_BLOB_STORE_ID,
+		});
+	}
+	return createLocalStorageProvider(origin);
+}
+
+/**
+ * The provider a STORED object belongs to, by the name recorded beside it.
+ *
+ * 🔴 This is what makes the migration gradual. An object written to Vercel Blob
+ * keeps resolving through the Vercel provider after new writes have moved to R2,
+ * so nothing needs copying, no historical row needs rewriting, and there is no
+ * moment where a download breaks. Resolving by ASSUMPTION instead would delete
+ * the wrong thing, or nothing at all.
+ */
+export function resolveStorageProviderByName(
+	name: string,
+	origin: string,
+	env: Record<string, string | undefined> = process.env,
+): StorageProvider | undefined {
+	for (const candidate of [
+		storageProviderFromEnv(origin, env),
+		publicAssetProviderFromEnv(origin, env),
+	]) {
+		if (candidate.name === name) return candidate;
+	}
+	// Blob may no longer be the configured provider while its objects remain.
+	if (name === "vercel-blob" && env.BLOB_READ_WRITE_TOKEN) {
+		return createVercelBlobStorageProvider({
+			token: env.BLOB_READ_WRITE_TOKEN,
+			storeId: env.BLOB_STORE_ID,
+		});
+	}
+	if (name === "local") return createLocalStorageProvider(origin);
+	return undefined;
+}

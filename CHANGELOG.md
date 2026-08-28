@@ -6,6 +6,24 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **A rehearsal that proves supplier payments against the real payment provider.** The existing tests
+  prove the logic by standing in for the provider, which cannot catch something the provider itself
+  would reject. An opt-in rehearsal now runs the whole path for real in test mode: a paid order pays
+  its supplier, the same order arriving three times pays them once, the supplier's own statement
+  names the business and the order, and a refund pulls the money back. It is skipped unless
+  deliberately switched on, so ordinary test runs never depend on the provider being reachable.
+
+
+- **Take a verified backup of your database.** `pnpm db:backup --out <directory>` writes a compressed
+  dump, then reads it back and refuses to keep one it cannot open, so a backup can never quietly be
+  unusable. It writes only what QuickEngine owns rather than anything the hosting provider keeps
+  alongside it, which is what lets the same file be restored somewhere else entirely. Old backups are
+  pruned only after a new one has been written and checked, and files are readable only by the person
+  who took them.
+
+
 ### Fixed
 
 - **Works behind a shared connection pooler.** Some hosted Postgres providers put a

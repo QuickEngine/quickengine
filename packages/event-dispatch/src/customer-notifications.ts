@@ -4,6 +4,8 @@ import {
 	and,
 	bookings,
 	clientRecords,
+	customerConversations,
+	customerIdentities,
 	db,
 	eq,
 	invoiceLineItems,
@@ -16,6 +18,7 @@ import {
 	recordCustomerLifecycleMessage,
 	resolveBrand,
 	shipments,
+	workspaceCustomers,
 } from "@quickengine/db";
 // 🔴 The TEMPLATES subpath, not the package root.
 //
@@ -28,6 +31,7 @@ import type { EmailBrand, RenderedEmail } from "@quickengine/email/templates";
 import {
 	bookingConfirmationEmail,
 	invoiceSentEmail,
+	messageReplyEmail,
 	orderConfirmationEmail,
 	paymentReceiptEmail,
 	refundNoticeEmail,
@@ -83,6 +87,11 @@ const NOTIFIED_EVENTS = new Set([
 	 * unexplained movement days later, or wrote in asking where their order was.
 	 */
 	"payment.refunded",
+	/**
+	 * 🔴 The business ANSWERED. Without this the reply sits in a portal the
+	 * customer has no reason to open again, so their question reads as ignored.
+	 */
+	"customer.message.replied",
 	/**
 	 * 🔴 `shipment.status-changed`, NOT `shipment.created`.
 	 *
@@ -441,6 +450,54 @@ async function buildNotification(
 					currency: payment.currency,
 					refundedAt: refund.createdAt ?? new Date(),
 					orderNumber: order?.number,
+				}),
+			};
+		}
+
+		case "customer.message.replied": {
+			const [conversation] = await db
+				.select({
+					id: customerConversations.id,
+					subject: customerConversations.subject,
+					workspaceCustomerId: customerConversations.workspaceCustomerId,
+				})
+				.from(customerConversations)
+				.where(
+					and(
+						eq(customerConversations.workspaceId, event.workspaceId),
+						eq(customerConversations.id, event.aggregateId),
+					),
+				)
+				.limit(1);
+			if (!conversation) return null;
+
+			/**
+			 * ⚠️ The identity's address, not a snapshot on the conversation.
+			 * A customer signs in with that email; it is the one they can actually
+			 * read a reply from.
+			 */
+			const [customer] = await db
+				.select({ email: customerIdentities.email })
+				.from(workspaceCustomers)
+				.innerJoin(
+					customerIdentities,
+					eq(customerIdentities.id, workspaceCustomers.identityId),
+				)
+				.where(
+					and(
+						eq(workspaceCustomers.workspaceId, event.workspaceId),
+						eq(workspaceCustomers.id, conversation.workspaceCustomerId),
+					),
+				)
+				.limit(1);
+			if (!customer?.email) return null;
+
+			return {
+				to: customer.email,
+				email: messageReplyEmail({
+					brand,
+					copy: copy["message-reply"],
+					subject: conversation.subject,
 				}),
 			};
 		}

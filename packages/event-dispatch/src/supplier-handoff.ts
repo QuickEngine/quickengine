@@ -216,7 +216,7 @@ async function sendByEmail(
 		 */
 		const rehearsal = environment === "test";
 		const body = rehearsal
-			? `*** TEST ORDER — DO NOT FULFIL ***\n\nThis is a rehearsal from a sandbox workspace. No customer has paid for this and nothing should be roasted, packed or shipped.\n\n${renderPurchaseOrder(purchaseOrder)}`
+			? `*** TEST ORDER — DO NOT FULFILL ***\n\nThis is a rehearsal from a sandbox workspace. No customer has paid for this and nothing should be roasted, packed or shipped.\n\n${renderPurchaseOrder(purchaseOrder)}`
 			: renderPurchaseOrder(purchaseOrder);
 		await getEmailProvider().send({
 			to,
@@ -225,7 +225,7 @@ async function sendByEmail(
 			// Replies go to the humans, not to the sending mailbox.
 			replyTo: brand.supportEmail,
 			subject: rehearsal
-				? `[TEST — DO NOT FULFIL] Purchase order ${purchaseOrder.number} from ${brand.name}`
+				? `[TEST — DO NOT FULFILL] Purchase order ${purchaseOrder.number} from ${brand.name}`
 				: `Purchase order ${purchaseOrder.number} from ${brand.name}`,
 			// Plain text on purpose: a purchase order is read by somebody keying it
 			// into their own system, and no branding of ours belongs anywhere near it.

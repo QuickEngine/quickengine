@@ -43,6 +43,10 @@ beforeEach(async () => {
 		values (${workspaceId}, 'inventory', true), (${workspaceId}, 'orders', true)
 	`;
 	await sql`
+		insert into workspace_branding (workspace_id, portal_slug, display_name, sender_email, support_email)
+		values (${workspaceId}, 'caffeinate-refund', 'Caffeinate', 'hello@caffeinate.shop', 'hello@caffeinate.shop')
+	`;
+	await sql`
 		insert into client_records (id, workspace_id, name, email)
 		values (${clientId}, ${workspaceId}, 'Ada', 'ada@example.com')
 	`;
@@ -51,8 +55,8 @@ beforeEach(async () => {
 		values (${catalogItemId}, ${workspaceId}, 'Ethiopia Guji 250g', 'physical', 'active', 'fixed', 'CAD')
 	`;
 	await sql`
-		insert into suppliers (id, workspace_id, name, handoff_method)
-		values (${supplierId}, ${workspaceId}, 'EZPZ Coffee', 'manual')
+		insert into suppliers (id, workspace_id, name, handoff_method, handoff_target, contact_email)
+		values (${supplierId}, ${workspaceId}, 'EZPZ Coffee', 'email', 'liam@example.com', 'liam@example.com')
 	`;
 	await sql`
 		insert into supplier_skus (workspace_id, supplier_id, catalog_item_id, supplier_sku, unit_cost_cents, currency)
@@ -208,6 +212,74 @@ describe("a refunded customer pulls the supplier's share back", () => {
 			select status from supplier_payments where workspace_id = ${workspaceId}
 		`;
 		expect(row.status).toBe("cancelled");
+	});
+
+	/**
+	 * 🔴 The supplier MUST be told, and for a week they were not.
+	 *
+	 * `tellSupplier` read the workspace id off a purchase-order row that never
+	 * selected that column, through a cast that stopped the type checker seeing
+	 * it. So `resolveBrand(undefined)` returned null and the function returned
+	 * silently — the money was clawed back and the supplier was never told to
+	 * stop. Found during a live rehearsal on 2026-08-28, not by any test.
+	 */
+	it("tells the supplier to stop, with the business as the sender", async () => {
+		await settle();
+		// ⚠️ The order has to have REACHED them. `settle()` raises the purchase
+		// order; the handoff is what sends it, and a draft was never seen.
+		const sql = testDbClient();
+		await sql`
+			update purchase_orders set status = 'sent' where workspace_id = ${workspaceId}
+		`;
+		const notified = vi.fn(
+			async (_input: {
+				to: string;
+				from?: string;
+				subject: string;
+				text: string;
+			}) => undefined,
+		);
+		await supplierRefundHandler(
+			() => {},
+			async (i: { amountCents: number }) => ({ reversedCents: i.amountCents }),
+			notified,
+		).handle(await refundOf(RETAIL));
+
+		expect(notified).toHaveBeenCalledTimes(1);
+		const sent = notified.mock.calls[0][0];
+		expect(sent.to).toBe("liam@example.com");
+		// From the BUSINESS: a supplier has no relationship with the platform.
+		expect(sent.from).toContain("hello@caffeinate.shop");
+		expect(sent.subject.toLowerCase()).toContain("canceled");
+		expect(sent.text.toLowerCase()).toContain("do not make or ship");
+	});
+
+	/** ⚠️ Nothing reached them, so there is nothing to take back. */
+	it("says nothing to a supplier whose order was never sent", async () => {
+		const sql = testDbClient();
+		await sql`
+			update supplier_payment_accounts set transfers_enabled = 'no'
+			where workspace_id = ${workspaceId}
+		`;
+		await settle();
+		await sql`
+			update purchase_orders set status = 'skipped_sandbox'
+			where workspace_id = ${workspaceId}
+		`;
+		const notified = vi.fn(
+			async (_input: {
+				to: string;
+				from?: string;
+				subject: string;
+				text: string;
+			}) => undefined,
+		);
+		await supplierRefundHandler(
+			() => {},
+			async (i: { amountCents: number }) => ({ reversedCents: i.amountCents }),
+			notified,
+		).handle(await refundOf(RETAIL));
+		expect(notified).not.toHaveBeenCalled();
 	});
 
 	it("does nothing for an order with no supplier", async () => {

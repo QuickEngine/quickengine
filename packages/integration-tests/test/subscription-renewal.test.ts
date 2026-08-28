@@ -44,6 +44,12 @@ async function seed(over: { saved?: boolean; connected?: boolean } = {}) {
 		values (${workspace}, ${owner}, 'Caffeinate', 'ecommerce', 'live')
 	`;
 	await sql`
+		insert into workspace_branding (workspace_id, portal_slug, display_name, sender_email, support_email)
+		values (${workspace}, 'renewal-test', 'Caffeinate', 'hello@caffeinate.shop', 'hello@caffeinate.shop')
+	`;
+	// ⚠️ A sending address is required: the customer notice fails closed without
+	// one, because a subscriber has no relationship with the platform.
+	await sql`
 		insert into client_records (id, workspace_id, name, email)
 		values (${customer}, ${workspace}, 'Asher', 'asher@example.com')
 	`;

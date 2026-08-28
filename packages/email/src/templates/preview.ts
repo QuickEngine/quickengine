@@ -5,8 +5,10 @@ import {
 	orderConfirmationEmail,
 	paymentReceiptEmail,
 	type RenderedEmail,
+	refundNoticeEmail,
 	shippingNoticeEmail,
 	signInLinkEmail,
+	subscriptionPaymentFailedEmail,
 } from "./index";
 
 /**
@@ -32,6 +34,8 @@ export type EmailTemplateKey =
 	| "order-confirmation"
 	| "shipping-notice"
 	| "payment-receipt"
+	| "refund-notice"
+	| "subscription-payment-failed"
 	| "invoice-sent"
 	| "booking-confirmation"
 	| "sign-in-link";
@@ -123,6 +127,34 @@ export function emailTemplatePreviews(
 				currency,
 				paidAt: new Date("2026-08-21T18:30:00Z"),
 				method: "card",
+			}),
+		},
+		{
+			key: "refund-notice",
+			tokens: ["reference", "amount", "orderNumber", "businessName"],
+			name: "Refund sent",
+			sentWhen: "When money is refunded to a customer.",
+			rendered: refundNoticeEmail({
+				brand,
+				copy: override["refund-notice"],
+				reference: "re_1042",
+				amount: 2900,
+				currency,
+				refundedAt: new Date("2026-08-28T09:30:00Z"),
+				orderNumber: "ORD-1042",
+			}),
+		},
+		{
+			key: "subscription-payment-failed",
+			tokens: ["planName", "businessName"],
+			name: "Subscription payment failed",
+			sentWhen:
+				"When a subscription renewal cannot be charged, and again if it ends.",
+			rendered: subscriptionPaymentFailedEmail({
+				brand,
+				copy: override["subscription-payment-failed"],
+				planName: "Monthly coffee",
+				outcome: "past_due",
 			}),
 		},
 		{

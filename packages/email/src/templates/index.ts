@@ -426,6 +426,164 @@ export function paymentReceiptEmail(input: {
 }
 
 /**
+ * Sent when money goes back to a customer.
+ *
+ * 🔴 Nothing used to tell them. A refund reversed the charge and the customer
+ * saw an unexplained movement on their statement days later, or wrote in asking
+ * where their order had got to. The money returning is the single most
+ * reassuring thing a business can say after something has gone wrong, and it
+ * was the one message the system never sent.
+ *
+ * ⚠️ Says "on its way back", not "in your account". Card refunds take days to
+ * appear and the exact time is the bank's, not ours — promising an arrival date
+ * we cannot keep is how a reassuring email becomes a complaint.
+ */
+export function refundNoticeEmail(input: {
+	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
+	reference: string;
+	amount: number;
+	currency: string;
+	refundedAt: Date | string;
+	/** Present when the refund belongs to an order the customer can look at. */
+	orderNumber?: string;
+	viewUrl?: string;
+}): RenderedEmail {
+	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const COPY_TOKENS = {
+		reference: input.reference,
+		businessName: input.brand.name,
+		amount: formatMoney(input.amount, input.currency),
+		orderNumber: input.orderNumber ?? "",
+	};
+	const body = [
+		heading("Your refund is on its way"),
+		paragraph(
+			`We've refunded ${escapeHtml(formatMoney(input.amount, input.currency))}${
+				input.orderNumber ? ` for order ${escapeHtml(input.orderNumber)}` : ""
+			}.`,
+		),
+		paragraph(
+			"Refunds usually take a few working days to appear, depending on your bank.",
+		),
+		detailRows([
+			...(input.orderNumber
+				? [{ label: "Order", value: input.orderNumber }]
+				: []),
+			{ label: "Reference", value: input.reference },
+			{ label: "Refunded", value: formatDate(input.refundedAt) },
+			{
+				label: "Amount",
+				value: formatMoney(input.amount, input.currency),
+				strong: true,
+			},
+		]),
+		input.viewUrl ? button("View order", input.viewUrl, accent) : "",
+	].join("\n");
+
+	return {
+		subject: applyCopy(
+			`Refund of ${formatMoney(input.amount, input.currency)}`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: `${formatMoney(input.amount, input.currency)} is on its way back to you.`,
+					body,
+				}),
+		text: `Your refund is on its way\n\n${formatMoney(input.amount, input.currency)}${input.orderNumber ? ` for order ${input.orderNumber}` : ""}\nReference ${input.reference}\nRefunds usually take a few working days to appear.${input.viewUrl ? `\n\n${input.viewUrl}` : ""}`,
+	};
+}
+
+/**
+ * Sent when a subscription's payment could not be taken.
+ *
+ * 🔴 Nothing used to tell them, and the renewal code's own comment is the
+ * argument for this existing: a card that failed once is "a customer who still
+ * wants the coffee, and treating those the same is how a business loses somebody
+ * who would have updated their card given the chance". The system kept them
+ * alive precisely so they could be given that chance, and then never gave it.
+ *
+ * ⚠️ Two different messages, not one. "Please update your card" and "your
+ * subscription has ended" ask for opposite things, and sending the softer one to
+ * somebody whose subscription is already gone is worse than saying nothing.
+ */
+export function subscriptionPaymentFailedEmail(input: {
+	brand: EmailBrand;
+	/** The business's own HTML and subject, where it has written any. */
+	copy?: TemplateCopy;
+	planName: string;
+	/** `past_due` while it can still be saved; `cancelled` once it cannot. */
+	outcome: "past_due" | "cancelled";
+	amount?: number;
+	currency?: string;
+	/** Where the customer updates their card. */
+	updateUrl?: string;
+}): RenderedEmail {
+	const accent = input.brand.accentColor ?? DEFAULT_ACCENT;
+	const ended = input.outcome === "cancelled";
+	const COPY_TOKENS = {
+		planName: input.planName,
+		businessName: input.brand.name,
+		amount:
+			input.amount != null && input.currency
+				? formatMoney(input.amount, input.currency)
+				: "",
+	};
+
+	const body = [
+		heading(
+			ended ? "Your subscription has ended" : "We could not take payment",
+		),
+		paragraph(
+			ended
+				? `We tried to renew your ${escapeHtml(input.planName)} subscription a few times and the payment did not go through, so it has now ended. You are welcome to start it again whenever you like.`
+				: `We could not take payment for your ${escapeHtml(input.planName)} subscription. This is usually an expired card or a bank declining the charge.`,
+		),
+		ended
+			? ""
+			: paragraph(
+					"Updating your card will put things right, and we will try again automatically.",
+				),
+		input.updateUrl
+			? button(
+					ended ? "Start again" : "Update your card",
+					input.updateUrl,
+					accent,
+				)
+			: "",
+	]
+		.filter(Boolean)
+		.join("\n");
+
+	return {
+		subject: applyCopy(
+			ended
+				? `Your ${input.planName} subscription has ended`
+				: `Payment failed for your ${input.planName} subscription`,
+			input.copy?.subject,
+			COPY_TOKENS,
+		),
+		html: input.copy?.html?.trim()
+			? renderAuthored(input.copy.html, body, COPY_TOKENS)
+			: renderEmail({
+					brand: input.brand,
+					preheader: ended
+						? "Your subscription has ended."
+						: "Please update your card so we can renew your subscription.",
+					body,
+				}),
+		text: ended
+			? `Your subscription has ended\n\nWe tried to renew your ${input.planName} subscription and the payment did not go through.${input.updateUrl ? `\n\nStart again: ${input.updateUrl}` : ""}`
+			: `We could not take payment\n\nWe could not take payment for your ${input.planName} subscription. Updating your card will put things right.${input.updateUrl ? `\n\n${input.updateUrl}` : ""}`,
+	};
+}
+
+/**
  * Sent when an invoice moves from draft to SENT.
  *
  * 🔴 Deliberately not sent on `invoice.created`. An invoice is drafted, edited,

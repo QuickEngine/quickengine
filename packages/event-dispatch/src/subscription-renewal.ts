@@ -103,12 +103,34 @@ export async function renewDueSubscriptions(): Promise<{
 			 * the operator; `settleCycle` decides whether this counts as past due
 			 * or as the end of the subscription.
 			 */
-			await settleCycle({
+			const settled = await settleCycle({
 				subscriptionId: subscription.id,
 				periodStart: cycle.periodStart,
 				failureReason:
 					error instanceof Error ? error.message : "RENEWAL_FAILED",
 			});
+
+			/**
+			 * 🔴 TELL THE CUSTOMER. This is the whole reason `past_due` exists.
+			 *
+			 * `settleCycle` keeps a failed renewal alive rather than cancelling it,
+			 * on the reasoning that somebody whose card expired still wants the
+			 * coffee and would fix it given the chance. Nothing gave them that
+			 * chance: the subscription quietly went past due, then quietly ended,
+			 * and the first they knew was that the coffee stopped coming.
+			 *
+			 * ⚠️ Never allowed to fail the cycle. The renewal outcome is already
+			 * recorded; a mail outage must not make the run look like it failed and
+			 * re-charge somebody on the next pass.
+			 */
+			try {
+				await tellCustomerPaymentFailed(subscription, settled.status);
+			} catch (mailError) {
+				console.error("subscription-renewal.notice_failed", {
+					error: mailError,
+					subscriptionId: subscription.id,
+				});
+			}
 			failed += 1;
 		}
 	}
@@ -202,5 +224,88 @@ async function chargeRenewal(input: {
 		amountCents: input.order.totalCents,
 		currency: input.currency,
 		environment,
+	});
+}
+
+/**
+ * Ask a customer to fix the card behind their subscription, or tell them it has
+ * ended.
+ *
+ * ⚠️ Sent from the BUSINESS, never the platform. A subscriber has a
+ * relationship with the shop they bought from and none at all with QuickEngine,
+ * so this fails closed on the sender exactly as the purchase order does.
+ */
+async function tellCustomerPaymentFailed(
+	subscription: {
+		id: string;
+		workspaceId: string;
+		customerId?: string | null;
+		planId?: string | null;
+	},
+	outcome: "active" | "past_due" | "cancelled",
+): Promise<void> {
+	// `active` means the charge succeeded after all; there is nothing to say.
+	if (outcome === "active") return;
+
+	const [
+		{ and, clientRecords, db, eq, resolveBrand, subscriptionPlans },
+		{ getEmailProvider },
+	] = await Promise.all([
+		import("@quickengine/db"),
+		import("@quickengine/email"),
+	]);
+
+	const brand = await resolveBrand(subscription.workspaceId);
+	if (!brand?.sender) return;
+
+	if (!subscription.customerId) return;
+	const [customer] = await db
+		.select({ email: clientRecords.email })
+		.from(clientRecords)
+		.where(
+			and(
+				eq(clientRecords.workspaceId, subscription.workspaceId),
+				eq(clientRecords.id, subscription.customerId),
+			),
+		)
+		.limit(1);
+	if (!customer?.email) return;
+
+	const { readEmailTemplateCopy } = await import("@quickengine/db");
+	const copy = await readEmailTemplateCopy(subscription.workspaceId);
+	/**
+	 * ⚠️ The plan's real name. "Your subscription subscription has ended" is the
+	 * kind of sentence that tells a customer nobody read this before sending it.
+	 */
+	const [plan] = subscription.planId
+		? await db
+				.select({ name: subscriptionPlans.name })
+				.from(subscriptionPlans)
+				.where(
+					and(
+						eq(subscriptionPlans.workspaceId, subscription.workspaceId),
+						eq(subscriptionPlans.id, subscription.planId),
+					),
+				)
+				.limit(1)
+		: [];
+
+	const { subscriptionPaymentFailedEmail } = await import(
+		"@quickengine/email/templates"
+	);
+	const rendered = subscriptionPaymentFailedEmail({
+		brand,
+		copy: copy["subscription-payment-failed"],
+		planName: plan?.name ?? "subscription",
+		outcome,
+	});
+
+	await getEmailProvider().send({
+		to: customer.email,
+		from: brand.sender,
+		replyTo: brand.supportEmail,
+		subject: rendered.subject,
+		html: rendered.html,
+		text: rendered.text,
 	});
 }

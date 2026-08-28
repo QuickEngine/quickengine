@@ -1,3 +1,5 @@
+// Type-only: erased at compile time, so it adds nothing to the module graph.
+import type { EmailTemplateCopy } from "@quickengine/db";
 import {
 	and,
 	bookings,
@@ -8,7 +10,9 @@ import {
 	invoices,
 	orderLineItems,
 	orders,
+	paymentRefunds,
 	payments,
+	readEmailTemplateCopy,
 	recordCustomerLifecycleMessage,
 	resolveBrand,
 	shipments,
@@ -26,6 +30,7 @@ import {
 	invoiceSentEmail,
 	orderConfirmationEmail,
 	paymentReceiptEmail,
+	refundNoticeEmail,
 	shippingNoticeEmail,
 } from "@quickengine/email/templates";
 import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
@@ -71,6 +76,13 @@ type Notification = { to: string; email: RenderedEmail };
 const NOTIFIED_EVENTS = new Set([
 	"order.paid",
 	"payment.recorded",
+	/**
+	 * 🔴 Money going BACK is as much a customer's business as money going out.
+	 *
+	 * Nothing told them. A refund reversed the charge and the customer saw an
+	 * unexplained movement days later, or wrote in asking where their order was.
+	 */
+	"payment.refunded",
 	/**
 	 * 🔴 `shipment.status-changed`, NOT `shipment.created`.
 	 *
@@ -267,9 +279,19 @@ async function recipientFor(
 	return client?.email ?? null;
 }
 
+/**
+ * ⚠️ `copy` is the business's OWN wording, keyed by template.
+ *
+ * 🔴 It used to be read only by the preview and the test send, so editing a
+ * template in settings changed what the operator saw and what a test email
+ * looked like — and every real customer kept receiving the built-in default.
+ * Found on 2026-08-28 after a workspace customised its templates and the live
+ * order confirmation ignored all of it.
+ */
 async function buildNotification(
 	event: OutboxEvent,
 	brand: EmailBrand,
+	copy: Record<string, EmailTemplateCopy>,
 ): Promise<Notification | null> {
 	switch (event.eventName) {
 		case "order.paid": {
@@ -294,6 +316,7 @@ async function buildNotification(
 				to,
 				email: orderConfirmationEmail({
 					brand,
+					copy: copy["order-confirmation"],
 					orderNumber: order.number,
 					customerName: order.clientName || undefined,
 					// Loaded in `position` order, which is the order the customer built
@@ -343,6 +366,7 @@ async function buildNotification(
 				to,
 				email: paymentReceiptEmail({
 					brand,
+					copy: copy["payment-receipt"],
 					reference: payment.reference ?? payment.id,
 					amount: payment.amountCents ?? 0,
 					currency: payment.currency ?? "CAD",
@@ -350,6 +374,73 @@ async function buildNotification(
 					// written — they differ for anything recorded after the fact.
 					paidAt: payment.succeededAt ?? payment.createdAt,
 					method: payment.paymentMethod ?? undefined,
+				}),
+			};
+		}
+
+		case "payment.refunded": {
+			const payload = (event.payload ?? {}) as { refundId?: string };
+			const [payment] = await db
+				.select()
+				.from(payments)
+				.where(
+					and(
+						eq(payments.workspaceId, event.workspaceId),
+						eq(payments.id, event.aggregateId),
+					),
+				)
+				.limit(1);
+			if (!payment) return null;
+
+			/**
+			 * ⚠️ The REFUND's amount, not the payment's. A partial refund that
+			 * announced the full order value would be telling somebody they are
+			 * getting back more than they are.
+			 */
+			const [refund] = payload.refundId
+				? await db
+						.select()
+						.from(paymentRefunds)
+						.where(
+							and(
+								eq(paymentRefunds.workspaceId, event.workspaceId),
+								eq(paymentRefunds.id, payload.refundId),
+							),
+						)
+						.limit(1)
+				: [];
+			if (!refund) return null;
+
+			const to = await recipientFor(
+				event.workspaceId,
+				payment.clientEmail,
+				payment.clientId,
+			);
+			if (!to) return null;
+
+			const [order] = payment.orderId
+				? await db
+						.select({ number: orders.number })
+						.from(orders)
+						.where(
+							and(
+								eq(orders.workspaceId, event.workspaceId),
+								eq(orders.id, payment.orderId),
+							),
+						)
+						.limit(1)
+				: [];
+
+			return {
+				to,
+				email: refundNoticeEmail({
+					brand,
+					copy: copy["refund-notice"],
+					reference: refund.id,
+					amount: refund.amountCents,
+					currency: payment.currency,
+					refundedAt: refund.createdAt ?? new Date(),
+					orderNumber: order?.number,
 				}),
 			};
 		}
@@ -392,6 +483,7 @@ async function buildNotification(
 				to,
 				email: shippingNoticeEmail({
 					brand,
+					copy: copy["shipping-notice"],
 					orderNumber: order?.number ?? shipment.id,
 					carrier: shipment.carrier ?? undefined,
 					trackingNumber: shipment.trackingNumber ?? undefined,
@@ -434,6 +526,7 @@ async function buildNotification(
 				to,
 				email: invoiceSentEmail({
 					brand,
+					copy: copy["invoice-sent"],
 					invoiceNumber: invoice.number,
 					customerName: invoice.clientName || undefined,
 					lines,
@@ -463,6 +556,7 @@ async function buildNotification(
 				to,
 				email: bookingConfirmationEmail({
 					brand,
+					copy: copy["booking-confirmation"],
 					serviceName: booking.title || "your appointment",
 					startsAt: booking.startsAt,
 					location: booking.location ?? undefined,
@@ -525,7 +619,10 @@ export function customerNotificationHandler(
 				const brand = await brandFor(event.workspaceId);
 				if (!brand) return;
 
-				const notification = await buildNotification(event, brand);
+				// Read once per event rather than per template: one row set covers
+				// every email this workspace has rewritten.
+				const copy = await readEmailTemplateCopy(event.workspaceId);
+				const notification = await buildNotification(event, brand, copy);
 				if (!notification) return;
 
 				/**

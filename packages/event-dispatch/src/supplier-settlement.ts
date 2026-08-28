@@ -1,4 +1,30 @@
 import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
+import { raiseOperatorNotice } from "./operator-notifications";
+
+/**
+ * Why the supplier was not paid, in words an operator can act on.
+ *
+ * ⚠️ Never the raw code. "SUPPLIER_NOT_ONBOARDED" tells somebody nothing about
+ * what to do next; "they have not finished connecting the account they get paid
+ * into" tells them to go and ask.
+ */
+function reasonForOperator(
+	reason: string,
+	purchaseOrderNumber: string,
+): string {
+	const detail =
+		reason === "SUPPLIER_NOT_ONBOARDED"
+			? "They have not connected the account they get paid into yet. Send them the connection link and this will settle by itself."
+			: reason === "SUPPLIER_CANNOT_RECEIVE_YET" ||
+					reason === "SUPPLIER_ACCOUNT_NOT_ACTIVE"
+				? "Their payment account is not ready to receive money yet. It will settle on its own once it is."
+				: reason === "SUPPLIER_COST_NOT_AGREED"
+					? "No agreed cost is recorded for one of the products on this order, so there is nothing to pay."
+					: reason === "PURCHASE_ORDER_MIXED_CURRENCY"
+						? "This order mixes currencies, which cannot be settled in one payment. Pay it by hand."
+						: "It could not be sent. Open the purchase order to see the detail.";
+	return `${purchaseOrderNumber}: ${detail}`;
+}
 
 /**
  * How the money actually moves.
@@ -124,6 +150,28 @@ export function supplierSettlementHandler(
 					);
 
 					if (!outcome.settled) {
+						/**
+						 * 🔴 Somebody must be told, or the money is simply stuck.
+						 *
+						 * The share was held back at checkout and the supplier cannot be
+						 * paid. Before this the only trace was a log line nobody reads,
+						 * so a supplier who never finished connecting their account was
+						 * never chased and the operator never knew.
+						 *
+						 * ⚠️ Keyed on the OBLIGATION, not the event: the sweep retries
+						 * every fifteen minutes, and keying on the event would report the
+						 * same stuck payment ninety-six times a day.
+						 */
+						await raiseOperatorNotice(event.workspaceId, {
+							type: "supplier-payment.blocked",
+							signal: "failure",
+							title: "A supplier could not be paid",
+							body: reasonForOperator(outcome.reason, purchaseOrder.number),
+							path: "/inventory/purchase-orders",
+							recordId: purchaseOrder.id,
+							sourceKey: `supplier-payment-blocked:${obligation.id}`,
+						});
+
 						/**
 						 * ⚠️ Only a RETRYABLE refusal earns a redelivery.
 						 *

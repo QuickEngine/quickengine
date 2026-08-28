@@ -6,6 +6,29 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Everyone finds out what happened.** Several things could happen to an order and reach nobody. A
+  customer whose money went back was never told, and saw an unexplained refund on their statement days
+  later. A supplier whose order was cancelled was never told, so they could make and ship goods for a
+  sale that no longer existed, having already had their payment reversed. A subscriber whose card was
+  declined was never asked to update it, so their subscription quietly lapsed. And you were not
+  emailed when an order came in, when a refund went out, when a customer wrote to you, when a parcel
+  shipped or arrived, or when a supplier could not be paid.
+
+  All of those now send. What you are told about is separate from what your customers and suppliers
+  are told about, and the messages to them still come from your business rather than from us.
+
+
+### Fixed
+
+- **Your own email wording now reaches your customers.** Rewriting an email in settings changed the
+  preview and the test message you sent yourself, and nothing else, so every real customer kept
+  receiving the built-in wording. Your version is now used for the real thing. What you bought and
+  what you paid is still generated from the order itself, so a receipt can never disagree with the
+  charge.
+
+
 ### Fixed
 
 - **One order, one confirmation email.** A supplier who had not finished connecting the account they

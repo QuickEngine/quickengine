@@ -14,6 +14,7 @@ export * from "./subscription-renewal";
  * outside this package — including a test that wants to drive it directly.
  */
 export * from "./supplier-handoff";
+export * from "./supplier-reconciliation";
 export * from "./supplier-refund";
 export * from "./supplier-settlement";
 export * from "./supplier-settlement-sweep";

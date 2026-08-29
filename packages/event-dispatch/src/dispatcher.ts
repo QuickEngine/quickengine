@@ -7,6 +7,7 @@ import { inngest } from "@quickengine/jobs";
 import { defaultOutboxHandlers } from "./handlers";
 import { mutationRetention, storageCleanup } from "./storage-cleanup";
 import { renewDueSubscriptions } from "./subscription-renewal";
+import { reconcileSupplierPayments } from "./supplier-reconciliation";
 import { settlePendingSupplierPayments } from "./supplier-settlement-sweep";
 import { deliverPendingWebhooks } from "./webhooks";
 
@@ -153,10 +154,33 @@ export const supplierSettlementSweep = inngest.createFunction(
 	async () => settlePendingSupplierPayments(),
 );
 
+/**
+ * Ask the provider what became of money we sent a supplier.
+ *
+ * 🔴 Separate from the settlement sweep on purpose. That one SENDS money and
+ * refuses to touch an uncertain row; this one only READS and writes our record
+ * straight. Keeping them apart is what stops a reconciliation bug turning into a
+ * double payment.
+ *
+ * Hourly rather than every minute: nothing here is urgent, and both cases it
+ * resolves — a lost transfer id, a reversal after the fact — are discovered late
+ * by nature.
+ */
+export const supplierReconciliation = inngest.createFunction(
+	{
+		id: "supplier-reconciliation",
+		concurrency: 1,
+		retries: 0,
+		triggers: [{ cron: "17 * * * *" }],
+	},
+	async () => reconcileSupplierPayments(),
+);
+
 /** Durable functions this package contributes to the Inngest serve endpoint. */
 export const eventDispatchFunctions = [
 	outboxDispatch,
 	supplierSettlementSweep,
+	supplierReconciliation,
 	subscriptionRenewal,
 	webhookDelivery,
 	storageCleanup,

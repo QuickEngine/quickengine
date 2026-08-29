@@ -235,3 +235,84 @@ function asTransferError(error: unknown): SupplierTransferError {
 		retryable,
 	);
 }
+
+/** What a transfer looks like once the provider has had it for a while. */
+export type SupplierTransferState = {
+	externalTransferId: string;
+	amountCents: number;
+	/** How much of it has been taken back, by us or by the provider. */
+	reversedCents: number;
+};
+
+/**
+ * Read a transfer back from the provider.
+ *
+ * 🔴 The half that was missing. Money was sent and the answer was never read
+ * again, so a transfer reversed by Stripe — a disputed source charge, a
+ * recovered negative balance — left the supplier unpaid while our own record
+ * still said `succeeded`. Nothing anywhere would have said otherwise.
+ *
+ * Returns null when the provider has no such transfer, which is a real answer:
+ * it means a row claiming an id refers to something that does not exist.
+ */
+export async function readSupplierTransfer(input: {
+	environment: PaymentEnvironment;
+	externalTransferId: string;
+}): Promise<SupplierTransferState | null> {
+	const stripe = await stripeFor(input.environment);
+	try {
+		const transfer = await stripe.transfers.retrieve(input.externalTransferId);
+		return {
+			externalTransferId: transfer.id,
+			amountCents: transfer.amount,
+			reversedCents: transfer.amount_reversed ?? 0,
+		};
+	} catch (error) {
+		if ((error as { code?: string }).code === "resource_missing") return null;
+		throw asTransferError(error);
+	}
+}
+
+/**
+ * Find a transfer we may have created but never recorded.
+ *
+ * 🔴 The dangerous case, and the reason this exists. A settlement that times out
+ * leaves the row `initiated`: the request may have arrived and paid the supplier,
+ * or may never have landed. Retrying blindly risks paying twice; giving up risks
+ * never paying at all. Asking the provider what it actually holds is the only
+ * honest way out.
+ *
+ * ⚠️ Matched on `metadata.supplierPaymentId`, not on amount or time — two orders
+ * for the same bag on the same afternoon are indistinguishable by those, and
+ * adopting the wrong one would mark a second supplier payment settled by the
+ * first one's money. Stripe has no search endpoint for transfers, so this lists
+ * the destination's recent transfers and matches in memory.
+ */
+export async function findSupplierTransferByPaymentId(input: {
+	environment: PaymentEnvironment;
+	destinationAccountId: string;
+	supplierPaymentId: string;
+	/** Only look at transfers created at or after this moment. */
+	since: Date;
+}): Promise<SupplierTransferState | null> {
+	const stripe = await stripeFor(input.environment);
+	try {
+		const page = await stripe.transfers.list({
+			destination: input.destinationAccountId,
+			created: { gte: Math.floor(input.since.getTime() / 1000) },
+			limit: 100,
+		});
+		const match = page.data.find(
+			(transfer) =>
+				transfer.metadata?.supplierPaymentId === input.supplierPaymentId,
+		);
+		if (!match) return null;
+		return {
+			externalTransferId: match.id,
+			amountCents: match.amount,
+			reversedCents: match.amount_reversed ?? 0,
+		};
+	} catch (error) {
+		throw asTransferError(error);
+	}
+}

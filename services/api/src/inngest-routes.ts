@@ -67,11 +67,23 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
 		const sent = inngest.send({ name: OUTBOX_WRITTEN_EVENT }).catch(() => {
 			// Swallowed: the cron is the backstop and the write is already durable.
 		});
-		// Handed to the platform where possible, so the response is not delayed.
-		// Where it is not possible, WAIT — an unawaited promise on a serverless
-		// host is discarded the moment the response returns, which is exactly how
-		// the previous two attempts did nothing.
-		if (!keepAlive(sent)) await sent;
+
+		/**
+		 * 🔴 BOTH, deliberately — handed to the platform AND awaited.
+		 *
+		 * Handing off alone was not enough: a checkout on 2026-08-29 still waited
+		 * 18 seconds for its `order.created` while the payment webhook's nudge on
+		 * the same deployment landed in 3. Same code, same process, different
+		 * request — so `waitUntil` reported that it had taken the promise and the
+		 * platform dropped it anyway. Awaiting alone would be correct but puts the
+		 * send on the critical path of every write.
+		 *
+		 * ⚠️ The cap is what makes awaiting safe. A slow or unreachable Inngest can
+		 * delay a response by at most this, and the every-minute cron still drains
+		 * whatever the nudge failed to announce.
+		 */
+		keepAlive(sent);
+		await settleWithin(sent, NUDGE_TIMEOUT_MS);
 	});
 }
 
@@ -93,6 +105,33 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
  * other platform — the CALLER must await the promise instead. Dropping it there
  * is what made two previous attempts look correct and do nothing.
  */
+/**
+ * How long a commit will wait for its nudge before giving up on it.
+ *
+ * Long enough for a healthy send (typically well under 300ms), short enough that
+ * a provider outage costs a write a moment rather than a timeout.
+ */
+export const NUDGE_TIMEOUT_MS = 2_000;
+
+/** Resolve when the promise settles, or when the cap expires — whichever first. */
+export async function settleWithin(
+	promise: Promise<unknown>,
+	ms: number,
+): Promise<void> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			promise,
+			new Promise<void>((resolve) => {
+				timer = setTimeout(resolve, ms);
+			}),
+		]);
+	} finally {
+		// Cleared so a resolved send does not hold the event loop open.
+		if (timer) clearTimeout(timer);
+	}
+}
+
 export function keepAlive(promise: Promise<unknown>): boolean {
 	try {
 		const context = (

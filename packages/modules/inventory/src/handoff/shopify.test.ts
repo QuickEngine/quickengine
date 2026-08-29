@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { createShopifyAdapter, splitName } from "./shopify";
+import { createShopifyAdapter, splitName, tagFor } from "./shopify";
 
 const connection = {
 	id: "conn_1",
@@ -102,7 +102,10 @@ describe("placing an order with a Shopify supplier", () => {
 
 		expect(calls).toHaveLength(2);
 		expect(calls[0].query).toContain("FindCorrelatedOrder");
-		expect(calls[0].variables.query).toBe("tag:'qd-po-abc'");
+		// The TAG, not the raw key: Shopify refuses a tag over 40 characters, so
+		// the key is derived. Search and create must derive it the same way or the
+		// duplicate guard stops finding its own orders.
+		expect(calls[0].variables.query).toBe(`tag:'${tagFor("qd-po-abc")}'`);
 		expect(calls[1].query).toContain("PlaceSupplierOrder");
 	});
 
@@ -181,7 +184,7 @@ describe("placing an order with a Shopify supplier", () => {
 
 		const order = (calls[1].variables as { order: Record<string, unknown> })
 			.order;
-		expect(order.tags).toEqual(["qd-po-abc"]);
+		expect(order.tags).toEqual([tagFor("qd-po-abc")]);
 		expect(order.financialStatus).toBe("PAID");
 	});
 

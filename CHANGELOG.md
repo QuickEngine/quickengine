@@ -6,6 +6,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Fixed
+
+- **An order actually reaches a supplier who works through Shopify.** Every single one was refused.
+  The order carried a reference tag two characters longer than Shopify allows, and Shopify rejected it
+  without saying which rule was broken, so the purchase order was marked failed with nothing to act on.
+  The reference is now shortened to fit, and cannot grow past the limit again.
+
 ### Added
 
 - **Connecting a Shopify supplier works on stores created today.** Shopify has retired the kind of app

@@ -8,6 +8,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Finishing your setup no longer breaks your dashboard.** The moment the last setup step was
+  completed, saving that fact failed, and because it never saved, every page load tried again and
+  failed the same way. The dashboard went blank and stayed blank, at the exact moment somebody
+  finished getting started.
+
+- **Your orders are numbered the way you asked.** The order prefix on your settings screen was saved,
+  shown back to you, and used by nothing, so every order was numbered with the default instead.
+  Checkout and subscription renewals both use your own prefix now.
+
 - **The receipt arrives seconds after the order, not half a minute.** Work that follows a purchase is
   now started as soon as the order is saved, and the request that starts it is no longer thrown away
   when the page finishes loading, which is what made two earlier attempts appear to work and change

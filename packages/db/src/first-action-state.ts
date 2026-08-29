@@ -99,8 +99,22 @@ export async function completeFirstActionChecklistState(
 			],
 			set: {
 				collapsed: true,
-				dismissedAt: sql`coalesce(${quickdashFirstActionStates.dismissedAt}, ${now})`,
-				completedAt: sql`coalesce(${quickdashFirstActionStates.completedAt}, ${now})`,
+				/**
+				 * 🔴 An ISO STRING with an explicit cast, never the `Date`.
+				 *
+				 * Drizzle converts a value assigned straight to a column, but inside
+				 * a `sql` template it passes what it is given — and the driver
+				 * refuses a `Date`, throwing `The "string" argument must be of type
+				 * string ... Received an instance of Date`.
+				 *
+				 * It only fires the FIRST time someone completes their checklist, and
+				 * then never recovers: the failed write leaves `completed_at` null, so
+				 * every later page load takes the same branch and throws again. On
+				 * 2026-08-29 that turned a real dashboard into a permanent 500 the
+				 * moment its owner finished setting up — the worst possible moment.
+				 */
+				dismissedAt: sql`coalesce(${quickdashFirstActionStates.dismissedAt}, ${now.toISOString()}::timestamptz)`,
+				completedAt: sql`coalesce(${quickdashFirstActionStates.completedAt}, ${now.toISOString()}::timestamptz)`,
 				updatedAt: now,
 			},
 		})

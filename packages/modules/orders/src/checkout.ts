@@ -387,6 +387,14 @@ export async function resolveCheckoutClient(input: {
  * checkout never fails for want of a settings row.
  */
 export async function readOrdersSettings(workspaceId: string): Promise<{
+	/**
+	 * 🔴 Returned so an order can actually use it.
+	 *
+	 * The setting existed, was editable, validated, and read by nothing — every
+	 * order was numbered `ORD-0001` whatever the business had typed. Found on a
+	 * workspace configured as `CAF` on 2026-08-29.
+	 */
+	numberPrefix: string;
 	taxRateBasisPoints: number;
 	referrals: {
 		enabled: boolean;
@@ -406,9 +414,17 @@ export async function readOrdersSettings(workspaceId: string): Promise<{
 		.limit(1);
 
 	const settings = (row?.settings ?? {}) as {
+		numberPrefix?: unknown;
 		taxRateBasisPoints?: unknown;
 		referrals?: unknown;
 	};
+	// Same defensive parse as everything else here: an unusable value falls back
+	// to the default rather than writing a number nobody can read. The bounds
+	// match the module's own schema.
+	const prefix =
+		typeof settings.numberPrefix === "string"
+			? settings.numberPrefix.trim()
+			: "";
 	const rate = Number(settings.taxRateBasisPoints ?? 0);
 	// Same defensive parse as the tax rate: a corrupt settings blob falls back to
 	// "off" rather than paying out an arbitrary reward.
@@ -418,6 +434,7 @@ export async function readOrdersSettings(workspaceId: string): Promise<{
 	// something arbitrary. Wrong-but-zero is recoverable; wrong-but-large is a
 	// customer dispute.
 	return {
+		numberPrefix: prefix.length >= 1 && prefix.length <= 12 ? prefix : "ORD",
 		taxRateBasisPoints:
 			Number.isInteger(rate) && rate >= 0 && rate <= 10_000 ? rate : 0,
 		referrals: {

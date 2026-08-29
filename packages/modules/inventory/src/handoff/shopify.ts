@@ -175,6 +175,29 @@ type RequestResult = {
  * died before the reference was written. Without this, the retry places a second
  * real order and a supplier ships twice.
  */
+/**
+ * The correlation key as a Shopify TAG.
+ *
+ * 🔴 Shopify refuses an order whose tag exceeds **40 characters**, with the
+ * unhelpful `Order tags is invalid` and no indication of which rule was broken.
+ * `qd-po-` plus a 36-character uuid is 42, so EVERY Shopify supplier order was
+ * refused — the adapter had never successfully placed one. Found on 2026-08-29,
+ * two days before the first supplier test, by replaying the mutation by hand:
+ * 42 characters refused, the same key at 40 accepted.
+ *
+ * Dropping the uuid's hyphens takes it to 38 and keeps it unique and readable.
+ * The hard truncation after it is the belt: a future caller can change the key
+ * format without silently breaking order placement again.
+ *
+ * ⚠️ Both placing and finding go through here. They must agree, or the duplicate
+ * guard stops recognising its own orders and a supplier ships twice.
+ */
+const SHOPIFY_TAG_LIMIT = 40;
+
+export function tagFor(correlationKey: string): string {
+	return correlationKey.replace(/-/g, "").slice(0, SHOPIFY_TAG_LIMIT);
+}
+
 async function findCorrelated(
 	config: ShopifyConfig,
 	correlationKey: string,
@@ -183,7 +206,7 @@ async function findCorrelated(
 		config,
 		"order lookup",
 		FIND_BY_TAG,
-		{ query: `tag:'${correlationKey}'` },
+		{ query: `tag:'${tagFor(correlationKey)}'` },
 	);
 	return result.orders.nodes[0] ?? null;
 }
@@ -296,7 +319,7 @@ export function createShopifyAdapter(
 						 * confirmation cannot be switched off, so the only reliable
 						 * suppression is having nothing to send to.
 						 */
-						tags: [request.correlationKey],
+						tags: [tagFor(request.correlationKey)],
 						/**
 						 * 🔴 Readable, and deliberately says nothing about the platform.
 						 *

@@ -1,4 +1,8 @@
-import { eventDispatchFunctions } from "@quickengine/event-dispatch";
+import { onMutationCommitted } from "@quickengine/db";
+import {
+	eventDispatchFunctions,
+	OUTBOX_WRITTEN_EVENT,
+} from "@quickengine/event-dispatch";
 import { inngest, inngestFunctions } from "@quickengine/jobs";
 import type { Hono } from "hono";
 import { serve } from "inngest/hono";
@@ -42,4 +46,26 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
 	// GET returns app metadata (how Inngest discovers the functions), PUT triggers
 	// a sync, POST executes a function step.
 	app.on(["GET", "POST", "PUT"], "/api/inngest", (c) => handler(c));
+
+	/**
+	 * Drain the outbox as soon as a mutation commits.
+	 *
+	 * 🔴 The drain used to run ONLY on its every-minute cron, so a paid order
+	 * waited up to a minute before its confirmation email, its purchase order or
+	 * its supplier handoff began. Measured on real orders: 51s and 98s.
+	 *
+	 * ⚠️ Best effort, and it must stay that way. The mutation has already
+	 * committed by the time this runs — failing here would turn a latency problem
+	 * into a lost write. The cron still drains everything, so a send that fails,
+	 * or never happens because this process died, costs nothing but time.
+	 *
+	 * Registered here because this file already holds the Inngest client; wiring
+	 * it into `@quickengine/db` would drag a provider SDK into the module graph of
+	 * every route (hard rule 12).
+	 */
+	onMutationCommitted(() => {
+		void inngest.send({ name: OUTBOX_WRITTEN_EVENT }).catch(() => {
+			// Swallowed: the cron is the backstop and the write is already durable.
+		});
+	});
 }

@@ -328,7 +328,7 @@ export async function resolveCheckoutClient(input: {
 	const email = input.email.trim().toLowerCase();
 
 	const [existing] = await db
-		.select({ id: clientRecords.id })
+		.select({ id: clientRecords.id, name: clientRecords.name })
 		.from(clientRecords)
 		.where(
 			and(
@@ -338,7 +338,31 @@ export async function resolveCheckoutClient(input: {
 		)
 		.limit(1);
 
-	if (existing) return existing;
+	if (existing) {
+		/**
+		 * 🔴 A record created before the name was known keeps the placeholder
+		 * forever, and every email then greets the customer by their own address.
+		 *
+		 * The row is created with `name || email`, and this branch used to return
+		 * it untouched — so a checkout that reached here first (an abandoned
+		 * attempt, a retry) fixed the placeholder in place. Seen on a real order:
+		 * `ship_to_name` held "Asher Wilson" while `client_name` was the email,
+		 * from the same checkout. 2026-08-29.
+		 *
+		 * ⚠️ Only a PLACEHOLDER is replaced. A name the business has since edited
+		 * is theirs, and a checkout must never overwrite it — which is why this
+		 * compares against the email rather than just checking for a new value.
+		 */
+		const supplied = input.name?.trim();
+		const isPlaceholder = existing.name.trim().toLowerCase() === email;
+		if (supplied && isPlaceholder && supplied.toLowerCase() !== email) {
+			await db
+				.update(clientRecords)
+				.set({ name: supplied })
+				.where(eq(clientRecords.id, existing.id));
+		}
+		return { id: existing.id };
+	}
 
 	const [created] = await db
 		.insert(clientRecords)

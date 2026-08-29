@@ -3,6 +3,7 @@ import {
 	createOrder,
 	dueSubscriptions,
 	priceCheckout,
+	readOrdersSettings,
 	SubscriptionError,
 	settleCycle,
 } from "@quickengine/mod-orders";
@@ -64,10 +65,16 @@ export async function renewDueSubscriptions(): Promise<{
 					}),
 				),
 			);
+			// The business's own prefix, same as a checkout order — a renewal that
+			// numbered itself differently would look like a different shop.
+			const { numberPrefix } = await readOrdersSettings(
+				subscription.workspaceId,
+			);
 			const order = await createOrder(subscription.workspaceId, {
 				clientId: cycle.subscription.customerId,
 				currency: priced.currency,
 				lines: priced.lines,
+				numberPrefix,
 			});
 
 			/**

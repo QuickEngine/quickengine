@@ -551,6 +551,9 @@ export function registerCheckoutRoutes(
 			{
 				clientId: client.id,
 				currency: priced.currency,
+				// The business's own prefix. Without this every order is `ORD-0001`
+				// no matter what they configured.
+				numberPrefix: settings.numberPrefix,
 				discountCents,
 				discountCode: discount?.ok ? discount.code : null,
 				taxCents,

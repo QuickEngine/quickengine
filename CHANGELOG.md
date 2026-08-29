@@ -6,6 +6,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ## [Unreleased]
 
+### Added
+
+- **Money sent to a supplier is checked against the payment provider.** If a payment was sent but the
+  answer never came back, the provider is now asked what it actually holds, so a supplier is never
+  paid twice and never quietly left unpaid. If a payment is taken back after the fact, that is
+  recorded instead of being missed.
+
 ### Fixed
 
 - **Finishing your setup no longer breaks your dashboard.** The moment the last setup step was
@@ -16,6 +23,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **Your orders are numbered the way you asked.** The order prefix on your settings screen was saved,
   shown back to you, and used by nothing, so every order was numbered with the default instead.
   Checkout and subscription renewals both use your own prefix now.
+
+- **Everything after an order starts right away, including the order itself.** The receipt already
+  arrived within seconds, but the order's own record still waited for the payment a moment later to
+  wake the queue. Both start immediately now, and a slow moment at our end can hold things up by a
+  couple of seconds at most rather than a minute.
 
 - **The receipt arrives seconds after the order, not half a minute.** Work that follows a purchase is
   now started as soon as the order is saved, and the request that starts it is no longer thrown away

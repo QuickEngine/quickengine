@@ -347,6 +347,18 @@ async function buildNotification(
 						.where(eq(orderLineItems.orderId, order.id))
 						.orderBy(orderLineItems.position),
 					subtotal: order.subtotalCents ?? 0,
+					/**
+					 * 🔴 Passed, or the customer cannot account for their own total.
+					 *
+					 * It was omitted, so a $29.99 order with $12.00 delivery showed
+					 * "Subtotal $29.99 / Total $41.99" and nothing explaining the gap.
+					 * Found on a real order, 2026-08-29.
+					 *
+					 * ⚠️ Still omitted when it is zero: a "$0.00" delivery row on an
+					 * order that never had delivery reads as a bug, and with nothing to
+					 * add the subtotal already equals the total.
+					 */
+					shipping: order.shippingCents || undefined,
 					total: order.totalCents ?? 0,
 					currency: order.currency ?? "CAD",
 				}),

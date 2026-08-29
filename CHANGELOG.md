@@ -8,6 +8,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Your customer can account for their own total.** The order confirmation listed a subtotal and a
+  total with nothing in between, so an order with delivery on it appeared to jump by an unexplained
+  amount. Delivery is now shown, and still left out entirely when there was none.
+
 - **An order actually reaches a supplier who works through Shopify.** Every single one was refused.
   The order carried a reference tag two characters longer than Shopify allows, and Shopify rejected it
   without saying which rule was broken, so the purchase order was marked failed with nothing to act on.

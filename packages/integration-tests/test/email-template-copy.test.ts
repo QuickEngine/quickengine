@@ -199,3 +199,37 @@ describe("a business's own email wording", () => {
 		expect(sent?.html).not.toContain("Shipped");
 	});
 });
+
+/**
+ * A customer can account for every cent of their own total.
+ *
+ * 🔴 Delivery was never passed to the confirmation email, so a real order of
+ * $29.99 with $12.00 delivery arrived reading "Subtotal $29.99 / Total $41.99"
+ * with nothing between them. Found on ORD-0003, 2026-08-29, on a live order.
+ */
+describe("the money in an order confirmation", () => {
+	it("shows delivery, so the total adds up", async () => {
+		const sql = testDbClient();
+		await sql`
+			update orders
+			   set shipping_cents = 1200, total_cents = 4199, subtotal_cents = 2900
+			 where id = ${orderId}
+		`;
+
+		const send = capture();
+		await customerNotificationHandler(send, () => {}).handle(paidEvent());
+
+		const html = send.mock.calls[0]?.[0]?.html ?? "";
+		expect(html).toContain("Shipping");
+		expect(html).toContain("12.00");
+		expect(html).toContain("41.99");
+	});
+
+	/** ⚠️ A "$0.00" delivery row on an order that never had delivery reads as a bug. */
+	it("says nothing about delivery when there was none", async () => {
+		const send = capture();
+		await customerNotificationHandler(send, () => {}).handle(paidEvent());
+
+		expect(send.mock.calls[0]?.[0]?.html ?? "").not.toContain("Shipping");
+	});
+});

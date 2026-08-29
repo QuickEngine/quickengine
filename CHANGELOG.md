@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **The receipt arrives seconds after the order, not half a minute.** Work that follows a purchase is
+  now started as soon as the order is saved, and the request that starts it is no longer thrown away
+  when the page finishes loading, which is what made two earlier attempts appear to work and change
+  nothing.
+
 - **Your customer hears back straight away.** Everything that happens after an order is paid, the
   confirmation email, the purchase order, the handover to your supplier, waited for a job that only
   ran once a minute. On a real order that was 51 seconds of silence, and on another 98. That work now

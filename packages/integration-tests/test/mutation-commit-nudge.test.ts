@@ -78,6 +78,22 @@ describe("draining the outbox on commit", () => {
 	 * ⚠️ The mutation has already committed by the time this runs. A listener that
 	 * throws must never turn a latency problem into a failed write.
 	 */
+	/** ⚠️ An async listener is AWAITED — that is what stops the host discarding it. */
+	it("waits for an async listener before returning", async () => {
+		let finished = false;
+		onMutationCommitted(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 25));
+			finished = true;
+		});
+
+		await mutationUnitOfWork.execute(context(), async () => ({
+			result: { ok: true },
+			status: 200,
+		}));
+
+		expect(finished).toBe(true);
+	});
+
 	it("survives a listener that throws", async () => {
 		onMutationCommitted(() => {
 			throw new Error("inngest is down");

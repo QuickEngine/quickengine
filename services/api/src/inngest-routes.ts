@@ -63,12 +63,15 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
 	 * it into `@quickengine/db` would drag a provider SDK into the module graph of
 	 * every route (hard rule 12).
 	 */
-	onMutationCommitted(() => {
-		keepAlive(
-			inngest.send({ name: OUTBOX_WRITTEN_EVENT }).catch(() => {
-				// Swallowed: the cron is the backstop and the write is already durable.
-			}),
-		);
+	onMutationCommitted(async () => {
+		const sent = inngest.send({ name: OUTBOX_WRITTEN_EVENT }).catch(() => {
+			// Swallowed: the cron is the backstop and the write is already durable.
+		});
+		// Handed to the platform where possible, so the response is not delayed.
+		// Where it is not possible, WAIT — an unawaited promise on a serverless
+		// host is discarded the moment the response returns, which is exactly how
+		// the previous two attempts did nothing.
+		if (!keepAlive(sent)) await sent;
 	});
 }
 
@@ -86,11 +89,11 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
  * request-context global is what `@vercel/functions` does internally, and doing
  * it here avoids adding a dependency to the API for one function.
  *
- * ⚠️ Falls back to `void` when there is no request context — local dev, tests,
- * any other host. That is the pre-existing behaviour, so the worst case is the
- * every-minute cron we already rely on.
+ * ⚠️ Returns whether the host took it. When it did not — local dev, tests, any
+ * other platform — the CALLER must await the promise instead. Dropping it there
+ * is what made two previous attempts look correct and do nothing.
  */
-export function keepAlive(promise: Promise<unknown>): void {
+export function keepAlive(promise: Promise<unknown>): boolean {
 	try {
 		const context = (
 			globalThis as unknown as Record<
@@ -102,10 +105,10 @@ export function keepAlive(promise: Promise<unknown>): void {
 		const hook = context?.get?.()?.waitUntil;
 		if (hook) {
 			hook(promise);
-			return;
+			return true;
 		}
 	} catch {
-		// Any surprise in the host's internals falls through to the cron.
+		// Any surprise in the host's internals leaves it to the caller.
 	}
-	void promise;
+	return false;
 }

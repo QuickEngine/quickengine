@@ -34,6 +34,12 @@ describe("keeping a background promise alive", () => {
 		expect(held).toEqual([promise]);
 	});
 
+	/** 🔴 The return value is what tells the caller whether it must await. */
+	it("reports whether the host actually took it", () => {
+		withContext((_p) => {});
+		expect(keepAlive(Promise.resolve())).toBe(true);
+	});
+
 	/** ⚠️ Local dev, tests, any other host: the cron is still the backstop. */
 	it("falls back silently when there is no request context", async () => {
 		let settled = false;
@@ -41,14 +47,14 @@ describe("keeping a background promise alive", () => {
 			settled = true;
 		});
 
-		expect(() => keepAlive(promise)).not.toThrow();
+		expect(keepAlive(promise)).toBe(false);
 		await promise;
 		expect(settled).toBe(true);
 	});
 
 	it("falls back when the host offers a context but no waitUntil", () => {
 		withContext(undefined);
-		expect(() => keepAlive(Promise.resolve())).not.toThrow();
+		expect(keepAlive(Promise.resolve())).toBe(false);
 	});
 
 	/** 🔴 A surprise in the host's internals must never break a committed write. */
@@ -58,6 +64,6 @@ describe("keeping a background promise alive", () => {
 				throw new Error("no context here");
 			},
 		};
-		expect(() => keepAlive(Promise.resolve())).not.toThrow();
+		expect(keepAlive(Promise.resolve())).toBe(false);
 	});
 });

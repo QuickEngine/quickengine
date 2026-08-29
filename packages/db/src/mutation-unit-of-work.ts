@@ -29,16 +29,27 @@ export type DatabaseTransaction = Parameters<
  * else. It must never fail a mutation that has already committed, which is why
  * it takes no arguments, returns nothing, and is called after the transaction.
  */
-let committedListener: (() => void) | null = null;
+let committedListener: (() => void | Promise<void>) | null = null;
 
-export function onMutationCommitted(listener: (() => void) | null): void {
+export function onMutationCommitted(
+	listener: (() => void | Promise<void>) | null,
+): void {
 	committedListener = listener;
 }
 
-function announceCommit(): void {
+/**
+ * ⚠️ AWAITED, and that is the point.
+ *
+ * The first version called this and moved on, which reads as harmless and is
+ * not: on a serverless host the response returns, the instance freezes, and any
+ * work still in flight is discarded. Two deploys looked correct and changed
+ * nothing because of it. The listener decides whether it needs the wait — it
+ * hands off to the platform where it can, and only blocks where it cannot.
+ */
+async function announceCommit(): Promise<void> {
 	if (!committedListener) return;
 	try {
-		committedListener();
+		await committedListener();
 	} catch {
 		// Swallowed deliberately: the work is done and the cron is the backstop.
 	}
@@ -165,7 +176,7 @@ export const mutationUnitOfWork: MutationUnitOfWork<DatabaseTransaction> = {
 
 		// After COMMIT, never inside it: a nudge sent from within the transaction
 		// would announce work that a rollback then erased.
-		if (outcome.kind === "success") announceCommit();
+		if (outcome.kind === "success") await announceCommit();
 		return outcome;
 	},
 };

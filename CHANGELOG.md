@@ -8,6 +8,17 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Your customer hears back straight away.** Everything that happens after an order is paid, the
+  confirmation email, the purchase order, the handover to your supplier, waited for a job that only
+  ran once a minute. On a real order that was 51 seconds of silence, and on another 98. That work now
+  starts the moment the order is committed, with the every minute pass kept as a safety net so
+  nothing can be lost.
+
+- **A customer is greeted by their name, not their email address.** If we saw someone's address
+  before they told us their name, the address stood in for it permanently, so every email opened
+  with it. The name is filled in as soon as it is known, and a name you have edited yourself is never
+  overwritten.
+
 - **Your customer can account for their own total.** The order confirmation listed a subtotal and a
   total with nothing in between, so an order with delivery on it appeared to jump by an unexplained
   amount. Delivery is now shown, and still left out entirely when there was none.

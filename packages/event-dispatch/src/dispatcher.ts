@@ -60,21 +60,33 @@ export async function dispatchPendingEvents(options?: {
 	return total;
 }
 
+/** Sent after a mutation commits, so its events drain now rather than on the tick. */
+export const OUTBOX_WRITTEN_EVENT = "outbox/written";
+
 /**
- * The scheduled drain.
+ * The drain: on every commit, and every minute regardless.
  *
- * Runs every minute rather than reacting to a per-write trigger: the outbox is
- * the durable record, so a cron cannot lose an event the way a dropped trigger
- * message could, and it recovers on its own after any outage. `concurrency: 1`
- * keeps overlapping cycles from fighting over the same rows — the lease already
- * makes that safe, but serialising avoids the wasted work.
+ * The cron is the DURABLE half and is not going anywhere — the outbox is the
+ * record of truth, so a cron cannot lose an event the way a dropped trigger
+ * message could, and it recovers on its own after any outage.
+ *
+ * 🔴 But the cron was the ONLY trigger, which made it the floor on latency for
+ * everything downstream: a paid order waited an average of 30 seconds and up to
+ * 60 before its confirmation email, its purchase order, or its supplier handoff
+ * even began. Measured on a real order 2026-08-29: 51 seconds, and 98 on another.
+ *
+ * The event trigger removes that floor while changing nothing about durability.
+ * A nudge that is never sent, or is lost, costs latency only — the next tick
+ * still drains the row. `concurrency: 1` keeps a nudge and a tick from fighting
+ * over the same rows; the lease already makes that safe, but serialising avoids
+ * the wasted work.
  */
 export const outboxDispatch = inngest.createFunction(
 	{
 		id: "outbox-dispatch",
 		concurrency: 1,
 		retries: 0, // The outbox retries individual events; a failed cycle just waits.
-		triggers: [{ cron: "* * * * *" }],
+		triggers: [{ cron: "* * * * *" }, { event: OUTBOX_WRITTEN_EVENT }],
 	},
 	async () => dispatchPendingEvents(),
 );

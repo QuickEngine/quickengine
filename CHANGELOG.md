@@ -12,7 +12,8 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   confirmation email, the purchase order, the handover to your supplier, waited for a job that only
   ran once a minute. On a real order that was 51 seconds of silence, and on another 98. That work now
   starts the moment the order is committed, with the every minute pass kept as a safety net so
-  nothing can be lost.
+  nothing can be lost. The first attempt at this looked right and changed nothing, because the
+  request that starts the work was being discarded the instant the page finished loading.
 
 - **A customer is greeted by their name, not their email address.** If we saw someone's address
   before they told us their name, the address stood in for it permanently, so every email opened

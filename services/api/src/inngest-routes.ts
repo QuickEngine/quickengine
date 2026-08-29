@@ -64,8 +64,48 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
 	 * every route (hard rule 12).
 	 */
 	onMutationCommitted(() => {
-		void inngest.send({ name: OUTBOX_WRITTEN_EVENT }).catch(() => {
-			// Swallowed: the cron is the backstop and the write is already durable.
-		});
+		keepAlive(
+			inngest.send({ name: OUTBOX_WRITTEN_EVENT }).catch(() => {
+				// Swallowed: the cron is the backstop and the write is already durable.
+			}),
+		);
 	});
+}
+
+/**
+ * Keep the serverless instance alive until a fire-and-forget promise settles.
+ *
+ * 🔴 `void inngest.send(...)` DOES NOT WORK on Vercel and looks like it does.
+ * The handler returns its response, the platform freezes the instance, and the
+ * outbound request is discarded mid-flight — silently, because nothing is
+ * awaiting it. Measured on a real order 2026-08-29: `order.paid` still waited 25
+ * seconds, and the logs showed no `/api/inngest` invocation between the commit
+ * and the next cron tick. The nudge had never left the process.
+ *
+ * `waitUntil` is Vercel's own mechanism for exactly this; reading it off the
+ * request-context global is what `@vercel/functions` does internally, and doing
+ * it here avoids adding a dependency to the API for one function.
+ *
+ * ⚠️ Falls back to `void` when there is no request context — local dev, tests,
+ * any other host. That is the pre-existing behaviour, so the worst case is the
+ * every-minute cron we already rely on.
+ */
+export function keepAlive(promise: Promise<unknown>): void {
+	try {
+		const context = (
+			globalThis as unknown as Record<
+				symbol,
+				| { get?: () => { waitUntil?: (p: Promise<unknown>) => void } }
+				| undefined
+			>
+		)[Symbol.for("@vercel/request-context")];
+		const hook = context?.get?.()?.waitUntil;
+		if (hook) {
+			hook(promise);
+			return;
+		}
+	} catch {
+		// Any surprise in the host's internals falls through to the cron.
+	}
+	void promise;
 }

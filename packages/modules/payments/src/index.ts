@@ -10,4 +10,5 @@ export * from "./providers";
 export * from "./refund-provider";
 export * from "./status";
 export * from "./supplier-onboarding";
+export * from "./supplier-onboarding-link";
 export * from "./supplier-transfers";

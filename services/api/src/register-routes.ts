@@ -46,6 +46,7 @@ import { registerRolesRoutes } from "./roles-routes";
 import { registerSavedViewRoutes } from "./saved-view-routes";
 import { registerShippingRoutes } from "./shipping-routes";
 import { registerStripeWebhookRoutes } from "./stripe-webhook-routes";
+import { registerSupplierOnboardingLinkRoutes } from "./supplier-onboarding-link-routes";
 import { registerSupplierWebhookRoutes } from "./supplier-webhook-routes";
 import { registerTimeTrackingRoutes } from "./time-tracking-routes";
 import { registerWebhookRoutes } from "./webhook-routes";
@@ -81,6 +82,8 @@ export function registerAllRoutes(
 	registerOrdersRoutes(app, dependencies);
 	registerFulfillmentRoutes(app, dependencies);
 	registerInventoryRoutes(app, dependencies);
+	// Public, unauthenticated: a supplier opening an emailed onboarding link.
+	registerSupplierOnboardingLinkRoutes(app, dependencies);
 	registerShippingRoutes(app, dependencies);
 	registerProjectsRoutes(app, dependencies);
 	registerBookingsRoutes(app, dependencies);

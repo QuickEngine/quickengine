@@ -1479,6 +1479,29 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/inventory/suppliers/{id}/payment-account/link": {
+				parameters: [
+					{
+						in: "path",
+						name: "id",
+						required: true,
+						schema: { type: "string", format: "uuid" },
+					},
+				],
+				get: {
+					operationId: "createSupplierOnboardingLink",
+					summary: "A shareable link that onboards a supplier for payouts",
+					description:
+						"Returns a durable URL to send the supplier. Unlike the provider's own onboarding link, which expires within minutes and dies on first use, this one is exchanged for a fresh provider link every time it is opened, so it survives an email sitting unread. The workspace's current mode is stamped into the link when it is issued: a link made in test mode can never onboard a live account, and going live means issuing a new one and the supplier connecting again, because those are separate provider accounts.",
+					responses: {
+						"200": {
+							description:
+								"The link to send, when it stops working, and the mode it was issued for.",
+						},
+						"404": { description: "No such supplier in this workspace." },
+					},
+				},
+			},
 			"/v1/inventory/suppliers/{id}/payment-account": {
 				parameters: [
 					{

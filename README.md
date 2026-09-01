@@ -247,6 +247,15 @@ disputed payment, a flagged shipment or stock running low reaches the bell, mark
 it belongs to, and appears briefly in the corner if you are watching. A sandbox workspace and a live one never share
 that bell, so a test order and a real customer paying are never the same news, while account-level
 notices such as an invitation appear in both.
+Setting a workspace up is a short guided sequence rather than one long form: who you are and what
+the business is called, the kind of work it does, your part in it, and whether you want it
+configured for you or want to pick the parts yourself. It asks for a name — signing up with an
+email code or a passkey never captured one — and detects your time zone, country and language so
+dates and totals read the way you write them, including in email sent when no browser is open to
+guess from. The business catalogue behind the suggestions covers 106 kinds of business across 28
+categories. QuickDash, Account and the sign-in screens can be light or dark or follow your device,
+and the choice carries across every surface and every device you sign in from. Phones and tablets
+are turned away for now rather than shown a layout that has not been designed yet.
 Customer email is the business’s own voice: a workspace sends from its own verified address, and every
 customer-facing message can be rewritten as a whole HTML document, previewed with realistic contents
 and test-sent to the operator before a customer sees it. Only the order details stay system-owned,

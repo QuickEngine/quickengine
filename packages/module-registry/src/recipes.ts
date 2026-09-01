@@ -37,7 +37,25 @@ export type RecipeCategory =
 	| "Education"
 	| "Property & events"
 	| "Technology"
-	| "Community";
+	| "Community"
+	| "Manufacturing & production"
+	| "Transport & logistics"
+	| "Automotive"
+	| "Agriculture & outdoors"
+	| "Finance & insurance"
+	| "Sports & recreation"
+	| "Beauty & personal care"
+	| "Pets & animals"
+	| "Travel & tourism"
+	| "Arts & culture"
+	| "Childcare & family"
+	| "Marketing & advertising"
+	| "Wholesale & distribution"
+	| "Facilities & security"
+	| "Energy & environment"
+	| "Marine & aviation"
+	| "Funeral & memorial"
+	| "Science & engineering";
 
 // ---------------------------------------------------------------------------
 // Shared module sets. Recipes compose these so a new entry is one line, and so a
@@ -570,6 +588,489 @@ export const RECIPES: readonly BusinessRecipe[] = [
 		category: "Community",
 		keywords: ["club", "membership", "society", "association", "community"],
 		modules: [...APPOINTMENT, "products-services"],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Manufacturing & production ------------------------------------------
+	// ⚠️ Distinct from Retail: these make goods to order for other businesses, so
+	// they quote first and carry work in progress. RETAIL alone would give them a
+	// storefront they do not have and no way to price a job.
+	{
+		id: "manufacturing",
+		name: "Manufacturing",
+		category: "Manufacturing & production",
+		keywords: ["factory", "production", "assembly", "goods", "batch"],
+		modules: [...RETAIL, "quotes-estimates", "projects-tasks"],
+		firstActions: [ACTIONS.addProduct, ACTIONS.sendQuote],
+	},
+	{
+		id: "contract-manufacturing",
+		name: "Contract & white label",
+		category: "Manufacturing & production",
+		keywords: ["contract", "white label", "oem", "private label", "supplier"],
+		modules: [...RETAIL, "quotes-estimates", "contracts-esign"],
+		firstActions: [ACTIONS.addClient, ACTIONS.sendQuote],
+	},
+	{
+		id: "fabrication",
+		name: "Workshop & fabrication",
+		category: "Manufacturing & production",
+		keywords: ["workshop", "fabrication", "welding", "machining", "joinery"],
+		modules: [...JOB_SERVICE, "products-services", "inventory"],
+		firstActions: SERVICE_ACTIONS,
+	},
+
+	// --- Transport & logistics -----------------------------------------------
+	{
+		id: "courier",
+		name: "Courier & delivery",
+		category: "Transport & logistics",
+		keywords: ["courier", "delivery", "last mile", "dispatch", "driver"],
+		modules: [...FOUNDATION, "orders", "shipping", "bookings"],
+		firstActions: [ACTIONS.addClient, ACTIONS.takeBooking],
+	},
+	{
+		id: "freight",
+		name: "Freight & haulage",
+		category: "Transport & logistics",
+		keywords: ["freight", "haulage", "trucking", "shipping", "logistics"],
+		modules: [...FOUNDATION, "quotes-estimates", "shipping", "contracts-esign"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "private-hire",
+		name: "Taxi & private hire",
+		category: "Transport & logistics",
+		keywords: ["taxi", "private hire", "chauffeur", "rideshare", "transfers"],
+		modules: [...APPOINTMENT],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Automotive ----------------------------------------------------------
+	// ⚠️ "Auto repair & servicing" stays under Trades where it has always been.
+	// Moving an existing recipe would change the category of workspaces already
+	// created from it, and these three are additions rather than a re-shuffle.
+	{
+		id: "dealership",
+		name: "Car sales & dealership",
+		category: "Automotive",
+		keywords: ["dealership", "car sales", "used cars", "vehicles", "forecourt"],
+		modules: [...RETAIL, "quotes-estimates", "contracts-esign"],
+		firstActions: [ACTIONS.addProduct, ACTIONS.addClient],
+	},
+	{
+		id: "vehicle-rental",
+		name: "Vehicle rental",
+		category: "Automotive",
+		keywords: ["rental", "hire", "fleet", "van hire", "car hire"],
+		modules: [...APPOINTMENT, "contracts-esign", "products-services"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "mobile-mechanic",
+		name: "Mobile mechanic",
+		category: "Automotive",
+		keywords: ["mobile mechanic", "callout", "roadside", "servicing", "mot"],
+		modules: [...JOB_SERVICE, "inventory"],
+		firstActions: SERVICE_ACTIONS,
+	},
+
+	// --- Agriculture & outdoors ----------------------------------------------
+	{
+		id: "farm",
+		name: "Farm & produce",
+		category: "Agriculture & outdoors",
+		keywords: ["farm", "produce", "growers", "market garden", "livestock"],
+		modules: [...RETAIL],
+		firstActions: RETAIL_ACTIONS,
+	},
+	{
+		id: "brewery",
+		name: "Brewery & distillery",
+		category: "Agriculture & outdoors",
+		keywords: ["brewery", "distillery", "winery", "cidery", "taproom"],
+		modules: [...RETAIL, "bookings"],
+		firstActions: RETAIL_ACTIONS,
+	},
+	{
+		id: "nursery",
+		name: "Nursery & garden centre",
+		category: "Agriculture & outdoors",
+		keywords: ["nursery", "garden centre", "plants", "horticulture", "seeds"],
+		modules: [...RETAIL],
+		firstActions: RETAIL_ACTIONS,
+	},
+
+	// --- Finance & insurance -------------------------------------------------
+	// ⚠️ "Accounting & bookkeeping" stays under Services & consulting for the
+	// same reason as auto repair above.
+	{
+		id: "financial-advice",
+		name: "Financial advice",
+		category: "Finance & insurance",
+		keywords: ["financial adviser", "ifa", "wealth", "planning", "pensions"],
+		modules: [...PROJECT_SERVICE],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "insurance-broker",
+		name: "Insurance brokerage",
+		category: "Finance & insurance",
+		keywords: ["insurance", "broker", "policies", "renewals", "cover"],
+		modules: [...FOUNDATION, "quotes-estimates", "contracts-esign", "files"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "lending",
+		name: "Mortgage & lending",
+		category: "Finance & insurance",
+		keywords: ["mortgage", "broker", "lending", "loans", "finance"],
+		modules: [...FOUNDATION, "quotes-estimates", "contracts-esign", "files"],
+		firstActions: SERVICE_ACTIONS,
+	},
+
+	// --- Sports & recreation -------------------------------------------------
+	{
+		id: "sports-club",
+		name: "Sports club",
+		category: "Sports & recreation",
+		keywords: ["club", "team", "league", "fixtures", "members"],
+		modules: [...APPOINTMENT, "products-services"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "adventure",
+		name: "Outdoor & adventure",
+		category: "Sports & recreation",
+		keywords: ["adventure", "tours", "guiding", "climbing", "kayaking"],
+		modules: [...APPOINTMENT, "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "camps",
+		name: "Coaching & camps",
+		category: "Sports & recreation",
+		keywords: ["coaching", "camp", "academy", "sessions", "youth"],
+		modules: [...APPOINTMENT, "products-services"],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Beauty & personal care ----------------------------------------------
+	// ⚠️ "Salon & barbering" and "Spa & massage" stay under Health & wellness for
+	// the same reason auto repair stays under Trades: re-categorising an existing
+	// recipe changes the category of every workspace already created from it.
+	{
+		id: "nail-studio",
+		name: "Nail & lash studio",
+		category: "Beauty & personal care",
+		keywords: ["nails", "lashes", "brows", "manicure", "technician"],
+		modules: [...APPOINTMENT],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "aesthetics",
+		name: "Aesthetics & skin",
+		category: "Beauty & personal care",
+		keywords: ["aesthetics", "skin", "facials", "injectables", "clinic"],
+		modules: [...APPOINTMENT, "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "cosmetics-maker",
+		name: "Cosmetics & skincare maker",
+		category: "Beauty & personal care",
+		keywords: ["cosmetics", "skincare", "soap", "candles", "handmade"],
+		modules: [...RETAIL],
+		firstActions: RETAIL_ACTIONS,
+	},
+
+	// --- Pets & animals ------------------------------------------------------
+	{
+		id: "grooming",
+		name: "Pet grooming",
+		category: "Pets & animals",
+		keywords: ["grooming", "dog", "cat", "pets", "salon"],
+		modules: [...APPOINTMENT],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "boarding",
+		name: "Boarding & daycare",
+		category: "Pets & animals",
+		keywords: ["boarding", "kennel", "cattery", "daycare", "sitting"],
+		modules: [...APPOINTMENT, "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "dog-training",
+		name: "Training & walking",
+		category: "Pets & animals",
+		keywords: ["dog training", "walking", "behaviour", "obedience", "classes"],
+		modules: [...APPOINTMENT, "products-services"],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Travel & tourism ----------------------------------------------------
+	{
+		id: "tour-operator",
+		name: "Tours & experiences",
+		category: "Travel & tourism",
+		keywords: ["tours", "experiences", "excursions", "sightseeing", "guide"],
+		modules: [...APPOINTMENT, "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "travel-agency",
+		name: "Travel planning",
+		category: "Travel & tourism",
+		keywords: ["travel agent", "itinerary", "holidays", "bookings", "trips"],
+		modules: [...PROJECT_SERVICE, "bookings"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "campsite",
+		name: "Campsite & glamping",
+		category: "Travel & tourism",
+		keywords: ["campsite", "glamping", "pitches", "cabins", "sites"],
+		modules: [...APPOINTMENT, "products-services"],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Arts & culture ------------------------------------------------------
+	{
+		id: "gallery",
+		name: "Gallery & exhibitions",
+		category: "Arts & culture",
+		keywords: ["gallery", "exhibition", "curator", "artworks", "shows"],
+		modules: [...RETAIL, "content"],
+		firstActions: RETAIL_ACTIONS,
+	},
+	{
+		id: "venue",
+		name: "Theatre & live venue",
+		category: "Arts & culture",
+		keywords: ["theatre", "venue", "gigs", "tickets", "shows"],
+		modules: [...APPOINTMENT, "content", "products-services"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "museum",
+		name: "Museum & heritage",
+		category: "Arts & culture",
+		keywords: ["museum", "heritage", "collection", "admissions", "tours"],
+		modules: [...APPOINTMENT, "content"],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Childcare & family --------------------------------------------------
+	{
+		id: "nursery-childcare",
+		name: "Nursery & childcare",
+		category: "Childcare & family",
+		keywords: ["nursery", "childcare", "creche", "preschool", "daycare"],
+		modules: [...APPOINTMENT, "contracts-esign", "files"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "childminding",
+		name: "Childminding & nannying",
+		category: "Childcare & family",
+		keywords: ["childminder", "nanny", "babysitting", "au pair", "sitter"],
+		modules: [...APPOINTMENT, "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "care-services",
+		name: "Home & care support",
+		category: "Childcare & family",
+		keywords: ["care", "carer", "support worker", "home help", "visits"],
+		modules: [...APPOINTMENT, "time-tracking", "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Marketing & advertising ---------------------------------------------
+	// ⚠️ "Agency" stays under Services & consulting. These are the specialisms
+	// that would otherwise have to call themselves one.
+	{
+		id: "marketing-studio",
+		name: "Marketing studio",
+		category: "Marketing & advertising",
+		keywords: ["marketing", "campaigns", "social", "brand", "strategy"],
+		modules: [...PROJECT_SERVICE, "content"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "seo-ads",
+		name: "SEO & paid media",
+		category: "Marketing & advertising",
+		keywords: ["seo", "ppc", "ads", "paid media", "search"],
+		modules: [...PROJECT_SERVICE, "reporting-analytics"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "pr",
+		name: "PR & communications",
+		category: "Marketing & advertising",
+		keywords: ["pr", "press", "communications", "media", "publicity"],
+		modules: [...PROJECT_SERVICE, "content"],
+		firstActions: SERVICE_ACTIONS,
+	},
+
+	// --- Wholesale & distribution --------------------------------------------
+	// ⚠️ Distinct from Retail: they sell to BUSINESSES, so a price list and an
+	// order arriving on account matter more than a storefront does.
+	{
+		id: "wholesaler",
+		name: "Wholesale supply",
+		category: "Wholesale & distribution",
+		keywords: ["wholesale", "trade", "bulk", "b2b", "supply"],
+		modules: [...RETAIL, "quotes-estimates"],
+		firstActions: [ACTIONS.addProduct, ACTIONS.addClient],
+	},
+	{
+		id: "distributor",
+		name: "Distribution & logistics",
+		category: "Wholesale & distribution",
+		keywords: ["distribution", "warehouse", "stockist", "fulfilment", "3pl"],
+		modules: [...RETAIL, "projects-tasks"],
+		firstActions: RETAIL_ACTIONS,
+	},
+	{
+		id: "import-export",
+		name: "Import & export",
+		category: "Wholesale & distribution",
+		keywords: ["import", "export", "customs", "freight", "trade"],
+		modules: [...RETAIL, "quotes-estimates", "contracts-esign"],
+		firstActions: [ACTIONS.addClient, ACTIONS.sendQuote],
+	},
+
+	// --- Facilities & security -----------------------------------------------
+	{
+		id: "facilities",
+		name: "Facilities management",
+		category: "Facilities & security",
+		keywords: ["facilities", "fm", "building", "maintenance", "contracts"],
+		modules: [...PROJECT_SERVICE, "bookings"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "security-services",
+		name: "Security services",
+		category: "Facilities & security",
+		keywords: ["security", "guarding", "patrol", "alarms", "cctv"],
+		modules: [...JOB_SERVICE, "time-tracking"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "waste",
+		name: "Waste & recycling",
+		category: "Facilities & security",
+		keywords: ["waste", "recycling", "skips", "collection", "disposal"],
+		modules: [...JOB_SERVICE, "shipping"],
+		firstActions: SERVICE_ACTIONS,
+	},
+
+	// --- Energy & environment ------------------------------------------------
+	{
+		id: "renewables",
+		name: "Solar & renewables",
+		category: "Energy & environment",
+		keywords: ["solar", "renewable", "heat pump", "battery", "install"],
+		modules: [...JOB_SERVICE, "products-services", "inventory"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "energy-assessment",
+		name: "Energy assessment",
+		category: "Energy & environment",
+		keywords: ["epc", "energy", "assessor", "survey", "efficiency"],
+		modules: [...APPOINTMENT, "files"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "environmental",
+		name: "Environmental services",
+		category: "Energy & environment",
+		keywords: ["environment", "ecology", "remediation", "testing", "surveys"],
+		modules: [...PROJECT_SERVICE, "files"],
+		firstActions: SERVICE_ACTIONS,
+	},
+
+	// --- Marine & aviation ---------------------------------------------------
+	{
+		id: "marina",
+		name: "Boatyard & marina",
+		category: "Marine & aviation",
+		keywords: ["marina", "boatyard", "moorings", "berths", "chandlery"],
+		modules: [...APPOINTMENT, "products-services", "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "charter",
+		name: "Charter & hire",
+		category: "Marine & aviation",
+		keywords: ["charter", "yacht", "boat hire", "skipper", "day trips"],
+		modules: [...APPOINTMENT, "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+	{
+		id: "aviation-services",
+		name: "Aviation services",
+		category: "Marine & aviation",
+		keywords: ["aviation", "aircraft", "hangar", "flight school", "charter"],
+		modules: [...APPOINTMENT, "projects-tasks", "files"],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Funeral & memorial --------------------------------------------------
+	{
+		id: "funeral-director",
+		name: "Funeral director",
+		category: "Funeral & memorial",
+		keywords: ["funeral", "director", "arrangements", "burial", "cremation"],
+		modules: [...PROJECT_SERVICE, "bookings"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "memorials",
+		name: "Memorials & monuments",
+		category: "Funeral & memorial",
+		keywords: ["memorial", "headstone", "monument", "engraving", "masonry"],
+		modules: [...RETAIL, "quotes-estimates"],
+		firstActions: [ACTIONS.addClient, ACTIONS.sendQuote],
+	},
+	{
+		id: "celebrant",
+		name: "Celebrant & officiant",
+		category: "Funeral & memorial",
+		keywords: ["celebrant", "officiant", "ceremony", "wedding", "service"],
+		modules: [...APPOINTMENT, "contracts-esign"],
+		firstActions: BOOKING_ACTIONS,
+	},
+
+	// --- Science & engineering -----------------------------------------------
+	{
+		id: "laboratory",
+		name: "Laboratory & testing",
+		category: "Science & engineering",
+		keywords: ["lab", "testing", "samples", "analysis", "calibration"],
+		modules: [...PROJECT_SERVICE, "files"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "engineering-consultancy",
+		name: "Engineering consultancy",
+		category: "Science & engineering",
+		keywords: ["engineering", "structural", "civil", "mechanical", "design"],
+		modules: [...PROJECT_SERVICE, "files"],
+		firstActions: SERVICE_ACTIONS,
+	},
+	{
+		id: "surveying",
+		name: "Surveying & inspection",
+		category: "Science & engineering",
+		keywords: ["survey", "surveyor", "inspection", "measured", "reports"],
+		modules: [...APPOINTMENT, "files", "quotes-estimates"],
 		firstActions: BOOKING_ACTIONS,
 	},
 ];

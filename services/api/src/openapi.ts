@@ -3319,6 +3319,32 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/account/profile": {
+				patch: {
+					operationId: "updateProfile",
+					summary: "Update your name and profile pictures",
+					description:
+						"The person behind the login, not the business — the business is the workspace. Every field is optional so one screen can save the parts it collected. The display name is composed from `firstName` and `lastName` rather than accepted directly, so the three can never disagree. Sending `null` for a nickname or a picture REMOVES it; omitting the field leaves it untouched, which is why the two cannot be collapsed.",
+					responses: {
+						"200": { description: "The profile was updated." },
+						"400": { description: "That profile could not be saved." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account/images": {
+				post: {
+					operationId: "uploadProfileImage",
+					summary: "Upload a profile picture or banner",
+					description:
+						"Multipart, with `file` and `kind` (`avatar` or `banner`). The browser crops and resizes before uploading, so the 8 MB ceiling exists to refuse an unresized camera original rather than to bound a normal upload. One object per kind, overwritten in place, with a cache-busting query on the returned URL — a new key per upload would orphan the previous object for ever.",
+					responses: {
+						"201": { description: "The public URL of the stored image." },
+						"400": { description: "That file is not a usable image." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
 			"/v1/account/notifications/read-all": {
 				post: {
 					operationId: "markAllNotificationsRead",

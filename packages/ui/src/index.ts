@@ -26,6 +26,7 @@ export {
 export { GlobalErrorScreen } from "./components/global-error-screen";
 export { InitialsAvatar } from "./components/initials-avatar";
 export { Logo } from "./components/logo";
+export { MobileNotice } from "./components/mobile-notice";
 export {
 	ActionableEmptyState,
 	InlineRequestError,

@@ -1,0 +1,1 @@
+ALTER TABLE "quickengine_users" ADD COLUMN "country" text;

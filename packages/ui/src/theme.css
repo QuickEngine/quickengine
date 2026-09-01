@@ -195,6 +195,124 @@
 	   halation that keeps the light theme off pure white. */
 	--console-banner: #3c4247;
 	--console-banner-ink: #dce7ed;
+
+	/* ── The wave ─────────────────────────────────────────────────────────
+	   The brand's ground for full-screen moments: onboarding, and the
+	   small-screen blocker. Deep water in the bottom-left corner, rising and
+	   thinning up the diagonal, a weaker echo bottom-right, and a veil over the
+	   top where there is no colour to lose.
+
+	   🔴 Every radial is centred BELOW the viewport, so only the flat top of each
+	   falloff is ever on screen. That is what keeps it a wave rather than a
+	   spotlight — a visible dome under centred content reads as a stage.
+
+	   ⚠️ Defined HERE rather than per app. It was written inline in onboarding
+	   and a second surface needed it, which is the point at which a copy starts
+	   drifting from the original. */
+	--wave:
+		radial-gradient(
+			70% 26% at 26% 104%,
+			#dce7ed1f 0%,
+			#dce7ed0a 40%,
+			transparent 72%
+		),
+		radial-gradient(58% 42% at 40% 108%, #7fa8c92b 0%, transparent 68%),
+		radial-gradient(
+			74% 58% at 22% 108%,
+			#3e6c8f52 0%,
+			#3e6c8f1f 40%,
+			transparent 72%
+		),
+		radial-gradient(
+			96% 76% at 4% 116%,
+			#1d3a4fa6 0%,
+			#1d3a4f52 34%,
+			transparent 74%
+		),
+		radial-gradient(
+			66% 48% at 94% 112%,
+			#1d3a4f5c 0%,
+			#1d3a4f1f 38%,
+			transparent 70%
+		),
+		linear-gradient(to top, #3e6c8f17 0%, #3e6c8f08 24%, transparent 52%),
+		linear-gradient(
+			to bottom,
+			rgb(0 0 0 / 0.5) 0%,
+			rgb(0 0 0 / 0.2) 26%,
+			transparent 46%
+		);
+}
+
+/* ── The console in light ─────────────────────────────────────────────────
+   🔴 The console had NO light palette. Every `--console-*` above was declared
+   once, on bare `:root`, hard-coded dark — so the theme switch could flip the
+   ramp tokens all it liked and the shell stayed black. A switch that visibly
+   does nothing is worse than no switch, which is why one was pulled out of
+   onboarding until this existed.
+
+   ⚠️ `:root:not(.dark)` rather than a media query. The theme is a deliberate
+   CHOICE carried in a cookie and stamped as a class, so it must beat the
+   operating system's preference in both directions — somebody who picks light
+   on a dark machine has to get light.
+
+   The relationships are preserved, not mirrored. `--console-ink` is a near-black
+   triple rather than an inverted off-white, and the surfaces are warm off-whites
+   rather than pure #fff, for the same reason the dark ink is never pure white:
+   full-window pure white glares. */
+:root:not(.dark) {
+	--console-panel: #f7f7f8;
+	--console-bg: #f7f7f8;
+	--console-pop: #ffffff;
+	--console-ink: 24 24 27;
+	--console-line: #e4e4e7;
+	--console-line-soft: #ededf0;
+	--console-line-strong: #d8d8dd;
+
+	/* The same wave as tints instead of depths. ⚠️ The veil at the top is WHITE
+	   rather than black: on a light ground, darkening the top would frame the
+	   page in grey. */
+	--wave:
+		radial-gradient(
+			70% 26% at 26% 104%,
+			rgb(255 255 255 / 0.5) 0%,
+			transparent 72%
+		),
+		radial-gradient(
+			58% 42% at 40% 108%,
+			rgb(127 168 201 / 0.3) 0%,
+			transparent 68%
+		),
+		radial-gradient(
+			74% 58% at 22% 108%,
+			rgb(62 108 143 / 0.26) 0%,
+			rgb(62 108 143 / 0.1) 40%,
+			transparent 72%
+		),
+		radial-gradient(
+			96% 76% at 4% 116%,
+			rgb(47 95 128 / 0.3) 0%,
+			rgb(47 95 128 / 0.14) 34%,
+			transparent 74%
+		),
+		radial-gradient(
+			66% 48% at 94% 112%,
+			rgb(47 95 128 / 0.18) 0%,
+			rgb(47 95 128 / 0.06) 38%,
+			transparent 70%
+		),
+		linear-gradient(
+			to top,
+			rgb(62 108 143 / 0.07) 0%,
+			rgb(62 108 143 / 0.02) 24%,
+			transparent 52%
+		),
+		linear-gradient(
+			to bottom,
+			rgb(255 255 255 / 0.55) 0%,
+			rgb(255 255 255 / 0.2) 26%,
+			transparent 46%
+		);
 }
 
 /* ── The ink scale ────────────────────────────────────────────────────────

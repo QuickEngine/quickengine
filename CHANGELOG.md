@@ -8,6 +8,37 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Setting up a new workspace is now a short, guided sequence.** Signing up walks through a small
+  deck of cards instead of one long form: who you are and what the business is called, the kind of
+  work it does, your part in it, and whether you want it configured for you or want to pick the
+  parts yourself. Nothing is permanent and every choice can be changed afterwards.
+
+- **QuickDash asks for your name, so it can use it.** Signing up with an email code or a passkey
+  never captured one, which is why the sidebar used to say "Account" and a personal organisation
+  could end up named after an email address. It is asked for once, at the start, along with what you
+  would like to be called.
+
+- **Your time zone, country and language are detected rather than asked for.** Dates, times and
+  numbers are then written the way you write them — and, importantly, in emails sent when no browser
+  is open to guess from. All three can be corrected on the same screen.
+
+- **Many more kinds of business to choose from.** The catalogue grew from 52 to 106, across 28
+  categories, adding manufacturing, transport, automotive, agriculture, finance, sport, beauty,
+  pets, travel, arts, childcare, marketing, wholesale, facilities, energy, marine, funeral services
+  and engineering. Your answer changes what is suggested.
+
+- **A light theme.** QuickDash, Account and the sign-in screens can now be light or dark, or follow
+  your device. The choice carries across every part of the product and to any device you sign in
+  from. Change it under Settings, Appearance.
+
+- **A module that something else depends on now says so.** Turning on Orders quietly turned on
+  Client records, and Client records then refused to be turned off with no explanation. Both now
+  read "Needed by Orders".
+
+- **Phones and tablets are turned away rather than shown a broken screen.** The small-screen
+  experience is still being built, so QuickDash asks to be opened on a larger screen instead of
+  letting somebody find the unfinished parts themselves.
+
 - **A supplier can be invited to set up payouts with one link that keeps working.** Payment providers
   issue setup links that expire within minutes and stop working once opened, which makes them
   impossible to email to a partner who reads their post hours later. A supplier now gets a single

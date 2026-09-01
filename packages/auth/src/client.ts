@@ -5,10 +5,12 @@ import {
 } from "@quickengine/env/vite";
 import {
 	emailOTPClient,
+	inferAdditionalFields,
 	magicLinkClient,
 	twoFactorClient,
 } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
+import type { auth } from "./server";
 
 const viteEnvironment = (
 	import.meta as ImportMeta & {
@@ -31,6 +33,18 @@ const env = viteEnvironment?.PROD
 export const authClient = createAuthClient({
 	baseURL: env.VITE_AUTH_URL,
 	plugins: [
+		/**
+		 * 🔴 Without this, NOTHING declared in the server's `user.additionalFields`
+		 * exists on the client's session type — `companyName`,
+		 * `onboardingCompletedAt` and `bannerImage` were all invisible, so any
+		 * screen reading one had to cast and would never be told when the field
+		 * moved or went away.
+		 *
+		 * ⚠️ `import type`, so the server module is erased at build time. It pulls
+		 * the shape across without pulling the server — nothing here reaches the
+		 * browser bundle, and hard rule 12 is untouched.
+		 */
+		inferAdditionalFields<typeof auth>(),
 		emailOTPClient(),
 		magicLinkClient(),
 		passkeyClient(),

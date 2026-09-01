@@ -1,6 +1,7 @@
 import { getCacheProvider } from "@quickengine/cache";
 import { mutationUnitOfWork } from "@quickengine/db";
 import type { Hono } from "hono";
+import { registerAccountImageRoutes } from "./account-image-routes";
 import { registerAccountReadRoutes } from "./account-read-routes";
 import { registerAccountRoutes } from "./account-routes";
 import { registerAccountTeamRoutes } from "./account-team-routes";
@@ -103,6 +104,7 @@ export function registerAllRoutes(
 	registerCheckoutRoutes(app, dependencies);
 	registerContentRoutes(app, dependencies);
 	registerImageRoutes(app, dependencies);
+	registerAccountImageRoutes(app, dependencies);
 	registerDiscountRoutes(app, dependencies);
 	registerCustomerRoutes(app, {
 		...dependencies,

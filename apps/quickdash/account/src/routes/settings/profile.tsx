@@ -1,7 +1,8 @@
 import { authClient, useSession } from "@quickengine/auth/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { type CropShape, ImageCropper } from "../../components/image-cropper";
 import { accountQueries, useActiveOrganization } from "../../lib/account-api";
 import { api } from "../../lib/api";
 import { clientEnv } from "../../lib/env";
@@ -49,6 +50,21 @@ function ProfilePage() {
 	const [confirmText, setConfirmText] = useState("");
 	const [deleting, setDeleting] = useState(false);
 	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * The two pictures on a person's profile.
+	 *
+	 * ⚠️ These were built for onboarding and moved here. Onboarding asks for the
+	 * NAME only, because a name is the one thing the product cannot work without
+	 * — `console-shell.tsx` renders `name || "Account"` — and every additional
+	 * field at signup costs completion. Pictures are something somebody chooses
+	 * to do, in a place with room to frame them properly.
+	 */
+	const [cropping, setCropping] = useState<{
+		file: File;
+		shape: CropShape;
+	} | null>(null);
+	const avatarInput = useRef<HTMLInputElement | null>(null);
+	const bannerInput = useRef<HTMLInputElement | null>(null);
 	const [note, setNote] = useState<string | null>(null);
 
 	const currentName = name ?? user?.name ?? "";
@@ -68,6 +84,68 @@ function ProfilePage() {
 		onError: (error: { message?: string }) =>
 			setFailure(error?.message ?? "That could not be saved."),
 	});
+
+	/**
+	 * ⚠️ Uploads the CROPPED blob, never the original file. The browser has
+	 * already reduced a camera original to a 512px square or a 1500x500 banner, so
+	 * what crosses the network is typically under 200 KB and the server stores it
+	 * as given — no image library, no resize queue, no decompression bomb.
+	 */
+	const uploadImage = useMutation({
+		mutationFn: async ({ kind, blob }: { kind: CropShape; blob: Blob }) => {
+			const form = new FormData();
+			form.set("kind", kind === "circle" ? "avatar" : "banner");
+			form.set("file", new File([blob], `${kind}.jpg`, { type: "image/jpeg" }));
+			const uploaded = await api.request<{ url: string }>("/account/images", {
+				method: "POST",
+				body: form,
+			});
+			await api.request("/account/profile", {
+				method: "PATCH",
+				body:
+					kind === "circle"
+						? { image: uploaded.data.url }
+						: { bannerImage: uploaded.data.url },
+			});
+			return uploaded.data.url;
+		},
+		onSuccess: async () => {
+			setCropping(null);
+			setFailure(null);
+			setNote("Saved.");
+			// The session carries `image`, so the avatar in the shell is stale until
+			// it is refetched — otherwise a new picture appears here and nowhere else.
+			await authClient.getSession({ query: { disableCookieCache: true } });
+		},
+		onError: () => {
+			setCropping(null);
+			setFailure("That picture could not be uploaded.");
+		},
+	});
+
+	const removeImage = useMutation({
+		mutationFn: (kind: CropShape) =>
+			api.request("/account/profile", {
+				method: "PATCH",
+				// 🔴 `null`, not omitted. The route reads an absent field as "leave it
+				// alone", which is the only way an optional field can also be cleared.
+				body: kind === "circle" ? { image: null } : { bannerImage: null },
+			}),
+		onSuccess: async () => {
+			setNote("Removed.");
+			await authClient.getSession({ query: { disableCookieCache: true } });
+		},
+		onError: () => setFailure("That picture could not be removed."),
+	});
+
+	const pick =
+		(shape: CropShape) => (event: React.ChangeEvent<HTMLInputElement>) => {
+			const file = event.target.files?.[0];
+			// Reset first: choosing the SAME file twice fires no change event
+			// otherwise, so a cancelled crop could never be restarted.
+			event.target.value = "";
+			if (file) setCropping({ file, shape });
+		};
 
 	const remove = useMutation({
 		mutationFn: async () => api.request("/account", { method: "DELETE" }),
@@ -91,13 +169,112 @@ function ProfilePage() {
 
 			<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">You</p>
 			<div className="border-[var(--console-line-soft)] border-t py-4">
-				<div className="flex items-center gap-4">
-					<span
-						aria-hidden="true"
-						className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink)/0.07)] text-[16px] text-[var(--ink-50)]"
-					>
-						{(user?.name ?? user?.email ?? "?").trim().charAt(0).toUpperCase()}
+				{cropping ? (
+					<div className="mb-5 rounded-xl border border-[var(--console-line)] bg-[var(--console-pop)] p-5">
+						<p className="mb-4 text-[12.5px] text-[var(--ink-45)]">
+							Drag to move, zoom to fill. Only what is inside the frame is
+							saved.
+						</p>
+						<ImageCropper
+							file={cropping.file}
+							shape={cropping.shape}
+							busy={uploadImage.isPending}
+							onCancel={() => setCropping(null)}
+							onCropped={(blob) =>
+								uploadImage.mutate({ kind: cropping.shape, blob })
+							}
+						/>
+					</div>
+				) : null}
+
+				{/* The banner, then the avatar pulled up over its lower edge. That
+				    overlap is the detail that makes the block read as a profile rather
+				    than as two unrelated pictures stacked on a settings page. */}
+				<button
+					type="button"
+					onClick={() => bannerInput.current?.click()}
+					style={
+						user?.bannerImage
+							? {
+									backgroundImage: `url(${user.bannerImage})`,
+									backgroundSize: "cover",
+									backgroundPosition: "center",
+								}
+							: undefined
+					}
+					className="group relative block h-[7.5rem] w-full overflow-hidden rounded-xl border border-[var(--console-line)] bg-[rgb(var(--console-ink)/0.04)] transition-colors duration-200 hover:border-[rgb(var(--console-ink)/0.20)]"
+				>
+					<span className="flex h-full items-center justify-center text-[12px] text-[var(--ink-30)] transition-colors duration-200 group-hover:text-[var(--ink-60)]">
+						{user?.bannerImage ? "" : "Add a banner"}
 					</span>
+				</button>
+
+				<div className="-mt-8 mb-4 flex items-end justify-between gap-4 px-1">
+					<button
+						type="button"
+						onClick={() => avatarInput.current?.click()}
+						style={
+							user?.image
+								? {
+										backgroundImage: `url(${user.image})`,
+										backgroundSize: "cover",
+										backgroundPosition: "center",
+									}
+								: undefined
+						}
+						className="group size-16 shrink-0 overflow-hidden rounded-full bg-[var(--console-bg)] ring-4 ring-[var(--console-bg)]"
+					>
+						<span
+							className={`flex size-full items-center justify-center rounded-full border border-[var(--console-line)] text-[11px] transition-colors duration-200 ${
+								user?.image
+									? "border-transparent bg-black/45 text-white opacity-0 group-hover:opacity-100"
+									: "text-[var(--ink-40)] group-hover:text-[var(--ink-70)]"
+							}`}
+						>
+							{user?.image ? "Change" : "Add photo"}
+						</span>
+					</button>
+
+					{/* Only offered for a picture that exists. A remove control beside an
+					    empty slot is a button that does nothing. */}
+					<div className="flex items-center gap-3 pb-1">
+						{user?.image ? (
+							<button
+								type="button"
+								onClick={() => removeImage.mutate("circle")}
+								className="text-[11px] text-[var(--ink-30)] transition-colors hover:text-[var(--ink-70)]"
+							>
+								Remove photo
+							</button>
+						) : null}
+						{user?.bannerImage ? (
+							<button
+								type="button"
+								onClick={() => removeImage.mutate("banner")}
+								className="text-[11px] text-[var(--ink-30)] transition-colors hover:text-[var(--ink-70)]"
+							>
+								Remove banner
+							</button>
+						) : null}
+					</div>
+				</div>
+
+				<input
+					ref={avatarInput}
+					type="file"
+					accept="image/*"
+					hidden
+					onChange={pick("circle")}
+				/>
+				<input
+					ref={bannerInput}
+					type="file"
+					accept="image/*"
+					hidden
+					onChange={pick("banner")}
+				/>
+
+				<div className="flex items-center gap-4">
 					<div className="min-w-0">
 						{/* 🔴 The email is shown, never edited here. Changing it is an
 						    identity change that has to be verified through the auth app, not

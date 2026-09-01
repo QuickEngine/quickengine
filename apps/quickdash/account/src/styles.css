@@ -28,6 +28,345 @@ body {
 	}
 }
 
+/* ── Onboarding's palette ────────────────────────────────────────────────
+   🔴 ONE PLACE, BOTH THEMES. Onboarding was written entirely in literals —
+   `text-white`, `bg-black/30`, `border-white/12` — which is why turning the
+   theme switch to light produced white text on a white card. Tailwind's `dark:`
+   variant would mean two classes on every element and a light theme that is
+   only ever as complete as the last person's diligence.
+
+   Every value below is a real decision per theme, not an inversion. Light
+   surfaces swallow low-contrast text far faster than dark ones, so the ink
+   tiers are not mirrored: the dark theme's 45% white becomes 55% black, not 55%
+   white's opposite.
+
+   ⚠️ `:root:not(.dark)` rather than a media query, because the theme is a
+   deliberate choice stamped as a class and must beat the operating system's
+   preference in both directions. */
+:root {
+	/* 🔴 Onboarding's OWN surfaces, not `--console-bg` / `--console-pop`.
+	   The console's greys are deliberately neutral — it is a working tool, and a
+	   tint across every screen of it would become tiring. Onboarding is a single
+	   branded moment, so it can carry the brand: SLATE in dark, GLACIER in light.
+	   Keeping them separate means tuning this cannot leak into the console. */
+	--ob-page: #0a0a0a;
+	--ob-card: #1a1a1a;
+	/* 🔴 The CARD's edge, separate from the fields' edge. A bulk rename put the
+	   inputs' `rgb(255 255 255 / 0.12)` onto the card too, and at card size that
+	   reads as a drawn outline rather than a seam — the card looked bordered
+	   instead of lit. This is the console hairline it always was. */
+	--ob-card-line: #232323;
+
+	/* 🔑 ONE LIGHT SOURCE, ABOVE AND TO THE LEFT.
+	   All three layers agree with it: the face brightens toward the top-left, the
+	   rim is brightest on that corner and turns to shade opposite it, and the
+	   cast shadow falls down and to the RIGHT. Letting one of the three disagree
+	   is what makes a card read as a rectangle with effects on it rather than an
+	   object sitting in a room.
+	   Anchored PAST the corner so only the flat part of the falloff lands on the
+	   card — a visible circular hotspot reads as gloss, not as light. */
+	--ob-sheen: radial-gradient(
+		135% 115% at -8% -14%,
+		rgb(255 255 255 / 0.075) 0%,
+		rgb(255 255 255 / 0.028) 26%,
+		rgb(255 255 255 / 0.008) 52%,
+		rgb(255 255 255 / 0) 78%
+	);
+
+	/* 🔑 The lit EDGE. The sheen is light landing on the card's face; this is the
+	   same light catching its rim — brightest along the top, gone by the bottom,
+	   where a real edge would be in its own shade. Together they read as one
+	   object under one light rather than as a panel with a gradient on it. */
+	/* 🔑 The travelling light, and the one pass of shine.
+	   On slate a highlight is simply BRIGHTER than the card, so both are white.
+	   That assumption is what broke the light theme: nothing can be brighter than
+	   a near-white card, so a white glint and a white sweep were invisible and
+	   only the dark tail of the arc showed — a shadow going round, which reads as
+	   a fault rather than a flourish. */
+	--ob-trace-tail: rgb(220 231 237 / 0.4);
+	--ob-trace-head: #ffffff;
+	--ob-sweep-core: rgb(255 255 255 / 0.3);
+	--ob-sweep-edge: rgb(255 255 255 / 0.14);
+
+	--ob-rim: linear-gradient(
+		135deg,
+		rgb(255 255 255 / 0.26) 0%,
+		rgb(255 255 255 / 0.12) 18%,
+		rgb(255 255 255 / 0.04) 44%,
+		rgb(255 255 255 / 0.012) 70%,
+		rgb(0 0 0 / 0.28) 100%
+	);
+
+	/* 🔴 ONE COLOUR, BOTH THEMES. The mark is identity, not copy, so it does not
+	   take the ink colour and does not restate itself per theme. It is not
+	   redefined under `:root:not(.dark)` — that absence is the point. */
+	--ob-logo: #ffffff;
+
+	--ob-ink: #ffffff;
+	--ob-ink-70: rgb(255 255 255 / 0.7);
+	--ob-ink-45: rgb(255 255 255 / 0.45);
+	--ob-ink-35: rgb(255 255 255 / 0.35);
+	--ob-ink-25: rgb(255 255 255 / 0.25);
+	--ob-ink-15: rgb(255 255 255 / 0.15);
+
+	--ob-field-bg: rgb(0 0 0 / 0.3);
+	--ob-line: rgb(255 255 255 / 0.12);
+	--ob-line-hover: rgb(255 255 255 / 0.2);
+	--ob-line-focus: rgb(255 255 255 / 0.3);
+
+	--ob-sel-bg: rgb(255 255 255 / 0.055);
+	--ob-hover-bg: rgb(255 255 255 / 0.03);
+	--ob-sel-line: rgb(255 255 255 / 0.2);
+
+	/* ICE, and black on it. Pale enough to read as the brightest thing on a dark
+	   page without glaring. */
+	--ob-fill: #dce7ed;
+	--ob-fill-ink: #000000;
+	/* The colour a selected label takes. ICE on dark; on light it has to darken
+	   instead, because ICE on white is nearly invisible. */
+	--ob-mark: #dce7ed;
+
+	/* On a dark page a tight shadow is invisible. What reads is a wide, soft one
+	   that darkens the backdrop's colour beneath the card. */
+	--ob-card-shadow:
+		12px 26px 60px -22px rgb(0 0 0 / 0.9), 5px 10px 24px -12px rgb(0 0 0 / 0.7);
+
+	/* The wave. Deep water in the bottom-left corner, rising and thinning up the
+	   diagonal, with a weaker echo bottom-right and a veil over the top where
+	   there is no colour to lose. */
+}
+
+:root:not(.dark) {
+	/* Glacier and snow. NOT white and grey: the page is meltwater blue and the
+	   card is snow, and the difference between them is what lets a near-white
+	   card read as an object rather than a hole. */
+	--ob-page: #e8f0f5;
+	/* ⚠️ NOT pure white, and that is what makes the sheen possible. A #ffffff
+	   card has nowhere brighter to go, so light falling on it cannot be drawn.
+	   Starting a shade under lets the top edge reach white and the body sit
+	   below it. */
+	--ob-card: #f7fafc;
+	/* Almost nothing. The rim above IS the edge; this only guarantees a shape
+	   exists before the mask paints, and stops the card dissolving into the page
+	   for anyone whose browser drops `mask-composite`. */
+	--ob-card-line: rgb(47 95 128 / 0.07);
+
+	--ob-sheen: radial-gradient(
+		135% 115% at -8% -14%,
+		rgb(255 255 255 / 1) 0%,
+		rgb(255 255 255 / 0.72) 24%,
+		rgb(255 255 255 / 0.3) 50%,
+		rgb(255 255 255 / 0) 80%
+	);
+
+	/* ⚠️ On glacier the rim INVERTS partway down. A lit top edge is still white,
+	   but the bottom of a pale object is darker than its surroundings, not
+	   lighter — carrying white all the way down would make the card look like it
+	   was glowing rather than lit. */
+	/* 🔴 The SAME RANGE as the dark theme, not a softer version of it.
+	   Dark runs 26% white at the lit corner to 28% black at the shaded one, and
+	   that spread is the effect — halving it, as a first pass did, produced an
+	   edge that was merely faint rather than lit. Light needs the identical
+	   spread, and on a near-white card the shade side has to carry most of it:
+	   white cannot get much brighter than `#f7fafc`, but glacier can get a lot
+	   darker than it.
+	   ⚠️ The card's own border is turned right down instead, so this is ONE line
+	   going light to dark rather than two lines of slightly different colour
+	   sitting on top of each other — which is what actually looked broken. */
+	/* ⚠️ On glacier the highlight is SATURATION, not brightness. A moving band of
+	   strong blue on a pale card reads as light catching an edge for the same
+	   reason white does on slate: it is the biggest departure from the surface
+	   available in that direction. */
+	--ob-trace-tail: rgb(47 95 128 / 0.28);
+	--ob-trace-head: #2f6d96;
+	/* ⚠️ The sweep is a SHADE on glacier, not a shine. Nothing is brighter than a
+	   near-white card, so the band crossing it has to be darker — the way a hand
+	   passing over paper is read by its shadow. Same gesture, same timing,
+	   opposite direction.
+	   Silver rather than blue, matching the trail's head: two coloured effects
+	   crossing the same card at the same moment compete, and the trail is the one
+	   carrying the colour. */
+	--ob-sweep-core: rgb(34 211 238 / 0.22);
+	--ob-sweep-edge: rgb(34 211 238 / 0.07);
+
+	/* The shaded end pulled back from 30%: with the tracer now carrying the
+	   shine, a heavy dark corner underneath it was the part that "did not make
+	   sense" — two different stories about where the light was. */
+	--ob-rim: linear-gradient(
+		135deg,
+		rgb(255 255 255 / 1) 0%,
+		rgb(255 255 255 / 0.62) 20%,
+		rgb(47 95 128 / 0.06) 46%,
+		rgb(47 95 128 / 0.13) 74%,
+		rgb(47 95 128 / 0.2) 100%
+	);
+
+	--ob-ink: #0e1a22;
+	--ob-ink-70: rgb(14 26 34 / 0.74);
+	--ob-ink-45: rgb(14 26 34 / 0.6);
+	--ob-ink-35: rgb(14 26 34 / 0.5);
+	--ob-ink-25: rgb(14 26 34 / 0.4);
+	--ob-ink-15: rgb(14 26 34 / 0.24);
+
+	/* A tinted well rather than a grey one: a plain grey field on a white card
+	   reads as disabled. */
+	/* Meltwater in the well, so a field on snow stays cool rather than grey. */
+	--ob-field-bg: rgb(62 108 143 / 0.07);
+	--ob-line: rgb(47 95 128 / 0.16);
+	--ob-line-hover: rgb(47 95 128 / 0.38);
+	--ob-line-focus: rgb(47 95 128 / 0.6);
+
+	--ob-sel-bg: rgb(62 108 143 / 0.1);
+	--ob-hover-bg: rgb(16 19 23 / 0.035);
+	--ob-sel-line: rgb(62 108 143 / 0.4);
+
+	/* 🔴 NOT ICE. ICE is a pale blue-white — on a white card it is very nearly
+	   the card. The fill inverts to near-black with white on it, which is the
+	   same relationship (the brightest contrast available against the surface)
+	   arrived at from the other side. */
+	--ob-fill: #1d3a4f;
+	/* 🔑 ICE, not white. On deep glacier water the brand's own pale blue reads as
+	   the product; plain #ffffff reads as a default. It is the same colour the
+	   dark theme uses as its FILL, used here as the ink on that fill — one
+	   palette, inverted, rather than two. */
+	--ob-fill-ink: #dce7ed;
+	--ob-mark: #2f5f80;
+
+	/* A real cast shadow, because on a light page one is actually visible — and
+	   without it a white card on a near-white ground has nothing but its border. */
+	--ob-card-shadow:
+		10px 20px 44px -20px rgb(23 42 58 / 0.3),
+		4px 8px 18px -10px rgb(23 42 58 / 0.22);
+
+	/* The same wave, as tints instead of depths. The veil at the top is white
+	   rather than black: on a light ground, darkening the top would frame the
+	   page in grey. */
+}
+
+/* ── Cloud drift ─────────────────────────────────────────────────────────
+   The wave has been a still image until now. These are the slow-moving part:
+   three soft masses low on the screen, drifting sideways and breathing in scale
+   so the light at the bottom of the page is never quite the same twice.
+
+   🔴 `transform` and `opacity` ONLY. Both are composited on the GPU, so a
+   forty-second animation running the whole time somebody fills in a form costs
+   nothing. Animating the gradient itself — its positions, its colour stops —
+   repaints a full-screen layer every frame and would make typing stutter.
+
+   ⚠️ Anchored well below the viewport and heavily blurred, so what is on screen
+   is only the top of each mass. A cloud whose edge you can see is a shape moving
+   across the page; a cloud whose edge you cannot see is weather.
+
+   The three periods are deliberately unrelated (37s, 53s, 43s). Matching them,
+   or making them multiples, produces a visible cycle where everything returns to
+   its starting place at once. */
+.onboard-clouds {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.onboard-cloud {
+	position: absolute;
+	border-radius: 50%;
+	filter: blur(70px);
+	will-change: transform;
+}
+
+.onboard-cloud:nth-child(1) {
+	bottom: -34vh;
+	left: -12%;
+	width: 74vw;
+	height: 62vh;
+	background: radial-gradient(closest-side, #1d3a4fcc, transparent 76%);
+	animation: cloud-a 37s ease-in-out infinite;
+}
+
+.onboard-cloud:nth-child(2) {
+	bottom: -30vh;
+	left: 28%;
+	width: 58vw;
+	height: 50vh;
+	background: radial-gradient(closest-side, #3e6c8f8f, transparent 74%);
+	animation: cloud-b 53s ease-in-out infinite;
+}
+
+.onboard-cloud:nth-child(3) {
+	bottom: -26vh;
+	right: -10%;
+	width: 52vw;
+	height: 44vh;
+	background: radial-gradient(closest-side, #7fa8c959, transparent 72%);
+	animation: cloud-c 43s ease-in-out infinite;
+}
+
+/* Glacier: the same masses, paler and a touch more present, because a tint on a
+   light ground disappears far faster than a glow on a dark one. */
+:root:not(.dark) .onboard-cloud:nth-child(1) {
+	background: radial-gradient(closest-side, #2f5f8073, transparent 76%);
+}
+
+:root:not(.dark) .onboard-cloud:nth-child(2) {
+	background: radial-gradient(closest-side, #3e6c8f59, transparent 74%);
+}
+
+:root:not(.dark) .onboard-cloud:nth-child(3) {
+	background: radial-gradient(closest-side, #7fa8c966, transparent 72%);
+}
+
+@keyframes cloud-a {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+	50% {
+		transform: translate3d(9%, -4%, 0) scale(1.12);
+	}
+}
+
+@keyframes cloud-b {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1.06);
+	}
+	50% {
+		transform: translate3d(-11%, -6%, 0) scale(0.94);
+	}
+}
+
+@keyframes cloud-c {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(0.96);
+	}
+	50% {
+		transform: translate3d(-7%, -3%, 0) scale(1.14);
+	}
+}
+
+/* Onboarding scrolls without a scrollbar.
+
+   ⚠️ The edge fade already says there is more — that is the entire reason it
+   exists — so a bar beside it is the same message twice, in the operating
+   system's styling rather than the product's. It was also far louder on the
+   light theme, where a pale track against dark text reads as a seam down the
+   card; on slate it was almost invisible, which is why this looked like a
+   light-mode-only problem.
+
+   🔴 Both properties are required. `scrollbar-width` covers Firefox and modern
+   Chrome; the `::-webkit-scrollbar` rule covers Safari, which supports neither.
+   Scrolling itself is untouched — wheel, trackpad, touch and keyboard all still
+   work, which is what separates hiding a scrollbar from disabling one. */
+.ob-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.ob-scroll::-webkit-scrollbar {
+	display: none;
+}
+
 /* ── The arrival ──────────────────────────────────────────────────────────
    The success screen is the only moment in onboarding worth celebrating, so it
    is the only place that animates. Elements rise 10px and settle, staggered, so
@@ -48,10 +387,278 @@ body {
 	animation-delay: 270ms;
 }
 
+/* Each module lands in turn, so the workspace assembles itself rather than
+   simply appearing. It celebrates by SHOWING WHAT WAS MADE — the thing the
+   person just chose, played back — which is why it cannot feel patronising the
+   way a generic burst of confetti does.
+
+   ⚠️ Capped. Past about a dozen the stagger stops reading as assembly and
+   starts reading as a queue, so the delay is clamped in the component. */
+.onboard-land {
+	animation: onboard-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* The ring pulses once, outward, and stops. A looping pulse turns a moment into
    a fidget. */
 .onboard-ring {
 	animation: onboard-ring 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The rule draws outward from the centre before anything under it lands, so the
+   screen reads as a line being established and then filled — a system reporting
+   in — rather than a finished page fading up. */
+.onboard-rule {
+	animation: onboard-rule 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	transform-origin: center;
+}
+
+/* A manifest line arriving. It comes in from the LEFT rather than from below,
+   because it is being read out in order, not dropped onto a pile. */
+.onboard-row {
+	animation: onboard-row 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes onboard-rule {
+	from {
+		opacity: 0;
+		transform: scaleX(0);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes onboard-row {
+	from {
+		opacity: 0;
+		transform: translateX(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* ── The tracer ───────────────────────────────────────────────────────────
+   A light that runs the border of the arrival card, once around every few
+   seconds. It replaces a pulsing dot and a "Workspace online" label, which said
+   the same thing in the most generic way available.
+
+   🔴 It is a MASKED conic gradient, not a border colour. `border-image` cannot
+   take a conic gradient, and animating four separate edges never meets cleanly
+   at the corners. This paints a rotating cone across the whole rectangle, then
+   masks out everything except a 1px rim: `linear-gradient(#000 0 0)` twice, one
+   clipped to the content box, composited with `exclude`, leaves only the padding
+   ring. The result follows the border radius exactly, corners included.
+
+   ⚠️ `@property` is REQUIRED. A bare custom property is a string to the
+   animation engine, so `--tracer: 0deg -> 360deg` would step rather than
+   interpolate and the light would jump rather than travel. Declaring its syntax
+   as `<angle>` is what makes it animatable at all.
+
+   Two colours, and both are the brand's: ICE at the head, the theme's blue
+   trailing it. The cone is transparent for roughly three quarters of its sweep,
+   so what reads is a comet, not a spinning ring. */
+@property --tracer {
+	syntax: "<angle>";
+	initial-value: 0deg;
+	inherits: false;
+}
+
+/* The ring itself: geometry only, shared by both themes.
+
+   🔴 Split from its colour so the two themes cannot drift apart on the parts
+   that must match — the radius, the 2px weight, the mask that turns a filled
+   box into a 1px ring, and the speed. Only the gradient differs, because only
+   the gradient has to. */
+.onboard-tracer::before {
+	content: "";
+	position: absolute;
+	z-index: 2;
+	/* 🔴 `-1px`, not `0`. An absolutely positioned child is laid out against the
+	   PADDING box, so at `inset: 0` the ring sat just inside the card's own 1px
+	   border and left that border showing as a pale sliver all the way round —
+	   the trail looked like it was running inside a hairline rather than being
+	   the edge. Pulling out by exactly the border width puts the ring over it. */
+	inset: -1px;
+	/* ⚠️ +1px to match the outward inset, or the ring's curve is tighter than the
+	   card's and the corners visibly disagree. */
+	border-radius: calc(1rem + 1px);
+	/* 2px. 3px was tried and the corners give it away: a conic gradient sweeps by
+	   ANGLE, so it crosses a rounded corner far faster than it crosses a long
+	   edge, and the thicker the ring, the more that mismatch shows as a heavy
+	   bracket parked on the corner. */
+	padding: 2px;
+	/* The card's own border would sit underneath and show at the corners, where
+	   the mask's curve and the border's curve differ by a fraction of a pixel. */
+	border: 0;
+	mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	mask-composite: exclude;
+	-webkit-mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	-webkit-mask-composite: xor;
+	animation: onboard-tracer 9s linear infinite;
+	pointer-events: none;
+}
+
+/* Slate: a single point of light. Nearly the whole ring is transparent, so what
+   travels reads as one catch on an edge rather than a rotating hoop. */
+.dark .onboard-tracer::before {
+	background: conic-gradient(
+		from var(--tracer),
+		transparent 0deg,
+		transparent 250deg,
+		var(--ob-trace-tail) 296deg,
+		var(--ob-trace-head) 340deg,
+		var(--ob-trace-head) 350deg,
+		transparent 360deg
+	);
+}
+
+/* Glacier: a COLOUR trail, because brightness is not available.
+   🔴 Nothing can be brighter than a near-white card, so a white glint here was
+   invisible and a blue one read as a shadow going round. Hue can do what value
+   cannot: a long arc drifting glacier → periwinkle → rose → amber is plainly a
+   light effect on white, and it is the one thing that shows up on paper.
+
+   ⚠️ Not a rainbow. Four neighbouring hues across a quarter of the wheel, all
+   at similar lightness, so it reads as one gradient catching an edge rather than
+   as a spectrum. A full-wheel conic is the cheap version of this and looks like
+   a loading spinner.
+
+   The arc is much longer than the dark theme's point of light — a faint tinted
+   trail carries on white, where a small bright dot simply disappears. */
+:root:not(.dark) .onboard-tracer::before {
+	/* A travelling TRAIL: teal into cyan into sky, up through ice, out to silver.
+	   🔴 Opaque through its length. That is what makes it FILL the border rather
+	   than tint it — earlier versions ran at 30–58% alpha, which on a near-white
+	   card blends most of the way back into the card, so the trail was there and
+	   had nothing to show. It fades only at its two ends, so it reads as light
+	   arriving and leaving rather than a band switching on.
+
+	   🔴 NOTHING DARK in it. The head was a deep indigo, and on a pale card a dark
+	   head reads as a GAP in the trail rather than the start of one — an absence
+	   of light, not light of another colour — so the bright half looked like the
+	   only half doing anything. It now runs teal into cyan into sky, then ice,
+	   then out through silver: every stop is either saturated or pale, none is
+	   darker than the card by much, and the whole length reads as one lit
+	   object. */
+	background: conic-gradient(
+		from var(--tracer),
+		transparent 0deg,
+		transparent 172deg,
+		rgb(6 182 212 / 0) 190deg,
+		#06b6d4 214deg,
+		#22d3ee 250deg,
+		#38bdf8 284deg,
+		#a5f3fc 312deg,
+		#eaf6fb 330deg,
+		#b9c6d0 348deg,
+		rgb(185 198 208 / 0) 358deg
+	);
+}
+
+/* ⚠️ The lit rim is OFF on the arrival card in light. It paints pure white at
+   the top-left corner, and against a solid blue border that white is the pale
+   sliver that kept appearing outside the trail. With the ring now filled, the
+   rim has nothing left to describe. */
+:root:not(.dark) .onboard-tracer.onboard-lit::after {
+	display: none;
+}
+
+@keyframes onboard-tracer {
+	to {
+		--tracer: 360deg;
+	}
+}
+
+/* 🔴 The travelling glint and the one-pass sweep are DARK-ONLY, and that is
+   physics rather than an unfinished job.
+
+   Both draw light by being BRIGHTER than the surface. On slate that is easy; on
+   a near-white card nothing brighter exists, so every light-mode attempt became
+   a DARK band travelling the border — a fault, not a flourish. Giving the
+   arrival its own dark card fixed the effect and broke something worse: one
+   black card in the middle of a light theme reads as a screen that missed the
+   theme.
+
+   Light therefore keeps the lit rim below, which works in both because it
+   describes an EDGE rather than a highlight, and simply goes without the two
+   effects that cannot be drawn on it. Nothing looks broken; there is less of it.
+
+   ⚠️ Do not "fix" this by tinting the glint blue. That has been tried twice.
+
+   The lit rim, drawn as a 1px ring that follows the border radius.
+
+   🔴 A MASKED gradient, not `border-image`. `border-image` ignores
+   `border-radius` outright, so a gradient border on a rounded card squares its
+   own corners off. This paints the gradient across the whole box and then masks
+   away everything except the 1px ring: two identical layers, one clipped to the
+   content box, composited with `exclude`.
+
+   ⚠️ `::after`, deliberately — `.onboard-tracer` already owns `::before`, and
+   the arrival card wears both. Two rules on one pseudo-element would mean the
+   tracer silently deleting the rim on the one card that most wants it. */
+.onboard-lit::after {
+	content: "";
+	position: absolute;
+	/* ⚠️ Under the tracer. Both are pseudo-elements of the same card and `::after`
+	   paints after `::before`, so without this the static rim sat on top of the
+	   travelling one and swallowed it — which is why the glint was invisible
+	   rather than merely subtle. */
+	z-index: 1;
+	inset: 0;
+	border-radius: inherit;
+	padding: 1px;
+	background: var(--ob-rim);
+	mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	mask-composite: exclude;
+	-webkit-mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	-webkit-mask-composite: xor;
+	pointer-events: none;
+}
+
+/* A single pass of light across the card, once, on arrival.
+
+   🔑 This is the congratulation. Not a burst and not a tick — the card the
+   person has been filling in for six screens catches the light as it lands,
+   the way a physical object does when it is turned over. It happens once and
+   is gone, so there is nothing to sit and watch.
+
+   ⚠️ Needs `overflow: hidden` on the card, which is why it is a real element
+   rather than a pseudo-element: the card already spends both of its own on the
+   tracer and the lit rim. */
+.dark .onboard-sweep {
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	background: linear-gradient(
+		104deg,
+		transparent 38%,
+		var(--ob-sweep-edge) 47%,
+		var(--ob-sweep-core) 50%,
+		var(--ob-sweep-edge) 53%,
+		transparent 62%
+	);
+	animation: onboard-sweep 1500ms cubic-bezier(0.4, 0, 0.2, 1) 320ms both;
+}
+
+@keyframes onboard-sweep {
+	from {
+		transform: translateX(-115%);
+	}
+	to {
+		transform: translateX(115%);
+	}
 }
 
 @keyframes onboard-in {
@@ -78,7 +685,24 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
 	.onboard-in,
-	.onboard-ring {
+	.onboard-land,
+	.onboard-ring,
+	.onboard-cloud,
+	.onboard-rule,
+	.onboard-row,
+	/* 🔴 `.dark`-scoped to MATCH the definitions above. Those became
+	   `.dark .onboard-sweep` when the effects were limited to the dark theme,
+	   and a bare `.onboard-sweep` here is lower specificity — so this override
+	   would have lost the cascade and quietly stopped honouring
+	   `prefers-reduced-motion` on the two animations most likely to bother
+	   somebody. Biome's `noDescendingSpecificity` caught it. */
+	.dark .onboard-sweep {
+		animation: none;
+	}
+
+	/* The rim stays, it simply stops travelling — removing it outright would
+	   take the card's edge treatment with it. */
+	.onboard-tracer::before {
 		animation: none;
 	}
 }

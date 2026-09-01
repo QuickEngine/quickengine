@@ -97,6 +97,7 @@ import {
 	recommendationSchema,
 	startSubscriptionSchema,
 	updateApiKeyOriginsSchema,
+	updateProfileSchema,
 } from "./account-routes";
 import {
 	accountRolePatchSchema,
@@ -293,6 +294,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	createOrganization: createOrganizationSchema,
 	createApiKey: createApiKeySchema,
 	updateApiKeyOrigins: updateApiKeyOriginsSchema,
+	updateProfile: updateProfileSchema,
 	startSubscription: startSubscriptionSchema,
 	confirmAccountSubscription: confirmSubscriptionSchema,
 	recommendAccountOnboarding: recommendationSchema,

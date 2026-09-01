@@ -1,4 +1,5 @@
 import { CheckIcon, WarningIcon } from "@phosphor-icons/react";
+import { ThemeSwitch } from "@quickengine/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -369,6 +370,30 @@ function SettingsPage() {
 					</div>
 				</div>
 			) : null}
+
+			{/*
+			 * 🔴 A per-PERSON preference on a per-WORKSPACE page, and the wording has
+			 * to carry that or it is a trap: somebody who switches this while looking
+			 * at one workspace would reasonably expect the other to be unaffected.
+			 *
+			 * It is here anyway because this is where people already come to change
+			 * how things look, and the alternative — Account settings — means leaving
+			 * QuickDash to change the colour of QuickDash.
+			 */}
+			<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Appearance</p>
+			<div className="mb-8 max-w-2xl border-[var(--console-line-soft)] border-t py-4">
+				<div className="flex flex-wrap items-center gap-4">
+					<div className="min-w-0 flex-1">
+						<p className="text-[12.5px] text-[var(--ink-85)]">Theme</p>
+						<p className="mt-1 text-[11.5px] text-[var(--ink-35)] leading-5">
+							Applies to you everywhere — QuickDash, Account and the sign-in
+							screens — on this device and any other you sign in from. System
+							follows your operating system.
+						</p>
+					</div>
+					<ThemeSwitch />
+				</div>
+			</div>
 
 			<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Environment</p>
 			<div className="max-w-2xl border-[var(--console-line-soft)] border-t py-4">

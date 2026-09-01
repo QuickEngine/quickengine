@@ -78,6 +78,23 @@ export const auth = betterAuth({
 		additionalFields: {
 			companyName: { type: "string", required: false, input: false },
 			onboardingCompletedAt: { type: "date", required: false, input: false },
+			/**
+			 * The wide image behind the avatar on a person's profile.
+			 *
+			 * ⚠️ `input: false` like its siblings, so a client cannot write it
+			 * through Better Auth. It is set by `PATCH /v1/account/profile`, which
+			 * is also the only way to CLEAR it — `authClient.updateUser` can reach
+			 * `name` and `image` but never this, and splitting one profile form
+			 * across two mechanisms leaves it half saved when the second call fails.
+			 */
+			bannerImage: { type: "string", required: false, input: false },
+			firstName: { type: "string", required: false, input: false },
+			lastName: { type: "string", required: false, input: false },
+			nickname: { type: "string", required: false, input: false },
+			timezone: { type: "string", required: false, input: false },
+			theme: { type: "string", required: false, input: false },
+			country: { type: "string", required: false, input: false },
+			language: { type: "string", required: false, input: false },
 		},
 	},
 	// On signup, give every new user their personal org (solo space) + an owner

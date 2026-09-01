@@ -1,4 +1,9 @@
-import { ConnectionBanner, STATUS_URL } from "@quickengine/ui";
+import {
+	ConnectionBanner,
+	MobileNotice,
+	STATUS_URL,
+	ThemeProvider,
+} from "@quickengine/ui";
 import {
 	isStaleChunkError,
 	recoverFromStaleChunk,
@@ -33,14 +38,23 @@ export const Route = createRootRoute({
 
 function RootLayout() {
 	return (
-		<>
+		/* 🔴 Without this, `useTheme()` returns the context default — a `theme` of
+		   "dark" and a `setTheme` that does nothing — so every theme control in
+		   this app is inert, and the theme is only ever correct at boot from the
+		   inline script. It also never reacts to the OS flipping mid-session for
+		   somebody on "system". */
+		<ThemeProvider>
 			{/* The same banner the marketing site uses, from `@quickengine/ui`. Above
 			    the outlet so it survives navigation between screens rather than being
 			    torn down and rebuilt on each one, which on a flaky connection is
 			    exactly when it would be remounting. */}
 			<ConnectionBanner />
 			<Outlet />
-		</>
+			{/* Every surface was designed at desktop width first, and the small
+			    screen passes have not been done. Saying so is the difference between
+			    a product that is under construction and one that looks broken. */}
+			<MobileNotice />
+		</ThemeProvider>
 	);
 }
 

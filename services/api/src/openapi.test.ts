@@ -38,6 +38,11 @@ const operations = Object.values(
  * an undocumented body, which is what the coverage test below catches.
  */
 const BODYLESS = new Set([
+	// Multipart, not JSON. The body is a `file` and a `kind`, and `REQUEST_SCHEMAS`
+	// holds zod objects that describe JSON — registering one here would document a
+	// shape the route does not actually accept. The multipart contract is written
+	// out in the operation's own description instead.
+	"uploadProfileImage",
 	// The provider order is in the path. Its stored payment chooses both the
 	// provider and merchant account, so accepting a body would only create an
 	// unsafe second place for the browser to name either one.

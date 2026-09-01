@@ -2,8 +2,10 @@ import { resolveSession } from "@quickengine/auth/session";
 import {
 	type ConsoleLink,
 	ConsoleShell,
+	MobileNotice,
 	SidebarAccount,
 	SidebarName,
+	ThemeProvider,
 } from "@quickengine/ui";
 import {
 	type QueryClient,
@@ -138,7 +140,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 );
 
 function RootLayout() {
-	return <AccountShell />;
+	/**
+	 * 🔴 `ThemeProvider` was NEVER MOUNTED in this app.
+	 *
+	 * `useTheme()` falls back to the context default — `{ theme: "dark", setTheme:
+	 * () => {} }` — so every theme control in Account was calling a no-op. It did
+	 * not fail, it did nothing, which is why it read as a styling problem rather
+	 * than a missing provider. Only `apps/quickengine/web` had ever mounted one.
+	 *
+	 * ⚠️ ABOVE the onboarding branch, not inside the console. Onboarding renders
+	 * outside `AccountConsole`, so a provider mounted in there would leave the one
+	 * screen that offers the choice unable to make it.
+	 */
+	return (
+		<ThemeProvider>
+			<AccountShell />
+			{/* Every surface was designed at desktop width first, and the small
+			    screen passes have not been done. Saying so is the difference between
+			    a product under construction and one that looks broken. */}
+			<MobileNotice />
+		</ThemeProvider>
+	);
 }
 
 function AccountShell() {

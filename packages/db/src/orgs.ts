@@ -292,6 +292,81 @@ export async function deleteUserAccount(userId: string): Promise<void> {
 }
 
 /** Fresh first-run state for authenticated app routing. */
+/**
+ * A person's own profile — the human, not the business.
+ *
+ * ⚠️ The distinction matters and is easy to lose: the BUSINESS is the
+ * workspace/organization and is named on `quickengine_workspaces` /
+ * `quickengine_organizations`. This is the individual behind the login, and it
+ * is what a future discovery surface would list.
+ *
+ * Every field is optional so one screen can save whichever parts it collected —
+ * onboarding sets a name and maybe pictures; settings later edits one at a time.
+ * `undefined` means "not touching this", which is why `null` has to remain a
+ * legal value: it is how a picture is REMOVED, and folding the two together
+ * would make a banner impossible to clear once set.
+ */
+export async function updateUserProfile(
+	userId: string,
+	patch: {
+		firstName?: string;
+		lastName?: string;
+		nickname?: string | null;
+		timezone?: string;
+		country?: string;
+		language?: string;
+		theme?: "light" | "dark" | "system";
+		image?: string | null;
+		bannerImage?: string | null;
+	},
+): Promise<void> {
+	const values: Partial<typeof quickengineUsers.$inferInsert> = {};
+	if (patch.firstName !== undefined) values.firstName = patch.firstName;
+	if (patch.lastName !== undefined) values.lastName = patch.lastName;
+	if (patch.nickname !== undefined) values.nickname = patch.nickname;
+	if (patch.timezone !== undefined) values.timezone = patch.timezone;
+	if (patch.country !== undefined) values.country = patch.country;
+	if (patch.language !== undefined) values.language = patch.language;
+	if (patch.theme !== undefined) values.theme = patch.theme;
+
+	/**
+	 * 🔴 `name` is COMPOSED here rather than accepted from the caller.
+	 *
+	 * It is Better Auth's own `notNull` column and is read by `ensurePersonalOrg`
+	 * and by `console-shell.tsx` (`name || "Account"`). Letting a client send it
+	 * alongside the halves would allow the three to disagree — a first name of
+	 * "Ada", a last name of "Lovelace" and a display name of "Bob" — and nothing
+	 * downstream could tell which was true.
+	 *
+	 * Only rewritten when a half actually changed, so updating a picture never
+	 * touches it.
+	 */
+	if (patch.firstName !== undefined || patch.lastName !== undefined) {
+		const [current] = await db
+			.select({
+				firstName: quickengineUsers.firstName,
+				lastName: quickengineUsers.lastName,
+			})
+			.from(quickengineUsers)
+			.where(eq(quickengineUsers.id, userId))
+			.limit(1);
+		const first = patch.firstName ?? current?.firstName ?? "";
+		const last = patch.lastName ?? current?.lastName ?? "";
+		const composed = `${first} ${last}`.trim();
+		// Never blank it: `name` is NOT NULL, and an empty string is what makes the
+		// console greet somebody as "Account".
+		if (composed) values.name = composed;
+	}
+	if (patch.image !== undefined) values.image = patch.image;
+	if (patch.bannerImage !== undefined) values.bannerImage = patch.bannerImage;
+	if (Object.keys(values).length === 0) return;
+
+	await db
+		.update(quickengineUsers)
+		.set({ ...values, updatedAt: new Date() })
+		.where(eq(quickengineUsers.id, userId));
+}
+
 export async function getUserOnboardingState(userId: string) {
 	const [user] = await db
 		.select({

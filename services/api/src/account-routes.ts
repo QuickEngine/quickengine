@@ -32,6 +32,7 @@ import {
 	markAllNotificationsRead,
 	markNotificationRead,
 	recordControlPlaneAudit,
+	updateUserProfile,
 	workspaceBelongsToOrganization,
 } from "@quickengine/db";
 import { listModules } from "@quickengine/module-registry";
@@ -121,6 +122,61 @@ export const recommendationSchema = z.object({
 		.min(1)
 		.max(300),
 });
+/**
+ * A person's own profile. The human, not the business.
+ *
+ * ⚠️ `.nullable()` on the two pictures is load-bearing — it is how one is
+ * REMOVED. Making them merely optional would let a banner be set and never
+ * cleared, because "absent" would then mean both "leave it alone" and "delete
+ * it" and the route could not tell which was meant.
+ */
+export const updateProfileSchema = z.object({
+	firstName: z.string().trim().min(1).max(80).optional(),
+	lastName: z.string().trim().min(1).max(80).optional(),
+	/** Nullable so it can be cleared; the product falls back to the first name. */
+	nickname: z.string().trim().max(60).nullable().optional(),
+	/**
+	 * ⚠️ Validated against the runtime's own zone table rather than a regex. A
+	 * pattern cannot tell `America/Edmonton` from `America/Atlantis`, and an
+	 * invalid zone does not fail until something tries to format a date with it —
+	 * by which point it is in the database and on somebody's invoice.
+	 */
+	timezone: z
+		.string()
+		.trim()
+		.max(64)
+		.refine((zone) => {
+			try {
+				new Intl.DateTimeFormat("en", { timeZone: zone });
+				return true;
+			} catch {
+				return false;
+			}
+		}, "Unknown time zone")
+		.optional(),
+	/**
+	 * ⚠️ Two letters, upper-cased, and nothing else. An ISO 3166-1 alpha-2 code
+	 * is the only form the formatting locale can use; accepting a display name
+	 * would store something that changes with the reader's language.
+	 */
+	country: z
+		.string()
+		.trim()
+		.toUpperCase()
+		.regex(/^[A-Z]{2}$/, "Expected a two-letter country code")
+		.optional(),
+	/** A BCP 47 subtag. Two or three letters, lower-cased. */
+	language: z
+		.string()
+		.trim()
+		.toLowerCase()
+		.regex(/^[a-z]{2,3}$/, "Expected a language code")
+		.optional(),
+	theme: z.enum(["light", "dark", "system"]).optional(),
+	image: z.string().trim().url().max(2000).nullable().optional(),
+	bannerImage: z.string().trim().url().max(2000).nullable().optional(),
+});
+
 const upcomingModules = [
 	[
 		"forms-intake",
@@ -827,6 +883,29 @@ export function registerAccountRoutes(
 	// Scoped to the caller, not the organization: a notification belongs to a
 	// person, and the data layer matches on user id as well as notification id so
 	// one user can never mark another's as read.
+	/**
+	 * The person behind the login — their name and their two pictures.
+	 *
+	 * 🔴 Why this exists rather than `authClient.updateUser`: Better Auth can set
+	 * `name` and `image`, but `bannerImage` is ours, and its additional fields are
+	 * declared `input: false` precisely so a client cannot write them directly.
+	 * Splitting one form across two mechanisms would mean a half-saved profile
+	 * whenever the second call failed.
+	 */
+	app.patch("/v1/account/profile", session, async (c) => {
+		const parsed = updateProfileSchema.safeParse(await c.req.json());
+		if (!parsed.success) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"That profile could not be saved.",
+				400,
+			);
+		}
+		await updateUserProfile(c.get("account").userId, parsed.data);
+		return respond(c, { updated: true });
+	});
+
 	app.post("/v1/account/notifications/:id/read", session, async (c) => {
 		await markNotificationRead(c.get("account").userId, c.req.param("id"));
 		return respond(c, { read: true });

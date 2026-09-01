@@ -24,6 +24,15 @@
 				background: #0a0a0a;
 			}
 
+			/* ⚠️ The light counterpart. Without it the hard-coded dark above wins
+			   for a light visitor and they get the very flash this block exists to
+			   prevent, just in the other direction. Must stay in step with
+			   `--ob-page` / `--console-bg` in `theme.css`. */
+			html.light,
+			html.light body {
+				background: #e8f0f5;
+			}
+
 			/* The same mark React shows while a route resolves, so the handover from
 			   document load to app boot is invisible. Removed automatically: React
 			   clears the container on its first render. */
@@ -69,6 +78,43 @@
 		</style>
 	</head>
 	<body>
+		<script>
+			/* 🔴 Runs BEFORE first paint, and reads the COOKIE.
+
+			   Moving between surfaces is a full document load across origins, so
+			   each app decides its own theme from scratch. Two of them never did:
+			   QuickDash and auth hard-coded `class="dark"` and painted `#0a0a0a`,
+			   so a light theme chosen in onboarding was thrown away the moment
+			   somebody opened their workspace.
+
+			   ⚠️ The cookie, not `localStorage`. `localStorage` is partitioned by
+			   ORIGIN, so `quickdash.xyz` and `account.quickdash.xyz` each keep their
+			   own copy and the theme resets on every hop. The cookie is written on
+			   the parent domain by `ThemeProvider` precisely so all of them share
+			   one value; `localStorage` is read only as a fallback, to migrate a
+			   browser that still has the old key.
+
+			   Inline and synchronous on purpose: any React-level fix necessarily
+			   runs after the browser has already painted the wrong theme, which is
+			   the flash it exists to prevent. */
+			(() => {
+				const cookie = document.cookie.match(
+					/(?:^|; )quickengine-theme=([^;]*)/,
+				);
+				const stored =
+					cookie?.[1] || localStorage.getItem("quickengine-theme");
+				const theme =
+					stored === "light" || stored === "dark" || stored === "system"
+						? stored
+						: "system";
+				const dark =
+					theme === "dark" ||
+					(theme === "system" &&
+						window.matchMedia("(prefers-color-scheme: dark)").matches);
+				document.documentElement.classList.toggle("dark", dark);
+				document.documentElement.classList.toggle("light", !dark);
+			})();
+		</script>
 		<div id="root">
 			<div id="boot"><span></span></div>
 		</div>

@@ -318,6 +318,14 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		type: "secret",
 		capabilities: ["clients:read", "invoicing:write"],
 	},
+	updateProfile: {
+		firstName: "Asher",
+		lastName: "Wilson",
+		nickname: "Ash",
+		timezone: "America/Edmonton",
+		country: "CA",
+		theme: "dark",
+	},
 	updateApiKeyOrigins: {
 		workspaceId: "3f1c9b52-8d64-4a1e-9f77-2c5e0d6b8a41",
 		allowedOrigins: ["https://gemsutopia.ca", "https://www.gemsutopia.ca"],

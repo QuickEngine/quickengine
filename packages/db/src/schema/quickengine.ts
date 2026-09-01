@@ -75,10 +75,96 @@ export type QuickEngineInvitationStatus =
 
 export const quickengineUsers = pgTable("quickengine_users", {
 	id: text("id").primaryKey(),
+	/**
+	 * The display name, and Better Auth's own column.
+	 *
+	 * ⚠️ KEPT, and kept authoritative. It is `notNull`, Better Auth writes it on
+	 * social signup, and `ensurePersonalOrg` reads it. `firstName`/`lastName` are
+	 * additions that COMPOSE into this, never a replacement for it — dropping it
+	 * would mean rewriting the auth adapter to satisfy a form layout.
+	 */
 	name: text("name").notNull(),
+	/**
+	 * The two halves, stored separately because they are used separately: a
+	 * greeting wants the first name alone, an invoice wants both, and splitting
+	 * `name` on a space gets it wrong for everybody with two given names or a
+	 * compound surname.
+	 *
+	 * Nullable: anybody who signed up before this, or through a provider that
+	 * hands back a single string, has a `name` and no split.
+	 */
+	firstName: text("first_name"),
+	lastName: text("last_name"),
+	/**
+	 * What the product should call them, when it is talking TO them.
+	 *
+	 * Distinct from `name`, which is what it calls them when talking ABOUT them —
+	 * on an invoice, in an audit entry, to a teammate. Somebody called Alexander
+	 * on both may still want "Morning, Alex".
+	 */
+	nickname: text("nickname"),
+	/**
+	 * An IANA zone, e.g. `America/Edmonton`.
+	 *
+	 * 🔑 Not decoration. Every date the product renders or EMAILS is currently
+	 * resolved from whatever browser happens to be open — which is nothing at all
+	 * for a receipt sent by a cron job. Detected silently at onboarding and
+	 * correctable in settings.
+	 */
+	timezone: text("timezone"),
+	/**
+	 * An ISO 3166-1 alpha-2 code, e.g. `CA`.
+	 *
+	 * 🔑 Paired with the language it produces the formatting LOCALE — `en-CA`
+	 * writes 2026-09-01 as 01/09/2026 and `en-US` as 09/01/2026, and the same
+	 * split decides thousands separators and currency placement. Every money and
+	 * date string in the product is formatted through `Intl`, so this is the
+	 * difference between a date being read correctly and being read backwards.
+	 *
+	 * ⚠️ The CODE, never the display name. Names are localised and change; the
+	 * code is stable and `Intl.DisplayNames` renders it in whatever language the
+	 * reader is using.
+	 */
+	country: text("country"),
+	/**
+	 * A BCP 47 language subtag, e.g. `en`.
+	 *
+	 * ⚠️ Stored apart from `country` on purpose. The formatting locale is the two
+	 * of them joined — `en` + `CA` is `en-CA` — and they genuinely vary
+	 * independently: somebody in Montreal may want French dates on Canadian
+	 * paper sizes. Storing the joined string instead would make either half
+	 * impossible to change without re-parsing it.
+	 */
+	language: text("language"),
+	/**
+	 * Light, dark or follow the device.
+	 *
+	 * ⚠️ The theme already persists in a COOKIE on the parent domain, which is
+	 * what carries it between QuickDash, Account and the marketing site. This
+	 * column does NOT replace that and must never be read at boot — a network
+	 * round trip before first paint is exactly the flash of the wrong theme that
+	 * the inline script in `index.html` exists to prevent.
+	 *
+	 * It exists so the choice survives a NEW DEVICE, where there is no cookie to
+	 * read. The cookie stays authoritative for the current browser.
+	 */
+	theme: text("theme", { enum: ["light", "dark", "system"] }),
 	email: text("email").notNull().unique(),
 	emailVerified: boolean("email_verified").default(false).notNull(),
 	image: text("image"),
+	/**
+	 * The wide image behind the avatar on a person's profile.
+	 *
+	 * ⚠️ A column rather than a reuse of `image`, because they are different
+	 * shapes with different lifetimes — an avatar is square and follows the person
+	 * everywhere in the product, a banner is 3:1 and appears on one screen. One
+	 * column holding whichever was uploaded last is how a header ends up showing
+	 * somebody's face stretched across it.
+	 *
+	 * Nullable and stays that way: a profile with no banner is a normal profile,
+	 * not an incomplete one.
+	 */
+	bannerImage: text("banner_image"),
 	role: text("role").default("member").notNull(),
 	// Set by the Better Auth two-factor plugin once a user finishes TOTP setup.
 	twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),

@@ -1,5 +1,9 @@
 import { resolveSession } from "@quickengine/auth/session";
-import { presentRequestError } from "@quickengine/ui";
+import {
+	MobileNotice,
+	presentRequestError,
+	ThemeProvider,
+} from "@quickengine/ui";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
@@ -95,9 +99,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 		// The toast overlay is mounted at the root so any view can raise one
 		// without each route re-providing it. It renders nothing until it has to.
 		component: () => (
-			<ToastProvider>
-				<Outlet />
-			</ToastProvider>
+			<ThemeProvider>
+				<ToastProvider>
+					<Outlet />
+					{/* Every surface was designed at desktop width first, and the small
+				    screen passes have not been done. Saying so is the difference
+				    between a product under construction and one that looks broken. */}
+					<MobileNotice />
+				</ToastProvider>
+			</ThemeProvider>
 		),
 		errorComponent: ErrorScreen,
 		notFoundComponent: NotFoundScreen,

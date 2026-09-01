@@ -99,7 +99,14 @@ export type SupplierPaymentAccount = {
 	requirements: string | null;
 };
 
-async function assertSupplier(workspaceId: string, supplierId: string) {
+/**
+ * Confirm a supplier exists in this workspace, or throw `NOT_FOUND`.
+ *
+ * Exported so an onboarding link is refused at the moment it is minted rather
+ * than when the supplier opens it — emailing a partner a link that cannot work
+ * is worse than telling the operator immediately.
+ */
+export async function assertSupplier(workspaceId: string, supplierId: string) {
 	const [row] = await db
 		.select({ id: suppliers.id, email: suppliers.contactEmail })
 		.from(suppliers)
@@ -157,9 +164,30 @@ export async function connectSupplierPaymentAccount(input: {
 	returnUrl: string;
 	country?: string | null;
 	onboard: SupplierOnboarder;
+	/**
+	 * The environment the caller believes it is onboarding for.
+	 *
+	 * 🔴 Supplied by the shareable link, which pins the mode at the moment it is
+	 * issued. A workspace can flip between test and live at any time, so a link
+	 * sent on Monday could otherwise be opened on Friday and attach a real bank
+	 * account to a rehearsal — or a test account to a workspace now handling real
+	 * money. Mismatches are refused rather than reconciled: the operator issues a
+	 * new link, which is also the point at which a supplier must onboard again,
+	 * because test and live are separate Stripe accounts.
+	 *
+	 * Omitted by the authenticated operator path, which is by definition acting
+	 * on the workspace as it is right now.
+	 */
+	expectedEnvironment?: "test" | "live";
 }): Promise<{ onboardingUrl: string; account: SupplierPaymentAccount }> {
 	const supplier = await assertSupplier(input.workspaceId, input.supplierId);
 	const environment = await workspaceEnvironment(input.workspaceId);
+	if (input.expectedEnvironment && input.expectedEnvironment !== environment) {
+		throw new SupplierAccountError(
+			`SUPPLIER_LINK_ENVIRONMENT_MISMATCH:${input.expectedEnvironment}:${environment}`,
+			"ENVIRONMENT_MISMATCH",
+		);
+	}
 	const existing = await getSupplierPaymentAccount(
 		input.workspaceId,
 		input.supplierId,

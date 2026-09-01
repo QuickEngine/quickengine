@@ -426,6 +426,56 @@ export function registerInventoryRoutes(
 		},
 	);
 
+	/**
+	 * Mint a shareable onboarding link for one supplier.
+	 *
+	 * 🔑 This is the thing you email. Stripe's own links expire in minutes and
+	 * die on first use, which makes them impossible to send to a partner who
+	 * reads their mail three hours later. This one is exchanged for a fresh
+	 * Stripe link every time it is opened, so it keeps working.
+	 *
+	 * ⚠️ The environment is stamped in at this moment, not read when the supplier
+	 * clicks. Issue a link while the workspace is in test and it stays a test
+	 * link for ever — going live means issuing another and the supplier
+	 * onboarding again, because those are two different Stripe accounts.
+	 */
+	app.get(
+		"/v1/inventory/suppliers/:id/payment-account/link",
+		writeAccess,
+		writeLimit,
+		async (c) => {
+			try {
+				const workspaceId = c.get("authorized").workspaceId;
+				const supplierId = uuid.parse(c.req.param("id"));
+				const [
+					{ assertSupplier },
+					{ createSupplierOnboardingToken },
+					{ workspaceEnvironment },
+				] = await Promise.all([
+					import("@quickengine/mod-inventory"),
+					import("@quickengine/mod-payments"),
+					import("@quickengine/db"),
+				]);
+				// Refuse to mint a link for a supplier that does not exist, rather
+				// than handing over a token that fails only when the supplier opens it.
+				await assertSupplier(workspaceId, supplierId);
+				const environment = await workspaceEnvironment(workspaceId);
+				const { token, expiresAt } = createSupplierOnboardingToken({
+					workspaceId,
+					supplierId,
+					environment,
+				});
+				return respond(c, {
+					url: `${new URL(c.req.url).origin}/connect/supplier/${token}`,
+					expiresAt: expiresAt.toISOString(),
+					environment,
+				});
+			} catch (error) {
+				return supplierAccountError(c, error);
+			}
+		},
+	);
+
 	app.get("/v1/inventory/supplier-skus", readAccess, readLimit, async (c) => {
 		const supplierId = c.req.query("supplierId");
 		return respond(c, {

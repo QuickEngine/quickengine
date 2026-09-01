@@ -8,6 +8,17 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A supplier can be invited to set up payouts with one link that keeps working.** Payment providers
+  issue setup links that expire within minutes and stop working once opened, which makes them
+  impossible to email to a partner who reads their post hours later. A supplier now gets a single
+  address that stays valid: opening it starts a fresh setup session every time, and stopping halfway
+  through and coming back later picks up where they left off. They never need an account here.
+
+- **A setup link cannot be used for the wrong kind of money.** The link remembers whether it was
+  created for rehearsal or for real, so one made while a business was still testing can never be used
+  to connect the account that receives real payments, however long it sits in an inbox. Going live
+  means sending a new one.
+
 - **Money sent to a supplier is checked against the payment provider.** If a payment was sent but the
   answer never came back, the provider is now asked what it actually holds, so a supplier is never
   paid twice and never quietly left unpaid. If a payment is taken back after the fact, that is

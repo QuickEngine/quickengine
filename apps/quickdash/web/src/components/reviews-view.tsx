@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 
@@ -18,8 +18,6 @@ import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
  */
 
 const STATUSES = ["pending", "published", "rejected"] as const;
-type Status = (typeof STATUSES)[number];
-
 type Review = {
 	id: string;
 	catalogItemId: string | null;
@@ -43,19 +41,45 @@ const stars = (rating: number) =>
 
 export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
-	const [status, setStatus] = useState<Status>("pending");
 	const [failure, setFailure] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 
+	/**
+	 * 🔴 All three queues, in one list.
+	 *
+	 * `/reviews/moderation` answers for ONE status and defaults to pending —
+	 * there is no "everything" to ask for. Reviews used to switch which queue it
+	 * fetched, which made moderation the only page in the console whose status
+	 * control was a navigation rather than a filter. Fetching all three and
+	 * narrowing here makes it behave like every other list: no chip pressed
+	 * means everything.
+	 *
+	 * ⚠️ Three requests, deliberately. They are parallel, capped at 100 each,
+	 * and reviews are the lowest-volume record in the product; the alternative
+	 * is an API change to accept a list of statuses, which is worth doing when
+	 * somebody actually has more reviews than that.
+	 */
 	const reviews = useQuery({
-		queryKey: ["quickdash", workspaceId, "reviews", status],
-		queryFn: async () =>
-			(
-				await workspaceApi(workspaceId).request<{ items: Review[] }>(
-					`/reviews/moderation?status=${status}&limit=100`,
-				)
-			).data,
+		queryKey: ["quickdash", workspaceId, "reviews"],
+		queryFn: async () => {
+			const queues = await Promise.all(
+				STATUSES.map(
+					async (queue) =>
+						(
+							await workspaceApi(workspaceId).request<{ items: Review[] }>(
+								`/reviews/moderation?status=${queue}&limit=100`,
+							)
+						).data.items,
+				),
+			);
+			return {
+				items: queues
+					.flat()
+					.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+			};
+		},
 	});
 
 	const moderate = useMutation({
@@ -80,28 +104,15 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				exportRows={() => reviews.data?.items ?? []}
+				exportName="reviews"
+				filter={statusFilter.chips("Status", [...STATUSES])}
+				filterCount={statusFilter.count}
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search reviews by author or words"
 			/>
-
-			<div className="mb-4 flex h-9 w-fit items-center rounded-full bg-[rgb(var(--console-ink)/0.07)] p-0.5">
-				{STATUSES.map((option) => (
-					<button
-						key={option}
-						type="button"
-						onClick={() => setStatus(option)}
-						className={`h-8 rounded-full px-3.5 text-[11.5px] capitalize transition-colors ${
-							status === option
-								? "bg-[var(--console-pop)] text-[var(--ink-90)]"
-								: "text-[var(--ink-30)] hover:text-[var(--ink-60)]"
-						}`}
-					>
-						{option}
-					</button>
-				))}
-			</div>
 
 			{failure ? <WriteFailure message={failure} /> : null}
 
@@ -111,16 +122,8 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 				isEmpty={(data) => data.items.length === 0}
 				empty={
 					<EmptyState
-						title={
-							status === "pending"
-								? "Nothing waiting on you"
-								: `No ${status} reviews`
-						}
-						detail={
-							status === "pending"
-								? "Reviews customers write appear here first. Nothing reaches your shop until you publish it."
-								: undefined
-						}
+						title="No reviews yet"
+						detail="Reviews customers write appear here first. Nothing reaches your shop until you publish it."
 					/>
 				}
 			>
@@ -128,10 +131,11 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
 						(review) =>
-							!needle ||
-							(review.authorName ?? "").toLowerCase().includes(needle) ||
-							(review.title ?? "").toLowerCase().includes(needle) ||
-							(review.body ?? "").toLowerCase().includes(needle),
+							statusFilter.keep(review.status) &&
+							(!needle ||
+								(review.authorName ?? "").toLowerCase().includes(needle) ||
+								(review.title ?? "").toLowerCase().includes(needle) ||
+								(review.body ?? "").toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (
@@ -216,7 +220,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 									align: "right",
 									tight: true,
 									render: (review) =>
-										status === "pending" ? (
+										review.status === "pending" ? (
 											<div className="flex items-center justify-end gap-1.5">
 												<button
 													type="button"
@@ -256,11 +260,15 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 													moderate.mutate({
 														id: review.id,
 														status:
-															status === "published" ? "rejected" : "published",
+															review.status === "published"
+																? "rejected"
+																: "published",
 													})
 												}
 											>
-												{status === "published" ? "Unpublish" : "Publish"}
+												{review.status === "published"
+													? "Unpublish"
+													: "Publish"}
 											</button>
 										),
 								},

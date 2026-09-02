@@ -19,7 +19,7 @@ import { type Column, DataTable } from "./data-table";
  */
 
 const glyph =
-	"relative z-10 flex size-7 items-center justify-center transition-colors";
+	"relative z-10 flex size-6 items-center justify-center transition-colors";
 
 /** Cards or table, remembered per workspace. */
 export function LayoutToggle({
@@ -47,14 +47,22 @@ export function LayoutToggle({
 			 * A real border gives the track an edge, and the thumb reads as sitting
 			 * inside something.
 			 */
-			className="relative flex h-9 w-[3.9rem] shrink-0 items-center rounded-full border border-[var(--console-line-strong)] bg-[rgb(var(--console-ink)/0.04)] p-0.5 outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] focus-visible:bg-[rgb(var(--console-ink)/0.08)]"
+			/* 56px track, 1px border, 3px padding: 3 + 24 + 24 + 3 across and the
+			   same 3px above and below. Every number here is derived from the 24px
+			   glyph slot, so the thumb sits in an even margin on all four sides
+			   instead of touching the border. */
+			className="relative flex h-8 w-14 shrink-0 items-center rounded-md border border-[var(--console-line-strong)] bg-[rgb(var(--console-ink)/0.04)] p-[3px] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] focus-visible:bg-[rgb(var(--console-ink)/0.08)]"
 		>
 			{/* The thumb slides rather than the icons swapping colour alone, so the
 			    control reads as a switch at a glance. */}
 			<span
 				aria-hidden="true"
-				className={`absolute top-0.5 left-0.5 size-8 rounded-full bg-[rgb(var(--console-ink)/0.14)] transition-transform duration-200 ease-out ${
-					layout === "cards" ? "translate-x-[1.55rem]" : "translate-x-0"
+				/* The SAME thumb as the live/sandbox switch in Account: a raised
+				   `--console-pop` puck with a real drop shadow. Ink at 14% read as a
+				   smudge on the track rather than an object sitting on it, so the
+				   control did not look like something you could push. */
+				className={`absolute top-[3px] left-[3px] size-6 rounded-[3px] bg-[var(--console-pop)] shadow-[0_1px_3px_rgb(0_0_0/0.28)] transition-transform duration-200 ease-out ${
+					layout === "cards" ? "translate-x-6" : "translate-x-0"
 				}`}
 			/>
 			<span

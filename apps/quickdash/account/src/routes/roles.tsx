@@ -209,7 +209,7 @@ function RolesPage() {
 							{selected.length} of {capabilities.data?.items.length ?? 0}
 						</span>
 					</p>
-					<div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+					<div className="grid grid-cols-[repeat(auto-fill,minmax(0,16rem))] justify-start gap-1">
 						{(capabilities.data?.items ?? []).map((capability) => {
 							const { area, action } = capabilityLabel(capability);
 							const on = selected.includes(capability);

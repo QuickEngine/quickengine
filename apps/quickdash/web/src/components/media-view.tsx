@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { type CatalogItem, imagesOf } from "../lib/catalog";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -46,6 +46,7 @@ type MediaUse = {
 };
 
 export function MediaView({ workspaceId }: { workspaceId: string }) {
+	const statusFilter = useChipFilter();
 	const [search, setSearch] = useState("");
 	const [copied, setCopied] = useState<string | null>(null);
 
@@ -58,6 +59,10 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				filter={statusFilter.chips("Use", ["shown first", "additional"])}
+				filterCount={statusFilter.count}
+				exportRows={() => catalog.data?.items ?? []}
+				exportName="media"
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search by product"
@@ -90,7 +95,9 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 					);
 					const needle = search.trim().toLowerCase();
 					const shown = uses.filter(
-						(use) => !needle || use.itemName.toLowerCase().includes(needle),
+						(use) =>
+							statusFilter.keep(use.first ? "shown first" : "additional") &&
+							(!needle || use.itemName.toLowerCase().includes(needle)),
 					);
 
 					if (shown.length === 0) {

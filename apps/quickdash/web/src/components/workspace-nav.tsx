@@ -235,15 +235,6 @@ const GROUPS: ReadonlyArray<{
 const HIDDEN_FROM_NAV = new Set(["reporting-analytics"]);
 
 /**
- * How many open groups before tidying is worth offering.
- *
- * 🔑 A "collapse all" beside one open group is a control that does almost
- * nothing, and every permanent button costs attention whether or not it is
- * used. Three is where the sidebar starts needing a scroll to see the bottom.
- */
-const COLLAPSE_THRESHOLD = 3;
-
-/**
  * ⚠️ Width is NOT baked in. `row` carries `w-full shrink-0`, which is right for
  * a stacked list and wrong beside anything: a row that fills its parent and
  * refuses to shrink pushes a sibling clean out of the container. `rowBase` is
@@ -558,44 +549,52 @@ export function WorkspaceNav({
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			{/* `relative` so the collapse handle can straddle the divider below. */}
-			<div className="group/collapse relative shrink-0">
+			<div className="shrink-0">
 				<nav
 					className={`flex flex-col gap-1 border-b px-2 pb-1 transition-colors ${scrolled ? "border-[var(--console-line-soft)]" : "border-transparent"}`}
 				>
-					<Link
-						to="/$workspace"
-						params={{ workspace: workspaceId }}
-						className={`${row} ${pathname === `/${workspaceId}` ? active : idle}`}
-					>
-						<HouseIcon size={15} className="shrink-0" />
-						<span className="truncate">Home</span>
-					</Link>
-				</nav>
-
-				{/*
-				  🔑 A handle ON the divider, revealed by hovering the header.
-				  Sitting in the rule itself says what it does without a label: it
-				  is the line the groups fold up to. Hidden until wanted, so the
-				  sidebar carries no permanent button for an occasional act.
-
-				  ⚠️ The strip is `pointer-events-none` and only the circle takes
-				  clicks — a full-width invisible bar across the divider would
-				  swallow presses meant for the list underneath.
-				*/}
-				{openModules.size >= COLLAPSE_THRESHOLD ? (
-					<div className="pointer-events-none absolute inset-x-0 -bottom-2.5 z-10 flex justify-center">
-						<button
-							type="button"
-							onClick={collapseAll}
-							title="Collapse all"
-							aria-label="Collapse all groups"
-							className="pointer-events-auto flex size-5 items-center justify-center rounded-full border border-[var(--console-line-strong)] bg-[var(--console-panel)] text-[var(--ink-45)] opacity-0 transition-opacity hover:text-[var(--ink-85)] focus-visible:opacity-100 group-hover/collapse:opacity-100"
+					{/*
+					 * Home and "fold everything up" on one line.
+					 *
+					 * 🔴 The old control was a circle straddling the divider, revealed
+					 * only by hovering the header — so the one way to tidy a sidebar
+					 * gone long was a button you had to already know was there. On a
+					 * touch screen there is no hover at all, which made it
+					 * unreachable rather than merely obscure.
+					 */}
+					{/*
+					 * 🔴 A button INSIDE the row, not a sibling beside it — and
+					 * absolutely positioned rather than nested, because a `<button>`
+					 * inside an `<a>` is invalid HTML and browsers resolve it by
+					 * swallowing one of the two clicks.
+					 *
+					 * The link is padded on the right to leave the caret its space, so
+					 * the two never overlap however long the label gets.
+					 */}
+					<div className="relative">
+						<Link
+							to="/$workspace"
+							params={{ workspace: workspaceId }}
+							className={`${row} pr-8 ${pathname === `/${workspaceId}` ? active : idle}`}
 						>
-							<CaretUpIcon size={10} weight="bold" />
-						</button>
+							<HouseIcon size={15} className="shrink-0" />
+							<span className="truncate">Home</span>
+						</Link>
+						{/* Only once something is actually open: a collapse control on a
+						    sidebar with nothing expanded does nothing. */}
+						{openModules.size > 0 ? (
+							<button
+								type="button"
+								onClick={collapseAll}
+								title="Collapse all"
+								aria-label="Collapse all groups"
+								className="-translate-y-1/2 absolute top-1/2 right-1 flex size-6 items-center justify-center rounded text-[var(--ink-35)] transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] hover:text-[var(--ink-85)]"
+							>
+								<CaretUpIcon size={12} weight="bold" />
+							</button>
+						) : null}
 					</div>
-				) : null}
+				</nav>
 			</div>
 
 			<nav
@@ -662,7 +661,7 @@ export function WorkspaceNav({
 					className={`${row} ${pathname === `/${workspaceId}/connect` ? active : idle}`}
 				>
 					<PlugsIcon size={15} className="shrink-0" />
-					<span className="min-w-0 flex-1 truncate">Connect</span>
+					<span className="min-w-0 flex-1 truncate">Developers</span>
 					{connectPending ? (
 						<WorkingSpinner label="Waiting for your site to connect" />
 					) : null}

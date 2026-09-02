@@ -205,6 +205,8 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				exportRows={() => inventory.data?.items ?? []}
+				exportName="inventory"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}

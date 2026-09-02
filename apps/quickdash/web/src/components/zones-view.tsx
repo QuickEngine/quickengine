@@ -4,7 +4,7 @@ import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -53,6 +53,7 @@ const _field =
 
 export function ZonesView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
 	const [search, setSearch] = useState("");
@@ -148,7 +149,7 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 	// submit button parted from its inputs is a button that does nothing
 	// visible.
 	useHeaderAction({
-		label: "New zone",
+		label: "Add zone",
 		onClick: () => setCreating((open) => !open),
 	});
 
@@ -219,6 +220,10 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				filter={statusFilter.chips("State", ["active", "off"])}
+				filterCount={statusFilter.count}
+				exportRows={() => zones.data?.items ?? []}
+				exportName="shipping-zones"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -241,7 +246,9 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 				{(data) => {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
-						(zone) => !needle || zone.name.toLowerCase().includes(needle),
+						(zone) =>
+							statusFilter.keep(zone.active === false ? "off" : "active") &&
+							(!needle || zone.name.toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

@@ -111,7 +111,7 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 	// submit button parted from its inputs is a button that does nothing
 	// visible.
 	useHeaderAction({
-		label: "New project",
+		label: "Add project",
 		onClick: () => setCreating((open) => !open),
 	});
 
@@ -150,6 +150,8 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				exportRows={() => projects.data?.items ?? []}
+				exportName="projects"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}

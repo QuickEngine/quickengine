@@ -13,10 +13,13 @@ export {
 export { Background } from "./components/background";
 export { ConnectionBanner } from "./components/connection-banner";
 export {
+	ConsoleAssistant,
+	ConsoleBell,
 	type ConsoleLink,
 	type ConsoleLinkProps,
 	ConsoleShell,
-	SandboxBanner,
+	ConsoleTheme,
+	ConsoleTools,
 	SidebarAccount,
 	SidebarBadge,
 	SidebarName,

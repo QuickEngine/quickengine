@@ -1,7 +1,11 @@
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { resolveSession } from "@quickengine/auth/session";
 import {
+	ConsoleAssistant,
+	ConsoleBell,
 	type ConsoleLink,
 	ConsoleShell,
+	ConsoleTheme,
 	MobileNotice,
 	SidebarAccount,
 	SidebarName,
@@ -21,9 +25,10 @@ import {
 } from "@tanstack/react-router";
 import { useState } from "react";
 import { ErrorScreen, NotFoundScreen } from "@/components/status-screens";
-import { AccountNav } from "../components/account-nav";
+import { AccountNav, pageTitle } from "../components/account-nav";
 import { AccountNotifications } from "../components/account-notifications";
 import { AccountSearch } from "../components/account-search";
+import { AssistantPanel } from "../components/assistant-panel";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { SkeletonScreen } from "../components/skeletons";
 import {
@@ -199,7 +204,13 @@ const AccountLink: ConsoleLink = ({ href, className, children }) => (
 );
 
 function AccountConsole() {
+	// The shell's own `AccountShell` already reads this to decide whether to draw
+	// the console at all; the header needs it to say which page you are on.
+	const pathname = useRouterState({
+		select: (state) => state.location.pathname,
+	});
 	const [searchOpen, setSearchOpen] = useState(false);
+	const [assistantOpen, setAssistantOpen] = useState(false);
 	const [feedbackOpen, setFeedbackOpen] = useState(false);
 	const [sidebarContext, setSidebarContext] = useState<
 		"navigation" | "notifications"
@@ -212,31 +223,108 @@ function AccountConsole() {
 
 	return (
 		<ConsoleShell
-			switcher={
-				<SidebarName
-					name={active?.name ?? ""}
-					currentId={active?.id ?? ""}
-					items={organizations.data?.items ?? []}
-					onSelect={(organizationId) => {
-						activeOrganization.write(organizationId);
-						queryClient.setQueryData(
-							["account", "activeOrganization"],
-							organizationId,
-						);
-					}}
-					searchLabel="Find organization"
-					createLabel="Create organization"
-					createHref="/organizations/new"
-					link={AccountLink}
-					onSearch={() => setSearchOpen(true)}
-					onNotifications={() =>
-						setSidebarContext((current) =>
-							current === "notifications" ? "navigation" : "notifications",
-						)
-					}
-					notificationCount={notifications.data?.unread ?? 0}
-					notificationsActive={sidebarContext === "notifications"}
-				/>
+			/**
+			 * 🔴 THREE ZONES, as a grid rather than a flex row.
+			 *
+			 * The search has to be centred on the WINDOW, not on whatever space the
+			 * breadcrumb leaves behind. In a flex row it drifts left and right as page
+			 * names change length, which is the sort of movement nobody can name but
+			 * everybody feels. `grid-cols-3` gives the middle column a fixed centre
+			 * and lets the two sides be whatever width they need.
+			 *
+			 * ⚠️ `justify-self` on the outer two, so they hug their own edges instead
+			 * of centring inside their columns.
+			 */
+			header={
+				<div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3">
+					{/* 🔑 The switcher and the bell together on the left. Both are about
+					    the ORGANISATION you are in rather than the page you are on, and
+					    the sidebar no longer has a header row for them to live in. */}
+					{/* 🔴 Exactly as wide as the SIDEBAR, and it tracks the drag.
+					    `--console-rail` is set on the frame by the resizer, so this group
+					    tracks the rail at every width.
+					    ⚠️ `- 16px` is the sidebar nav's own `px-2` on BOTH sides. The
+					    group is matched to the nav BUTTONS, not to the panel: the header's
+					    `px-2` already puts its left edge on theirs, and subtracting the
+					    nav's other 8px puts the bell's right edge on theirs too.
+					    The bell is `shrink-0`, so the switcher absorbs every pixel of a
+					    drag and the name elides rather than the bell moving. */}
+					<div
+						style={{ width: "calc(var(--console-rail, 240px) - 16px)" }}
+						className="flex min-w-0 items-center gap-1.5 justify-self-start"
+					>
+						<SidebarName
+							compact
+							name={active?.name ?? ""}
+							currentId={active?.id ?? ""}
+							items={organizations.data?.items ?? []}
+							onSelect={(organizationId) => {
+								activeOrganization.write(organizationId);
+								queryClient.setQueryData(
+									["account", "activeOrganization"],
+									organizationId,
+								);
+							}}
+							searchLabel="Find organization"
+							createLabel="Create organization"
+							createHref="/organizations/new"
+							link={AccountLink}
+						/>
+						<ConsoleBell
+							count={notifications.data?.unread ?? 0}
+							active={sidebarContext === "notifications"}
+							onClick={() =>
+								setSidebarContext((current) =>
+									current === "notifications" ? "navigation" : "notifications",
+								)
+							}
+						/>
+					</div>
+
+					{/* 🔑 It says its shortcut. A magnifying glass alone teaches nobody
+					    that ⌘K exists, and ⌘K is how anybody using this daily will
+					    actually open it.
+					    ⚠️ `rounded-md`, not a pill: it is a field, and a field shaped
+					    like a button reads as one. */}
+					<button
+						type="button"
+						onClick={() => setSearchOpen(true)}
+						style={{
+							boxShadow: "var(--control-raise)",
+							backgroundImage: "var(--control-face)",
+						}}
+						className="flex h-9 w-[min(24rem,34vw)] items-center gap-2 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[12px] text-[var(--ink-35)] transition-[box-shadow,color] duration-150 hover:text-[var(--ink-70)] hover:shadow-[var(--control-raise-hover)] active:translate-y-px"
+					>
+						<MagnifyingGlassIcon size={13} className="shrink-0" />
+						<span className="min-w-0 flex-1 truncate text-left">Search</span>
+						<span className="shrink-0 text-[10px] text-[var(--ink-25)]">
+							⌘K
+						</span>
+					</button>
+
+					{/* 🔴 The account control lives HERE now, not at the foot of the
+					    sidebar. Top-right is where every console puts it, and the
+					    sidebar's last row is prime space that navigation should have. */}
+					<div className="flex items-center gap-1.5 justify-self-end">
+						{/* 🔑 Both shared, so the two consoles cannot drift apart on
+						    controls that are meant to be identical. */}
+						<ConsoleTheme />
+						<ConsoleAssistant
+							open={assistantOpen}
+							onClick={() => setAssistantOpen((open) => !open)}
+						/>
+						<SidebarAccount
+							compact
+							name={user.name ?? ""}
+							email={user.email ?? ""}
+							planId={plan.data?.planId ?? null}
+							accountUrl=""
+							authUrl={clientEnv.AUTH_URL}
+							link={AccountLink}
+							onFeedback={() => setFeedbackOpen(true)}
+						/>
+					</div>
+				</div>
 			}
 			nav={
 				sidebarContext === "notifications" ? (
@@ -248,17 +336,21 @@ function AccountConsole() {
 					<AccountNav />
 				)
 			}
-			account={
-				<SidebarAccount
-					name={user.name ?? ""}
-					planId={plan.data?.planId ?? null}
-					accountUrl=""
-					authUrl={clientEnv.AUTH_URL}
-					webUrl={clientEnv.WEB_URL}
-					link={AccountLink}
-					onFeedback={() => setFeedbackOpen(true)}
-				/>
+			/**
+			 * 🔑 Account's pages are settings and lists, not dashboards of tables —
+			 * six of them already cap themselves at `max-w-2xl`. Capping the column
+			 * itself means resizing the sidebar or opening the assistant moves the
+			 * GUTTERS rather than reflowing the page, which is the difference between
+			 * a layout that adjusts and one that visibly stretches.
+			 */
+			contentMax="72rem"
+			breadcrumb={
+				<h1 className="truncate text-[15px] text-[var(--ink-90)]">
+					{pageTitle(pathname)}
+				</h1>
 			}
+			assistantOpen={assistantOpen}
+			assistant={<AssistantPanel onClose={() => setAssistantOpen(false)} />}
 			overlays={
 				<>
 					<AccountSearch open={searchOpen} onOpenChange={setSearchOpen} />

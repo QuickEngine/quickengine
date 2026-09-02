@@ -5,7 +5,7 @@ import { useListLayout } from "../lib/list-view";
 import { parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -52,6 +52,7 @@ const money = (cents: number) =>
 
 export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const api = workspaceApi(workspaceId);
 
@@ -131,7 +132,7 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 	});
 
 	useHeaderAction({
-		label: "New partner",
+		label: "Add partner",
 		onClick: () => setCreating((was) => !was),
 	});
 
@@ -185,6 +186,10 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				filter={statusFilter.chips("State", ["active", "off"])}
+				filterCount={statusFilter.count}
+				exportRows={() => links.data?.items ?? []}
+				exportName="partners"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -208,9 +213,10 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
 						(link) =>
-							!needle ||
-							link.code.toLowerCase().includes(needle) ||
-							link.ownerName.toLowerCase().includes(needle),
+							statusFilter.keep(link.active ? "active" : "off") &&
+							(!needle ||
+								link.code.toLowerCase().includes(needle) ||
+								link.ownerName.toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

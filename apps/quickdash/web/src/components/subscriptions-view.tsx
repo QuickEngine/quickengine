@@ -5,7 +5,7 @@ import { useListLayout } from "../lib/list-view";
 import { isAmount, parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`.
@@ -68,6 +68,7 @@ const STATUS_TONE: Record<string, string | undefined> = {
 
 export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const api = workspaceApi(workspaceId);
 
@@ -160,7 +161,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 	});
 
 	useHeaderAction({
-		label: "New plan",
+		label: "Add plan",
 		onClick: () => setCreating((was) => !was),
 	});
 
@@ -217,6 +218,15 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				filter={statusFilter.chips("Status", [
+					"active",
+					"past_due",
+					"cancelled",
+					"paused",
+				])}
+				filterCount={statusFilter.count}
+				exportRows={() => subscriptions.data?.items ?? []}
+				exportName="subscription-plans"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -257,9 +267,10 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
 						(row) =>
-							!needle ||
-							row.planName.toLowerCase().includes(needle) ||
-							row.status.includes(needle),
+							statusFilter.keep(row.status) &&
+							(!needle ||
+								row.planName.toLowerCase().includes(needle) ||
+								row.status.includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

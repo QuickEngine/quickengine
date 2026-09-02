@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+import {
+	CheckIcon,
+	DotsSixVerticalIcon,
+	MinusIcon,
+} from "@phosphor-icons/react";
+import { type ReactNode, useState } from "react";
+import { useTableRail } from "./header-action";
 
 /**
  * The table every list page uses.
@@ -45,6 +51,54 @@ export type Column<TRow> = {
 	render: (row: TRow) => ReactNode;
 };
 
+/**
+ * The console's checkbox.
+ *
+ * 🔴 Not `<input type="checkbox">` with a border on it. A native checkbox is
+ * painted by the operating system, so it arrives in the OS accent colour and
+ * ignores the theme entirely — which is the one thing this console does not
+ * allow. The real input stays, `sr-only`, so keyboard and screen readers get a
+ * genuine checkbox; the square beside it is what you see.
+ */
+function TickBox({
+	checked,
+	partial,
+	onChange,
+	label,
+}: {
+	checked: boolean;
+	partial?: boolean;
+	onChange: (checked: boolean) => void;
+	label: string;
+}) {
+	const on = checked || partial;
+	return (
+		<label className="flex size-7 cursor-pointer items-center justify-center">
+			<input
+				type="checkbox"
+				checked={checked}
+				aria-label={label}
+				onChange={(event) => onChange(event.target.checked)}
+				className="peer sr-only"
+			/>
+			<span
+				aria-hidden="true"
+				className={`flex size-[15px] items-center justify-center rounded-[4px] border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[rgb(var(--console-ink)/0.25)] ${
+					on
+						? "border-transparent bg-[rgb(var(--console-ink))] text-[var(--console-pop)]"
+						: "border-[var(--console-line-strong)] text-transparent"
+				}`}
+			>
+				{partial ? (
+					<MinusIcon size={10} weight="bold" />
+				) : checked ? (
+					<CheckIcon size={10} weight="bold" />
+				) : null}
+			</span>
+		</label>
+	);
+}
+
 export function DataTable<TRow extends { id: string }>({
 	columns,
 	rows,
@@ -87,11 +141,55 @@ export function DataTable<TRow extends { id: string }>({
 	 */
 	layout?: "table" | "cards";
 }) {
+	const { setTableRail } = useTableRail();
+	/**
+	 * ⚠️ Keyed by row id and scoped to THIS page of rows. "Select all" means the
+	 * rows in front of you, never every record behind the pager — an action
+	 * applied to records you have not seen is how somebody deletes a thousand
+	 * things meaning to delete ten.
+	 */
+	const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+	const onPage = rows.filter((row) => picked.has(row.id)).length;
+	const allOnPage = rows.length > 0 && onPage === rows.length;
+	const pickAll = (checked: boolean) =>
+		setPicked(checked ? new Set(rows.map((row) => row.id)) : new Set());
+
+	/**
+	 * Where narrowing lives: a filter button and a search box, on the table
+	 * itself.
+	 *
+	 * 🔑 `empty:hidden` rather than a conditional. The children arrive by portal
+	 * from `ListControls`, so this element cannot know at render time whether
+	 * anything will land in it — CSS can, once they have. A page with no
+	 * controls gets no empty bar and no stray border.
+	 */
+	const strip = (
+		<div className="flex items-center gap-2 border-[var(--console-line-soft)] border-b bg-[rgb(var(--console-ink)/0.02)] px-2 py-1.5">
+			{/* Filter, search and sort arrive here by portal from `ListControls`.
+			    Selection is NOT here: it belongs on the header row with the
+			    columns, directly above the boxes it ticks. */}
+			<div
+				ref={setTableRail}
+				className="flex min-w-0 flex-1 items-center gap-2"
+			/>
+		</div>
+	);
+
 	if (layout === "cards") {
 		return (
-			<CardList
-				{...{ columns, rows, onOpen, selectedId, rowSignal, onReorder }}
-			/>
+			<>
+				{/* Cards have no frame of their own, so the strip takes one — the
+				    controls must not vanish just because the view changed. */}
+				<div
+					style={{ boxShadow: "var(--card-lift)" }}
+					className="mb-3 overflow-hidden rounded-xl border border-[var(--console-line)] bg-[var(--console-card)]"
+				>
+					{strip}
+				</div>
+				<CardList
+					{...{ columns, rows, onOpen, selectedId, rowSignal, onReorder }}
+				/>
+			</>
 		);
 	}
 	return (
@@ -104,7 +202,11 @@ export function DataTable<TRow extends { id: string }>({
 		 * `overflow-hidden` is what lets the first and last rows sit inside the
 		 * rounded corners instead of squaring them off.
 		 */
-		<div className="overflow-hidden rounded-xl border border-[var(--console-line-soft)]">
+		<div
+			style={{ boxShadow: "var(--card-lift)" }}
+			className="overflow-hidden rounded-xl border border-[var(--console-line)] bg-[var(--console-card)]"
+		>
+			{strip}
 			{/* Wide tables scroll inside the box rather than pushing the page
 			    sideways, which would drag the sidebar off screen with them. */}
 			<div className="overflow-x-auto">
@@ -114,6 +216,14 @@ export function DataTable<TRow extends { id: string }>({
 						<tr className="border-[var(--console-line-soft)] border-b bg-[rgb(var(--console-ink)/0.02)]">
 							{/* The signal gutter. Headed by nothing — a column of dots needs
 							    no label, and one would be wider than the column. */}
+							<th scope="col" className="w-9 pl-2">
+								<TickBox
+									checked={allOnPage}
+									partial={onPage > 0 && !allOnPage}
+									onChange={pickAll}
+									label="Select all on page"
+								/>
+							</th>
 							{rowSignal ? <th scope="col" className="w-6" /> : null}
 							{columns.map((column) => (
 								<th
@@ -126,12 +236,18 @@ export function DataTable<TRow extends { id: string }>({
 									{column.header ?? column.key}
 								</th>
 							))}
+							{/* Headed by nothing: a column of grab handles needs no label,
+							    and any word would be wider than the column. */}
+							{onReorder ? <th scope="col" className="w-9" /> : null}
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-[var(--console-line-soft)]">
 						{rows.map((row) => (
 							<tr
 								key={row.id}
+								/* The WHOLE row is the thing you pick up; the handle on the
+								   right is what tells you so. Restricting the gesture to the
+								   handle made a 9px target out of a full-width row. */
 								draggable={Boolean(onReorder)}
 								onDragStart={
 									onReorder
@@ -166,7 +282,7 @@ export function DataTable<TRow extends { id: string }>({
 										: undefined
 								}
 								tabIndex={onOpen ? 0 : undefined}
-								className={`transition-colors outline-none ${onOpen ? "cursor-pointer focus-visible:bg-[rgb(var(--console-ink)/0.05)]" : ""} ${
+								className={`group/row transition-colors outline-none ${onOpen ? "cursor-pointer focus-visible:bg-[rgb(var(--console-ink)/0.05)]" : ""} ${
 									selectedId === row.id
 										? "bg-[rgb(var(--console-ink)/0.04)]"
 										: onOpen
@@ -181,6 +297,27 @@ export function DataTable<TRow extends { id: string }>({
 								  inline pushed every name in the table sideways. A gutter
 								  does neither, and reads as a scannable line down the edge.
 								*/}
+								{/* 🔴 Stops the click here. Without this, ticking a row would
+								    also fire the row's own open handler and throw the detail
+								    panel over the list you are selecting in. */}
+								<td
+									className="w-9 pl-2 align-middle"
+									onClick={(event) => event.stopPropagation()}
+									onKeyDown={(event) => event.stopPropagation()}
+								>
+									<TickBox
+										checked={picked.has(row.id)}
+										onChange={(checked) =>
+											setPicked((current) => {
+												const next = new Set(current);
+												if (checked) next.add(row.id);
+												else next.delete(row.id);
+												return next;
+											})
+										}
+										label="Select row"
+									/>
+								</td>
 								{rowSignal ? (
 									<td className="w-6 pl-3 align-middle">
 										<RowDot signal={rowSignal(row) ?? null} />
@@ -207,6 +344,29 @@ export function DataTable<TRow extends { id: string }>({
 										)}
 									</td>
 								))}
+								{/*
+								 * The grab handle, and the ONLY draggable thing in the row.
+								 *
+								 * 🔴 `draggable` used to sit on the whole `<tr>`, which meant
+								 * you could not select text in a cell without the browser
+								 * starting a drag instead. A handle makes the gesture
+								 * deliberate and tells you the rows move, which a draggable
+								 * row with no affordance never did.
+								 *
+								 * ⚠️ Always visible, not revealed on hover: a control you can
+								 * only find by accident is not discoverable, and on a touch
+								 * screen there is no hover to reveal it with.
+								 */}
+								{onReorder ? (
+									<td className="w-9 pr-2 align-middle">
+										<span
+											aria-hidden="true"
+											className="flex size-7 cursor-grab items-center justify-center rounded-md text-[var(--ink-30)] transition-colors group-hover/row:text-[var(--ink-60)] active:cursor-grabbing"
+										>
+											<DotsSixVerticalIcon size={15} />
+										</span>
+									</td>
+								) : null}
 							</tr>
 						))}
 					</tbody>
@@ -276,7 +436,8 @@ function CardList<TRow extends { id: string }>({
 							: undefined
 					}
 					tabIndex={onOpen ? 0 : undefined}
-					className={`relative rounded-xl border p-3 outline-none transition-colors ${
+					style={{ boxShadow: "var(--card-lift)" }}
+					className={`relative rounded-xl border bg-[var(--console-card)] p-3 outline-none transition-colors ${
 						onOpen ? "cursor-pointer" : ""
 					} ${
 						selectedId === row.id

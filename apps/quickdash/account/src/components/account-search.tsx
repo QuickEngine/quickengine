@@ -140,14 +140,14 @@ export function AccountSearch({
 			title="Search account"
 			description="Find account pages and workspaces"
 			showCloseButton={false}
-			className="top-[18%] translate-y-0 border-[var(--console-line)] bg-[var(--console-pop)] text-[var(--ink-90)] shadow-2xl sm:max-w-2xl [&_[data-slot=command-input-wrapper]]:border-b-0"
+			className="top-[18%] translate-y-0 rounded-xl border-[var(--console-line)] bg-[var(--console-pop)] p-1.5 text-[var(--ink-90)] shadow-2xl sm:max-w-2xl [&_[data-slot=command-input-wrapper]]:border-b-0 [&_[data-slot=command-input-wrapper]]:h-9"
 		>
 			<CommandInput
 				placeholder="Search your account..."
-				className="text-[13px] text-[var(--ink-90)] placeholder:text-[var(--ink-25)]"
+				className="text-[12px] text-[var(--ink-90)] placeholder:text-[var(--ink-25)]"
 			/>
-			<CommandList className="max-h-[25rem] py-1">
-				<CommandEmpty className="py-12 text-[12px] text-[var(--ink-35)]">
+			<CommandList className="max-h-[18rem] py-0.5">
+				<CommandEmpty className="py-8 text-[11.5px] text-[var(--ink-35)]">
 					Nothing found
 				</CommandEmpty>
 				{workspaces.data?.items.length ? (
@@ -166,7 +166,7 @@ export function AccountSearch({
 											: "/workspaces",
 									)
 								}
-								className="rounded-md text-[var(--ink-55)] data-[selected=true]:bg-[rgb(var(--console-ink)/0.07)] data-[selected=true]:text-[var(--ink-90)]"
+								className="min-h-8 rounded-lg py-1 text-[12px] text-[var(--ink-55)] data-[selected=true]:bg-[rgb(var(--console-ink)/0.07)] data-[selected=true]:text-[var(--ink-90)]"
 							>
 								<AppWindowIcon size={15} className="text-[var(--ink-35)]" />
 								<p className="min-w-0 flex-1 truncate text-[12.5px]">
@@ -192,7 +192,7 @@ export function AccountSearch({
 								key={destination.href}
 								value={`${destination.label} ${destination.detail}`}
 								onSelect={() => go(destination.href)}
-								className="rounded-md text-[var(--ink-55)] data-[selected=true]:bg-[rgb(var(--console-ink)/0.07)] data-[selected=true]:text-[var(--ink-90)]"
+								className="min-h-8 rounded-lg py-1 text-[12px] text-[var(--ink-55)] data-[selected=true]:bg-[rgb(var(--console-ink)/0.07)] data-[selected=true]:text-[var(--ink-90)]"
 							>
 								<Icon size={15} className="text-[var(--ink-35)]" />
 								<p className="min-w-0 flex-1 truncate text-[12.5px]">

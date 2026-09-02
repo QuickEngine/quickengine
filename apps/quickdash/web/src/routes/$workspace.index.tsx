@@ -1,6 +1,9 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { createPortal } from "react-dom";
+import { Area, Bars, Card, Stat } from "../components/dash-card";
+import { useHeaderRail } from "../components/header-action";
 import { RequestFailure } from "../components/page-state";
 import { SkeletonRows } from "../components/skeletons";
 import { workspaceApi } from "../lib/api";
@@ -72,52 +75,6 @@ const money = (cents: number, currency: string) =>
 		currency: currency.toUpperCase(),
 	}).format(cents / 100);
 
-/**
- * Seven days of takings, drawn as bars.
- *
- * 🔑 Bars rather than a line: a week is seven discrete days, and a line implies
- * a continuous quantity moving between them. Today is the last bar and is
- * deliberately dimmer — the day is not over, and a short final bar otherwise
- * reads as a collapse every morning.
- */
-function Week({
-	days,
-	currency,
-}: {
-	days: Array<{ day: string; cents: number }>;
-	currency: string;
-}) {
-	const peak = Math.max(...days.map((entry) => entry.cents), 1);
-	return (
-		<div className="flex h-16 items-end gap-1.5">
-			{days.map((entry, index) => (
-				<div key={entry.day} className="flex min-w-0 flex-1 flex-col gap-1.5">
-					<div
-						className={`w-full rounded-[2px] ${
-							index === days.length - 1
-								? "bg-[rgb(var(--console-ink)/0.18)]"
-								: "bg-[rgb(var(--console-ink)/0.32)]"
-						}`}
-						style={{
-							height: `${Math.max((entry.cents / peak) * 44, entry.cents > 0 ? 3 : 1)}px`,
-						}}
-					/>
-					<span className="truncate text-center text-[9px] text-[var(--ink-20)]">
-						{new Date(`${entry.day}T00:00:00Z`).toLocaleDateString("en", {
-							weekday: "narrow",
-						})}
-					</span>
-				</div>
-			))}
-			<span className="sr-only">
-				{days
-					.map((entry) => `${entry.day}: ${money(entry.cents, currency)}`)
-					.join(", ")}
-			</span>
-		</div>
-	);
-}
-
 const today = new Intl.DateTimeFormat("en", {
 	weekday: "long",
 	day: "numeric",
@@ -183,7 +140,7 @@ function EntryRow({
 
 function HomePage() {
 	const { workspaceId: workspace } = Route.useRouteContext();
-	const context = useQuery(quickDashQueries.context(workspace));
+	const { rail } = useHeaderRail();
 	const home = useQuery(quickDashQueries.home(workspace));
 	// Seven days of settled money, from the workspace's own reporting.
 	const revenue = useQuery({
@@ -262,177 +219,273 @@ function HomePage() {
 		return { day, cents: byDay.get(day) ?? 0 };
 	});
 	const weekTotal = week.reduce((sum, entry) => sum + entry.cents, 0);
+	// ⚠️ `reduce`, not a sort: sorting would reorder the array the chart draws
+	// from, and the chart has to stay in day order.
+	const bestDay = week.reduce(
+		(best, entry) => (entry.cents > best.cents ? entry : best),
+		week[0] ?? { day: "", cents: 0 },
+	);
 	const todayTotal = week[week.length - 1]?.cents ?? 0;
 
-	// Guided setup, while it is still telling somebody something they do not know.
-	const checklist = context.data?.checklist;
-	const nextStep = checklist?.dismissed
-		? null
-		: (checklist?.items ?? [])
-				.flatMap((goal) => goal.steps)
-				.find((step) => step.isNext);
 	const quiet = home.isSuccess && needsYou.length === 0 && now.length === 0;
+
+	/**
+	 * 🔴 What stops the bento ending in a hole.
+	 *
+	 * `grid-flow-dense` backfills gaps with anything that FITS, and the last
+	 * tile is full width — a four-column card cannot drop into a two-cell tail,
+	 * so it starts a fresh row and leaves the tail empty. Nothing in CSS can see
+	 * that coming; the count can.
+	 *
+	 * Six tiles always render, plus one for each of "needs you", "today" and the
+	 * quiet notice — which is 6, 7 or 8. The remainder against four columns says
+	 * how much of the last row is short, and the final tiles widen to close it:
+	 * three short → 2·1·1, two short → 2·2, none → every tile one cell.
+	 *
+	 * ⚠️ Whole class strings, never `lg:col-span-${n}`. Tailwind reads source
+	 * text, so a name assembled at runtime is never generated.
+	 */
+	const tail =
+		(6 +
+			(needsYou.length > 0 ? 1 : 0) +
+			(now.length > 0 ? 1 : 0) +
+			(quiet ? 1 : 0)) %
+		4;
+	const tail3 = tail === 3 ? "lg:col-span-2" : "";
+	const tail2 = tail === 2 ? "sm:col-span-2 lg:col-span-2" : "";
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			<div className="mb-8 flex flex-wrap items-baseline justify-between gap-3">
-				<p className="text-[15px] text-[var(--ink-90)]">
-					{context.data?.workspace.name ?? ""}
-				</p>
-				<p className="text-[11.5px] text-[var(--ink-30)]">
-					{today.format(new Date())}
-				</p>
-			</div>
+			{/*
+			 * 🔴 A GRID of one card component, not a stack of bespoke sections.
+			 *
+			 * Home was a column of headings with a number under each, which reads as
+			 * a report rather than a dashboard — everything the same weight, nothing
+			 * answerable at a glance. As tiles, size carries meaning: money is wide
+			 * because it is the question the page is opened with, and the rest are
+			 * equal because none of them outranks another.
+			 *
+			 * ⚠️ `auto-rows-min`, so a card is as tall as its contents rather than
+			 * stretching to match the tallest in its row. Stretched cards leave one
+			 * with a band of empty panel under it, which reads as missing data.
+			 */}
+			{/*
+			 * 🔴 No workspace name here. The switcher names it, the breadcrumb
+			 * names the page, and a heading repeating the switcher is a third
+			 * answer to a question already answered twice above it.
+			 *
+			 * 🔑 The date rides the breadcrumb row instead of a line of its own,
+			 * the same way a list page's controls do. "Home" and "today" are one
+			 * statement about where you are, and giving the date its own row cost
+			 * a band of empty page above the first card.
+			 */}
+			{rail
+				? createPortal(
+						<p className="text-[11.5px] text-[var(--ink-30)]">
+							{today.format(new Date())}
+						</p>,
+						rail,
+					)
+				: null}
 
-			{/* Money first. It is the question every owner opens the page with, and
-			    it is the one number that needs no explanation. */}
-			{weekTotal > 0 ? (
-				<section className="mb-8">
-					<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-						<p className="text-[26px] text-[var(--ink-90)] leading-none tabular-nums">
-							{money(todayTotal, currency)}
-						</p>
-						<p className="text-[12px] text-[var(--ink-35)]">
-							today · {money(weekTotal, currency)} this week
-						</p>
-					</div>
-					<div className="mt-4 max-w-xs">
-						<Week days={week} currency={currency} />
-					</div>
-				</section>
-			) : null}
-
-			{nextStep ? (
-				<section className="mb-8">
-					<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">
-						Getting started
-					</p>
-					<a
-						href={nextStep.href}
-						className="flex items-center gap-3 rounded-lg border border-[var(--console-line-strong)] bg-[var(--console-panel)] p-3.5 transition-colors hover:bg-[rgb(var(--console-ink)/0.04)]"
-					>
-						<span className="min-w-0 flex-1">
-							<span className="block truncate text-[12.5px] text-[var(--ink-85)]">
-								{nextStep.label}
-							</span>
-							<span className="mt-0.5 block text-[11px] text-[var(--ink-30)] leading-4">
-								{nextStep.description}
-							</span>
-						</span>
-						<ArrowRightIcon
-							size={13}
-							className="shrink-0 text-[var(--ink-30)]"
+			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:auto-rows-[minmax(6.5rem,auto)] lg:grid-flow-dense lg:grid-cols-4">
+				{/* Money, across the top. The one number that needs no explaining. */}
+				<Card
+					title="Revenue, last 7 days"
+					className="sm:col-span-2 lg:col-span-2 lg:row-span-2"
+				>
+					{revenue.isPending ? (
+						<SkeletonRows rows={3} />
+					) : revenue.isError ? (
+						<RequestFailure
+							error={revenue.error}
+							onRetry={() => revenue.refetch()}
 						/>
-					</a>
-				</section>
-			) : null}
-
-			{home.isPending ? (
-				<SkeletonRows rows={4} />
-			) : home.isError ? (
-				<RequestFailure
-					error={home.error}
-					onRetry={() => {
-						void home.refetch();
-					}}
-				/>
-			) : (
-				<>
-					{needsYou.length > 0 ? (
-						<section className="mb-8">
-							<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">
-								Needs you
-								<span className="text-[var(--ink-25)]">
-									{` · ${needsYou.reduce((sum, entry) => sum + entry.count, 0)}`}
-								</span>
-							</p>
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-								{needsYou.map((entry) => (
-									<EntryRow
-										key={entry.id}
-										entry={entry}
-										workspaceId={workspace}
-									/>
-								))}
+					) : (
+						<>
+							<Stat
+								value={money(todayTotal, currency)}
+								sub={`${money(weekTotal, currency)} this week`}
+							/>
+							<div className="mt-4">
+								<Area points={week.map((entry) => entry.cents)} height={92} />
 							</div>
-						</section>
-					) : null}
+						</>
+					)}
+				</Card>
 
-					{now.length > 0 ? (
-						<section className="mb-8">
-							<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Today</p>
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-								{now.map((entry) => (
-									<EntryRow
-										key={entry.id}
-										entry={entry}
-										workspaceId={workspace}
-									/>
-								))}
-							</div>
-						</section>
-					) : null}
+				{/* 🔑 Traffic is self-reported by the customer's own site, so a
+				    workspace with no site reporting has NONE. That is absence, not
+				    zero, and the card does not render rather than showing a row of
+				    zeroes that would read as a bad week. */}
+				{traffic.data && (traffic.data.views ?? 0) > 0 ? (
+					<Card title="Site traffic, last 7 days">
+						<Stat
+							value={(traffic.data.visitors ?? 0).toLocaleString()}
+							sub={`${(traffic.data.sessions ?? 0).toLocaleString()} sessions · ${(traffic.data.views ?? 0).toLocaleString()} views`}
+						/>
+					</Card>
+				) : (
+					<Card title="Orders, last 7 days">
+						<Stat
+							value={String(week.filter((entry) => entry.cents > 0).length)}
+							sub="days with a sale"
+						/>
+						<div className="mt-4">
+							<Bars
+								points={week.map((entry) => entry.cents)}
+								labels={week.map((entry) => entry.day)}
+								height={68}
+							/>
+						</div>
+					</Card>
+				)}
 
-					{/* 🔴 Said once, plainly. A dashboard that fills the space with charts
-					    when there is nothing to do trains people to stop reading it. */}
-					{quiet ? (
-						<section className="mb-8">
-							<p className="text-[13px] text-[var(--ink-75)]">
-								Nothing needs you right now.
-							</p>
-							<p className="mt-1.5 max-w-md text-[11.5px] text-[var(--ink-30)] leading-5">
-								Unfulfilled orders, overdue invoices, contracts waiting on a
-								signature and low stock all appear here as soon as they happen.
-							</p>
-						</section>
-					) : null}
-				</>
-			)}
+				{/* 🔴 No setup step here. Getting started is its own surface, not a
+				    tile competing with the day's work — a dashboard that is half
+				    onboarding is neither. */}
 
-			{traffic.data && (traffic.data.views ?? 0) > 0 ? (
-				<section className="mb-8">
-					<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">
-						Site traffic, last 7 days
-					</p>
-					<div className="flex gap-8 border-[var(--console-line-soft)] border-t py-3.5">
-						{(
-							[
-								["Visitors", traffic.data.visitors],
-								["Sessions", traffic.data.sessions],
-								["Page views", traffic.data.views],
-							] as const
-						).map(([label, value]) => (
-							<div key={label}>
-								<p className="text-[18px] text-[var(--ink-85)] tabular-nums">
-									{Number(value ?? 0).toLocaleString()}
-								</p>
-								<p className="text-[11px] text-[var(--ink-30)]">{label}</p>
-							</div>
-						))}
+				{needsYou.length > 0 ? (
+					<Card title="Needs you">
+						<div className="flex flex-col">
+							{needsYou.map((entry) => (
+								<EntryRow
+									key={entry.id}
+									entry={entry}
+									workspaceId={workspace}
+								/>
+							))}
+						</div>
+					</Card>
+				) : null}
+
+				{now.length > 0 ? (
+					<Card title="Today">
+						<div className="flex flex-col">
+							{now.map((entry) => (
+								<EntryRow
+									key={entry.id}
+									entry={entry}
+									workspaceId={workspace}
+								/>
+							))}
+						</div>
+					</Card>
+				) : null}
+
+				{quiet ? (
+					<Card title="Nothing waiting">
+						<p className="text-[11.5px] text-[var(--ink-35)] leading-5">
+							No orders to fulfil, no messages to answer and nothing running
+							low. This is what a caught-up workspace looks like.
+						</p>
+					</Card>
+				) : null}
+
+				{/*
+				 * 🔑 Derived from data the page ALREADY has, not from new requests.
+				 *
+				 * A dashboard earns its tiles by answering more questions from the
+				 * same fetch, not by making six more round trips on load. Every card
+				 * below reads the revenue series or the home payload that were needed
+				 * anyway — so adding them costs nothing at load and nothing can be
+				 * half-loaded relative to its neighbour.
+				 */}
+				<Card title="Best day">
+					<Stat
+						value={money(bestDay.cents, currency)}
+						sub={
+							bestDay.cents > 0
+								? new Date(`${bestDay.day}T00:00:00`).toLocaleDateString([], {
+										weekday: "long",
+									})
+								: "No sales yet this week"
+						}
+					/>
+				</Card>
+
+				<Card title="Daily average">
+					<Stat
+						value={money(Math.round(weekTotal / 7), currency)}
+						sub="across the last 7 days"
+					/>
+				</Card>
+
+				{/* ⚠️ Compared against the SAME length of time, not against a calendar
+				    week. Comparing three days to seven is how a dashboard reports a
+				    collapse every Monday morning. */}
+				<Card title="Sales days" className={tail3}>
+					<Stat
+						value={`${week.filter((entry) => entry.cents > 0).length} of 7`}
+						sub="days that took money"
+					/>
+					<div className="mt-4">
+						<Bars
+							points={week.map((entry) => entry.cents)}
+							labels={week.map((entry) => entry.day)}
+							height={52}
+						/>
 					</div>
-				</section>
-			) : null}
+				</Card>
 
-			{events.length > 0 ? (
-				<section>
-					<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Recent</p>
-					<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-						{events.map((event) => (
-							<div
-								key={event.seq}
-								className="flex items-baseline gap-4 py-2.5 text-[12px]"
-							>
-								<p className="min-w-0 flex-1 truncate text-[var(--ink-75)]">
-									{eventLabel(event.name)}
-								</p>
-								<p className="w-20 shrink-0 text-right text-[11px] text-[var(--ink-30)]">
-									{since(String(event.occurredAt))}
-								</p>
-							</div>
-						))}
-					</div>
-				</section>
-			) : null}
+				<Card title="Waiting on you" className={tail2}>
+					<Stat
+						value={String(needsYou.length)}
+						sub={
+							needsYou.length === 0
+								? "Nothing outstanding"
+								: needsYou.length === 1
+									? "one thing to deal with"
+									: "things to deal with"
+						}
+					/>
+				</Card>
+
+				<Card title="Happening today" className={tail2}>
+					<Stat
+						value={String(now.length)}
+						sub={now.length === 0 ? "A quiet day so far" : "on today"}
+					/>
+				</Card>
+
+				{/* 🔴 No "Workspace" tile. The sidebar lists every module you have and
+				    sandbox repaints the whole console — a card restating both spent
+				    a slot on two facts that are impossible to miss already. */}
+
+				<Card
+					title="Recent activity"
+					className="sm:col-span-2 lg:col-span-4 lg:row-span-2"
+				>
+					{activity.isPending ? (
+						<SkeletonRows rows={4} />
+					) : activity.isError ? (
+						<RequestFailure
+							error={activity.error}
+							onRetry={() => activity.refetch()}
+						/>
+					) : events.length > 0 ? (
+						<div className="flex flex-col gap-1.5">
+							{events.slice(0, 6).map((event) => (
+								<div
+									key={event.seq}
+									className="flex min-w-0 items-baseline justify-between gap-4"
+								>
+									<p className="min-w-0 flex-1 truncate text-[12px] text-[var(--ink-70)]">
+										{eventLabel(event.name)}
+									</p>
+									<p className="shrink-0 text-[11px] text-[var(--ink-25)] tabular-nums">
+										{since(String(event.occurredAt))}
+									</p>
+								</div>
+							))}
+						</div>
+					) : (
+						<p className="text-[11.5px] text-[var(--ink-30)]">
+							Nothing has happened here yet.
+						</p>
+					)}
+				</Card>
+			</div>
 		</main>
 	);
 }

@@ -340,7 +340,24 @@ function WorkspacesPage() {
 					</table>
 				</div>
 			) : (
-				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+				<div className="grid grid-cols-[repeat(auto-fill,minmax(0,20rem))] justify-start gap-3">
+					{/*
+					 * 🔴 FIXED tracks, not `1fr` ones.
+					 *
+					 * `sm:grid-cols-2 xl:grid-cols-3` divided whatever width existed
+					 * between two or three cards, so every card grew and shrank
+					 * continuously as the sidebar was dragged or the assistant opened —
+					 * and between breakpoints they got very wide before suddenly becoming
+					 * three narrow ones. That constant rubber is what looked broken.
+					 *
+					 * `repeat(auto-fill, 20rem)` gives each card ONE width, forever. The
+					 * grid fits as many as it can and the leftover goes to the end of the
+					 * row rather than into the cards: widening adds a card to the row, it
+					 * never resizes the ones already there.
+					 *
+					 * ⚠️ `minmax(0, 20rem)` rather than a bare `20rem`, so on a narrow
+					 * window the single column can still shrink instead of overflowing.
+					 */}
 					{ordered.map((workspace) => {
 						const names = workspace.modules.map(moduleName);
 						const shown = names.slice(0, 4);

@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useRecordSignals } from "../lib/record-signals";
+import { useHeaderAction } from "./header-action";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { DocumentPanel } from "./module-panels";
@@ -33,9 +34,6 @@ type Document = {
 };
 
 type Folder = { id: string; name: string };
-
-const pill =
-	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40";
 
 const quiet =
 	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
@@ -107,33 +105,39 @@ export function FilesView({ workspaceId }: { workspaceId: string }) {
 		onSuccess: refresh,
 	});
 
+	useHeaderAction({
+		label: "Upload files",
+		busyLabel: "Uploading…",
+		busy: upload.isPending,
+		onClick: () => fileInput.current?.click(),
+	});
+
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			<div className="mb-4 flex items-center gap-2">
-				<button
-					type="button"
-					className={`${pill} ${upload.isPending ? "shimmer-busy" : ""}`}
-					disabled={upload.isPending}
-					onClick={() => fileInput.current?.click()}
-				>
-					{upload.isPending ? "Uploading…" : "Upload files"}
-				</button>
-				<p className="text-[11px] text-[var(--ink-30)]">
-					Kept private. Shared only through a link that expires.
-				</p>
-				<input
-					ref={fileInput}
-					type="file"
-					multiple
-					hidden
-					onChange={(event) => {
-						if (event.target.files?.length) upload.mutate(event.target.files);
-						event.target.value = "";
-					}}
-				/>
-			</div>
+			{/*
+			 * 🔴 The file picker, and nothing else, lives here.
+			 *
+			 * The button that opens it is registered through `useHeaderAction` like
+			 * every other page's create action, so it sits in the control group
+			 * rather than in a bespoke row of its own — this page was the last one
+			 * still drawing its own primary button, in its own shape, in its own
+			 * place. An `<input type="file">` cannot be moved to the header with
+			 * it, so the input stays put and the button reaches it through a ref.
+			 */}
+			<input
+				ref={fileInput}
+				type="file"
+				multiple
+				hidden
+				onChange={(event) => {
+					if (event.target.files?.length) upload.mutate(event.target.files);
+					event.target.value = "";
+				}}
+			/>
 
 			<ListControls
+				exportRows={() => files.data?.items ?? []}
+				exportName="files"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}

@@ -176,8 +176,72 @@
 	   hairline between them does all the separating — a second grey next to the
 	   first reads as two panels bolted together, and at full-window size the eye
 	   never stops noticing the seam. Only a popover lifts off it. */
+	/* 🔴 THE FLOOR. The console had no surface step at all — `--console-panel` and
+	   `--console-bg` were the same value and a hairline did all the separating,
+	   which works for a sidebar welded to the content and not at all for one that
+	   floats. This is the ground BEHIND both panels, and it has to be darker than
+	   them or the gap between reads as a seam rather than as space.
+	   Pure black in dark: at `#0a0a0a` panels there is nowhere else to go, and a
+	   two-value difference is invisible. */
+	--console-floor: #000000;
+	/* What a floating panel casts. ⚠️ On a black floor a dark shadow is invisible,
+	   so what does the work is the 1px inset highlight along the top edge — the
+	   panel is read by its lit edge, not by its shade. */
+	--console-lift:
+		0 1px 0 0 rgb(255 255 255 / 0.045) inset, 0 8px 24px -12px rgb(0 0 0 / 0.8);
+
+	/* ── Raised controls ─────────────────────────────────────────────────
+	   What makes a header button pressable rather than drawn on.
+
+	   🔑 Three things together, and it does not work with fewer: a lit TOP edge
+	   (the inset highlight), a shadow BELOW it (so it is standing on something),
+	   and a faint gradient down the face (so the surface curves away from the
+	   light). A shadow alone reads as a floating rectangle; a highlight alone
+	   reads as a stray line.
+
+	   ⚠️ On a dark console the shadow is nearly invisible and the highlight does
+	   the work; on a light one it is the other way round. Both are declared in
+	   both themes rather than one being dropped, so the geometry stays identical
+	   and only the emphasis moves. */
+	--control-raise:
+		0 1px 0 0 rgb(255 255 255 / 0.07) inset, 0 1px 2px 0 rgb(0 0 0 / 0.55),
+		0 2px 6px -2px rgb(0 0 0 / 0.45);
+	--control-raise-hover:
+		0 1px 0 0 rgb(255 255 255 / 0.1) inset, 0 2px 4px 0 rgb(0 0 0 / 0.55),
+		0 4px 10px -3px rgb(0 0 0 / 0.5);
+	--control-face: linear-gradient(
+		180deg,
+		rgb(255 255 255 / 0.06) 0%,
+		rgb(255 255 255 / 0.015) 45%,
+		rgb(255 255 255 / 0) 100%
+	);
+
+	/* ── The tray ────────────────────────────────────────────────────────
+	   A surface behind a GROUP of header controls, so the floor reads as gaps
+	   between a few defined objects rather than as one wide empty band.
+
+	   ⚠️ Deliberately weaker than `--control-raise`. It sits UNDER the raised
+	   buttons, and a tray that competes with what it holds turns one object into
+	   two stacked ones — the thing that made the full-width header card wrong. */
+	--tray-face: rgb(255 255 255 / 0.022);
+	--tray-line: rgb(255 255 255 / 0.05);
 	--console-panel: #0a0a0a;
 	--console-bg: #0a0a0a;
+	/* ── The card ────────────────────────────────────────────────────────
+	   🔴 A THIRD surface, and the reason both themes read as flat without it.
+	   `--console-panel` and `--console-bg` are deliberately the same value —
+	   one continuous chrome — which means anything drawn ON that chrome using
+	   either token is invisible except for its hairline. Every dashboard tile,
+	   table and detail block was exactly that: an outline on the same grey.
+
+	   ⚠️ Kept CLOSE. A card is one step off the well, not a different room; the
+	   moment the step is big enough to name a colour, a page of eight tiles
+	   reads as eight windows. */
+	--console-card: #121212;
+	/* What a card casts. Small and tight — a tile sits ON the page, it does not
+	   hover above it like a popover. */
+	--card-lift:
+		0 1px 0 0 rgb(255 255 255 / 0.035) inset, 0 1px 2px -1px rgb(0 0 0 / 0.6);
 	--console-pop: #1a1a1a; /* popovers and dialogs, the only raised surface */
 	/* Off-white, never pure: #fff glares at full-screen size. */
 	--console-ink: 237 237 237;
@@ -261,13 +325,47 @@
    rather than pure #fff, for the same reason the dark ink is never pure white:
    full-window pure white glares. */
 :root:not(.dark) {
-	--console-panel: #f7f7f8;
-	--console-bg: #f7f7f8;
+	/* 🔴 NEUTRAL, no hue at all. The blue-grey this used to carry did two bad
+	   things at once: it tinted the entire console, and by simultaneous contrast
+	   it pushed the white cards sitting on it toward yellow — so the cards read
+	   as dingy rather than clean while nothing on screen was actually warm.
+	   A neutral ramp lets white be white: floor #e2e2e5 → chrome #efeff1 →
+	   card #ffffff. */
+	--console-panel: #efeff1;
+	--console-bg: #efeff1;
+	/* Cards are paper on that well: the lightest thing on the page, which is
+	   what makes the records read as the content and the chrome as the frame. */
+	--console-card: #ffffff;
+	--card-lift:
+		0 1px 0 0 rgb(255 255 255 / 1) inset, 0 1px 2px -1px rgb(24 24 27 / 0.14),
+		0 2px 6px -4px rgb(24 24 27 / 0.1);
 	--console-pop: #ffffff;
 	--console-ink: 24 24 27;
 	--console-line: #e4e4e7;
 	--console-line-soft: #ededf0;
 	--console-line-strong: #d8d8dd;
+	/* Light works the other way round: the floor is the TINTED surface and the
+	   panels are the near-white cards sitting on it. */
+	--console-floor: #e2e2e5;
+	--control-raise:
+		0 1px 0 0 rgb(255 255 255 / 1) inset, 0 1px 1px 0 rgb(24 24 27 / 0.1),
+		0 2px 5px -2px rgb(24 24 27 / 0.16);
+	--control-raise-hover:
+		0 1px 0 0 rgb(255 255 255 / 1) inset, 0 2px 3px 0 rgb(24 24 27 / 0.12),
+		0 4px 10px -3px rgb(24 24 27 / 0.2);
+	--control-face: linear-gradient(
+		180deg,
+		rgb(255 255 255 / 0.9) 0%,
+		rgb(255 255 255 / 0.35) 50%,
+		rgb(255 255 255 / 0) 100%
+	);
+	--tray-face: rgb(255 255 255 / 0.45);
+	--tray-line: rgb(24 24 27 / 0.08);
+	/* On a tinted floor a real cast shadow IS visible, and it is what separates a
+	   near-white card from a near-white ground. */
+	--console-lift:
+		0 1px 0 0 rgb(255 255 255 / 0.9) inset,
+		0 6px 18px -10px rgb(24 24 27 / 0.22), 0 2px 6px -3px rgb(24 24 27 / 0.14);
 
 	/* The same wave as tints instead of depths. ⚠️ The veil at the top is WHITE
 	   rather than black: on a light ground, darkening the top would frame the
@@ -291,14 +389,14 @@
 		),
 		radial-gradient(
 			96% 76% at 4% 116%,
-			rgb(47 95 128 / 0.3) 0%,
-			rgb(47 95 128 / 0.14) 34%,
+			rgb(24 24 27 / 0.3) 0%,
+			rgb(24 24 27 / 0.14) 34%,
 			transparent 74%
 		),
 		radial-gradient(
 			66% 48% at 94% 112%,
-			rgb(47 95 128 / 0.18) 0%,
-			rgb(47 95 128 / 0.06) 38%,
+			rgb(24 24 27 / 0.18) 0%,
+			rgb(24 24 27 / 0.06) 38%,
 			transparent 70%
 		),
 		linear-gradient(
@@ -313,6 +411,50 @@
 			rgb(255 255 255 / 0.2) 26%,
 			transparent 46%
 		);
+}
+
+/* ── Sandbox ──────────────────────────────────────────────────────────────
+   🔴 A THEME, not a banner. A strip across the top said "this is not real" in
+   one place and cost a LAYOUT SHIFT to say it — the console changed height on
+   entering sandbox, which is a lot of movement for one sentence.
+
+   Re-declaring the console's own tokens instead puts every panel, popover,
+   field and hairline visibly in the other mode, readable from anywhere on the
+   screen, with nothing added to the layout and nothing to scroll past.
+
+   ⚠️ CHROME ONLY. The ink tiers are untouched, so every contrast ratio stays
+   exactly as tuned; a third set of text colours would be a third set to keep
+   readable forever. The surfaces carry the cast, the words do not move.
+
+   Amber because it is the one hue this product does not otherwise use — ICE,
+   glacier and slate are all cool, so warmth reads instantly as "not the usual
+   thing" without anybody having to be taught what it means. */
+.console-sandbox {
+	/* ⚠️ Much less yellow than the first attempt, which came out brown. The cast
+	   is carried almost entirely by the FLOOR and the hairlines; the panels sit
+	   barely off neutral, so what reads is a warm room rather than a beige
+	   surface. */
+	--console-floor: #0b0805;
+	--console-panel: #141110;
+	--console-bg: #141110;
+	--console-card: #1c1815;
+	--console-pop: #1e1a17;
+	--console-line: #2b2521;
+	--console-line-soft: #221d1a;
+	--console-line-strong: #2b2521;
+}
+
+/* Sandbox in light: parchment rather than snow. Same reasoning as the dark
+   set — warm surfaces, untouched ink. */
+:root:not(.dark) .console-sandbox {
+	--console-floor: #e8dcc2;
+	--console-panel: #f7f2e6;
+	--console-bg: #f7f2e6;
+	--console-card: #fffdf8;
+	--console-pop: #fffdf8;
+	--console-line: #e2d5b8;
+	--console-line-soft: #ece2cd;
+	--console-line-strong: #d8c9a6;
 }
 
 /* ── The ink scale ────────────────────────────────────────────────────────

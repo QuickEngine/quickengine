@@ -5,7 +5,7 @@ import { useListLayout } from "../lib/list-view";
 import { parseAmount } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -81,8 +81,29 @@ function liveness(discount: Discount): { label: string; muted: boolean } {
 	return { label: "Live", muted: false };
 }
 
+/**
+ * What state a discount is actually in.
+ *
+ * 🔑 `active` alone does not answer it: a switched-on code whose window has not
+ * opened is not live, and one whose window has closed is not either. Somebody
+ * asking "which of these are working right now" means all three facts at once.
+ */
+function discountState(discount: {
+	active: boolean;
+	startsAt: string | null;
+	endsAt: string | null;
+}): string {
+	if (!discount.active) return "off";
+	const now = Date.now();
+	if (discount.startsAt && Date.parse(discount.startsAt) > now)
+		return "scheduled";
+	if (discount.endsAt && Date.parse(discount.endsAt) < now) return "expired";
+	return "active";
+}
+
 export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
 	const [code, setCode] = useState("");
@@ -145,7 +166,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 	// submit button parted from its inputs is a button that does nothing
 	// visible.
 	useHeaderAction({
-		label: "New discount",
+		label: "Add discount",
 		onClick: () => setCreating((open) => !open),
 	});
 
@@ -201,6 +222,15 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				filter={statusFilter.chips("State", [
+					"active",
+					"scheduled",
+					"expired",
+					"off",
+				])}
+				filterCount={statusFilter.count}
+				exportRows={() => discounts.data?.items ?? []}
+				exportName="discounts"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -224,9 +254,10 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
 						(discount) =>
-							!needle ||
-							discount.code.toLowerCase().includes(needle) ||
-							discount.name.toLowerCase().includes(needle),
+							statusFilter.keep(discountState(discount)) &&
+							(!needle ||
+								discount.code.toLowerCase().includes(needle) ||
+								discount.name.toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

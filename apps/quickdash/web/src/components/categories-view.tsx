@@ -4,7 +4,7 @@ import { workspaceApi } from "../lib/api";
 import { useAcknowledgeRecord } from "../lib/record-signals";
 import { type CategoryNode, CategoryPanel } from "./category-panel";
 import { useHeaderAction } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
 
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -42,6 +42,7 @@ function flatten(
 }
 
 export function CategoriesView({ workspaceId }: { workspaceId: string }) {
+	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const [failure, setFailure] = useState<string | null>(null);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -152,7 +153,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 	// submit button parted from its inputs is a button that does nothing
 	// visible.
 	useHeaderAction({
-		label: "New category",
+		label: "Add category",
 		onClick: () => create.mutate(),
 	});
 
@@ -166,6 +167,15 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				filter={statusFilter.chips("Kind", [
+					"category",
+					"collection",
+					"featured",
+					"hidden",
+				])}
+				filterCount={statusFilter.count}
+				exportRows={() => categories.data?.items ?? []}
+				exportName="categories"
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search categories"
@@ -188,9 +198,13 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 					const needle = search.trim().toLowerCase();
 					const rows = flatten(data.items).filter(
 						({ node }) =>
-							!needle ||
-							node.name.toLowerCase().includes(needle) ||
-							node.slug.toLowerCase().includes(needle),
+							(statusFilter.count === 0 ||
+								statusFilter.keep(node.kind) ||
+								(node.featured && statusFilter.keep("featured")) ||
+								(!node.visible && statusFilter.keep("hidden"))) &&
+							(!needle ||
+								node.name.toLowerCase().includes(needle) ||
+								node.slug.toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

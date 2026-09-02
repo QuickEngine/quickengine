@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
@@ -45,6 +45,7 @@ const KIND_LABELS: Record<string, string> = {
 
 export function AdjustmentsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const [search, setSearch] = useState("");
 
 	const history = useQuery({
@@ -90,6 +91,20 @@ export function AdjustmentsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				filter={statusFilter.chips("Movement", [
+					"receive",
+					"sale",
+					"return",
+					"correction",
+					"damage",
+					"reserve",
+					"release",
+					"fulfill_reserved",
+					"transfer",
+				])}
+				filterCount={statusFilter.count}
+				exportRows={() => history.data?.rows ?? []}
+				exportName="stock-adjustments"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -110,7 +125,9 @@ export function AdjustmentsView({ workspaceId }: { workspaceId: string }) {
 				{(data) => {
 					const needle = search.trim().toLowerCase();
 					const rows = data.rows.filter(
-						(row) => !needle || row.name.toLowerCase().includes(needle),
+						(row) =>
+							statusFilter.keep(row.adjustment.kind) &&
+							(!needle || row.name.toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

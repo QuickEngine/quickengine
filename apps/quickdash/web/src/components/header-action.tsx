@@ -1,4 +1,3 @@
-import { PlusIcon } from "@phosphor-icons/react";
 import {
 	createContext,
 	type ReactNode,
@@ -39,6 +38,26 @@ type Slot = {
 	 */
 	takeovers: number;
 	declareTakeover: (active: boolean) => void;
+	/**
+	 * The element on the breadcrumb row that a list page's controls render into.
+	 *
+	 * 🔑 An ELEMENT in state, not a ref. A portal needs its target to exist
+	 * before it can render into it, and a ref never re-renders the reader when
+	 * it fills — so the controls would mount into nothing on the first paint and
+	 * never try again.
+	 */
+	rail: HTMLElement | null;
+	setRail: (element: HTMLElement | null) => void;
+	/**
+	 * The strip inside the table's own frame, holding filter and search.
+	 *
+	 * 🔑 Separate from `rail` because these two belong to the DATA, not to the
+	 * page. Narrowing a list is something you do to the rows in front of you, so
+	 * the controls that do it sit on the table; Export, the view toggle and
+	 * "add one" act on the page as a whole and stay up on the trail.
+	 */
+	tableRail: HTMLElement | null;
+	setTableRail: (element: HTMLElement | null) => void;
 };
 
 const HeaderSlotContext = createContext<Slot | null>(null);
@@ -47,13 +66,26 @@ export function HeaderActionProvider({ children }: { children: ReactNode }) {
 	const [action, setAction] = useState<ReactNode>(null);
 	const [crumb, setCrumb] = useState<string | null>(null);
 	const [takeovers, setTakeovers] = useState(0);
+	const [rail, setRail] = useState<HTMLElement | null>(null);
+	const [tableRail, setTableRail] = useState<HTMLElement | null>(null);
 	const declareTakeover = useCallback(
 		(active: boolean) => setTakeovers((count) => count + (active ? 1 : -1)),
 		[],
 	);
 	const value = useMemo(
-		() => ({ action, setAction, crumb, setCrumb, takeovers, declareTakeover }),
-		[action, crumb, takeovers, declareTakeover],
+		() => ({
+			action,
+			setAction,
+			crumb,
+			setCrumb,
+			takeovers,
+			declareTakeover,
+			rail,
+			setRail,
+			tableRail,
+			setTableRail,
+		}),
+		[action, crumb, takeovers, declareTakeover, rail, tableRail],
 	);
 	return (
 		<HeaderSlotContext.Provider value={value}>
@@ -73,6 +105,27 @@ export function useHeaderSlots() {
 		 */
 		action: (slot?.takeovers ?? 0) > 0 ? null : (slot?.action ?? null),
 		crumb: slot?.crumb ?? null,
+	};
+}
+
+/**
+ * The breadcrumb row's right-hand rail.
+ *
+ * `setRail` goes on the breadcrumb's own element; `rail` is what a list page
+ * portals its controls into, so Export, Filter, the view toggle and the create
+ * action all land on the same line as the trail instead of a row below it.
+ */
+export function useHeaderRail() {
+	const slot = useContext(HeaderSlotContext);
+	return { rail: slot?.rail ?? null, setRail: slot?.setRail };
+}
+
+/** The strip inside the table frame, where filter and search live. */
+export function useTableRail() {
+	const slot = useContext(HeaderSlotContext);
+	return {
+		tableRail: slot?.tableRail ?? null,
+		setTableRail: slot?.setTableRail,
 	};
 }
 
@@ -130,7 +183,7 @@ export function useHeaderAction({
 	useEffect(() => {
 		set?.(
 			<HeaderAction
-				label={busy ? (busyLabel ?? label) : label}
+				label={busy ? (busyLabel ?? `${label}\u2026`) : label}
 				busy={busy}
 				onClick={() => handler.current()}
 			/>,
@@ -155,16 +208,20 @@ function HeaderAction({
 			onClick={onClick}
 			disabled={busy}
 			/**
-			 * ⚠️ The label moves to `aria-label` and `title` rather than being
-			 * dropped. A bare icon is meaningless to a screen reader and ambiguous
-			 * on hover, and "add a product" and "add a supplier" are the same plus
-			 * sign — the words still have to exist, just not on screen.
+			 * 🔴 The WORD, not a plus sign.
+			 *
+			 * "Add a product" and "add a supplier" are the same icon, so a bare plus
+			 * made the one button that creates something the only control on the
+			 * page whose effect you had to hover to learn. It is also the primary
+			 * action — the thing most people came to do — and a 36px square is a
+			 * strange amount of room to give it.
+			 *
+			 * Same height and radius as every other button on the row, so it reads
+			 * as one of the set; the ink fill is what marks it as the primary.
 			 */
-			aria-label={busy ? `${label}…` : label}
-			title={label}
-			className={`${busy ? "shimmer-busy" : ""} flex size-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85 disabled:opacity-60`}
+			className={`${busy ? "shimmer-busy" : ""} flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] outline-none transition-[box-shadow,opacity] duration-150 hover:opacity-90 active:translate-y-px disabled:opacity-60`}
 		>
-			<PlusIcon size={15} weight="bold" />
+			{label}
 		</button>
 	);
 }

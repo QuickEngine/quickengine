@@ -8,6 +8,40 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Your shop, from the header.** A shop button that opens your own site, and closes it for
+  maintenance without touching anything about how you take payment. Closed is marked; open is the
+  normal state and says nothing.
+
+- **Integrations.** A dock beside your work listing what this workspace is plugged into, and the
+  hundred or so services it will plug into next, grouped by the job they do rather than by who makes
+  them. It shares a column with the assistant, so it costs no space, and it works whether or not you
+  ever use the assistant.
+
+- **Every way of taking money, named.** Payments now lists thirty-six providers - cards, wallets, pay
+  later, bank transfer and crypto including Solana Pay and Coinbase Commerce - with the two you can
+  connect today marked apart from the rest. Nothing pretends to be ready.
+
+- **A payout link for a supplier, from the supplier.** Open a supplier and create a link they can use
+  to give Stripe their bank details. It lasts thirty days, refreshes itself each time it is opened,
+  and says which mode it is for so the wrong one never goes out.
+
+- **QuickTools comes down from the header** as a tray instead of holding a strip along the bottom.
+  Widgets wrap onto as many rows as they need and the space is given back the moment you close it.
+
+### Changed
+
+- **Sandbox no longer repaints the console.** It became a whole warm colour scheme nobody chose,
+  competing with the light and dark ones people did. Which mode a workspace is in is said where it is
+  decided instead.
+
+### Fixed
+
+- **The upgrade card at the foot of the sidebar had stopped appearing at all.** It was tied to the
+  account row, and when that moved to the header it went with it.
+
+- **PayPal's card opened its setup form on its own,** so it stood four times the height of every
+  other provider and stretched the row it shared.
+
 - **Settings, and this time all of it works.** Twenty-two sections across Workspace, Selling,
   Customers and Developers, plus one for every module you have switched on. Nothing is a placeholder
   and nothing points somewhere else: rename the workspace, switch between live and sandbox, choose

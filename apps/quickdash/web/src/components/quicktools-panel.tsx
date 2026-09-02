@@ -22,15 +22,14 @@ export function QuickToolsPanel() {
 		 * choosing how much you want to see — and it scrolls past that rather
 		 * than clipping.
 		 */
-		<div className="grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 overflow-y-auto p-2">
-			<div className="col-span-full flex min-h-0 flex-1 items-center justify-center px-6 text-center">
+		<div className="grid auto-rows-min grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 p-2">
+			<div className="col-span-full flex items-center justify-center px-6 py-10 text-center">
 				<div>
 					<p className="text-[12.5px] text-[var(--ink-45)]">No tools yet</p>
 					<p className="mt-1 max-w-[28rem] text-[11.5px] text-[var(--ink-30)] leading-[1.5]">
-						This is the surface QuickTools will sit on. Widgets fill it left to
-						right and wrap onto another row when they run out of width, so
-						dragging the bar taller shows more of them rather than more empty
-						space.
+						Widgets drop down here from the header and wrap onto another row
+						when they run out of width. The tray owns no space of its own, and
+						any single tool can be pulled out to float wherever you want it.
 					</p>
 				</div>
 			</div>

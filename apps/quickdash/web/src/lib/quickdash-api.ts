@@ -7,6 +7,15 @@ export type QuickDashWorkspace = {
 	slug: string | null;
 	businessType: string;
 	environment: "test" | "live";
+	/**
+	 * Whether strangers can buy.
+	 *
+	 * 🔴 NOT the same question as `environment`. Mode says whether money is
+	 * real; this says whether the shop is open. The context has always returned
+	 * it — the type simply never admitted it, so nothing could read the one flag
+	 * that closes a business.
+	 */
+	published?: boolean;
 	organizationId?: string | null;
 	organizationName?: string | null;
 };

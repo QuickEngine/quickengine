@@ -15,6 +15,7 @@ export { ConnectionBanner } from "./components/connection-banner";
 export {
 	ConsoleAssistant,
 	ConsoleBell,
+	ConsoleIntegrations,
 	type ConsoleLink,
 	type ConsoleLinkProps,
 	ConsoleShell,

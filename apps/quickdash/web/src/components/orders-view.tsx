@@ -3,6 +3,7 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useAcknowledgeRecord, useRecordSignals } from "../lib/record-signals";
+import { useSelectedRecord } from "../lib/selected-record";
 import { detailCard } from "./detail-panel";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
@@ -482,7 +483,7 @@ function OrderPanel({
 export function OrdersView({ workspaceId }: { workspaceId: string }) {
 	const [query, setQuery] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useSelectedRecord();
 	// Opening a record accounts for whatever it was flagged for.
 	useAcknowledgeRecord(workspaceId, selectedId);
 

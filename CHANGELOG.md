@@ -8,6 +8,42 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Settings, and this time all of it works.** Twenty-two sections across Workspace, Selling,
+  Customers and Developers, plus one for every module you have switched on. Nothing is a placeholder
+  and nothing points somewhere else: rename the workspace, switch between live and sandbox, choose
+  your theme, set what checkout asks for, how returns work, how long you keep things, which emails go
+  out, who has a key and where events are posted. Pages you cannot use do not appear - a business
+  without Orders is never shown checkout rules.
+
+- **Every setting a module already had is now reachable.** Order numbering and sales tax, low stock
+  thresholds, invoice due dates, what you call a customer, how time rounds for billing, what happens
+  to a document when you replace it. All of it existed and none of it had a screen.
+
+- **Currency is chosen from a list, not typed.** Three letters were accepted as valid, so a
+  mistyped code saved happily and failed later at the payment provider.
+
+- **Sorting.** Click a column, or use the sort menu. It sorts the whole list before paging it, so the
+  largest order is the largest order and not merely the largest on this page.
+
+- **Doing something to several rows at once.** Tick what you want and the table's header becomes a
+  bar: export the selection as a spreadsheet, or delete it where that makes sense. Deleting reports
+  honestly - "seven deleted, then: still referenced by an order" - rather than half working in
+  silence.
+
+- **Search finds things again.** Twenty-two kinds of record: orders by number, customers by email,
+  products by SKU, shipments by tracking number, discounts by code, and payments by their provider
+  reference. Choosing a result opens that record, not the page it lives on.
+
+### Fixed
+
+- **Search found nothing, everywhere, and looked like it was working.** It asked an external index
+  that nothing ever wrote to, and with no credentials that index returns an empty answer - which
+  reads as "you have nothing" rather than "this is not configured". It now asks the database.
+
+- **A page that failed took the whole console with it.** A 404 or an error replaced the sidebar,
+  the header and search, so the one moment you want to navigate away was the moment you could not.
+  Failures now appear inside the page area.
+
 - **The console is now a set of panels you can resize.** The sidebar, the working area and the
   assistant sit as separate cards on a floor rather than one welded surface, and the divider between
   any two can be dragged. Widths are remembered per person.

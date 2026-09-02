@@ -1,0 +1,1 @@
+ALTER TABLE "quickengine_workspaces" ADD COLUMN "settings" jsonb DEFAULT '{}'::jsonb NOT NULL;

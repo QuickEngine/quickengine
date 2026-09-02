@@ -680,6 +680,13 @@
 			"when": 1788286249067,
 			"tag": "0096_normal_captain_cross",
 			"breakpoints": true
+		},
+		{
+			"idx": 97,
+			"version": "7",
+			"when": 1788326010710,
+			"tag": "0097_breezy_multiple_man",
+			"breakpoints": true
 		}
 	]
 }

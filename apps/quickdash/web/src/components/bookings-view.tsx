@@ -3,6 +3,8 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useRecordSignals } from "../lib/record-signals";
+import { useSelectedRecord } from "../lib/selected-record";
+import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { BookingPanel } from "./module-panels";
@@ -80,7 +82,7 @@ export function BookingsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
 	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useSelectedRecord();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -196,6 +198,16 @@ export function BookingsView({ workspaceId }: { workspaceId: string }) {
 									{/* One table per day, so a day heading stays attached to the
 									    bookings under it rather than floating above one long list. */}
 									<PagedTable
+										exportName="bookings"
+										bulkActions={(chosen) => (
+											<BulkDelete
+												workspaceId={workspaceId}
+												rows={chosen}
+												path="/bookings"
+												noun="bookings"
+												invalidate={["quickdash", workspaceId, "bookings"]}
+											/>
+										)}
 										rowSignal={rowSignal}
 										workspaceId={workspaceId}
 										layout={layout}

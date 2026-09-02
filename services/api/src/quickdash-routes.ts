@@ -7,6 +7,7 @@ import {
 	getFirstActionChecklistState,
 	getQuickDashOrientationState,
 	getWorkspaceHome,
+	getWorkspaceSettings,
 	listAccessibleWorkspaces,
 	listWorkspaceAudit,
 	quickengineUsers,
@@ -19,7 +20,10 @@ import {
 	saveFirstActionChecklistState,
 	saveQuickDashOrientationOutcome,
 	saveWorkspaceBranding,
+	searchWorkspace,
 	setWorkspaceModuleSettings,
+	setWorkspaceSettingsGroup,
+	workspaceSettingsSchema,
 } from "@quickengine/db";
 import {
 	declineContract,
@@ -39,7 +43,6 @@ import {
 	listModules,
 	resolveFirstActions,
 } from "@quickengine/module-registry";
-import { getSearchProvider } from "@quickengine/search";
 import { storageProviderFromEnv } from "@quickengine/storage";
 import type { Hono } from "hono";
 import { z } from "zod";
@@ -347,6 +350,65 @@ export function registerQuickDashRoutes(
 	 * "clear this", and a settings screen that can set a value but never unset it
 	 * is one somebody has to edit the database to escape.
 	 */
+	/**
+	 * Everything a workspace configures that no single module owns.
+	 *
+	 * 🔑 Read is `view`, write is `manage` — the same split every other
+	 * workspace route uses. Somebody who can see a console can see how it is set
+	 * up; changing it is a different permission.
+	 */
+	app.get("/v1/quickdash/settings", view, async (c) => {
+		const settings = await getWorkspaceSettings(
+			c.get("authorized").workspaceId,
+		);
+		if (!settings) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		return respond(c, settings);
+	});
+
+	/**
+	 * Replace ONE group.
+	 *
+	 * 🔴 Not the whole object. The dialog shows one section at a time and knows
+	 * only what that section holds — sending everything would mean the form
+	 * carrying values it never displayed, and two sections saved in sequence
+	 * would each undo the other.
+	 */
+	app.patch("/v1/quickdash/settings/:group", manage, async (c) => {
+		const group = c.req.param("group");
+		if (!(group in workspaceSettingsSchema.shape)) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"There is no such group of settings.",
+				400,
+			);
+		}
+		const key = group as keyof typeof workspaceSettingsSchema.shape;
+		const parsed = workspaceSettingsSchema.shape[key].safeParse(
+			await c.req.json().catch(() => ({})),
+		);
+		if (!parsed.success) {
+			return respondError(
+				c,
+				"VALIDATION_ERROR",
+				"Those settings are not valid.",
+				400,
+				parsed.error.issues,
+			);
+		}
+		const settings = await setWorkspaceSettingsGroup({
+			workspaceId: c.get("authorized").workspaceId,
+			group: key,
+			value: parsed.data,
+		});
+		if (!settings) {
+			return respondError(c, "NOT_FOUND", "Workspace not found.", 404);
+		}
+		return respond(c, settings);
+	});
+
 	app.patch("/v1/quickdash/modules/:moduleId/settings", manage, async (c) => {
 		const moduleId = c.req.param("moduleId");
 		const manifest = getModule(moduleId);
@@ -555,12 +617,19 @@ export function registerQuickDashRoutes(
 	app.get("/v1/quickdash/search", view, async (c) => {
 		const query = String(c.req.query("q") ?? "").trim();
 		if (!query) return respond(c, { items: [] });
-		const results = await getSearchProvider().search({
-			index: "quickdash",
+		/**
+		 * 🔴 The DATABASE, not a search index.
+		 *
+		 * This used to ask Algolia. Nothing in the codebase ever wrote to that
+		 * index, and with no credentials the provider returns an empty array —
+		 * so the control that promises to find anything found nothing, in every
+		 * environment, while looking like it worked.
+		 */
+		const { workspace, workspaceId } = c.get("authorized");
+		const results = await searchWorkspace({
+			workspaceId,
 			query,
-			limit: 8,
-			// Required by the type now, rather than remembered by the caller.
-			workspaceId: c.get("authorized").workspaceId,
+			environment: workspace.workspace.environment,
 		});
 		// 🔴 A failed search is a feature backlog written by users. The QUERY is
 		// deliberately never recorded — it is customer content and can quote a
@@ -577,6 +646,7 @@ export function registerQuickDashRoutes(
 		return respond(c, {
 			items: results.map((result) => ({
 				objectID: result.objectID,
+				kind: result.kind,
 				title: result.title,
 				description: result.description,
 				url: result.url,

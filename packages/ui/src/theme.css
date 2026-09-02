@@ -243,6 +243,14 @@
 	--card-lift:
 		0 1px 0 0 rgb(255 255 255 / 0.035) inset, 0 1px 2px -1px rgb(0 0 0 / 0.6);
 	--console-pop: #1a1a1a; /* popovers and dialogs, the only raised surface */
+	/* ── The rail inside a dialog ────────────────────────────────────────
+	   🔑 A dialog with a list down one side is two things, not one: the list is
+	   chrome and the pane beside it is the work. One flat colour makes a
+	   hairline do all the separating, which reads as a divider drawn on a sheet
+	   rather than as two surfaces. Darker than the pane in dark, lighter ground
+	   in light — chrome recedes, content advances, the same way the console's
+	   floor sits under its panels. */
+	--pop-rail: #141414;
 	/* Off-white, never pure: #fff glares at full-screen size. */
 	--console-ink: 237 237 237;
 	--console-line: #202020;
@@ -336,6 +344,7 @@
 	/* Cards are paper on that well: the lightest thing on the page, which is
 	   what makes the records read as the content and the chrome as the frame. */
 	--console-card: #ffffff;
+	--pop-rail: #f3f3f5;
 	--card-lift:
 		0 1px 0 0 rgb(255 255 255 / 1) inset, 0 1px 2px -1px rgb(24 24 27 / 0.14),
 		0 2px 6px -4px rgb(24 24 27 / 0.1);
@@ -438,6 +447,7 @@
 	--console-panel: #141110;
 	--console-bg: #141110;
 	--console-card: #1c1815;
+	--pop-rail: #181310;
 	--console-pop: #1e1a17;
 	--console-line: #2b2521;
 	--console-line-soft: #221d1a;
@@ -451,6 +461,7 @@
 	--console-panel: #f7f2e6;
 	--console-bg: #f7f2e6;
 	--console-card: #fffdf8;
+	--pop-rail: #f6f0e2;
 	--console-pop: #fffdf8;
 	--console-line: #e2d5b8;
 	--console-line-soft: #ece2cd;

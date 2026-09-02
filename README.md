@@ -258,6 +258,14 @@ exported as a spreadsheet of exactly what is on screen. Home is a grid of tiles 
 report. Settings opens as a dialog over whatever you were doing. A workspace in sandbox mode
 recolours the entire console rather than wearing a banner, so there is no mistaking it for the real
 one.
+Settings is a dialog with twenty-two sections plus one per module, and everything in it works: the
+workspace's name and mode, branding and policy links, usage against the plan, which modules are on,
+what checkout asks for, how returns and discounts behave, what you keep about a customer and for how
+long, which emails go out, the keys your own site uses and the endpoints events are posted to. A
+section for something a workspace cannot do is never shown. Lists sort by any column - across the
+whole list, not the page you are on - and a ticked selection can be exported or deleted together.
+Search reaches twenty-two kinds of record by number, code, email, SKU or tracking number, and opens
+the record rather than the page it lives on.
 Setting a workspace up is a short guided sequence rather than one long form: who you are and what
 the business is called, the kind of work it does, your part in it, and whether you want it
 configured for you or want to pick the parts yourself. It asks for a name — signing up with an

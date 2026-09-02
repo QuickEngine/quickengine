@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { BulkDelete } from "./bulk-delete";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
@@ -162,6 +163,16 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 					}
 					return (
 						<PagedTable
+							exportName="folders"
+							bulkActions={(chosen) => (
+								<BulkDelete
+									workspaceId={workspaceId}
+									rows={chosen}
+									path="/file-folders"
+									noun="folders"
+									invalidate={["quickdash", workspaceId, "folders"]}
+								/>
+							)}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Folders"

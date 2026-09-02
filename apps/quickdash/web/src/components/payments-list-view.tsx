@@ -4,6 +4,7 @@ import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { parseAmountCents } from "../lib/money-input";
 import { useRecordSignals } from "../lib/record-signals";
+import { useSelectedRecord } from "../lib/selected-record";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { PaymentPanel } from "./module-panels";
@@ -70,7 +71,7 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
 	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useSelectedRecord();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [refunding, setRefunding] = useState<string | null>(null);

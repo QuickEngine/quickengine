@@ -251,17 +251,16 @@ function WorkspaceFrame() {
 			 */
 			header={
 				<div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3">
-					{/* 🔴 Exactly as wide as the SIDEBAR, and it tracks the drag.
-					    `--console-rail` is set on the frame by the resizer, so this group
-					    tracks the rail at every width.
-					    ⚠️ `- 16px` is the sidebar nav's own `px-2` on BOTH sides. The
-					    group is matched to the nav BUTTONS, not to the panel: the header's
-					    `px-2` already puts its left edge on theirs, and subtracting the
-					    nav's other 8px puts the bell's right edge on theirs too.
-					    The bell is `shrink-0`, so the switcher absorbs every pixel of a
-					    drag and the name elides rather than the bell moving. */}
+					{/* 🔴 FIXED, and deliberately no longer tracking the drag.
+					    224px is the sidebar at its narrowest (240px) less the nav's own
+					    `px-2` on both sides, so at the default width the switcher still
+					    lines up exactly with the buttons below it.
+					    ⚠️ It used to follow `--console-rail`. Widening the sidebar for
+					    more room in the NAVIGATION then stretched a header control that
+					    had no reason to grow — a workspace name does not get longer
+					    because you dragged a divider, so the extra width was empty. */}
 					<div
-						style={{ width: "calc(var(--console-rail, 240px) - 16px)" }}
+						style={{ width: "224px" }}
 						className="flex min-w-0 items-center gap-1.5 justify-self-start"
 					>
 						<SidebarName
@@ -447,6 +446,7 @@ function WorkspaceFrame() {
 						open={searchOpen}
 						onOpenChange={setSearchOpen}
 						workspaceId={workspaceId}
+						workspace={workspace}
 						modules={context.data?.modules ?? []}
 					/>
 					<FeedbackDialog
@@ -464,7 +464,17 @@ function WorkspaceFrame() {
 					/>
 					{/* Reads the same list the bell does, so a toast is only ever a
 					    preview of a row that is already durable. */}
-					<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+					<SettingsDialog
+						open={settingsOpen}
+						onOpenChange={setSettingsOpen}
+						workspaceId={workspaceId}
+						modules={context.data?.modules ?? []}
+						workspaceName={context.data?.workspace.name ?? ""}
+						organizationId={context.data?.workspace.organizationId}
+						accountUrl={clientEnv.ACCOUNT_URL}
+						environment={context.data?.workspace.environment ?? "live"}
+						apiUrl={clientEnv.API_URL}
+					/>
 					<NotificationToasts items={notifications.data?.items} />
 				</>
 			}

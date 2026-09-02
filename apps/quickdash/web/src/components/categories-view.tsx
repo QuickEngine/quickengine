@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useAcknowledgeRecord } from "../lib/record-signals";
+import { useSelectedRecord } from "../lib/selected-record";
 import { type CategoryNode, CategoryPanel } from "./category-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
@@ -45,7 +46,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const [failure, setFailure] = useState<string | null>(null);
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useSelectedRecord();
 	// Opening a record accounts for whatever it was flagged for.
 	useAcknowledgeRecord(workspaceId, selectedId);
 	const [search, setSearch] = useState("");

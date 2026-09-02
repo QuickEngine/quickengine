@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
@@ -265,6 +266,16 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 										Running now
 									</p>
 									<PagedTable
+										exportName="entries"
+										bulkActions={(chosen) => (
+											<BulkDelete
+												workspaceId={workspaceId}
+												rows={chosen}
+												path="/time-entries"
+												noun="entries"
+												invalidate={["quickdash", workspaceId, "time-entries"]}
+											/>
+										)}
 										workspaceId={workspaceId}
 										layout={layout}
 										caption="Timers running"

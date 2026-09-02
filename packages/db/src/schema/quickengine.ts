@@ -230,6 +230,27 @@ export const quickengineWorkspaces = pgTable(
 		 */
 		published: boolean("published").notNull().default(true),
 		modules: jsonb("modules").$type<string[]>().notNull().default([]),
+		/**
+		 * Everything a workspace configures that is not a MODULE's own setting.
+		 *
+		 * 🔑 One blob, not a column per switch. These are checkout rules, return
+		 * windows, which events email you, how long data is kept — dozens of small
+		 * booleans and numbers that arrive a few at a time as features land. A
+		 * column each would mean a migration per toggle; a table of key/value rows
+		 * would mean reassembling an object on every read and losing types.
+		 *
+		 * ⚠️ The SHAPE is enforced in code, by `workspaceSettingsSchema`, not by
+		 * the database. Postgres validates nothing here, so every read parses and
+		 * every write is parsed before it lands — an unparsed blob is how a typo
+		 * becomes a setting nobody can find again.
+		 *
+		 * 🔴 Module settings do NOT live here. Those belong to the module that
+		 * owns them, in `workspace_modules.settings`, and go away with it.
+		 */
+		settings: jsonb("settings")
+			.$type<Record<string, unknown>>()
+			.notNull()
+			.default({}),
 		// Archiving removes a workspace from normal operation without deleting any
 		// module data. Permanent deletion remains a separate explicit action.
 		archivedAt: timestamp("archived_at", { withTimezone: true }),

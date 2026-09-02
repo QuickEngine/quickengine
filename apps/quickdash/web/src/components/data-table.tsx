@@ -1,9 +1,19 @@
 import {
+	ArrowDownIcon,
+	ArrowUpIcon,
 	CheckIcon,
 	DotsSixVerticalIcon,
+	DownloadSimpleIcon,
 	MinusIcon,
+	SortAscendingIcon,
 } from "@phosphor-icons/react";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@quickengine/ui/components/ui/popover";
 import { type ReactNode, useState } from "react";
+import { downloadCsv } from "../lib/csv";
 import { useTableRail } from "./header-action";
 
 /**
@@ -108,6 +118,10 @@ export function DataTable<TRow extends { id: string }>({
 	rowSignal,
 	onReorder,
 	layout = "table",
+	sort = null,
+	onSort,
+	bulkActions,
+	exportName,
 }: {
 	columns: Array<Column<TRow>>;
 	rows: TRow[];
@@ -140,8 +154,46 @@ export function DataTable<TRow extends { id: string }>({
 	 * shape.
 	 */
 	layout?: "table" | "cards";
+	/** What the list is sorted by, owned by `PagedTable` so it can sort before paging. */
+	sort?: { key: string; dir: "asc" | "desc" } | null;
+	onSort?: (sort: { key: string; dir: "asc" | "desc" } | null) => void;
+	/**
+	 * What this page can do to a set of rows, beyond exporting them.
+	 *
+	 * 🔴 Passed IN rather than inferred. Deleting six orders and deleting six
+	 * draft products are different acts with different consequences, and a
+	 * generic "delete" that guessed would eventually guess wrong.
+	 */
+	bulkActions?: (rows: TRow[]) => ReactNode;
+	/** Names the file when a selection is exported. */
+	exportName?: string;
 }) {
 	const { setTableRail } = useTableRail();
+
+	/**
+	 * 🔑 A column is sortable when its `key` names a field the rows actually
+	 * carry. `render` returns a ReactNode, so there is nothing to compare in the
+	 * cell itself — but almost every column is keyed after the field it shows,
+	 * which makes this true without a line of per-page configuration.
+	 *
+	 * ⚠️ Checked against the FIRST row, not the column list. A column called
+	 * "actions" holds buttons and belongs to no field; sorting by it would order
+	 * the table by `undefined`.
+	 */
+	const sample = rows[0] as Record<string, unknown> | undefined;
+	const sortable = (column: Column<TRow>) =>
+		Boolean(onSort) &&
+		Boolean(column.header) &&
+		sample !== undefined &&
+		column.key in sample;
+
+	const toggleSort = (key: string) => {
+		if (!onSort) return;
+		if (sort?.key !== key) return onSort({ key, dir: "asc" });
+		// asc → desc → off. A third press restores whatever order the list had.
+		if (sort.dir === "asc") return onSort({ key, dir: "desc" });
+		return onSort(null);
+	};
 	/**
 	 * ⚠️ Keyed by row id and scoped to THIS page of rows. "Select all" means the
 	 * rows in front of you, never every record behind the pager — an action
@@ -163,6 +215,47 @@ export function DataTable<TRow extends { id: string }>({
 	 * anything will land in it — CSS can, once they have. A page with no
 	 * controls gets no empty bar and no stray border.
 	 */
+	const sortableColumns = columns.filter(sortable);
+	const sorted = sortableColumns.find((column) => column.key === sort?.key);
+
+	const chosen = rows.filter((row) => picked.has(row.id));
+
+	/**
+	 * 🔑 The strip becomes an ACTION BAR while rows are ticked.
+	 *
+	 * Not a second bar appearing above or below: selection is a mode, and the
+	 * controls that narrow a list are meaningless while you are acting on a
+	 * subset of it. Filtering mid-selection would silently change what "these
+	 * rows" means.
+	 */
+	const bar = (
+		<div className="flex items-center gap-2 border-[var(--console-line-soft)] border-b bg-[rgb(var(--console-ink)/0.04)] px-2 py-1.5">
+			<span className="shrink-0 px-1 text-[11.5px] text-[var(--ink-80)] tabular-nums">
+				{chosen.length} selected
+			</span>
+			<div className="min-w-0 flex-1" />
+			{/* ⚠️ Export works on EVERY page with no per-page wiring, because the
+			    rows are already in hand. Anything destructive is passed in by the
+			    page, which is the only thing that knows what deleting means. */}
+			<button
+				type="button"
+				onClick={() => downloadCsv(exportName ?? "selection", chosen)}
+				className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[11.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+			>
+				<DownloadSimpleIcon size={13} />
+				Export
+			</button>
+			{bulkActions?.(chosen)}
+			<button
+				type="button"
+				onClick={() => setPicked(new Set())}
+				className="flex h-7 shrink-0 items-center rounded-md px-2 text-[11.5px] text-[var(--ink-45)] transition-colors hover:text-[var(--ink-85)]"
+			>
+				Clear
+			</button>
+		</div>
+	);
+
 	const strip = (
 		<div className="flex items-center gap-2 border-[var(--console-line-soft)] border-b bg-[rgb(var(--console-ink)/0.02)] px-2 py-1.5">
 			{/* Filter, search and sort arrive here by portal from `ListControls`.
@@ -172,6 +265,71 @@ export function DataTable<TRow extends { id: string }>({
 				ref={setTableRail}
 				className="flex min-w-0 flex-1 items-center gap-2"
 			/>
+			{/*
+			 * Sort lives HERE, not in `ListControls`, because this is where the
+			 * columns are. `ListControls` has no idea what a page's columns are
+			 * called, which is why its sort button could only ever be a placeholder.
+			 */}
+			{sortableColumns.length > 0 ? (
+				<Popover>
+					<PopoverTrigger
+						aria-label="Sort"
+						title={sorted ? `Sorted by ${sorted.header}` : "Sort"}
+						className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-[11.5px] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] data-[state=open]:bg-[rgb(var(--console-ink)/0.06)] ${
+							sorted ? "text-[var(--ink-80)]" : "text-[var(--ink-45)]"
+						}`}
+					>
+						<SortAscendingIcon size={15} />
+						{sorted ? (
+							<span className="max-w-[8rem] truncate">{sorted.header}</span>
+						) : null}
+					</PopoverTrigger>
+					<PopoverContent
+						align="end"
+						sideOffset={8}
+						className="w-56 rounded-xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-1"
+					>
+						<p className="px-2 pt-1.5 pb-1 text-[10.5px] text-[var(--ink-30)] uppercase tracking-[0.08em]">
+							Sort by
+						</p>
+						{sortableColumns.map((column) => {
+							const active = sort?.key === column.key;
+							return (
+								<button
+									key={column.key}
+									type="button"
+									onClick={() => toggleSort(column.key)}
+									className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] ${
+										active ? "text-[var(--ink-90)]" : "text-[var(--ink-60)]"
+									}`}
+								>
+									<span className="min-w-0 flex-1 truncate">
+										{column.header}
+									</span>
+									{/* The arrow says which way, and pressing again reverses it.
+									    A third press clears the sort entirely. */}
+									{active ? (
+										sort?.dir === "asc" ? (
+											<ArrowUpIcon size={12} weight="bold" />
+										) : (
+											<ArrowDownIcon size={12} weight="bold" />
+										)
+									) : null}
+								</button>
+							);
+						})}
+						{sort ? (
+							<button
+								type="button"
+								onClick={() => onSort?.(null)}
+								className="mt-1 flex w-full items-center rounded-lg border-[var(--console-line-soft)] border-t px-2 py-1.5 text-[11.5px] text-[var(--ink-45)] transition-colors hover:text-[var(--ink-85)]"
+							>
+								Clear sort
+							</button>
+						) : null}
+					</PopoverContent>
+				</Popover>
+			) : null}
 		</div>
 	);
 
@@ -206,7 +364,7 @@ export function DataTable<TRow extends { id: string }>({
 			style={{ boxShadow: "var(--card-lift)" }}
 			className="overflow-hidden rounded-xl border border-[var(--console-line)] bg-[var(--console-card)]"
 		>
-			{strip}
+			{chosen.length > 0 ? bar : strip}
 			{/* Wide tables scroll inside the box rather than pushing the page
 			    sideways, which would drag the sidebar off screen with them. */}
 			<div className="overflow-x-auto">
@@ -229,11 +387,41 @@ export function DataTable<TRow extends { id: string }>({
 								<th
 									key={column.key}
 									scope="col"
+									aria-sort={
+										sort?.key === column.key
+											? sort.dir === "asc"
+												? "ascending"
+												: "descending"
+											: undefined
+									}
 									className={`${column.width ?? ""} whitespace-nowrap px-3 py-2 font-normal text-[10.5px] text-[var(--ink-30)] uppercase tracking-[0.08em] ${
 										column.align === "right" ? "text-right" : "text-left"
 									}`}
 								>
-									{column.header ?? column.key}
+									{/* 🔑 The heading is the shortcut; the popover is the menu.
+									    Pressing a column is what people try first, and it is
+									    also the only way to discover the list is sortable at
+									    all. Columns that name no field stay plain text. */}
+									{sortable(column) ? (
+										<button
+											type="button"
+											onClick={() => toggleSort(column.key)}
+											className={`inline-flex items-center gap-1 uppercase tracking-[0.08em] transition-colors hover:text-[var(--ink-60)] ${
+												sort?.key === column.key ? "text-[var(--ink-70)]" : ""
+											}`}
+										>
+											{column.header ?? column.key}
+											{sort?.key === column.key ? (
+												sort.dir === "asc" ? (
+													<ArrowUpIcon size={10} weight="bold" />
+												) : (
+													<ArrowDownIcon size={10} weight="bold" />
+												)
+											) : null}
+										</button>
+									) : (
+										(column.header ?? column.key)
+									)}
 								</th>
 							))}
 							{/* Headed by nothing: a column of grab handles needs no label,

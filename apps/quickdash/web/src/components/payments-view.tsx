@@ -13,6 +13,19 @@ import { WriteFailure } from "./page-state";
  * The API has been provider-neutral the whole time; only this screen was
  * Stripe-shaped.
  */
+/**
+ * Every way a business might take money.
+ *
+ * 🔴 Only Stripe and PayPal can be CONNECTED today — `connect.ts` accepts
+ * exactly those two, and everything else here is named with `soon: true`. That
+ * split is the point: this is the map of where payments is going, and a row
+ * that says "soon" is honest where a row that opened a broken setup flow would
+ * not be.
+ *
+ * ⚠️ Adding one to this list does NOT make it work. It needs a provider in the
+ * payments seam — capture, refund, webhook verification and a saved method for
+ * renewals — before its `soon` comes off.
+ */
 const PROVIDERS = [
 	{
 		id: "stripe",
@@ -31,6 +44,268 @@ const PROVIDERS = [
 		 * business connects its own app instead.
 		 */
 		mode: "credentials" as const,
+	},
+
+	// ── Cards and wallets ────────────────────────────────────────────────
+	{
+		id: "square",
+		name: "Square",
+		blurb: "Online and at a counter, one balance.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "adyen",
+		name: "Adyen",
+		blurb: "One processor across many countries and methods.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "braintree",
+		name: "Braintree",
+		blurb: "Cards and PayPal under one account.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "checkout-com",
+		name: "Checkout.com",
+		blurb: "Enterprise card processing with local acquiring.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "mollie",
+		name: "Mollie",
+		blurb: "European methods: iDEAL, Bancontact, SEPA.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "worldpay",
+		name: "Worldpay",
+		blurb: "Long-established acquiring for larger volumes.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "authorize-net",
+		name: "Authorize.net",
+		blurb: "Card processing for North American merchants.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "amazon-pay",
+		name: "Amazon Pay",
+		blurb: "Checkout with an Amazon account.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "shopify-payments",
+		name: "Shopify Payments",
+		blurb: "For a shop already selling through Shopify.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "sumup",
+		name: "SumUp",
+		blurb: "Card reader and online payments for small shops.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "zettle",
+		name: "Zettle",
+		blurb: "PayPal's card reader for in-person sales.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+
+	// ── Regional ─────────────────────────────────────────────────────────
+	{
+		id: "razorpay",
+		name: "Razorpay",
+		blurb: "Cards, UPI and wallets in India.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "paystack",
+		name: "Paystack",
+		blurb: "Cards and transfers across Africa.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "flutterwave",
+		name: "Flutterwave",
+		blurb: "Pan-African payments and payouts.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "mercado-pago",
+		name: "Mercado Pago",
+		blurb: "The default across Latin America.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "alipay",
+		name: "Alipay",
+		blurb: "China's most used wallet.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "wechat-pay",
+		name: "WeChat Pay",
+		blurb: "Pay inside the app your customer already has.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "pix",
+		name: "Pix",
+		blurb: "Instant bank transfer in Brazil.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "interac",
+		name: "Interac",
+		blurb: "Debit and e-Transfer in Canada.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+
+	// ── Pay later ────────────────────────────────────────────────────────
+	{
+		id: "klarna",
+		name: "Klarna",
+		blurb: "Pay in instalments, you are paid up front.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "afterpay",
+		name: "Afterpay",
+		blurb: "Four payments, no interest to the customer.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "affirm",
+		name: "Affirm",
+		blurb: "Financing for larger baskets.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "zip",
+		name: "Zip",
+		blurb: "Buy now, pay later across several markets.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+
+	// ── Bank and transfer ────────────────────────────────────────────────
+	{
+		id: "gocardless",
+		name: "GoCardless",
+		blurb: "Direct debit for recurring bills.",
+		mode: "hosted" as const,
+		soon: true,
+	},
+	{
+		id: "plaid",
+		name: "Plaid",
+		blurb: "Pay from a bank account, no card fees.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "dwolla",
+		name: "Dwolla",
+		blurb: "ACH transfers for larger amounts.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "trustly",
+		name: "Trustly",
+		blurb: "Bank payments across Europe and the US.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "wise",
+		name: "Wise",
+		blurb: "Take and send money across currencies.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+
+	// ── Crypto ───────────────────────────────────────────────────────────
+	{
+		id: "coinbase-commerce",
+		name: "Coinbase Commerce",
+		blurb: "Accept crypto, settle in currency or hold it.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "solana-pay",
+		name: "Solana Pay",
+		blurb: "Stablecoins on Solana, settled in seconds.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "bitpay",
+		name: "BitPay",
+		blurb: "Bitcoin and stablecoins with automatic conversion.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "opennode",
+		name: "OpenNode",
+		blurb: "Bitcoin over Lightning, near-zero fees.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "reown",
+		name: "Reown",
+		blurb: "Wallet payments across many chains.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "helio",
+		name: "Helio",
+		blurb: "Solana checkout with no wallet pop-ups.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "nowpayments",
+		name: "NOWPayments",
+		blurb: "Two hundred coins, one integration.",
+		mode: "credentials" as const,
+		soon: true,
+	},
+	{
+		id: "crypto-com-pay",
+		name: "Crypto.com Pay",
+		blurb: "Pay from a Crypto.com account.",
+		mode: "credentials" as const,
+		soon: true,
 	},
 ] as const;
 
@@ -221,9 +496,19 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 	// form closed until somebody chooses to replace what is stored.
 	const [editing, setEditing] = useState<string | null>(null);
 
+	/**
+	 * 🔴 Only the providers that can actually be connected are asked about.
+	 *
+	 * `PROVIDERS` is the map of where payments is going — thirty-odd entries —
+	 * and querying each one's status would fire thirty requests on every visit
+	 * to ask about providers the API has never heard of. `enabled` on the
+	 * unbuilt ones keeps the array positional so `results[index]` still lines
+	 * up, without any of them going out.
+	 */
 	const results = useQueries({
 		queries: PROVIDERS.map((provider) => ({
 			queryKey: ["quickdash", workspaceId, "connect", provider.id],
+			enabled: !("soon" in provider && provider.soon),
 			queryFn: async () =>
 				(
 					await workspaceApi(workspaceId).request<ConnectStatus>(
@@ -369,10 +654,24 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 						(onboard.isPending && onboard.variables === provider.id) ||
 						(recheck.isPending && recheck.variables === provider.id);
 
+					/**
+					 * 🔴 Named, not connectable. Drawing a working setup button for a
+					 * provider the API cannot talk to is the one thing worse than not
+					 * listing it: you would fill in credentials and nothing would
+					 * happen. The card says "soon" and offers nothing.
+					 */
+					const soon = "soon" in provider && provider.soon === true;
 					const wantsCredentials = provider.mode === "credentials";
-					const formOpen =
-						editing === provider.id ||
-						(wantsCredentials && !status?.connected && !query.isPending);
+					/**
+					 * 🔴 Only when asked for.
+					 *
+					 * This used to open itself for any credentials provider that was
+					 * not yet connected — so PayPal's card sat permanently four times
+					 * the height of Stripe's, and dragged the grid row they share up
+					 * with it. Connecting is a deliberate act; the form appears when
+					 * you press the button.
+					 */
+					const formOpen = !soon && editing === provider.id;
 
 					return (
 						<Card key={provider.id}>
@@ -391,7 +690,11 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 														: "bg-[rgb(var(--console-ink)/0.04)] text-[var(--ink-30)]"
 											}`}
 										>
-											{query.isPending ? "Checking…" : state.label}
+											{soon
+												? "Soon"
+												: query.isPending
+													? "Checking…"
+													: state.label}
 										</span>
 									</div>
 									<p className="mt-0.5 text-[11.5px] text-[var(--ink-30)]">
@@ -406,7 +709,7 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 								</div>
 
 								<div className="flex shrink-0 items-center gap-2">
-									{status?.connected ? (
+									{soon ? null : status?.connected ? (
 										<>
 											{wantsCredentials ? (
 												<button
@@ -475,7 +778,15 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 												</button>
 											)}
 										</>
-									) : wantsCredentials ? null : (
+									) : wantsCredentials ? (
+										<button
+											type="button"
+											className={pill}
+											onClick={() => setEditing(formOpen ? null : provider.id)}
+										>
+											{formOpen ? "Cancel" : `Connect ${provider.name}`}
+										</button>
+									) : (
 										<button
 											type="button"
 											className={pill}

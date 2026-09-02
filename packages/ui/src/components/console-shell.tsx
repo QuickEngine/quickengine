@@ -10,6 +10,7 @@ import {
 	ListIcon,
 	MagnifyingGlassIcon,
 	MoonIcon,
+	PlugsConnectedIcon,
 	PlusCircleIcon,
 	SignOutIcon,
 	SparkleIcon,
@@ -550,6 +551,41 @@ export function ConsoleAssistant({
  * console: three toggles that must look identical is exactly where a hand-rolled
  * fourth ends up a pixel out.
  */
+/** What this workspace is plugged into. Shares the assistant's column. */
+export function ConsoleIntegrations({
+	open,
+	onClick,
+	/** How many services are connected, so an empty dock says so. */
+	count = 0,
+}: {
+	open: boolean;
+	onClick: () => void;
+	count?: number;
+}) {
+	return (
+		<button
+			type="button"
+			aria-label="Integrations"
+			aria-pressed={open}
+			title="Integrations"
+			onClick={onClick}
+			className={`relative flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] transition-colors duration-150 hover:text-[var(--ink-90)] active:translate-y-px ${
+				open ? "text-[var(--ink-90)]" : "text-[var(--ink-40)]"
+			}`}
+		>
+			<PlugsConnectedIcon size={15} />
+			{/* Connected services are marked, none is not — the same rule the shop
+			    button follows: badge the exception, never the normal state. */}
+			{count > 0 ? (
+				<span
+					aria-hidden="true"
+					className="-right-1 -top-1 absolute size-2 rounded-full bg-[#3fb950] shadow-[0_0_0_2px_var(--console-bg)]"
+				/>
+			) : null}
+		</button>
+	);
+}
+
 export function ConsoleTools({
 	open = false,
 	onClick,
@@ -827,12 +863,6 @@ export function SidebarAccount({
 					<SignOutIcon size={14} />
 					<span>Sign out</span>
 				</a>
-				<Link
-					href={accountHref("/billing")}
-					className="mt-1 flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-[rgb(var(--console-ink))] px-3 text-[11.5px] text-[var(--console-pop)] transition-colors hover:bg-[rgb(var(--console-ink)/0.85)]"
-				>
-					<span>Upgrade</span>
-				</Link>
 			</PopoverContent>
 		</Popover>
 	);
@@ -918,12 +948,15 @@ export function ConsoleShell({
 	nav,
 	navBottom,
 	overlays,
-	sandbox = false,
 	header,
 	assistant,
 	assistantOpen = false,
+	integrations,
+	integrationsOpen = false,
 	tools,
 	toolsOpen = false,
+	bottom,
+	bottomOpen = false,
 	scope,
 	contentMax,
 	breadcrumb,
@@ -936,18 +969,6 @@ export function ConsoleShell({
 	navBottom?: ReactNode;
 	overlays?: ReactNode;
 	/**
-	 * Sandbox mode.
-	 *
-	 * 🔴 Replaces the `banner` slot outright. That slot rendered a strip above
-	 * everything, which meant entering sandbox CHANGED THE CONSOLE'S HEIGHT — the
-	 * whole layout shifted down to make room for a sentence, and shifted back on
-	 * leaving. A mode should be visible without being structural.
-	 *
-	 * This adds one class, which re-declares the console's surface tokens. Every
-	 * panel, popover and hairline turns warm; nothing moves.
-	 */
-	sandbox?: boolean;
-	/**
 	 * The assistant column on the right.
 	 *
 	 * ⚠️ The console does NOT own whether it is open. The control that toggles it
@@ -957,6 +978,14 @@ export function ConsoleShell({
 	 */
 	assistant?: ReactNode;
 	assistantOpen?: boolean;
+	/**
+	 * What this workspace is connected to. Shares the assistant's column.
+	 *
+	 * 🔴 A peer of the assistant, not a section inside it — connecting a service
+	 * has to work for somebody who never opens the AI at all.
+	 */
+	integrations?: ReactNode;
+	integrationsOpen?: boolean;
 	/**
 	 * QuickTools, across the bottom.
 	 *
@@ -971,6 +1000,14 @@ export function ConsoleShell({
 	 */
 	tools?: ReactNode;
 	toolsOpen?: boolean;
+	/**
+	 * The bottom region's contents — the developer console.
+	 *
+	 * Separate from `tools` because they are different shapes: this is docked
+	 * and resizable, QuickTools is a tray that overlays and owns no space.
+	 */
+	bottom?: ReactNode;
+	bottomOpen?: boolean;
 	/**
 	 * What the workspace-scoped preferences belong to — a workspace id, or an id
 	 * and environment together.
@@ -1050,6 +1087,20 @@ export function ConsoleShell({
 	 * mount and written once on release.
 	 */
 	const frameRef = useRef<HTMLDivElement>(null);
+
+	/**
+	 * Whichever of the two was opened last wins the column.
+	 *
+	 * ⚠️ Integrations first: pressing it while the assistant is open should
+	 * SWITCH rather than do nothing, and the call site closes the other when it
+	 * opens one. This ordering only decides what happens if both are somehow
+	 * true at once.
+	 */
+	const aside = integrationsOpen
+		? integrations
+		: assistantOpen
+			? assistant
+			: null;
 	/**
 	 * ⚠️ The rail widths live on the FRAME, not on the row.
 	 *
@@ -1212,27 +1263,23 @@ export function ConsoleShell({
 				{navTop}
 				{nav}
 			</div>
-			{/* 🔴 `navBottom` OVERLAYS the foot of the sidebar rather than sitting in
-			    the column.
-
-			    Placed in the flow it became a third block between the navigation and
-			    the account row, pushing them apart and changing the sidebar's
-			    proportions whenever it had something to say. Anchored to the account
-			    row with `bottom-full` it floats over the end of the navigation
-			    instead: the sidebar's layout is identical whether or not anything is
-			    showing, and the card reads as laid on top rather than built in.
+			{/* 🔴 IN the footer, not floating over it.
+			    It used to be anchored with `bottom-full` so it overlaid the end of
+			    the navigation and left the sidebar's proportions untouched. Two
+			    things killed that: it read as laid on top rather than built in, and
+			    it was wrapped in `{account ? …}` — so when the account row moved to
+			    the header it stopped rendering entirely and nobody saw it again.
 
 			    ⚠️ `empty:hidden` because a slot being PASSED is not the same as it
-			    rendering something — a component that decides for itself whether to
-			    appear still satisfies `navBottom ? ...`, so without this the padded
-			    wrapper drew a shadow around nothing. */}
+			    rendering something. `SidebarCard` decides for itself whether to
+			    appear and is silent most of the time, which still satisfies
+			    `navBottom ? …` — without this the padded wrapper drew a border
+			    around nothing. */}
+			{navBottom ? (
+				<div className="shrink-0 p-2 empty:hidden">{navBottom}</div>
+			) : null}
 			{account ? (
-				<div className="relative shrink-0 border-[var(--console-line-soft)] border-t">
-					{navBottom ? (
-						<div className="absolute inset-x-0 bottom-full px-2 pb-2 empty:hidden">
-							{navBottom}
-						</div>
-					) : null}
+				<div className="shrink-0 border-[var(--console-line-soft)] border-t">
 					{account}
 				</div>
 			) : null}
@@ -1432,7 +1479,20 @@ export function ConsoleShell({
 						</div>
 					</main>
 
-					{assistant && assistantOpen && !focused ? (
+					{/*
+					 * 🔑 ONE right column, two tenants.
+					 *
+					 * The assistant and integrations are both things you CONSULT beside
+					 * your work, and both want the same width — so they share a column
+					 * rather than adding a fifth region. Opening one closes the other,
+					 * which is also why integrations cost nothing to add: no new rail,
+					 * no new width to remember, no further squeeze on the content.
+					 *
+					 * ⚠️ Integrations are NOT part of the assistant, deliberately.
+					 * Somebody who never touches the AI still has to be able to connect
+					 * Gmail and use it.
+					 */}
+					{aside && !focused ? (
 						<>
 							{/* Its own grab bar, on its LEFT — the edge it shares with the
 					    content. Same 3px column and same overhanging hit area as the
@@ -1464,13 +1524,27 @@ export function ConsoleShell({
 								}}
 								className="hidden shrink-0 flex-col overflow-hidden rounded-2xl border border-[var(--console-line)] bg-[var(--console-panel)] md:flex"
 							>
-								{assistant}
+								{aside}
 							</aside>
 						</>
 					) : null}
 				</div>
 
-				{tools && toolsOpen && !focused ? (
+				{/*
+				 * The bottom region, and what lives in it.
+				 *
+				 * 🔴 It is NOT QuickTools any more. A region should be permanent only
+				 * if its content is CONTINUOUS — navigation is, a conversation is, a
+				 * log is. A calculator is not: you want it for nine seconds. So the
+				 * widgets moved to a tray and this space is kept for the developer
+				 * console, whose content genuinely streams.
+				 *
+				 * ⚠️ It stops at the sidebar deliberately. Navigation is how you reach
+				 * the thing you are testing — you watch a delivery fail, then click
+				 * through to the order it was about. Covering the sidebar would make
+				 * this modal in practice even though it is not.
+				 */}
+				{bottom && bottomOpen && !focused ? (
 					<>
 						{/* The grab bar, on the tool bar's top edge — the one it shares with
 					    the row above. Same 3px column and overhanging hit area as the
@@ -1501,7 +1575,7 @@ export function ConsoleShell({
 							}}
 							className="flex shrink-0 flex-col overflow-hidden rounded-2xl border border-[var(--console-line)] bg-[var(--console-bg)]"
 						>
-							{tools}
+							{bottom}
 						</div>
 					</>
 				) : null}
@@ -1534,9 +1608,7 @@ export function ConsoleShell({
 			style={{ gap: "6px" }}
 			// ⚠️ Always `h-svh`. It used to be `flex-1` whenever a banner was showing,
 			// which is what made entering sandbox move everything.
-			className={`relative flex h-svh min-h-0 flex-col overflow-hidden bg-[var(--console-floor)] p-1.5 ${
-				sandbox ? "console-sandbox" : ""
-			}`}
+			className="relative flex h-svh min-h-0 flex-col overflow-hidden bg-[var(--console-floor)] p-1.5"
 		>
 			{header && !focused ? (
 				/**
@@ -1559,6 +1631,33 @@ export function ConsoleShell({
 				</div>
 			) : null}
 			{row}
+			{/*
+			 * QuickTools: a TRAY, not a region.
+			 *
+			 * 🔑 It drops from the header button that opens it and overlays the
+			 * content, so it costs no permanent space — a calculator does not earn
+			 * a docked column. Widgets wrap into as many rows as they need, and one
+			 * can be torn off to float wherever you want it.
+			 *
+			 * ⚠️ Offset by `--console-rail` so it starts where the content does. It
+			 * hangs off the header, and the header is what it belongs to; covering
+			 * the navigation would make reaching for a tool cost you your place.
+			 */}
+			{tools && toolsOpen && !focused ? (
+				<div
+					style={{
+						boxShadow: "var(--console-lift)",
+						left: "calc(var(--console-rail, 240px) + 12px)",
+					}}
+					/* ⚠️ `3.5rem + 12px` is DERIVED, not eyeballed: the frame's 6px
+					   padding, the header's `h-14`, and the frame's 6px gap. It lands on
+					   the row's top edge, so the tray lines up with the panels rather
+					   than clipping the header by a couple of pixels. */
+					className="absolute top-[calc(3.5rem+12px)] right-1.5 z-30 hidden max-h-[min(60vh,26rem)] overflow-y-auto rounded-2xl border border-[var(--console-line)] bg-[var(--console-pop)] md:block"
+				>
+					{tools}
+				</div>
+			) : null}
 		</div>
 	);
 

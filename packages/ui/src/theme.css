@@ -438,36 +438,6 @@
    Amber because it is the one hue this product does not otherwise use — ICE,
    glacier and slate are all cool, so warmth reads instantly as "not the usual
    thing" without anybody having to be taught what it means. */
-.console-sandbox {
-	/* ⚠️ Much less yellow than the first attempt, which came out brown. The cast
-	   is carried almost entirely by the FLOOR and the hairlines; the panels sit
-	   barely off neutral, so what reads is a warm room rather than a beige
-	   surface. */
-	--console-floor: #0b0805;
-	--console-panel: #141110;
-	--console-bg: #141110;
-	--console-card: #1c1815;
-	--pop-rail: #181310;
-	--console-pop: #1e1a17;
-	--console-line: #2b2521;
-	--console-line-soft: #221d1a;
-	--console-line-strong: #2b2521;
-}
-
-/* Sandbox in light: parchment rather than snow. Same reasoning as the dark
-   set — warm surfaces, untouched ink. */
-:root:not(.dark) .console-sandbox {
-	--console-floor: #e8dcc2;
-	--console-panel: #f7f2e6;
-	--console-bg: #f7f2e6;
-	--console-card: #fffdf8;
-	--pop-rail: #f6f0e2;
-	--console-pop: #fffdf8;
-	--console-line: #e2d5b8;
-	--console-line-soft: #ece2cd;
-	--console-line-strong: #d8c9a6;
-}
-
 /* ── The ink scale ────────────────────────────────────────────────────────
    Every text tone the console uses, one token per step.
 

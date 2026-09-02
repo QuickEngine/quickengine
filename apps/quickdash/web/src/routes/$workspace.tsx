@@ -3,6 +3,7 @@ import { authClient } from "@quickengine/auth/client";
 import {
 	ConsoleAssistant,
 	ConsoleBell,
+	ConsoleIntegrations,
 	ConsoleShell,
 	ConsoleTheme,
 	ConsoleTools,
@@ -15,11 +16,13 @@ import { type MouseEventHandler, useState } from "react";
 import { AssistantPanel } from "../components/assistant-panel";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { HeaderActionProvider } from "../components/header-action";
+import { IntegrationsPanel } from "../components/integrations-panel";
 import { NotificationToasts } from "../components/notification-toasts";
 import { QuickActions } from "../components/quick-actions";
 import { QuickToolsPanel } from "../components/quicktools-panel";
 import { SettingsDialog } from "../components/settings-dialog";
 import { SidebarCard } from "../components/sidebar-card";
+import { StorefrontButton } from "../components/storefront-button";
 import {
 	helpWasOpen,
 	rememberHelpOpen,
@@ -190,6 +193,7 @@ function WorkspaceFrame() {
 	const [assistantOpen, setAssistantOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [toolsOpen, setToolsOpen] = useState(false);
+	const [integrationsOpen, setIntegrationsOpen] = useState(false);
 	// Summoned, and remembered for the session so navigating does not close it.
 	// Becomes a chat window, and a chat that shuts on every page change is not
 	// a conversation.
@@ -318,6 +322,13 @@ function WorkspaceFrame() {
 					</button>
 
 					<div className="flex items-center gap-1.5 justify-self-end">
+						{/* Your own shop, first: it is the only control here that leaves
+						    QuickDash, and the only one that can close a business. */}
+						<StorefrontButton
+							workspaceId={workspaceId}
+							organizationId={context.data?.workspace.organizationId}
+							published={context.data?.workspace.published ?? true}
+						/>
 						{/* Starting something new sits with the things that OPEN a
 						    surface, at the head of the group. */}
 						<QuickActions
@@ -332,9 +343,23 @@ function WorkspaceFrame() {
 							onClick={() => setToolsOpen((open) => !open)}
 						/>
 						<ConsoleTheme />
+						{/* 🔑 They SHARE the right column, so opening one closes the
+						    other. Leaving both true would leave the shell to arbitrate,
+						    and a button that appears to do nothing is worse than one
+						    that swaps. */}
+						<ConsoleIntegrations
+							open={integrationsOpen}
+							onClick={() => {
+								setIntegrationsOpen((open) => !open);
+								setAssistantOpen(false);
+							}}
+						/>
 						<ConsoleAssistant
 							open={assistantOpen}
-							onClick={() => setAssistantOpen((open) => !open)}
+							onClick={() => {
+								setAssistantOpen((open) => !open);
+								setIntegrationsOpen(false);
+							}}
 						/>
 						<SidebarAccount
 							compact
@@ -372,7 +397,6 @@ function WorkspaceFrame() {
 			 */
 			// 🔴 A theme, not a band. Sandbox re-colours every surface instead of
 			// adding a strip — entering it used to change the console's height.
-			sandbox={context.data?.workspace.environment === "test"}
 			breadcrumb={
 				<WorkspaceBreadcrumb
 					workspace={workspace}
@@ -439,6 +463,14 @@ function WorkspaceFrame() {
 			toolsOpen={toolsOpen}
 			tools={<QuickToolsPanel />}
 			assistantOpen={assistantOpen}
+			integrationsOpen={integrationsOpen}
+			integrations={
+				<IntegrationsPanel
+					workspaceId={workspaceId}
+					organizationId={context.data?.workspace.organizationId}
+					workspace={workspace}
+				/>
+			}
 			assistant={<AssistantPanel onClose={() => setAssistantOpen(false)} />}
 			overlays={
 				<>

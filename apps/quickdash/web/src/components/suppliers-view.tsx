@@ -372,6 +372,103 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
  * meaningless without the supplier it belongs to: "ETH-GUJI-340" answers a
  * question nobody can ask without first knowing whose code it is.
  */
+/**
+ * The link a supplier opens to set up their own payouts.
+ *
+ * 🔴 `GET /inventory/suppliers/:id/payment-account/link` has existed since the
+ * feature shipped with NOTHING calling it, so the only way to get a link was to
+ * mint one by hand. That is the whole feature: a partner with no QuickDash
+ * account gives Stripe their bank details without anybody emailing a credential
+ * around.
+ *
+ * ⚠️ The MODE is stamped when the link is issued and checked when the supplier
+ * opens it. Issue one in sandbox and it only ever works while this workspace is
+ * in sandbox — going live means issuing another and the supplier onboarding a
+ * second time, because Stripe keeps test and live as different accounts. That
+ * is stated on the button rather than discovered by a partner seeing a refusal.
+ */
+function PayoutLink({
+	workspaceId,
+	supplierId,
+}: {
+	workspaceId: string;
+	supplierId: string;
+}) {
+	const [link, setLink] = useState<{ url: string; environment: string } | null>(
+		null,
+	);
+	const [copied, setCopied] = useState(false);
+	const [failure, setFailure] = useState<string | null>(null);
+
+	const issue = useMutation({
+		mutationFn: async () =>
+			(
+				await workspaceApi(workspaceId).request<{
+					url: string;
+					expiresAt: string;
+					environment: string;
+				}>(`/inventory/suppliers/${supplierId}/payment-account/link`)
+			).data,
+		onMutate: () => {
+			setFailure(null);
+			setCopied(false);
+		},
+		onError: (error: { message?: string }) =>
+			setFailure(error?.message ?? "That link could not be created."),
+		onSuccess: (created) => setLink(created),
+	});
+
+	return (
+		<section className="space-y-2">
+			<p className="text-[11px] text-[var(--ink-45)]">Getting paid</p>
+			<p className="text-[11.5px] text-[var(--ink-30)] leading-5">
+				A link this supplier opens to give Stripe their bank details. It lasts
+				thirty days and refreshes itself each time it is opened, so it does not
+				go stale mid-setup.
+			</p>
+
+			{link ? (
+				<div className="space-y-2">
+					<p className="text-[11px] text-[var(--ink-40)]">
+						{/* 🔑 Say which mode it is FOR. The two links look identical and
+						    sending the wrong one wastes a partner's afternoon. */}
+						{link.environment === "test"
+							? "Sandbox link. It works while this workspace is in sandbox; going live needs a new one."
+							: "Live link. Real bank details and real payouts."}
+					</p>
+					<code className="block overflow-x-auto rounded-lg border border-[var(--console-line)] bg-[rgb(var(--console-ink)/0.04)] p-2 font-mono text-[10.5px] text-[var(--ink-70)]">
+						{link.url}
+					</code>
+					<button
+						type="button"
+						className={quiet}
+						onClick={() => {
+							void navigator.clipboard?.writeText(link.url);
+							setCopied(true);
+							window.setTimeout(() => setCopied(false), 1500);
+						}}
+					>
+						{copied ? "Copied" : "Copy link"}
+					</button>
+				</div>
+			) : (
+				<button
+					type="button"
+					className={quiet}
+					disabled={issue.isPending}
+					onClick={() => issue.mutate()}
+				>
+					{issue.isPending ? "Creating…" : "Create a payout link"}
+				</button>
+			)}
+
+			{failure ? (
+				<p className="text-[11.5px] text-[#ff6b6b] leading-5">{failure}</p>
+			) : null}
+		</section>
+	);
+}
+
 function SupplierPanel({
 	workspaceId,
 	supplier,
@@ -476,6 +573,8 @@ function SupplierPanel({
 					mappings={mappings}
 					workspaceId={workspaceId}
 				/>
+
+				<PayoutLink workspaceId={workspaceId} supplierId={supplier.id} />
 
 				<section className="space-y-2">
 					<p className="text-[11px] text-[var(--ink-45)]">

@@ -4,7 +4,7 @@ import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -38,6 +38,7 @@ const _field =
 
 export function FoldersView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
 	const [search, setSearch] = useState("");
@@ -82,7 +83,7 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 	// submit button parted from its inputs is a button that does nothing
 	// visible.
 	useHeaderAction({
-		label: "New folder",
+		label: "Add folder",
 		onClick: () => setCreating((open) => !open),
 	});
 
@@ -121,6 +122,10 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				filter={statusFilter.chips("Depth", ["top level", "nested"])}
+				filterCount={statusFilter.count}
+				exportRows={() => folders.data?.items ?? []}
+				exportName="folders"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -143,7 +148,9 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 				{(data) => {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
-						(folder) => !needle || folder.name.toLowerCase().includes(needle),
+						(folder) =>
+							statusFilter.keep(folder.parentId ? "nested" : "top level") &&
+							(!needle || folder.name.toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

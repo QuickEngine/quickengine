@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { EmptyState, PageState } from "./page-state";
 
 type AuditEntry = {
@@ -163,6 +163,7 @@ const when = (iso: string) => {
 };
 
 export function AuditView({ workspaceId }: { workspaceId: string }) {
+	const statusFilter = useChipFilter();
 	const [search, setSearch] = useState("");
 	/**
 	 * ⚠️ Narrowing to one request is a MODE, not a search term. A request id is
@@ -181,9 +182,25 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 			).data,
 	});
 
+	/**
+	 * 🔑 DERIVED, not enumerated. There are ninety-five actions and the list
+	 * grows with every feature; hardcoding them here would go stale the first
+	 * time one is added. The first segment of `catalog-item.created` is the
+	 * thing it happened to, which is what somebody actually filters by.
+	 */
+	const areas = [
+		...new Set(
+			(audit.data?.items ?? []).map((row) => row.action.split(".")[0]),
+		),
+	].sort();
+
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				filter={statusFilter.chips("Area", areas)}
+				filterCount={statusFilter.count}
+				exportRows={() => audit.data?.items ?? []}
+				exportName="activity"
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search by person, action or record"
@@ -221,18 +238,20 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 				{(data) => {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter((row) =>
-						!needle
-							? true
-							: [
-									actorLabel(row),
-									describe(row.action),
-									row.resourceType,
-									row.resourceId,
-									row.actorEmail ?? "",
-								]
-									.join(" ")
-									.toLowerCase()
-									.includes(needle),
+						!statusFilter.keep(row.action.split(".")[0])
+							? false
+							: !needle
+								? true
+								: [
+										actorLabel(row),
+										describe(row.action),
+										row.resourceType,
+										row.resourceId,
+										row.actorEmail ?? "",
+									]
+										.join(" ")
+										.toLowerCase()
+										.includes(needle),
 					);
 					if (rows.length === 0) {
 						return (

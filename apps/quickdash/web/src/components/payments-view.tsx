@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { Card } from "./dash-card";
 import { WriteFailure } from "./page-state";
 
 /**
@@ -336,8 +337,10 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<div className="mb-4">
-				<p className="text-[12.5px] text-[var(--ink-85)]">Where you get paid</p>
-				<p className="mt-0.5 text-[11.5px] text-[var(--ink-30)]">
+				{/* 🔴 No "Where you get paid" heading: the breadcrumb already says
+				    Payments › Providers, and a title repeating it is a third answer
+				    to a question answered twice above. */}
+				<p className="text-[11.5px] text-[var(--ink-30)]">
 					Connect one or both. Checkout uses whichever is set as default.
 					{environment === "test"
 						? " This workspace is in test mode, so no real money can move."
@@ -347,7 +350,17 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 
 			{failure ? <WriteFailure message={failure} /> : null}
 
-			<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-y">
+			{/*
+			 * 🔴 Cards on a grid, not hairline rows in a narrow stack. Providers
+			 * was the last surface still using the old section list.
+			 *
+			 * ⚠️ `items-start`, and it matters here more than anywhere else. Grid
+			 * items stretch to their row by default and `Card` carries `h-full`
+			 * for the dashboard's bento — so a connected Stripe, which is one
+			 * sentence and a button, was being stretched to match PayPal showing a
+			 * whole credentials form beside it. Each card is its own height.
+			 */}
+			<div className="grid auto-rows-min grid-cols-1 items-start gap-3 lg:grid-cols-2">
 				{PROVIDERS.map((provider, index) => {
 					const query = results[index];
 					const status = query.data;
@@ -362,7 +375,7 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 						(wantsCredentials && !status?.connected && !query.isPending);
 
 					return (
-						<div key={provider.id} className="py-3.5">
+						<Card key={provider.id}>
 							<div className="flex items-center gap-4">
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-2">
@@ -489,7 +502,7 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 									}
 								/>
 							) : null}
-						</div>
+						</Card>
 					);
 				})}
 			</div>

@@ -6,7 +6,7 @@ import { useRecordSignals } from "../lib/record-signals";
 import { type ClientRecord as Client, ClientPanel } from "./client-panel";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction, useHeaderCrumb } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -30,6 +30,7 @@ const _field =
 	"h-9 rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
 
 export function ClientsView({ workspaceId }: { workspaceId: string }) {
+	const statusFilter = useChipFilter();
 	const { layout, setLayout } = useListLayout(workspaceId);
 	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
@@ -88,7 +89,7 @@ export function ClientsView({ workspaceId }: { workspaceId: string }) {
 	// submit button parted from its inputs is a button that does nothing
 	// visible.
 	useHeaderAction({
-		label: "New client",
+		label: "Add client",
 		onClick: () => setCreating((open) => !open),
 	});
 
@@ -116,6 +117,10 @@ export function ClientsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				filter={statusFilter.chips("Details", ["has email", "has company"])}
+				filterCount={statusFilter.count}
+				exportRows={() => clients.data?.items ?? []}
+				exportName="customers"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -139,10 +144,13 @@ export function ClientsView({ workspaceId }: { workspaceId: string }) {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
 						(client) =>
-							!needle ||
-							client.name.toLowerCase().includes(needle) ||
-							(client.email ?? "").toLowerCase().includes(needle) ||
-							(client.company ?? "").toLowerCase().includes(needle),
+							(statusFilter.count === 0 ||
+								(client.email && statusFilter.keep("has email")) ||
+								(client.company && statusFilter.keep("has company"))) &&
+							(!needle ||
+								client.name.toLowerCase().includes(needle) ||
+								(client.email ?? "").toLowerCase().includes(needle) ||
+								(client.company ?? "").toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

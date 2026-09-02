@@ -3,7 +3,7 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { money } from "../lib/catalog";
 import { useListLayout } from "../lib/list-view";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
@@ -81,6 +81,7 @@ const STATUS_TONE: Record<string, string> = {
  */
 export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const [search, setSearch] = useState("");
 
 	const purchaseOrders = useQuery({
@@ -96,6 +97,10 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				filter={statusFilter.chips("Status", Object.keys(STATUS_LABELS))}
+				filterCount={statusFilter.count}
+				exportRows={() => purchaseOrders.data?.items ?? []}
+				exportName="purchase-orders"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}

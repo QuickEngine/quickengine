@@ -150,7 +150,7 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 	// The page's one create action lives in the header, where every page keeps
 	// its own — so "make a new thing" is always in the same place.
 	useHeaderAction({
-		label: "New product",
+		label: "Add product",
 		busyLabel: "Adding…",
 		busy: create.isPending,
 		onClick: () => create.mutate(),
@@ -164,6 +164,8 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 			    was the one page whose chrome stayed on screen behind a page-level
 			    wall — offering a search over a list that could not exist. */}
 			<ListControls
+				exportRows={() => items}
+				exportName="products"
 				query={query}
 				onQueryChange={setQuery}
 				placeholder="Search products"

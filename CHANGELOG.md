@@ -8,6 +8,66 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The console is now a set of panels you can resize.** The sidebar, the working area and the
+  assistant sit as separate cards on a floor rather than one welded surface, and the divider between
+  any two can be dragged. Widths are remembered per person.
+
+- **One search, one header, everywhere.** A full-width bar across the top carries the workspace
+  switcher, notifications, search, QuickTools, the assistant, the theme switch and your account. The
+  twenty-nine separate search boxes are gone: the console has one, and it reaches the whole
+  workspace.
+
+- **You can see where you are.** A trail at the top of every page reads "Orders > Subscriptions",
+  with the module's own icon, and the page's controls sit on the same line.
+
+- **Create anything from anywhere.** A plus button in the header opens a short list of things this
+  workspace can make - a product, a customer, an invoice, a discount - and only ever offers what the
+  workspace actually has switched on.
+
+- **Every list can be exported.** A spreadsheet of exactly what is on screen, filters included,
+  downloaded from the page you are looking at. Available on all twenty-eight lists.
+
+- **Every list can now be filtered.** Fifteen of them never could. Subscriptions and purchase orders
+  filter by status, discounts by whether they are live right now, suppliers by how the order reaches
+  them, stock movements by kind, customers by what you hold for them, and Activity by the part of
+  the workspace an event came from.
+
+- **Search moved onto the table itself,** into a strip above the column headings alongside the
+  filter, so what it searches is obvious from where it sits.
+
+- **Rows can be selected.** A checkbox on every row and one in the heading that takes the rows in
+  front of you - never every record behind the pager.
+
+- **Rows can be reordered by dragging,** with a handle on the right of each row. The order is yours
+  and is remembered per list.
+
+- **A dashboard instead of a report.** Home is now a grid of tiles: money across the top with a
+  chart, then what needs you, what is happening today, and recent activity.
+
+- **Settings is a dialog, not a page.** It opens over whatever you were doing and closes back onto
+  it, with everything grouped down one side.
+
+- **Sandbox is a whole theme, not a banner.** A workspace in test mode recolours the entire console,
+  so there is no way to mistake it for the real one - and switching between them now lives in the
+  workspace switcher.
+
+### Fixed
+
+- **Pages with nothing on them no longer scrolled.** Every page could be scrolled by exactly the
+  height of its own heading, whether it had two rows or none.
+
+- **A workspace could lose its entire sidebar.** One unrecognised entry in a workspace's module list
+  made the whole navigation disappear, along with every page behind it.
+
+- **A disabled module said the wrong thing.** Opening a report the workspace had not turned on said
+  you did not have permission, rather than offering to turn it on.
+
+- **Files had its own upload button, in its own shape, in its own place.** It now sits with every
+  other page's create button and reads "Upload files".
+
+- **Developers and Payments were still on the old layout** - a narrow column of text with the rest
+  of the screen empty. Both are now cards using the full width.
+
 - **Setting up a new workspace is now a short, guided sequence.** Signing up walks through a small
   deck of cards instead of one long form: who you are and what the business is called, the kind of
   work it does, your part in it, and whether you want it configured for you or want to pick the

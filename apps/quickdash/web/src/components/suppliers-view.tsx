@@ -5,7 +5,7 @@ import { useListLayout } from "../lib/list-view";
 import { parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -82,6 +82,7 @@ const money = (cents: number | null, currency: string) =>
 
 export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const api = workspaceApi(workspaceId);
 
@@ -164,7 +165,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 	});
 
 	useHeaderAction({
-		label: "New supplier",
+		label: "Add supplier",
 		onClick: () => setCreating((was) => !was),
 	});
 
@@ -226,6 +227,16 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				filter={statusFilter.chips("Handoff", [
+					"email",
+					"manual",
+					"api",
+					"shopify",
+					"woocommerce",
+				])}
+				filterCount={statusFilter.count}
+				exportRows={() => suppliers.data?.items ?? []}
+				exportName="suppliers"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -249,7 +260,8 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
 						(supplier) =>
-							!needle || supplier.name.toLowerCase().includes(needle),
+							statusFilter.keep(supplier.handoffMethod) &&
+							(!needle || supplier.name.toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

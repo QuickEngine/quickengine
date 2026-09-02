@@ -71,6 +71,45 @@ const ORGANIZATION: Item[] = [
 	},
 ];
 
+/**
+ * What the page you are on is called.
+ *
+ * 🔑 Read from the NAV rather than from a second list. The sidebar already knows
+ * every route's name — a separate title map would be the same strings written
+ * twice, and the copy that drifts is always the one nobody is looking at.
+ *
+ * ⚠️ Longest match wins, so `/team/invitations` resolves to "Invitations" and
+ * not to "Members" via the `/team` prefix. Sorting by length rather than relying
+ * on declaration order means adding a route cannot silently shadow one already
+ * there.
+ */
+const TITLES: Array<[string, string]> = [...MAIN, ...MANAGE, ...ORGANIZATION]
+	.flatMap((item) =>
+		item.children
+			? item.children.map((child): [string, string] => [
+					child.href,
+					child.label,
+				])
+			: item.href
+				? [[item.href, item.label] as [string, string]]
+				: [],
+	)
+	.sort((a, b) => b[0].length - a[0].length);
+
+export function pageTitle(pathname: string): string {
+	if (pathname === "/") return "Overview";
+	const hit = TITLES.find(
+		([href]) =>
+			href !== "/" && (pathname === href || pathname.startsWith(`${href}/`)),
+	);
+	// Routes with no nav entry — `/support`, `/settings/profile`, `/join/:token`
+	// — fall back to their last segment, title-cased. Better a plausible name
+	// than an empty header.
+	if (hit) return hit[1];
+	const last = pathname.split("/").filter(Boolean).pop() ?? "Account";
+	return last.charAt(0).toUpperCase() + last.slice(1).replace(/-/g, " ");
+}
+
 const row =
 	"group flex h-8 w-full shrink-0 items-center gap-2.5 rounded-md px-2 text-[12.5px] outline-none transition-colors";
 const idle =

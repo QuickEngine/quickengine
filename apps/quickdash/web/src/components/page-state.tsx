@@ -182,6 +182,22 @@ export function RequestFailure({
 	error: unknown;
 	onRetry?: () => void;
 }) {
+	/**
+	 * 🔴 A disabled MODULE is not a permission failure, and saying so sends
+	 * somebody to look at roles for a problem that lives in settings.
+	 *
+	 * `PageState` already made this distinction, but only inside itself — a page
+	 * calling `RequestFailure` directly got the generic 403 wording, which reads
+	 * "your account does not have permission" for a workspace that simply has
+	 * the capability switched off. Home showed exactly that for revenue, because
+	 * the reporting routes are gated on `reporting-analytics` and no workspace has
+	 * it enabled.
+	 *
+	 * The check belongs HERE, in the component that turns an error into words, so
+	 * every caller gets it rather than only the ones that went through the
+	 * wrapper.
+	 */
+	if (isModuleDisabled(error)) return <ModuleDisabled />;
 	const Variant = FAILURE_VARIANTS[failureStyle()];
 	return <Variant error={error} onRetry={onRetry} />;
 }

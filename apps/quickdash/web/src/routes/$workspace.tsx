@@ -1,23 +1,31 @@
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { authClient } from "@quickengine/auth/client";
 import {
+	ConsoleAssistant,
+	ConsoleBell,
 	ConsoleShell,
-	SandboxBanner,
+	ConsoleTheme,
+	ConsoleTools,
 	SidebarAccount,
 	SidebarName,
 } from "@quickengine/ui";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { type MouseEventHandler, useState } from "react";
+import { AssistantPanel } from "../components/assistant-panel";
 import { FeedbackDialog } from "../components/feedback-dialog";
-import { GoLive } from "../components/go-live";
 import { HeaderActionProvider } from "../components/header-action";
 import { NotificationToasts } from "../components/notification-toasts";
+import { QuickActions } from "../components/quick-actions";
+import { QuickToolsPanel } from "../components/quicktools-panel";
+import { SettingsDialog } from "../components/settings-dialog";
 import { SidebarCard } from "../components/sidebar-card";
 import {
 	helpWasOpen,
 	rememberHelpOpen,
 	SupportBubble,
 } from "../components/support-bubble";
+import { WorkspaceBreadcrumb } from "../components/workspace-breadcrumb";
 import { WorkspaceNav } from "../components/workspace-nav";
 import { WorkspaceNotifications } from "../components/workspace-notifications";
 import { WorkspaceSearch } from "../components/workspace-search";
@@ -79,6 +87,36 @@ function WorkspaceFrame() {
 	 * never revert.
 	 */
 	const organizationId = context.data?.workspace.organizationId ?? "";
+
+	/**
+	 * The quick switch between rehearsal and real money.
+	 *
+	 * 🔴 The SAME endpoint the settings page uses, not a second path to the same
+	 * state. The mode locks once the workspace has a payment account, an order or
+	 * a payment, and that rule lives in the API — so this can be refused, and the
+	 * refusal is the interesting case. Its message is the rule, which is why it
+	 * is surfaced verbatim rather than replaced with something generic.
+	 */
+	const queryClient = useQueryClient();
+	const [environmentError, setEnvironmentError] = useState<string | null>(null);
+	const switchEnvironment = useMutation({
+		mutationFn: (environment: "test" | "live") =>
+			sessionApi.request(
+				`/account/workspaces/${workspaceId}/environment?organizationId=${encodeURIComponent(organizationId)}`,
+				{ method: "PATCH", body: { environment } },
+			),
+		onSuccess: () => {
+			setEnvironmentError(null);
+			void queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspaceId, "context"],
+			});
+		},
+		onError: (error: { message?: string }) =>
+			setEnvironmentError(
+				error?.message ??
+					"That could not be changed. This workspace has already taken payments.",
+			),
+	});
 	const keys = useQuery({
 		queryKey: ["quickdash", workspaceId, "api-keys"],
 		queryFn: async () =>
@@ -149,6 +187,9 @@ function WorkspaceFrame() {
 		liveKeys.length > 0 && liveKeys.every((key) => !key.lastUsedAt);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [feedbackOpen, setFeedbackOpen] = useState(false);
+	const [assistantOpen, setAssistantOpen] = useState(false);
+	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [toolsOpen, setToolsOpen] = useState(false);
 	// Summoned, and remembered for the session so navigating does not close it.
 	// Becomes a chat window, and a chat that shuts on every page change is not
 	// a conversation.
@@ -198,53 +239,145 @@ function WorkspaceFrame() {
 			 * sensible is a design decision rather than a deletion — so the
 			 * component stays ready rather than needing to be rebuilt.
 			 */
-			header={null}
+			/**
+			 * 🔴 The same three zones Account uses: the organisation on the left, the
+			 * search centred on the WINDOW, and the things that act on you or for you
+			 * on the right. It was `header={null}` — the slot existed and nothing was
+			 * ever put in it.
+			 *
+			 * ⚠️ `grid-cols-[1fr_auto_1fr]`, not a flex row. The search has to be
+			 * centred on the window rather than on whatever space the left group
+			 * leaves, or it drifts every time a workspace name changes length.
+			 */
+			header={
+				<div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3">
+					{/* 🔴 Exactly as wide as the SIDEBAR, and it tracks the drag.
+					    `--console-rail` is set on the frame by the resizer, so this group
+					    tracks the rail at every width.
+					    ⚠️ `- 16px` is the sidebar nav's own `px-2` on BOTH sides. The
+					    group is matched to the nav BUTTONS, not to the panel: the header's
+					    `px-2` already puts its left edge on theirs, and subtracting the
+					    nav's other 8px puts the bell's right edge on theirs too.
+					    The bell is `shrink-0`, so the switcher absorbs every pixel of a
+					    drag and the name elides rather than the bell moving. */}
+					<div
+						style={{ width: "calc(var(--console-rail, 240px) - 16px)" }}
+						className="flex min-w-0 items-center gap-1.5 justify-self-start"
+					>
+						<SidebarName
+							compact
+							name={context.data?.workspace.name ?? ""}
+							// 🔴 Test mode is otherwise invisible, which is how a real card
+							// gets taken in a test workspace — or a test card in the live one.
+							badge={
+								context.data?.workspace.environment === "test" ? "Test" : null
+							}
+							currentId={context.data?.workspace.id ?? ""}
+							items={(context.data?.workspaces ?? []).map((item) => ({
+								id: item.id,
+								name: item.name,
+								badge: item.environment === "test" ? "Test" : null,
+							}))}
+							onSelect={(chosen) => {
+								// Navigate by slug where there is one, so the address bar keeps
+								// reading as the business rather than as an internal id.
+								const target = (context.data?.workspaces ?? []).find(
+									(entry) => entry.id === chosen,
+								);
+								window.location.assign(`/${target?.slug ?? chosen}`);
+							}}
+							searchLabel="Find workspace"
+							createLabel="Create workspace"
+							createHref={`${clientEnv.ACCOUNT_URL}/workspaces/new`}
+							environment={context.data?.workspace.environment}
+							onEnvironment={(next) => switchEnvironment.mutate(next)}
+							busy={switchEnvironment.isPending}
+							environmentError={environmentError}
+						/>
+						<ConsoleBell
+							count={workspaceUnread}
+							active={sidebarContext === "notifications"}
+							onClick={() =>
+								setSidebarContext((current) =>
+									current === "notifications" ? "navigation" : "notifications",
+								)
+							}
+						/>
+					</div>
+
+					<button
+						type="button"
+						onClick={() => setSearchOpen(true)}
+						style={{}}
+						className="flex h-9 w-[min(24rem,34vw)] items-center gap-2 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[12px] text-[var(--ink-35)] transition-[box-shadow,color] duration-150 hover:text-[var(--ink-70)] active:translate-y-px"
+					>
+						<MagnifyingGlassIcon size={13} className="shrink-0" />
+						<span className="min-w-0 flex-1 truncate text-left">Search</span>
+						<span className="shrink-0 text-[10px] text-[var(--ink-25)]">
+							⌘K
+						</span>
+					</button>
+
+					<div className="flex items-center gap-1.5 justify-self-end">
+						{/* Starting something new sits with the things that OPEN a
+						    surface, at the head of the group. */}
+						<QuickActions
+							workspace={workspace}
+							modules={context.data?.modules ?? []}
+						/>
+						{/* 🔑 Grouped by KIND: the two that summon a surface sit together,
+						    then the preference, then you. QuickTools first because it is
+						    about this workspace, the assistant is about the page. */}
+						<ConsoleTools
+							open={toolsOpen}
+							onClick={() => setToolsOpen((open) => !open)}
+						/>
+						<ConsoleTheme />
+						<ConsoleAssistant
+							open={assistantOpen}
+							onClick={() => setAssistantOpen((open) => !open)}
+						/>
+						<SidebarAccount
+							compact
+							name={user.name ?? ""}
+							email={user.email ?? ""}
+							planId={plan.data?.planId ?? null}
+							accountUrl={clientEnv.ACCOUNT_URL}
+							authUrl={clientEnv.AUTH_URL}
+							settingsHref={`/${workspace}/settings`}
+							settingsLink={({ href, className, children }) => (
+								<Link to={href} className={className}>
+									{children}
+								</Link>
+							)}
+							onSettings={() => setSettingsOpen(true)}
+							onSignOut={nativeSignOut}
+							onFeedback={() => setFeedbackOpen(true)}
+							onHelp={() => showHelp(true)}
+						/>
+					</div>
+				</div>
+			}
 			// Driven by the workspace's own environment, so it cannot disagree with
 			// what the API will actually do with a payment.
-			banner={
-				context.data?.workspace.environment === "test" ? (
-					<SandboxBanner
-						action={
-							<GoLive
-								workspaceId={workspaceId}
-								organizationId={context.data?.workspace.organizationId}
-								accountUrl={clientEnv.ACCOUNT_URL}
-							/>
-						}
-					/>
-				) : undefined
-			}
-			switcher={
-				<SidebarName
-					name={context.data?.workspace.name ?? ""}
-					// 🔴 Test mode is otherwise invisible, which is how a real card gets
-					// taken in a test workspace — or a test card in the live one.
-					badge={context.data?.workspace.environment === "test" ? "Test" : null}
-					currentId={context.data?.workspace.id ?? ""}
-					items={(context.data?.workspaces ?? []).map((item) => ({
-						id: item.id,
-						name: item.name,
-						badge: item.environment === "test" ? "Test" : null,
-					}))}
-					onSelect={(chosen) => {
-						// Navigate by slug where there is one, so the address bar keeps
-						// reading as the business rather than as an internal id.
-						const target = (context.data?.workspaces ?? []).find(
-							(entry) => entry.id === chosen,
-						);
-						window.location.assign(`/${target?.slug ?? chosen}`);
-					}}
-					searchLabel="Find workspace"
-					createLabel="Create workspace"
-					createHref={`${clientEnv.ACCOUNT_URL}/workspaces/new`}
-					onSearch={() => setSearchOpen(true)}
-					onNotifications={() =>
-						setSidebarContext((current) =>
-							current === "notifications" ? "navigation" : "notifications",
-						)
-					}
-					notificationCount={workspaceUnread}
-					notificationsActive={sidebarContext === "notifications"}
+			/**
+			 * ⚠️ The band is EMPTY now and still rendered. Its only job is height:
+			 * that height is what makes the frame round its top corners and sit
+			 * inside the window, which is the geometry that says "sandbox" before any
+			 * colour is read. The floor behind the panels carries the colour.
+			 *
+			 * 🔴 The Go live button went with the copy. Switching mode now lives in
+			 * the workspace switcher, where somebody already goes to change which
+			 * workspace they are in — one place that answers "which workspace, and
+			 * which mode", rather than a control stranded on a band.
+			 */
+			// 🔴 A theme, not a band. Sandbox re-colours every surface instead of
+			// adding a strip — entering it used to change the console's height.
+			sandbox={context.data?.workspace.environment === "test"}
+			breadcrumb={
+				<WorkspaceBreadcrumb
+					workspace={workspace}
+					modules={context.data?.modules ?? []}
 				/>
 			}
 			nav={
@@ -297,29 +430,17 @@ function WorkspaceFrame() {
 					}
 				/>
 			}
-			account={
-				<SidebarAccount
-					name={user.name ?? ""}
-					planId={plan.data?.planId ?? null}
-					accountUrl={clientEnv.ACCOUNT_URL}
-					authUrl={clientEnv.AUTH_URL}
-					webUrl={clientEnv.WEB_URL}
-					// Contextual: inside a workspace, "Settings" is the workspace's.
-					settingsHref={`/${workspace}/settings`}
-					settingsLink={({ href, className, children }) => (
-						<Link to={href} className={className}>
-							{children}
-						</Link>
-					)}
-					onSignOut={nativeSignOut}
-					// Opens in place. The account menu used to have no handler here, so
-					// QuickDash simply had no way to send feedback without leaving.
-					onFeedback={() => setFeedbackOpen(true)}
-					// Summons help in place rather than navigating to Account, so
-					// whatever the person was doing survives asking for help.
-					onHelp={() => showHelp(true)}
-				/>
-			}
+			/**
+			 * 🔑 Workspace AND environment. A sandbox and a live workspace are
+			 * different places to work even when they share an id, so the tool bar
+			 * they each want is different too — and scoping to the id alone would let
+			 * a rehearsal decide the layout of the real one.
+			 */
+			scope={`${workspaceId}:${context.data?.workspace.environment ?? "live"}`}
+			toolsOpen={toolsOpen}
+			tools={<QuickToolsPanel />}
+			assistantOpen={assistantOpen}
+			assistant={<AssistantPanel onClose={() => setAssistantOpen(false)} />}
 			overlays={
 				<>
 					<WorkspaceSearch
@@ -343,6 +464,7 @@ function WorkspaceFrame() {
 					/>
 					{/* Reads the same list the bell does, so a toast is only ever a
 					    preview of a row that is already durable. */}
+					<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 					<NotificationToasts items={notifications.data?.items} />
 				</>
 			}

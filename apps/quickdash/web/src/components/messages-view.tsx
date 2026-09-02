@@ -4,7 +4,7 @@ import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useRecordSignals } from "../lib/record-signals";
 import { detailCard } from "./detail-panel";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
@@ -200,6 +200,7 @@ function Thread({
 }
 
 export function MessagesView({ workspaceId }: { workspaceId: string }) {
+	const statusFilter = useChipFilter();
 	const { layout, setLayout } = useListLayout(workspaceId);
 	const rowSignal = useRecordSignals(workspaceId);
 	const [search, setSearch] = useState("");
@@ -218,6 +219,8 @@ export function MessagesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				filter={statusFilter.chips("Status", ["open", "closed"])}
+				filterCount={statusFilter.count}
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -239,11 +242,12 @@ export function MessagesView({ workspaceId }: { workspaceId: string }) {
 					const needle = search.trim().toLowerCase();
 					const rows = data.items.filter(
 						(conversation) =>
-							!needle ||
-							(conversation.customerName ?? "")
-								.toLowerCase()
-								.includes(needle) ||
-							(conversation.subject ?? "").toLowerCase().includes(needle),
+							statusFilter.keep(conversation.status) &&
+							(!needle ||
+								(conversation.customerName ?? "")
+									.toLowerCase()
+									.includes(needle) ||
+								(conversation.subject ?? "").toLowerCase().includes(needle)),
 					);
 					if (rows.length === 0) {
 						return (

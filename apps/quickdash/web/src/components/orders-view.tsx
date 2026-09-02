@@ -521,6 +521,8 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				exportRows={() => filteredOrders}
+				exportName="orders"
 				query={query}
 				onQueryChange={setQuery}
 				placeholder="Search by order number, name or email"

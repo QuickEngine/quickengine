@@ -5,7 +5,7 @@ import { useListLayout } from "../lib/list-view";
 import { isAmount, parseAmountCents } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
-import { ListControls } from "./list-controls";
+import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -54,6 +54,7 @@ const money = (cents: number) =>
 	}).format(cents / 100);
 
 export function RatesView({ workspaceId }: { workspaceId: string }) {
+	const statusFilter = useChipFilter();
 	const { layout, setLayout } = useListLayout(workspaceId);
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
@@ -189,7 +190,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 	// submit button parted from its inputs is a button that does nothing
 	// visible.
 	useHeaderAction({
-		label: "New rate",
+		label: "Add rate",
 		onClick: () => setCreating((open) => !open),
 	});
 
@@ -360,6 +361,8 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				filter={statusFilter.chips("State", ["active", "off"])}
+				filterCount={statusFilter.count}
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
@@ -385,10 +388,17 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 						.map((zone) => ({
 							zone,
 							rates: zone.rates.filter(
-								(rate) => !needle || rate.name.toLowerCase().includes(needle),
+								(rate) =>
+									statusFilter.keep(rate.active ? "active" : "off") &&
+									(!needle || rate.name.toLowerCase().includes(needle)),
 							),
 						}))
-						.filter((group) => !needle || group.rates.length > 0);
+						/* A zone whose every rate was filtered out is an empty heading,
+						   so it goes too — but only when something IS filtering. */
+						.filter(
+							(group) =>
+								(!needle && statusFilter.count === 0) || group.rates.length > 0,
+						);
 
 					if (groups.length === 0) {
 						return (

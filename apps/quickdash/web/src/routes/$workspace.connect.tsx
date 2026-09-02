@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon, CheckIcon, CopyIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import {
 	installLine,
 	suggestedKeyName,
 } from "../_lib/connect-config";
+import { Card } from "../components/dash-card";
 import { SkeletonRows } from "../components/skeletons";
 import { WorkingSpinner } from "../components/working-spinner";
 import { sessionApi, workspaceApi } from "../lib/api";
@@ -205,37 +206,38 @@ function ConnectPage() {
 
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
-			<div className="max-w-3xl">
-				<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">
-					What are you connecting?
-				</p>
-				<div className="grid gap-2 border-[var(--console-line-soft)] border-t py-4 sm:grid-cols-3">
-					{TARGETS.map((entry) => (
-						<button
-							key={entry.id}
-							type="button"
-							aria-pressed={target === entry.id}
-							onClick={() => setTarget(entry.id)}
-							className={`rounded-lg border p-3 text-left transition-colors ${
-								target === entry.id
-									? "border-[rgb(var(--console-ink)/0.25)] bg-[rgb(var(--console-ink)/0.04)]"
-									: "border-[var(--console-line-strong)] hover:bg-[rgb(var(--console-ink)/0.02)]"
-							}`}
-						>
-							<p className="text-[12.5px] text-[var(--ink-85)]">
-								{entry.label}
-							</p>
-							<p className="mt-1 text-[11px] text-[var(--ink-30)] leading-4">
-								{entry.detail}
-							</p>
-						</button>
-					))}
-				</div>
+			{/* 🔴 A GRID of cards, not a 48rem column.
+			    Developers was the last page still laid out as one narrow stack of
+			    hairline-ruled sections, which on a wide console meant every word sat
+			    in the left third with a mile of empty panel beside it. Same tiles,
+			    same surface and same radius as everywhere else. */}
+			<div className="grid auto-rows-min grid-cols-1 gap-3 lg:grid-cols-2">
+				<Card title="What are you connecting?" className="lg:col-span-2">
+					<div className="grid gap-2 sm:grid-cols-3">
+						{TARGETS.map((entry) => (
+							<button
+								key={entry.id}
+								type="button"
+								aria-pressed={target === entry.id}
+								onClick={() => setTarget(entry.id)}
+								className={`rounded-lg border p-3 text-left transition-colors ${
+									target === entry.id
+										? "border-[rgb(var(--console-ink)/0.25)] bg-[rgb(var(--console-ink)/0.04)]"
+										: "border-[var(--console-line-strong)] hover:bg-[rgb(var(--console-ink)/0.02)]"
+								}`}
+							>
+								<p className="text-[12.5px] text-[var(--ink-85)]">
+									{entry.label}
+								</p>
+								<p className="mt-1 text-[11px] text-[var(--ink-30)] leading-4">
+									{entry.detail}
+								</p>
+							</button>
+						))}
+					</div>
+				</Card>
 
-				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">
-					Paste this in
-				</p>
-				<div className="border-[var(--console-line-soft)] border-t py-4">
+				<Card title="Paste this in" className="lg:col-span-2">
 					<Snippet label="Install" value={installLine()} />
 					<Snippet label="Environment" value={envBlock(config)} />
 					<Snippet label="Read something" value={exampleCall(config)} />
@@ -255,35 +257,33 @@ function ConnectPage() {
 					>
 						Issue a key
 					</a>
-				</div>
+				</Card>
 
-				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">
-					This workspace
-				</p>
-				<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
-					{[
-						["Workspace ID", workspace],
-						["API", clientEnv.API_URL],
-						[
-							"Environment",
-							context.data?.workspace.environment === "test"
-								? "Sandbox — payments are not charged"
-								: "Live — payments are real",
-						],
-					].map(([label, value]) => (
-						<div key={label} className="flex items-baseline gap-4 py-3">
-							<p className="w-32 shrink-0 text-[11.5px] text-[var(--ink-40)]">
-								{label}
-							</p>
-							<p className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-[var(--ink-80)]">
-								{value}
-							</p>
-						</div>
-					))}
-				</div>
+				<Card title="This workspace">
+					<div className="divide-y divide-[var(--console-line-soft)]">
+						{[
+							["Workspace ID", workspace],
+							["API", clientEnv.API_URL],
+							[
+								"Environment",
+								context.data?.workspace.environment === "test"
+									? "Sandbox — payments are not charged"
+									: "Live — payments are real",
+							],
+						].map(([label, value]) => (
+							<div key={label} className="flex items-baseline gap-4 py-3">
+								<p className="w-32 shrink-0 text-[11.5px] text-[var(--ink-40)]">
+									{label}
+								</p>
+								<p className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-[var(--ink-80)]">
+									{value}
+								</p>
+							</div>
+						))}
+					</div>
+				</Card>
 
-				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">Webhooks</p>
-				<div className="border-[var(--console-line-soft)] border-t py-4">
+				<Card title="Webhooks">
 					{endpoints.isPending ? (
 						<SkeletonRows rows={3} />
 					) : (endpoints.data ?? []).length === 0 ? (
@@ -363,13 +363,10 @@ function ConnectPage() {
 							)}
 						</div>
 					) : null}
-				</div>
+				</Card>
 
 				{/* 🔴 The reason every error in this product carries a request id. */}
-				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">
-					Look up a request
-				</p>
-				<div className="border-[var(--console-line-soft)] border-t py-4">
+				<Card title="Look up a request">
 					<p className="max-w-xl text-[11.5px] text-[var(--ink-35)] leading-5">
 						Every response carries a request ID. Paste one here to see what the
 						API actually did — the mutation it committed and the audit it wrote.
@@ -400,12 +397,9 @@ function ConnectPage() {
 							{lookup.body}
 						</pre>
 					) : null}
-				</div>
+				</Card>
 
-				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">
-					This workspace's connection
-				</p>
-				<div className="border-[var(--console-line-soft)] border-t py-4">
+				<Card title="This workspace's connection">
 					{keys.isPending && !keys.data ? (
 						<p className="text-[12px] text-[var(--ink-30)]">Checking…</p>
 					) : liveKeys.length === 0 ? (
@@ -473,12 +467,9 @@ function ConnectPage() {
 							</div>
 						</>
 					)}
-				</div>
+				</Card>
 
-				<p className="mt-8 mb-1 text-[12.5px] text-[var(--ink-45)]">
-					Platform health
-				</p>
-				<div className="border-[var(--console-line-soft)] border-t py-4">
+				<Card title="Platform health">
 					{health.isPending ? (
 						<p className="text-[12px] text-[var(--ink-30)]">Checking…</p>
 					) : health.data?.healthy ? (
@@ -499,13 +490,59 @@ function ConnectPage() {
 							))}
 						</div>
 					)}
-					<a
-						href={`${clientEnv.API_URL}/docs`}
-						className={`${quietAction} mt-4`}
-					>
-						API documentation
-					</a>
-				</div>
+				</Card>
+
+				{/*
+				 * The three places a developer goes NEXT, beside the one thing that
+				 * says whether to bother right now.
+				 *
+				 * 🔑 A row of links rather than one large button. "API documentation"
+				 * as a lone control at the foot of a health card read as the point of
+				 * the card, which it is not — these are references, and references
+				 * belong in a list together.
+				 */}
+				<Card title="Reference">
+					<div className="flex flex-col">
+						{[
+							{
+								label: "API documentation",
+								detail: "Every endpoint, with request and response shapes",
+								href: `${clientEnv.API_URL}/docs`,
+							},
+							{
+								label: "Changelog",
+								detail: "What changed, and what is deprecated",
+								href: "https://quickengine.xyz/changelog",
+							},
+							{
+								label: "Status",
+								detail: "Live availability of the API and its providers",
+								href: `${clientEnv.API_URL}/health`,
+							},
+						].map((link) => (
+							<a
+								key={link.label}
+								href={link.href}
+								target="_blank"
+								rel="noreferrer"
+								className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2 no-underline transition-colors hover:bg-[rgb(var(--console-ink)/0.04)]"
+							>
+								<span className="min-w-0">
+									<span className="block truncate text-[12px] text-[var(--ink-80)]">
+										{link.label}
+									</span>
+									<span className="mt-0.5 block truncate text-[11px] text-[var(--ink-30)]">
+										{link.detail}
+									</span>
+								</span>
+								<ArrowUpRightIcon
+									size={13}
+									className="shrink-0 text-[var(--ink-30)]"
+								/>
+							</a>
+						))}
+					</div>
+				</Card>
 			</div>
 		</main>
 	);

@@ -1,12 +1,23 @@
-import { FunnelIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
+import {
+	DownloadSimpleIcon,
+	FunnelIcon,
+	MagnifyingGlassIcon,
+	SortAscendingIcon,
+} from "@phosphor-icons/react";
 import {
 	Popover,
-	PopoverAnchor,
 	PopoverContent,
 	PopoverTrigger,
 } from "@quickengine/ui/components/ui/popover";
-import type { ReactNode } from "react";
-import { useHeaderSlots, usePageTakenOver } from "./header-action";
+import { type ReactNode, useState } from "react";
+import { createPortal } from "react-dom";
+import { downloadCsv } from "../lib/csv";
+import {
+	useHeaderRail,
+	useHeaderSlots,
+	usePageTakenOver,
+	useTableRail,
+} from "./header-action";
 
 /**
  * The bar above every list: search, filter, and the page's one create action.
@@ -29,7 +40,15 @@ export function ListControls({
 	filterCount,
 	filter,
 	action,
+	exportRows,
+	exportName,
 }: {
+	/**
+	 * ⚠️ Still accepted, no longer rendered. The console has one search, in the
+	 * header. These stay in the signature because every list page passes them and
+	 * filters its own rows with them — dropping them would mean editing all of
+	 * those pages to remove an argument nobody reads.
+	 */
 	query: string;
 	onQueryChange: (value: string) => void;
 	placeholder: string;
@@ -39,10 +58,25 @@ export function ListControls({
 	filter?: ReactNode;
 	/** The one create action, if the page has one. */
 	action?: ReactNode;
+	/**
+	 * The rows to write when Export is pressed, and what to call the file.
+	 *
+	 * 🔑 A FUNCTION, not an array. Building a spreadsheet's worth of rows on
+	 * every render to support a button almost nobody presses is work done
+	 * thousands of times for one use — this way it happens on the click.
+	 *
+	 * ⚠️ Pass the FILTERED rows. The file should be what is on screen; a page
+	 * that exports everything while showing a filtered view is a quiet lie.
+	 * Omit both props on a page where a spreadsheet makes no sense.
+	 */
+	exportRows?: () => ReadonlyArray<Record<string, unknown>>;
+	exportName?: string;
 }) {
 	// The page registers its action through `useHeaderAction`; this is where it
 	// now appears. The registration API is unchanged, so no page needed editing.
 	const { action: createAction } = useHeaderSlots();
+	const { rail } = useHeaderRail();
+	const { tableRail } = useTableRail();
 	/**
 	 * 🔴 Nothing to search, so nothing to search with.
 	 *
@@ -57,83 +91,120 @@ export function ListControls({
 	 */
 	if (usePageTakenOver()) return null;
 
-	return (
-		<div className="mb-3 flex items-center gap-2">
-			<div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--console-line-strong)] px-3 transition-colors focus-within:border-[rgb(var(--console-ink)/0.18)]">
-				<MagnifyingGlassIcon
-					size={14}
-					className="shrink-0 text-[var(--ink-30)]"
-				/>
-				<input
-					value={query}
-					onChange={(event) => onQueryChange(event.target.value)}
-					placeholder={placeholder}
-					className="min-w-0 flex-1 bg-transparent text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-30)]"
-				/>
-			</div>
+	/**
+	 * Acts on the PAGE: take a copy of it, change how it looks, add to it.
+	 * These stay on the breadcrumb row.
+	 */
+	const pageControls = (
+		<div className="flex items-center justify-end gap-2">
+			{exportRows ? (
+				<button
+					type="button"
+					onClick={() => downloadCsv(exportName ?? "export", exportRows())}
+					title="Export what you can see, as a spreadsheet"
+					className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[12px] text-[var(--ink-50)] outline-none transition-[box-shadow,color] duration-150 hover:text-[var(--ink-85)] active:translate-y-px"
+				>
+					<DownloadSimpleIcon size={14} />
+					Export
+				</button>
+			) : null}
+			{action}
+			{createAction}
+		</div>
+	);
 
+	/**
+	 * Acts on the ROWS: narrow them down. These belong on the table itself.
+	 *
+	 * 🔑 The search box is BACK, and it is not the one that was removed. That
+	 * one sat above the table pretending to be the console's search; this one is
+	 * inside the table's own frame, where its scope is obvious from where it is.
+	 *
+	 * 🔴 The filter is an ICON. Sitting in a strip beside a search box it needs
+	 * no word — and the count badge is what actually has to be readable, because
+	 * an active filter you cannot see is a list quietly lying about what it
+	 * holds.
+	 */
+	const tableControls = (
+		<>
 			{filter ? (
 				<Popover>
-					<PopoverAnchor asChild>
-						<div className="flex shrink-0 items-center gap-2">
-							<PopoverTrigger className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[var(--console-line-strong)] px-3 text-[12.5px] text-[var(--ink-50)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.04)] hover:text-[var(--ink-85)] data-[state=open]:bg-[rgb(var(--console-ink)/0.04)] data-[state=open]:text-[var(--ink-85)]">
-								<FunnelIcon size={14} />
-								Filter
-								{filterCount ? (
-									<span className="rounded-full bg-[rgb(var(--console-ink)/0.06)] px-2 py-0.5 text-[10.5px] text-[var(--ink-50)]">
-										{filterCount}
-									</span>
-								) : null}
-							</PopoverTrigger>
-							{action}
-							{/*
-							 * 🔴 The page's create action, moved out of the window header
-							 * and in beside the controls it belongs with.
-							 *
-							 * Search, view and "add one" are the three things somebody does
-							 * to a list, and two of them were here while the third sat in a
-							 * bar at the top of the window — so adding a record meant
-							 * leaving the row you were working in and coming back.
-							 */}
-							{createAction}
-						</div>
-					</PopoverAnchor>
+					<PopoverTrigger
+						aria-label="Filter"
+						title="Filter"
+						className="flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--ink-45)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)] data-[state=open]:bg-[rgb(var(--console-ink)/0.06)] data-[state=open]:text-[var(--ink-85)]"
+					>
+						<FunnelIcon size={15} weight={filterCount ? "fill" : "regular"} />
+					</PopoverTrigger>
 					<PopoverContent
-						// Right-aligned so its edge meets the page's right margin, which
-						// is where the control group ends. Opening from the left edge left
-						// it floating short of the margin on every page.
-						align="end"
+						align="start"
 						sideOffset={8}
-						/**
-						 * 🔴 A FLOOR on the width, not just the anchor's.
-						 *
-						 * `--radix-popover-trigger-width` measures the control group, which
-						 * is the filter button ALONE on a page with no create action — so
-						 * those pages opened a popover barely wider than the word "Filter"
-						 * and wrapped every chip onto its own line. Matching the group is
-						 * right when the group is wide; below that the content decides.
-						 */
-						className="w-[max(var(--radix-popover-trigger-width),18rem)] rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-3"
+						className="w-72 rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-3"
 					>
 						{filter}
 					</PopoverContent>
 				</Popover>
+			) : null}
+			{filterCount ? (
+				<span className="-ml-1 shrink-0 rounded-full bg-[rgb(var(--console-ink)/0.08)] px-1.5 py-0.5 text-[10.5px] text-[var(--ink-60)]">
+					{filterCount}
+				</span>
+			) : null}
+			<label className="flex min-w-0 flex-1 items-center gap-2">
+				<MagnifyingGlassIcon
+					size={14}
+					aria-hidden="true"
+					className="shrink-0 text-[var(--ink-35)]"
+				/>
+				<span className="sr-only">{placeholder}</span>
+				<input
+					value={query}
+					onChange={(event) => onQueryChange(event.target.value)}
+					placeholder={placeholder}
+					/* Bare, deliberately. It is already inside the table's own header
+					   strip, so a second border around it would draw a box in a box. */
+					className="min-w-0 flex-1 bg-transparent text-[12px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-30)]"
+				/>
+			</label>
+			{/*
+			 * ⚠️ PLACEHOLDER. It draws the control and does nothing yet — sorting
+			 * is chosen per column and has to name the columns a page actually
+			 * has, which `ListControls` does not know. Left here on purpose so the
+			 * strip's shape is settled before the behaviour goes in.
+			 */}
+			<button
+				type="button"
+				aria-label="Sort"
+				title="Sort"
+				className="flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--ink-45)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)]"
+			>
+				<SortAscendingIcon size={15} />
+			</button>
+		</>
+	);
+
+	return (
+		<>
+			{rail ? (
+				createPortal(pageControls, rail)
 			) : (
-				/**
-				 * ⚠️ The SAME group as the branch above, not a bare `action`.
-				 *
-				 * This branch renders on every page that has no filter, and it used
-				 * to drop the create button entirely — so moving the button out of
-				 * the header made it vanish on exactly those pages rather than move.
-				 * Two branches rendering different controls is how one of them ends
-				 * up forgotten.
-				 */
-				<div className="flex shrink-0 items-center gap-2">
-					{action}
-					{createAction}
+				<div className="mb-3">{pageControls}</div>
+			)}
+			{/*
+			 * ⚠️ Falls back into the page row when there is no table to sit on —
+			 * an empty list, a loading one, or a page that renders cards without
+			 * a frame. Losing the filter exactly when a list looks empty is the
+			 * worst moment to lose it: an active filter is usually WHY it looks
+			 * empty.
+			 */}
+			{tableRail ? (
+				createPortal(tableControls, tableRail)
+			) : (
+				<div className="mb-3 flex items-center gap-2 rounded-xl border border-[var(--console-line-soft)] px-2 py-1.5">
+					{tableControls}
 				</div>
 			)}
-		</div>
+		</>
 	);
 }
 
@@ -165,4 +236,48 @@ export function FilterChip({
 			{label}
 		</button>
 	);
+}
+
+/**
+ * One list's filter, written once.
+ *
+ * 🔑 Fifteen pages had no filter at all, and the reason was that each one meant
+ * writing the same twenty lines: a `useState`, a chip row, a count, and a
+ * predicate. So none of them got written. This is those twenty lines.
+ *
+ * ⚠️ Empty selection means EVERYTHING, not nothing. A filter with no chip
+ * pressed is a filter that has not been used yet — the alternative reads as a
+ * page that has hidden all its own rows.
+ */
+export function useChipFilter() {
+	const [selected, setSelected] = useState<readonly string[]>([]);
+	return {
+		count: selected.length,
+		/** True when a row's value survives the current selection. */
+		keep: (value: string | null | undefined) =>
+			selected.length === 0 ||
+			(value !== null && value !== undefined && selected.includes(value)),
+		/** The chips themselves, for `ListControls`' `filter` prop. */
+		chips: (label: string, options: readonly string[]) => (
+			<>
+				<p className="mb-2 text-[11px] text-[var(--ink-45)]">{label}</p>
+				<div className="flex flex-wrap gap-1.5">
+					{options.map((option) => (
+						<FilterChip
+							key={option}
+							label={option}
+							active={selected.includes(option)}
+							onToggle={() =>
+								setSelected((current) =>
+									current.includes(option)
+										? current.filter((value) => value !== option)
+										: [...current, option],
+								)
+							}
+						/>
+					))}
+				</div>
+			</>
+		),
+	};
 }

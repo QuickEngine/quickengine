@@ -247,6 +247,17 @@ disputed payment, a flagged shipment or stock running low reaches the bell, mark
 it belongs to, and appears briefly in the corner if you are watching. A sandbox workspace and a live one never share
 that bell, so a test order and a real customer paying are never the same news, while account-level
 notices such as an invitation appear in both.
+The console itself is a set of panels rather than one welded surface: the navigation, the working
+area and the assistant sit as separate cards and any divider between them can be dragged, with the
+widths remembered per person. A full-width header carries the workspace switcher, notifications,
+one search that reaches the whole workspace, QuickTools, the assistant, the theme switch and your
+account — and a create button that only ever offers what this workspace has switched on. Every page
+says where you are on a trail at the top, with the page's own controls on the same line. Every list
+can be filtered, searched from a strip on the table itself, selected by row, dragged into order and
+exported as a spreadsheet of exactly what is on screen. Home is a grid of tiles rather than a
+report. Settings opens as a dialog over whatever you were doing. A workspace in sandbox mode
+recolours the entire console rather than wearing a banner, so there is no mistaking it for the real
+one.
 Setting a workspace up is a short guided sequence rather than one long form: who you are and what
 the business is called, the kind of work it does, your part in it, and whether you want it
 configured for you or want to pick the parts yourself. It asks for a name — signing up with an

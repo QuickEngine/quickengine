@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { ContentPreview } from "./content-preview";
-import { ListControls } from "./list-controls";
+import { FilterChip, ListControls } from "./list-controls";
 import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
 
 /**
@@ -541,29 +541,34 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 	 * to a few characters and the buttons are cut off. In the rail the same
 	 * controls stack instead.
 	 */
+	/* 🔑 "Not published" is a FILTER — it narrows the rows — so it belongs in the
+	   filter popover with every other page's, not loose beside a control that
+	   opens a preview. "Show site" genuinely is an action and stays. */
+	const publishedFilter = (
+		<>
+			<p className="mb-2 text-[11px] text-[var(--ink-45)]">Status</p>
+			<div className="flex flex-wrap gap-1.5">
+				<FilterChip
+					label="Not published"
+					active={draftsOnly}
+					onToggle={() => setDraftsOnly(!draftsOnly)}
+				/>
+			</div>
+		</>
+	);
+
 	const toggles = (
 		<>
 			<button
 				type="button"
-				onClick={() => setDraftsOnly(!draftsOnly)}
-				aria-pressed={draftsOnly}
-				title="Show only slots that are not live yet"
-				className={`flex h-9 shrink-0 items-center rounded-full border px-3 text-[12.5px] transition-colors ${
-					draftsOnly
-						? "border-transparent bg-[rgb(var(--console-ink))] text-[var(--console-pop)]"
-						: "border-[var(--console-line-strong)] text-[var(--ink-50)] hover:bg-[rgb(var(--console-ink)/0.04)] hover:text-[var(--ink-85)]"
-				}`}
-			>
-				Not published
-			</button>
-			<button
-				type="button"
 				onClick={togglePreview}
 				aria-pressed={previewOpen}
-				className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-[12.5px] transition-colors ${
+				/* Same rectangle as Export and the view toggle it sits beside — this
+				   was the last pill left in a control group. */
+				className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] transition-colors ${
 					previewOpen
 						? "border-transparent bg-[rgb(var(--console-ink))] text-[var(--console-pop)]"
-						: "border-[var(--console-line-strong)] text-[var(--ink-50)] hover:bg-[rgb(var(--console-ink)/0.04)] hover:text-[var(--ink-85)]"
+						: "border-[var(--console-line)] bg-[var(--console-panel)] text-[var(--ink-50)] hover:text-[var(--ink-85)]"
 				}`}
 			>
 				<MonitorIcon size={14} />
@@ -590,9 +595,13 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 		</div>
 	) : (
 		<ListControls
+			exportRows={() => content.data?.items ?? []}
+			exportName="content"
 			query={search}
 			onQueryChange={setSearch}
 			placeholder="Search content by name or words"
+			filter={publishedFilter}
+			filterCount={draftsOnly ? 1 : 0}
 			action={toggles}
 		/>
 	);

@@ -5,6 +5,7 @@ import {
 	ConsoleBell,
 	ConsoleIntegrations,
 	ConsoleShell,
+	ConsoleTerminal,
 	ConsoleTheme,
 	ConsoleTools,
 	SidebarAccount,
@@ -14,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { type MouseEventHandler, useState } from "react";
 import { AssistantPanel } from "../components/assistant-panel";
+import { DevConsole } from "../components/dev-console";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { HeaderActionProvider } from "../components/header-action";
 import { IntegrationsPanel } from "../components/integrations-panel";
@@ -194,6 +196,7 @@ function WorkspaceFrame() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [toolsOpen, setToolsOpen] = useState(false);
 	const [integrationsOpen, setIntegrationsOpen] = useState(false);
+	const [consoleOpen, setConsoleOpen] = useState(false);
 	// Summoned, and remembered for the session so navigating does not close it.
 	// Becomes a chat window, and a chat that shuts on every page change is not
 	// a conversation.
@@ -338,6 +341,12 @@ function WorkspaceFrame() {
 						{/* 🔑 Grouped by KIND: the two that summon a surface sit together,
 						    then the preference, then you. QuickTools first because it is
 						    about this workspace, the assistant is about the page. */}
+						{/* The console is a DEVELOPER surface, so it sits with the other
+						    things that summon a panel rather than beside the account. */}
+						<ConsoleTerminal
+							open={consoleOpen}
+							onClick={() => setConsoleOpen((open) => !open)}
+						/>
 						<ConsoleTools
 							open={toolsOpen}
 							onClick={() => setToolsOpen((open) => !open)}
@@ -463,6 +472,8 @@ function WorkspaceFrame() {
 			toolsOpen={toolsOpen}
 			tools={<QuickToolsPanel />}
 			assistantOpen={assistantOpen}
+			bottomOpen={consoleOpen}
+			bottom={<DevConsole workspaceId={workspaceId} />}
 			integrationsOpen={integrationsOpen}
 			integrations={
 				<IntegrationsPanel

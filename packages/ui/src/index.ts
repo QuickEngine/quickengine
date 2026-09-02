@@ -19,6 +19,7 @@ export {
 	type ConsoleLink,
 	type ConsoleLinkProps,
 	ConsoleShell,
+	ConsoleTerminal,
 	ConsoleTheme,
 	ConsoleTools,
 	SidebarAccount,

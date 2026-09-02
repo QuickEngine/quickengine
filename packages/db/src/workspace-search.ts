@@ -23,7 +23,6 @@ import {
 	shipments,
 	shippingRates,
 	shippingZones,
-	sql,
 	subscriptionPlans,
 	suppliers,
 	timeEntries,

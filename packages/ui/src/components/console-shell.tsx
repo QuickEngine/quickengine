@@ -16,6 +16,7 @@ import {
 	SparkleIcon,
 	SquaresFourIcon,
 	SunIcon,
+	TerminalWindowIcon,
 } from "@phosphor-icons/react";
 import {
 	createContext,
@@ -586,6 +587,30 @@ export function ConsoleIntegrations({
 	);
 }
 
+/** The developer console, along the bottom. */
+export function ConsoleTerminal({
+	open,
+	onClick,
+}: {
+	open: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			aria-label="Developer console"
+			aria-pressed={open}
+			title="Developer console"
+			onClick={onClick}
+			className={`flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] transition-colors duration-150 hover:text-[var(--ink-90)] active:translate-y-px ${
+				open ? "text-[var(--ink-90)]" : "text-[var(--ink-40)]"
+			}`}
+		>
+			<TerminalWindowIcon size={15} />
+		</button>
+	);
+}
+
 export function ConsoleTools({
 	open = false,
 	onClick,
@@ -938,7 +963,17 @@ const AIDE_KEY = "quickengine-console-aide";
  */
 const TOOLS_DEFAULT = 224;
 const TOOLS_MIN = 120;
-const TOOLS_MAX = 520;
+/**
+ * ⚠️ Raised from 520 for the developer console.
+ *
+ * 520px is right for a strip of widgets and useless for a webhook payload —
+ * you drag it as tall as it goes and still cannot read a body. 78% of the
+ * window lets it become a real reading surface and drag back down to a
+ * two-line stream, which is the whole point of it being resizable.
+ */
+const TOOLS_MAX = Math.round(
+	(typeof window === "undefined" ? 1200 : window.innerHeight) * 0.78,
+);
 const TOOLS_KEY = "quickengine-console-tools";
 
 export function ConsoleShell({

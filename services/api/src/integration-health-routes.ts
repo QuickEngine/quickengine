@@ -1,5 +1,9 @@
 import type { CacheProvider } from "@quickengine/cache";
-import { getRequestTrace, getSupportBundle } from "@quickengine/db";
+import {
+	getRequestTrace,
+	getSupportBundle,
+	listRecentRequests,
+} from "@quickengine/db";
 import { getDegradedProviders } from "@quickengine/provider-health";
 import type { Hono } from "hono";
 import { authorizeWorkspace } from "./authorize";
@@ -58,6 +62,22 @@ export function registerIntegrationHealthRoutes(
 	 * "my integration is misbehaving, here is the id it gave me." Same
 	 * authorization, same rate policy.
 	 */
+	/**
+	 * The developer console's stream: what this workspace changed, newest first.
+	 *
+	 * 🔑 A LIST, where only single-lookup existed. `/requests/:requestId` answers
+	 * "what did this one do", which is right when an error hands you an id and
+	 * useless when you are watching your own integration run.
+	 */
+	app.get("/v1/requests", readAccess, readLimit, async (c) =>
+		respond(c, {
+			items: await listRecentRequests(c.get("authorized").workspaceId, {
+				limit: Number(c.req.query("limit") ?? 50),
+				failuresOnly: c.req.query("failures") === "true",
+			}),
+		}),
+	);
+
 	app.get("/v1/requests/:requestId", readAccess, readLimit, async (c) =>
 		respond(
 			c,

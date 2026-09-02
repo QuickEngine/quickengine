@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
@@ -169,6 +170,16 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 										{data.projects.get(projectId) ?? "Unknown project"}
 									</p>
 									<PagedTable
+										exportName="tasks"
+										bulkActions={(chosen) => (
+											<BulkDelete
+												workspaceId={workspaceId}
+												rows={chosen}
+												path="/tasks"
+												noun="tasks"
+												invalidate={["quickdash", workspaceId, "tasks"]}
+											/>
+										)}
 										workspaceId={workspaceId}
 										layout={layout}
 										caption="Tasks"

@@ -8,6 +8,42 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Settings, and this time all of it works.** Twenty-two sections across Workspace, Selling,
+  Customers and Developers, plus one for every module you have switched on. Nothing is a placeholder
+  and nothing points somewhere else: rename the workspace, switch between live and sandbox, choose
+  your theme, set what checkout asks for, how returns work, how long you keep things, which emails go
+  out, who has a key and where events are posted. Pages you cannot use do not appear - a business
+  without Orders is never shown checkout rules.
+
+- **Every setting a module already had is now reachable.** Order numbering and sales tax, low stock
+  thresholds, invoice due dates, what you call a customer, how time rounds for billing, what happens
+  to a document when you replace it. All of it existed and none of it had a screen.
+
+- **Currency is chosen from a list, not typed.** Three letters were accepted as valid, so a
+  mistyped code saved happily and failed later at the payment provider.
+
+- **Sorting.** Click a column, or use the sort menu. It sorts the whole list before paging it, so the
+  largest order is the largest order and not merely the largest on this page.
+
+- **Doing something to several rows at once.** Tick what you want and the table's header becomes a
+  bar: export the selection as a spreadsheet, or delete it where that makes sense. Deleting reports
+  honestly - "seven deleted, then: still referenced by an order" - rather than half working in
+  silence.
+
+- **Search finds things again.** Twenty-two kinds of record: orders by number, customers by email,
+  products by SKU, shipments by tracking number, discounts by code, and payments by their provider
+  reference. Choosing a result opens that record, not the page it lives on.
+
+### Fixed
+
+- **Search found nothing, everywhere, and looked like it was working.** It asked an external index
+  that nothing ever wrote to, and with no credentials that index returns an empty answer - which
+  reads as "you have nothing" rather than "this is not configured". It now asks the database.
+
+- **A page that failed took the whole console with it.** A 404 or an error replaced the sidebar,
+  the header and search, so the one moment you want to navigate away was the moment you could not.
+  Failures now appear inside the page area.
+
 - **The console is now a set of panels you can resize.** The sidebar, the working area and the
   assistant sit as separate cards on a floor rather than one welded surface, and the divider between
   any two can be dragged. Widths are remembered per person.
@@ -159,6 +195,44 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Reviews of your shop, not just your products.** A rating somebody left on a marketplace can now
+  be kept in QuickDash, moderated like any other review and shown on your site. It is labelled with
+  where it came from and never counted as a verified purchase, so an imported rating is never passed
+  off as one from a customer who bought from you.
+- **Show the same shop in two currencies, and charge in the one on the button.** Prices can be
+  displayed in a second currency using a live rate, and the card is charged in that currency rather
+  than quietly reverting to your own. If no rate is available the shop charges in its own currency
+  instead of guessing at one.
+- **Upload a picture for a category.** Category tiles took a pasted web address, which is not
+  something anybody can do for a photograph on their desktop. Drag one in, or click to choose, the
+  same as a product.
+- **See your category pictures in the list.** Categories are shown as cards with their tile picture,
+  matching the products page, so you can tell at a glance which ones would appear blank on your site.
+- **Drag categories into the order you want.** The order shown in your shop was set by typing a
+  number into a form. Now you drag the tiles.
+- **Set every delivery rule you are actually charged by.** Free delivery over an amount, price by
+  weight, delivery estimates and the order values a rate applies between were all supported and none
+  could be reached. Zones gained regions, priority and carrier rates.
+- **Fix a delivery zone or rate instead of rebuilding it.** Neither could be edited after it was
+  created, and a zone refuses to delete while it still has rates — so one mistyped price made both
+  permanent.
+- **Edit the words and pictures on your website from QuickDash, with the site beside you.** Content
+  opens your own site next to the list of editable pieces, so you can see what you are changing
+  rather than guessing from a field name. Type, and the page updates as you write. Drag the divider
+  to narrow the page to a phone and check it there, or pick Phone, Tablet or Full.
+- **Picture galleries.** A slot can hold as many pictures as you want, uploaded straight from your
+  computer, reordered by dragging and removed one at a time. There is no longer any need to attach a
+  photograph to a product just to get it onto a page.
+- **Put a picture on your site without a product.** Images can be uploaded to the business itself, so
+  a banner or an About page photo no longer has to pretend to be something you sell.
+- **Start from the words your site already shows.** A site can hand QuickDash the copy it currently
+  has, so the first time you open Content you see your real words instead of a column of empty
+  boxes. It only ever fills a piece that is empty, so publishing a new version of your site can
+  never overwrite something you have written.
+- **Put the original wording back.** Reset restores what the site shipped with, and Remove takes a
+  picture off the site. Previously the only choices were publish and unpublish, so a picture added
+  by mistake could be hidden but never removed.
+
 - **Connecting a Shopify supplier works on stores created today.** Shopify has retired the kind of app
   that hands you a permanent access token, so a newly created store had no way to give us one at all.
   You now connect with the client ID and secret from your app's settings, and the access token is
@@ -171,6 +245,26 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   the conversation stays behind their own sign-in.
 
 ### Fixed
+
+- **A test order no longer holds real stock.** Placing an order while in sandbox reserved genuine
+  inventory, so a rehearsal that stopped after the purchase left a real unit spoken for by an order
+  that never existed, and the shop showed one fewer available to real customers. Sandbox orders now
+  leave stock alone entirely, in both directions: a cancelled test order can no longer invent stock
+  either.
+- **Hiding a category no longer makes it vanish.** Hiding one removed its row from your own list with
+  no way to find it again and unhide it.
+- **Deleting a category is possible again**, from the category itself, and it says what happens to
+  the products in it.
+- **A new category opens ready to edit.** Creating one asked for a name, then made you find it in the
+  list and open it before you could add a description, a picture or its order.
+- **The total you agree to is the total you are charged.** Sales tax was left out of the figure beside
+  the pay button while the charge included it — and the same wrong figure was sent as the expected
+  total, so the safety check refused the order and blamed the shopper for it.
+- **A shop with card payments no longer tells customers to expect PayPal.** The checkout named a
+  provider before the payment had been opened, so a card shop said "Continue to PayPal" and then
+  showed a card form.
+- **The total on the button is the total you are charged.** Sales tax was added after checkout showed
+  its figure, so the amount agreed to and the amount taken could differ.
 
 - **Your supplier is told when an order is canceled.** The notice was written but never sent: it
   looked up the business it belonged to in a way that always came back empty, and gave up silently.

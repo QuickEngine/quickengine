@@ -8,6 +8,7 @@ import { FulfillmentView } from "../components/fulfillment-view";
 import { InventoryView } from "../components/inventory-view";
 import { InvoicesView } from "../components/invoices-view";
 import { OrdersView } from "../components/orders-view";
+import { OutletError, OutletNotFound } from "../components/outlet-error";
 import { PaymentsListView } from "../components/payments-list-view";
 import { ProductsView } from "../components/products-view";
 import { ProjectsView } from "../components/projects-view";
@@ -79,5 +80,7 @@ function ModuleIndex() {
 }
 
 export const Route = createFileRoute("/$workspace/$module/")({
+	errorComponent: OutletError,
+	notFoundComponent: OutletNotFound,
 	component: ModuleIndex,
 });

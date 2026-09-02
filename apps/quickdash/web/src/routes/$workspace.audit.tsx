@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AuditView } from "../components/audit-view";
+import { OutletError, OutletNotFound } from "../components/outlet-error";
 
 /**
  * Activity — a workspace capability, not a module.
@@ -13,5 +14,7 @@ function AuditPage() {
 }
 
 export const Route = createFileRoute("/$workspace/audit")({
+	errorComponent: OutletError,
+	notFoundComponent: OutletNotFound,
 	component: AuditPage,
 });

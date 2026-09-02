@@ -3,6 +3,8 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useAcknowledgeRecord, useRecordSignals } from "../lib/record-signals";
+import { useSelectedRecord } from "../lib/selected-record";
+import { BulkDelete } from "./bulk-delete";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { FilterChip, ListControls } from "./list-controls";
@@ -65,7 +67,7 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useSelectedRecord();
 	// Opening a record accounts for whatever it was flagged for.
 	useAcknowledgeRecord(workspaceId, selectedId);
 	const [search, setSearch] = useState("");
@@ -213,6 +215,16 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 					}
 					return (
 						<PagedTable
+							exportName="projects"
+							bulkActions={(chosen) => (
+								<BulkDelete
+									workspaceId={workspaceId}
+									rows={chosen}
+									path="/projects"
+									noun="projects"
+									invalidate={["quickdash", workspaceId, "projects"]}
+								/>
+							)}
 							rowSignal={rowSignal}
 							workspaceId={workspaceId}
 							layout={layout}

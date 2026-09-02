@@ -43,5 +43,7 @@ export * from "./workspace-currency";
 export * from "./workspace-email-templates";
 export * from "./workspace-home";
 export * from "./workspace-input";
+export * from "./workspace-search";
+export * from "./workspace-settings";
 export * from "./workspaces";
 export * from "./workspaces-environment";

@@ -2,7 +2,6 @@ import {
 	DownloadSimpleIcon,
 	FunnelIcon,
 	MagnifyingGlassIcon,
-	SortAscendingIcon,
 } from "@phosphor-icons/react";
 import {
 	Popover,
@@ -166,20 +165,6 @@ export function ListControls({
 					className="min-w-0 flex-1 bg-transparent text-[12px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-30)]"
 				/>
 			</label>
-			{/*
-			 * ⚠️ PLACEHOLDER. It draws the control and does nothing yet — sorting
-			 * is chosen per column and has to name the columns a page actually
-			 * has, which `ListControls` does not know. Left here on purpose so the
-			 * strip's shape is settled before the behaviour goes in.
-			 */}
-			<button
-				type="button"
-				aria-label="Sort"
-				title="Sort"
-				className="flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--ink-45)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)]"
-			>
-				<SortAscendingIcon size={15} />
-			</button>
 		</>
 	);
 

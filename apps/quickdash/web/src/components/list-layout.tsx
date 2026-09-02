@@ -4,7 +4,7 @@ import {
 	RowsIcon,
 	SquaresFourIcon,
 } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useListOrder } from "../lib/list-order";
 import { type ListLayout, PAGE_SIZE } from "../lib/list-view";
 import { type Column, DataTable } from "./data-table";
@@ -150,6 +150,9 @@ export function PagedTable<TRow extends { id: string }>({
 	caption?: string;
 	rowSignal?: (row: TRow) => "news" | "attention" | "failure" | null;
 	onReorder?: (fromId: string, toId: string) => void;
+	/** What this page can do to a set of ticked rows. */
+	bulkActions?: (rows: TRow[]) => ReactNode;
+	exportName?: string;
 }) {
 	/**
 	 * Dragging happens BEFORE paging, so a row can be moved within its page and
@@ -157,7 +160,47 @@ export function PagedTable<TRow extends { id: string }>({
 	 * ever shuffle the 25 rows on screen.
 	 */
 	const arrangement = useListOrder(workspaceId, rows);
-	const ordered = arrangement.rows;
+
+	/**
+	 * Sorting, and it happens HERE for the same reason paging does.
+	 *
+	 * 🔴 Sort the SLICE and you sort twenty-five rows out of two hundred — the
+	 * biggest order is still on page four, and the column header lies about
+	 * what it did. So the whole list is sorted, then paged.
+	 *
+	 * 🔑 A dragged order and a sorted one cannot both be true. Choosing a column
+	 * therefore SUPERSEDES the manual arrangement rather than fighting it, and
+	 * clearing the sort puts the arrangement back — nothing is lost either way.
+	 */
+	const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(
+		null,
+	);
+
+	const ordered = useMemo(() => {
+		const base = sort ? rows : arrangement.rows;
+		if (!sort) return base;
+		const factor = sort.dir === "asc" ? 1 : -1;
+		return [...base].sort((left, right) => {
+			const a = (left as Record<string, unknown>)[sort.key];
+			const b = (right as Record<string, unknown>)[sort.key];
+			// Absent values sort last in both directions: a row with no total is
+			// not "the cheapest", it is unknown, and burying it is the honest read.
+			if (a === null || a === undefined) return 1;
+			if (b === null || b === undefined) return -1;
+			if (typeof a === "number" && typeof b === "number") {
+				return (a - b) * factor;
+			}
+			if (typeof a === "boolean" && typeof b === "boolean") {
+				return (Number(a) - Number(b)) * factor;
+			}
+			return (
+				String(a).localeCompare(String(b), undefined, {
+					numeric: true,
+					sensitivity: "base",
+				}) * factor
+			);
+		});
+	}, [rows, arrangement.rows, sort]);
 
 	const [page, setPage] = useState(1);
 	const pageCount = Math.max(1, Math.ceil(ordered.length / PAGE_SIZE));
@@ -175,7 +218,12 @@ export function PagedTable<TRow extends { id: string }>({
 			<DataTable
 				{...table}
 				layout={layout}
-				onReorder={arrangement.move}
+				sort={sort}
+				onSort={setSort}
+				/* 🔴 No dragging while sorted. Moving a row by hand into an order the
+				   column is about to overwrite is a gesture that silently does
+				   nothing, which reads as the drag being broken. */
+				onReorder={sort ? undefined : arrangement.move}
 				rows={ordered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)}
 			/>
 			<div className="flex items-center gap-3">

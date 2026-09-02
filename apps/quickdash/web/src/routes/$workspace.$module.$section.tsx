@@ -4,6 +4,7 @@ import { CategoriesView } from "../components/categories-view";
 import { DiscountsView } from "../components/discounts-view";
 import { FoldersView } from "../components/folders-view";
 import { MessagesView } from "../components/messages-view";
+import { OutletError, OutletNotFound } from "../components/outlet-error";
 import { PartnerLinksView } from "../components/partner-links-view";
 import { PaymentsView } from "../components/payments-view";
 import { PurchaseOrdersView } from "../components/purchase-orders-view";
@@ -85,5 +86,7 @@ function Page() {
 }
 
 export const Route = createFileRoute("/$workspace/$module/$section")({
+	errorComponent: OutletError,
+	notFoundComponent: OutletNotFound,
 	component: Page,
 });

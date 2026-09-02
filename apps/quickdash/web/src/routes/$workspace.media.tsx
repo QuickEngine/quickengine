@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MediaView } from "../components/media-view";
+import { OutletError, OutletNotFound } from "../components/outlet-error";
 
 /**
  * Media — a workspace capability, not a module.
@@ -14,5 +15,7 @@ function MediaPage() {
 }
 
 export const Route = createFileRoute("/$workspace/media")({
+	errorComponent: OutletError,
+	notFoundComponent: OutletNotFound,
 	component: MediaPage,
 });

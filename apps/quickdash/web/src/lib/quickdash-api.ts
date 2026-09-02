@@ -58,8 +58,33 @@ export type QuickDashNotification = {
 /** One record the workspace search proxy matched. */
 export type QuickDashSearchHit = {
 	objectID: string;
+	/** What was found, so the result can be grouped and iconified. */
+	kind?:
+		| "customer"
+		| "order"
+		| "product"
+		| "invoice"
+		| "quote"
+		| "contract"
+		| "booking"
+		| "payment"
+		| "shipment"
+		| "supplier"
+		| "purchase-order"
+		| "project"
+		| "task"
+		| "discount"
+		| "category"
+		| "review"
+		| "plan"
+		| "time"
+		| "file"
+		| "content"
+		| "zone"
+		| "rate";
 	title: string;
 	description?: string;
+	/** A module path relative to the workspace, e.g. `orders/discounts`. */
 	url?: string;
 };
 

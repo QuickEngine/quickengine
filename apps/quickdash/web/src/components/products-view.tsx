@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { type CatalogItem, compareAt, imagesOf, money } from "../lib/catalog";
 import { PAGE_SIZE } from "../lib/list-view";
+import { useSelectedRecord } from "../lib/selected-record";
 import { useHeaderAction, useHeaderCrumb } from "./header-action";
 import { ListControls } from "./list-controls";
 import { Pager } from "./list-layout";
@@ -66,7 +67,7 @@ function Thumb({ item, size }: { item: CatalogItem; size: "sm" | "lg" }) {
 export function ProductsView({ workspaceId }: { workspaceId: string }) {
 	const [query, setQuery] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useSelectedRecord();
 	const [page, setPage] = useState(1);
 
 	const queryClient = useQueryClient();

@@ -1,4 +1,23 @@
-import { HouseIcon, PlugsIcon } from "@phosphor-icons/react";
+import {
+	AddressBookIcon,
+	ArrowsClockwiseIcon,
+	ArticleIcon,
+	CalendarBlankIcon,
+	ClockIcon,
+	CreditCardIcon,
+	FilesIcon,
+	FileTextIcon,
+	HouseIcon,
+	InvoiceIcon,
+	PackageIcon,
+	PenNibIcon,
+	PercentIcon,
+	PlugsIcon,
+	ShoppingCartIcon,
+	StarIcon,
+	StorefrontIcon,
+	TruckIcon,
+} from "@phosphor-icons/react";
 import {
 	CommandDialog,
 	CommandEmpty,
@@ -28,18 +47,55 @@ import { ModuleIcon } from "./module-icon";
 const groupHeading =
 	"text-[var(--ink-90)] [&_[cmdk-group-heading]]:text-[9px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.14em] [&_[cmdk-group-heading]]:text-[var(--ink-25)]";
 
+/**
+ * ⚠️ A fixed 32px row, the same height as a settings sidebar entry.
+ *
+ * `min-h-8` let a two-line description grow the row, so a list of modules was
+ * twice the height of the same list anywhere else in the console and read as a
+ * different product. Nothing here wraps; anything too long elides.
+ */
 const item =
-	"rounded-lg min-h-8 py-1 text-[12px] text-[var(--ink-55)] data-[selected=true]:bg-[rgb(var(--console-ink)/0.07)] data-[selected=true]:text-[var(--ink-90)]";
+	"rounded-lg h-8 px-2 py-0 gap-2.5 text-[12px] text-[var(--ink-55)] data-[selected=true]:bg-[rgb(var(--console-ink)/0.07)] data-[selected=true]:text-[var(--ink-90)]";
+
+/** The kinds a search can return, in the order they are shown. */
+const KINDS = [
+	{ id: "customer", label: "Customers", Icon: AddressBookIcon },
+	{ id: "order", label: "Orders", Icon: ShoppingCartIcon },
+	{ id: "product", label: "Products", Icon: StorefrontIcon },
+	{ id: "invoice", label: "Invoices", Icon: InvoiceIcon },
+	{ id: "quote", label: "Quotes", Icon: PackageIcon },
+	{ id: "payment", label: "Payments", Icon: CreditCardIcon },
+	{ id: "shipment", label: "Shipments", Icon: TruckIcon },
+	{ id: "booking", label: "Bookings", Icon: CalendarBlankIcon },
+	{ id: "contract", label: "Contracts", Icon: PenNibIcon },
+	{ id: "supplier", label: "Suppliers", Icon: PackageIcon },
+	{ id: "purchase-order", label: "Purchase orders", Icon: PackageIcon },
+	{ id: "project", label: "Projects", Icon: FileTextIcon },
+	{ id: "task", label: "Tasks", Icon: FileTextIcon },
+	{ id: "time", label: "Time", Icon: ClockIcon },
+	{ id: "discount", label: "Discounts", Icon: PercentIcon },
+	{ id: "category", label: "Categories", Icon: StorefrontIcon },
+	{ id: "review", label: "Reviews", Icon: StarIcon },
+	{ id: "plan", label: "Plans", Icon: ArrowsClockwiseIcon },
+	{ id: "zone", label: "Shipping zones", Icon: TruckIcon },
+	{ id: "rate", label: "Shipping rates", Icon: TruckIcon },
+	{ id: "file", label: "Files", Icon: FilesIcon },
+	{ id: "content", label: "Content", Icon: ArticleIcon },
+] as const;
 
 export function WorkspaceSearch({
 	open,
 	onOpenChange,
 	workspaceId,
+	workspace,
 	modules,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	/** The resolved id, for the query. */
 	workspaceId: string;
+	/** The URL slug, for building the destination a result opens. */
+	workspace: string;
 	modules: QuickDashModule[];
 }) {
 	const navigate = useNavigate();
@@ -107,7 +163,10 @@ export function WorkspaceSearch({
 			title="Search workspace"
 			description="Find records and modules in this workspace"
 			showCloseButton={false}
-			className="top-[18%] translate-y-0 rounded-xl border-[var(--console-line)] bg-[var(--console-pop)] p-1.5 text-[var(--ink-90)] shadow-2xl sm:max-w-2xl [&_[data-slot=command-input-wrapper]]:border-b-0 [&_[data-slot=command-input-wrapper]]:h-9"
+			/* 🔑 The same surface as the settings dialog: one flat `--console-pop` with a
+			   single hairline, no inner panel and no second background behind the
+			   input. Two tones inside one small dialog read as a box in a box. */
+			className="top-[18%] translate-y-0 gap-0 rounded-xl border-[var(--console-line)] bg-[var(--console-pop)] p-0 text-[var(--ink-90)] shadow-2xl sm:max-w-xl [&_[data-slot=command-input-wrapper]]:h-11 [&_[data-slot=command-input-wrapper]]:border-[var(--console-line-soft)] [&_[data-slot=command-input-wrapper]]:px-3 [&_[data-slot=command]]:bg-transparent"
 		>
 			<CommandInput
 				value={query}
@@ -115,35 +174,57 @@ export function WorkspaceSearch({
 				placeholder="Search this workspace..."
 				className="text-[12px] text-[var(--ink-90)] placeholder:text-[var(--ink-25)]"
 			/>
-			<CommandList className="max-h-[18rem] py-0.5">
-				<CommandEmpty className="py-8 text-[11.5px] text-[var(--ink-35)]">
-					{query.trim() ? "Nothing found" : "Type to search records"}
+			<CommandList className="max-h-[20rem] p-1.5">
+				{/*
+				 * ⚠️ CENTRED, and it says what it searched for.
+				 *
+				 * `cmdk` left-aligns this by default, so "Nothing found" sat against
+				 * the edge under a wall of empty panel and read as a broken layout
+				 * rather than an answer. Echoing the term also makes an obvious
+				 * typo obvious.
+				 */}
+				<CommandEmpty className="px-4 py-10 text-center text-[12px] text-[var(--ink-40)]">
+					{query.trim() ? (
+						<>
+							Nothing matches{" "}
+							<span className="text-[var(--ink-70)]">“{query.trim()}”</span>
+							<span className="mt-1 block text-[11px] text-[var(--ink-25)]">
+								Records, pages and settings are all searched.
+							</span>
+						</>
+					) : (
+						"Search records, pages and settings"
+					)}
 				</CommandEmpty>
 
-				{hits.length > 0 ? (
-					<CommandGroup heading="Records" className={groupHeading}>
-						{hits.map((hit) => (
-							<CommandItem
-								key={hit.objectID}
-								value={`${hit.title} ${hit.description ?? ""}`}
-								onSelect={() => {
-									close();
-									if (hit.url) void navigate({ to: hit.url });
-								}}
-								className={item}
-							>
-								<p className="min-w-0 flex-1 truncate text-[12.5px]">
-									{hit.title}
-								</p>
-								{hit.description ? (
-									<span className="max-w-[55%] shrink-0 truncate text-[10.5px] text-[var(--ink-30)]">
-										{hit.description}
-									</span>
-								) : null}
-							</CommandItem>
-						))}
-					</CommandGroup>
-				) : null}
+				{/* 🔑 Places first, then modules, then records. Somebody typing
+				    "orders" almost always wants the PAGE, not a record whose name
+				    happens to contain the word — so what you navigate to sits above
+				    what you found. */}
+				<CommandGroup heading="Workspace" className={groupHeading}>
+					<CommandItem
+						value="Home overview"
+						onSelect={() => {
+							close();
+							void navigate({ to: `/${workspaceId}` });
+						}}
+						className={item}
+					>
+						<HouseIcon size={15} className="text-[var(--ink-35)]" />
+						<p className="min-w-0 flex-1 truncate text-[12px]">Home</p>
+					</CommandItem>
+					<CommandItem
+						value="Connect developers API keys webhooks"
+						onSelect={() => {
+							close();
+							void navigate({ to: `/${workspaceId}/connect` });
+						}}
+						className={item}
+					>
+						<PlugsIcon size={15} className="text-[var(--ink-35)]" />
+						<p className="min-w-0 flex-1 truncate text-[12px]">Developers</p>
+					</CommandItem>
+				</CommandGroup>
 
 				<CommandGroup heading="Modules" className={groupHeading}>
 					{modules.map((module) => (
@@ -160,41 +241,76 @@ export function WorkspaceSearch({
 								id={module.id}
 								className="size-[15px] text-[var(--ink-35)]"
 							/>
-							<p className="min-w-0 flex-1 truncate text-[12.5px]">
+							<p className="min-w-0 flex-1 truncate text-[12px]">
 								{module.name}
 							</p>
-							<span className="max-w-[55%] shrink-0 truncate text-[10.5px] text-[var(--ink-30)]">
-								{module.description}
-							</span>
+							{/* ⚠️ No blurb on the row. A module's description is a whole
+							    sentence, and a sentence beside a name turns a two-word
+							    choice into something you have to read. It stays in the
+							    `value` above, so typing a word from it still matches. */}
 						</CommandItem>
 					))}
 				</CommandGroup>
 
-				<CommandGroup heading="Workspace" className={groupHeading}>
-					<CommandItem
-						value="Home overview"
-						onSelect={() => {
-							close();
-							void navigate({ to: `/${workspaceId}` });
-						}}
-						className={item}
+				{/*
+				 * 🔑 Grouped BY KIND. Twenty results in one undifferentiated list
+				 * makes you read every line; "Customers" then "Orders" lets you skip
+				 * to the half you meant.
+				 */}
+				{KINDS.filter((kind) =>
+					hits.some((hit) => (hit.kind ?? "product") === kind.id),
+				).map((kind) => (
+					<CommandGroup
+						key={kind.id}
+						heading={kind.label}
+						className={groupHeading}
 					>
-						<HouseIcon size={15} className="text-[var(--ink-35)]" />
-						<p className="min-w-0 flex-1 truncate text-[12.5px]">Home</p>
-					</CommandItem>
-					<CommandItem
-						value="Connect developers API keys webhooks"
-						onSelect={() => {
-							close();
-							void navigate({ to: `/${workspaceId}/connect` });
-						}}
-						className={item}
-					>
-						<PlugsIcon size={15} className="text-[var(--ink-35)]" />
-						<p className="min-w-0 flex-1 truncate text-[12.5px]">Developers</p>
-					</CommandItem>
-				</CommandGroup>
+						{hits
+							.filter((hit) => (hit.kind ?? "product") === kind.id)
+							.map((hit) => (
+								<CommandItem
+									key={hit.objectID}
+									value={`${kind.id} ${hit.title} ${hit.description ?? ""}`}
+									onSelect={() => {
+										close();
+										/**
+										 * 🔑 Opens the RECORD, not the page it lives on.
+										 *
+										 * `?record=` is read by `useSelectedRecord`, which every
+										 * list view uses for its detail panel — so finding
+										 * NEO-0047 shows you that order rather than a list of
+										 * forty-seven to hunt through.
+										 *
+										 * ⚠️ `url` is a module path, not a route. It is joined to
+										 * the workspace here because the API has no idea what
+										 * this console's addresses look like.
+										 */
+										if (hit.url)
+											void navigate({
+												to: `/${workspace}/${hit.url}`,
+												search: { record: hit.objectID } as never,
+											});
+									}}
+									className={item}
+								>
+									<kind.Icon
+										size={14}
+										className="shrink-0 text-[var(--ink-35)]"
+									/>
+									<p className="min-w-0 flex-1 truncate text-[12px]">
+										{hit.title}
+									</p>
+									{hit.description ? (
+										<span className="max-w-[45%] shrink-0 truncate text-[10.5px] text-[var(--ink-30)]">
+											{hit.description}
+										</span>
+									) : null}
+								</CommandItem>
+							))}
+					</CommandGroup>
+				))}
 			</CommandList>
+
 			<div className="flex h-8 items-center justify-between px-3 text-[9.5px] text-[var(--ink-25)]">
 				<span>Navigate with ↑ ↓</span>
 				<span>Open with ↵</span>

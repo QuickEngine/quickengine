@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useHeaderCrumb } from "../components/header-action";
+import { OutletError, OutletNotFound } from "../components/outlet-error";
 import {
 	FailurePanel,
 	FailureRow,
@@ -113,6 +114,8 @@ const FAULT_LABELS = [
 ] as const;
 
 export const Route = createFileRoute("/$workspace/states")({
+	errorComponent: OutletError,
+	notFoundComponent: OutletNotFound,
 	// 🔴 Development only. A candidate gallery reachable in production is a page
 	// that looks like a real part of the product and is not one.
 	beforeLoad: () => {

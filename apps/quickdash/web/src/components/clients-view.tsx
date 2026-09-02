@@ -3,6 +3,8 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useRecordSignals } from "../lib/record-signals";
+import { useSelectedRecord } from "../lib/selected-record";
+import { BulkDelete } from "./bulk-delete";
 import { type ClientRecord as Client, ClientPanel } from "./client-panel";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction, useHeaderCrumb } from "./header-action";
@@ -35,7 +37,7 @@ export function ClientsView({ workspaceId }: { workspaceId: string }) {
 	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useSelectedRecord();
 	const [search, setSearch] = useState("");
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -162,6 +164,16 @@ export function ClientsView({ workspaceId }: { workspaceId: string }) {
 					}
 					return (
 						<PagedTable
+							exportName="customers"
+							bulkActions={(chosen) => (
+								<BulkDelete
+									workspaceId={workspaceId}
+									rows={chosen}
+									path="/clients"
+									noun="customers"
+									invalidate={["quickdash", workspaceId, "clients"]}
+								/>
+							)}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Customers"

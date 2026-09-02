@@ -3,6 +3,7 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { isAmount, parseAmountCents } from "../lib/money-input";
+import { BulkDelete } from "./bulk-delete";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
@@ -282,6 +283,16 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 					}
 					return (
 						<PagedTable
+							exportName="plans"
+							bulkActions={(chosen) => (
+								<BulkDelete
+									workspaceId={workspaceId}
+									rows={chosen}
+									path="/subscription-plans"
+									noun="plans"
+									invalidate={["quickdash", workspaceId, "subscriptions"]}
+								/>
+							)}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Subscriptions"

@@ -3,6 +3,8 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useRecordSignals } from "../lib/record-signals";
+import { useSelectedRecord } from "../lib/selected-record";
+import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { ContractPanel } from "./module-panels";
@@ -61,7 +63,7 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
 	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useSelectedRecord();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -172,6 +174,16 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 
 					return (
 						<PagedTable
+							exportName="contracts"
+							bulkActions={(chosen) => (
+								<BulkDelete
+									workspaceId={workspaceId}
+									rows={chosen}
+									path="/contracts"
+									noun="contracts"
+									invalidate={["quickdash", workspaceId, "contracts"]}
+								/>
+							)}
 							rowSignal={rowSignal}
 							workspaceId={workspaceId}
 							layout={layout}

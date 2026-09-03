@@ -79,7 +79,18 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 	const [maxOrder, setMaxOrder] = useState("");
 	const [daysMin, setDaysMin] = useState("");
 	const [daysMax, setDaysMax] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const zones = useQuery({
 		queryKey: ["quickdash", workspaceId, "shipping-zones"],
@@ -166,7 +177,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That rate could not be created."),
+			setFailure({ error: error, fallback: "That rate could not be created." }),
 		onSuccess: () => {
 			setCreating(false);
 			setEditingId(null);
@@ -218,7 +229,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That rate could not be deleted."),
+			setFailure({ error: error, fallback: "That rate could not be deleted." }),
 		onSuccess: () => refresh(),
 	});
 
@@ -230,7 +241,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 			});
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That change did not save."),
+			setFailure({ error: error, fallback: "That change did not save." }),
 		onSuccess: refresh,
 	});
 
@@ -290,7 +301,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 					/>
 					<TextField
 						label="Free over"
-						hint="orders at or above this ship free — leave empty for never"
+						hint="orders at or above this ship free. Leave empty for never"
 						value={freeOver}
 						onChange={setFreeOver}
 						placeholder="250.00"
@@ -327,7 +338,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 					*/}
 					<TextField
 						label="Only over"
-						hint="order value — leave empty to always apply"
+						hint="order value. Leave empty to always apply"
 						value={minOrder}
 						onChange={setMinOrder}
 						placeholder=""
@@ -361,6 +372,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("State", ["active", "off"])}
 				filterCount={statusFilter.count}
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
@@ -369,7 +381,9 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search rates"
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={zones}
@@ -417,7 +431,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 										{zone.name}
 									</p>
 									{rates.length === 0 ? (
-										<p className="border-[var(--console-line-soft)] border-t py-2.5 text-[11.5px] text-[#f5b44a]">
+										<p className="border-[var(--console-line-soft)] border-t py-2.5 text-[11.5px] text-[var(--signal-attention-text)]">
 											No rates here, so checkout cannot quote this zone.
 										</p>
 									) : (

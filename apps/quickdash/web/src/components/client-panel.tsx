@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { money } from "../lib/catalog";
+import { useOnline } from "../lib/online";
 import {
 	Block,
 	BlockEmpty,
@@ -9,6 +10,7 @@ import {
 	DetailPanel,
 	Fact,
 } from "./detail-panel";
+import { WriteFailure } from "./page-state";
 import { Area, Text } from "./product-fields";
 
 /**
@@ -77,7 +79,19 @@ export function ClientPanel({
 }) {
 	const queryClient = useQueryClient();
 	const [draft, setDraft] = useState<Draft>(() => draftFrom(client));
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * This stored a string, so everything the failure knew — its status, its
+	 * request id — was thrown away at the moment it arrived, and a 500 printed
+	 * a raw `HTTP 500` into the footer. `fallback` survives because the
+	 * per-action wording ("that upload did not work") is better than anything a
+	 * generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on identity, not on every field
 	useEffect(() => {
@@ -117,6 +131,7 @@ export function ClientPanel({
 			).data,
 	});
 
+	const online = useOnline();
 	const save = useMutation({
 		mutationFn: async () => {
 			await workspaceApi(workspaceId).request(`/clients/${client.id}`, {
@@ -133,7 +148,7 @@ export function ClientPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That did not save."),
+			setFailure({ error: error, fallback: "That did not save." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "clients"],
@@ -160,22 +175,24 @@ export function ClientPanel({
 					: "No orders yet"
 			}
 			onClose={onClose}
+			notice={
+				failure ? (
+					<WriteFailure error={failure.error} message={failure.fallback} />
+				) : null
+			}
 			footer={
-				<>
-					{failure ? (
-						<p className="mb-2 text-[11.5px] text-[var(--signal-failure)]">
-							{failure}
-						</p>
-					) : null}
-					<button
-						type="button"
-						disabled={save.isPending || draft.name.trim().length === 0}
-						onClick={() => save.mutate()}
-						className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
-					>
-						{save.isPending ? "Saving…" : "Save"}
-					</button>
-				</>
+				<button
+					type="button"
+					disabled={save.isPending || !online || draft.name.trim().length === 0}
+					onClick={() => save.mutate()}
+					className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
+				>
+					{!online
+						? "Waiting for a connection…"
+						: save.isPending
+							? "Saving…"
+							: "Save"}
+				</button>
 			}
 		>
 			<div className="space-y-3">

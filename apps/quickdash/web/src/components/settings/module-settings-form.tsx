@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { workspaceApi } from "../../lib/api";
 import { CURRENCIES } from "../../lib/currencies";
+import { WriteFailure } from "../page-state";
 import { Choice, SaveButton, Stepper } from "./controls";
 import { type Field, MODULE_SETTINGS } from "./module-fields";
 
@@ -73,7 +74,18 @@ export function ModuleSettingsForm({
 	const spec = MODULE_SETTINGS[moduleId];
 	const queryClient = useQueryClient();
 	const [draft, setDraft] = useState<Record<string, unknown>>(settings);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [saved, setSaved] = useState(false);
 
 	// 🔴 Re-seed when the module changes. Without this, switching sections in the
@@ -98,7 +110,7 @@ export function ModuleSettingsForm({
 			setSaved(false);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "Those settings did not save."),
+			setFailure({ error: error, fallback: "Those settings did not save." }),
 		onSuccess: async () => {
 			setSaved(true);
 			await queryClient.invalidateQueries({
@@ -138,7 +150,7 @@ export function ModuleSettingsForm({
 			</div>
 
 			{failure ? (
-				<p className="text-[11.5px] text-[#ff6b6b] leading-5">{failure}</p>
+				<WriteFailure error={failure.error} message={failure.fallback} />
 			) : null}
 
 			<SaveButton
@@ -219,7 +231,7 @@ export function FieldRow({
 					value={typeof value === "string" ? value : ""}
 					options={CURRENCIES.map((currency) => ({
 						value: currency.code,
-						label: `${currency.code} — ${currency.name}`,
+						label: `${currency.code}, ${currency.name}`,
 						hint: currency.symbol,
 					}))}
 					onChange={onChange}

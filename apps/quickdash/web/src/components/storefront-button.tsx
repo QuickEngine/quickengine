@@ -7,6 +7,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { sessionApi, workspaceApi } from "../lib/api";
+import { WriteFailure } from "./page-state";
 
 /**
  * The shop, from the console.
@@ -30,7 +31,18 @@ export function StorefrontButton({
 }) {
 	const queryClient = useQueryClient();
 	const [open, setOpen] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	// The address the business gave us, on its own branding.
 	const branding = useQuery({
@@ -55,7 +67,7 @@ export function StorefrontButton({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be changed."),
+			setFailure({ error: error, fallback: "That could not be changed." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "context"],
@@ -75,7 +87,7 @@ export function StorefrontButton({
 				{published ? null : (
 					<span
 						aria-hidden="true"
-						className="-right-1 -top-1 absolute size-2 rounded-full bg-[#f5a623] shadow-[0_0_0_2px_var(--console-bg)]"
+						className="-right-1 -top-1 absolute size-2 rounded-full bg-[var(--signal-attention)] shadow-[0_0_0_2px_var(--console-bg)]"
 					/>
 				)}
 			</PopoverTrigger>
@@ -143,9 +155,7 @@ export function StorefrontButton({
 				</div>
 
 				{failure ? (
-					<p className="px-2 pb-1 text-[11px] text-[#ff6b6b] leading-4">
-						{failure}
-					</p>
+					<WriteFailure error={failure.error} message={failure.fallback} />
 				) : null}
 			</PopoverContent>
 		</Popover>

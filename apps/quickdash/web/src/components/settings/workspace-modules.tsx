@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { sessionApi } from "../../lib/api";
+import { FailureStatusLine, WriteFailure } from "../page-state";
 import { Group, Row } from "./controls";
 
 /**
@@ -39,7 +40,18 @@ export function WorkspaceModules({
 	organizationId: string | null | undefined;
 }) {
 	const queryClient = useQueryClient();
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [pending, setPending] = useState<string | null>(null);
 
 	const org = encodeURIComponent(organizationId ?? "");
@@ -66,7 +78,10 @@ export function WorkspaceModules({
 			setPending(input.moduleId);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That module could not be changed."),
+			setFailure({
+				error: error,
+				fallback: "That module could not be changed.",
+			}),
 		onSettled: async () => {
 			setPending(null);
 			// Both: the catalog drives this list, the context drives the sidebar.
@@ -92,10 +107,10 @@ export function WorkspaceModules({
 	 */
 	if (modules.isError) {
 		return (
-			<p className="text-[11.5px] text-[#ff6b6b] leading-5">
-				{(modules.error as { message?: string })?.message ??
-					"The module list could not be loaded."}
-			</p>
+			<FailureStatusLine
+				error={modules.error}
+				onRetry={() => void modules.refetch()}
+			/>
 		);
 	}
 
@@ -110,7 +125,7 @@ export function WorkspaceModules({
 			</p>
 
 			{failure ? (
-				<p className="text-[11.5px] text-[#ff6b6b] leading-5">{failure}</p>
+				<WriteFailure error={failure.error} message={failure.fallback} />
 			) : null}
 
 			{items.length === 0 ? (
@@ -180,7 +195,10 @@ export function WorkspaceDanger({
 }) {
 	const org = encodeURIComponent(organizationId ?? "");
 	const [confirm, setConfirm] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const archive = useMutation({
 		mutationFn: async () => {
@@ -194,7 +212,7 @@ export function WorkspaceDanger({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be archived."),
+			setFailure({ error: error, fallback: "That could not be archived." }),
 		// 🔑 Leave, rather than invalidate. The workspace you are standing in no
 		// longer opens, so staying on it would show a console for something that
 		// is closed.
@@ -212,7 +230,7 @@ export function WorkspaceDanger({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be deleted."),
+			setFailure({ error: error, fallback: "That could not be deleted." }),
 		onSuccess: () => {
 			window.location.href = `${accountUrl}/workspaces`;
 		},
@@ -221,7 +239,7 @@ export function WorkspaceDanger({
 	return (
 		<div className="flex flex-col gap-5">
 			{failure ? (
-				<p className="text-[11.5px] text-[#ff6b6b] leading-5">{failure}</p>
+				<WriteFailure error={failure.error} message={failure.fallback} />
 			) : null}
 
 			<div className="rounded-xl border border-[var(--console-line)] p-4">
@@ -240,10 +258,12 @@ export function WorkspaceDanger({
 				</button>
 			</div>
 
-			<div className="rounded-xl border border-[#ff3b3b]/25 p-4">
-				<p className="text-[12.5px] text-[#ff6b6b]">Delete</p>
+			<div className="rounded-xl border border-[var(--signal-failure)]/25 p-4">
+				<p className="text-[12.5px] text-[var(--signal-failure-text)]">
+					Delete
+				</p>
 				<p className="mt-1 text-[11.5px] text-[var(--ink-35)] leading-5">
-					Removes this workspace and everything in it — products, customers,
+					Removes this workspace and everything in it, products, customers,
 					orders and payments. This cannot be undone.
 				</p>
 				{/* ⚠️ Typing the NAME, not a checkbox. The point is to make somebody
@@ -262,7 +282,7 @@ export function WorkspaceDanger({
 					type="button"
 					disabled={confirm.trim() !== name || destroy.isPending}
 					onClick={() => destroy.mutate()}
-					className="mt-3 flex h-8 shrink-0 items-center rounded-md border border-[#ff3b3b]/30 px-3 text-[#ff6b6b] text-[12px] transition-colors hover:bg-[#ff3b3b]/[0.08] disabled:opacity-40"
+					className="mt-3 flex h-8 shrink-0 items-center rounded-md border border-[var(--signal-failure)]/30 px-3 text-[var(--signal-failure-text)] text-[12px] transition-colors hover:bg-[var(--signal-failure)]/[0.08] disabled:opacity-40"
 				>
 					{destroy.isPending ? "Deleting…" : "Delete this workspace"}
 				</button>

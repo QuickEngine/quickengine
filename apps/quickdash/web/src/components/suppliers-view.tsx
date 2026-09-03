@@ -74,7 +74,7 @@ const quiet =
 
 const money = (cents: number | null, currency: string) =>
 	cents === null
-		? "—"
+		? "-"
 		: new Intl.NumberFormat(undefined, {
 				style: "currency",
 				currency,
@@ -88,7 +88,18 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 
 	const [creating, setCreating] = useState(false);
 	const [search, setSearch] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [open, setOpen] = useState<string | null>(null);
 
 	const [name, setName] = useState("");
@@ -138,7 +149,10 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That supplier could not be saved."),
+			setFailure({
+				error: error,
+				fallback: "That supplier could not be saved.",
+			}),
 		onSuccess: () => {
 			setCreating(false);
 			setName("");
@@ -157,7 +171,10 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That supplier could not be archived."),
+			setFailure({
+				error: error,
+				fallback: "That supplier could not be archived.",
+			}),
 		onSuccess: () => {
 			setOpen(null);
 			refresh();
@@ -227,6 +244,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Handoff", [
 					"email",
 					"manual",
@@ -243,7 +261,9 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search suppliers"
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={suppliers}
@@ -290,7 +310,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 									header: "Contact",
 									render: (supplier) => (
 										<span className="text-[11px] text-[var(--ink-30)]">
-											{supplier.contactEmail ?? supplier.contactName ?? "—"}
+											{supplier.contactEmail ?? supplier.contactName ?? "-"}
 										</span>
 									),
 								},
@@ -306,7 +326,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 										 * question, and it should be visible from the list.
 										 */
 										supplier.handoffMethod === "unknown" ? (
-											<span className="rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention)]">
+											<span className="rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention-text)]">
 												Not agreed yet
 											</span>
 										) : (
@@ -398,7 +418,10 @@ function PayoutLink({
 		null,
 	);
 	const [copied, setCopied] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const issue = useMutation({
 		mutationFn: async () =>
@@ -414,7 +437,7 @@ function PayoutLink({
 			setCopied(false);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That link could not be created."),
+			setFailure({ error: error, fallback: "That link could not be created." }),
 		onSuccess: (created) => setLink(created),
 	});
 
@@ -463,7 +486,7 @@ function PayoutLink({
 			)}
 
 			{failure ? (
-				<p className="text-[11.5px] text-[#ff6b6b] leading-5">{failure}</p>
+				<WriteFailure error={failure.error} message={failure.fallback} />
 			) : null}
 		</section>
 	);
@@ -486,7 +509,10 @@ function SupplierPanel({
 	const [itemId, setItemId] = useState("");
 	const [sku, setSku] = useState("");
 	const [cost, setCost] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const catalog = useQuery({
 		queryKey: ["quickdash", workspaceId, "catalog", "for-mapping"],
@@ -514,7 +540,10 @@ function SupplierPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That product could not be mapped."),
+			setFailure({
+				error: error,
+				fallback: "That product could not be mapped.",
+			}),
 		onSuccess: () => {
 			setItemId("");
 			setSku("");
@@ -528,7 +557,10 @@ function SupplierPanel({
 			await api.request(`/inventory/supplier-skus/${id}`, { method: "DELETE" });
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That mapping could not be removed."),
+			setFailure({
+				error: error,
+				fallback: "That mapping could not be removed.",
+			}),
 		onSuccess: onChanged,
 	});
 
@@ -647,8 +679,8 @@ function SupplierPanel({
 								placeholder="15.00"
 							/>
 							{failure ? (
-								<p className="text-[11.5px] text-[var(--signal-attention)]">
-									{failure}
+								<p className="text-[11.5px] text-[var(--signal-attention-text)]">
+									{failure.fallback}
 								</p>
 							) : null}
 							<button
@@ -715,7 +747,10 @@ function ConnectionSection({
 	const [apiVersion, setApiVersion] = useState("2026-07");
 	const [webhookSecret, setWebhookSecret] = useState("");
 	const [replacing, setReplacing] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [checked, setChecked] = useState<{
 		ok: boolean;
 		reason?: string;
@@ -784,7 +819,10 @@ function ConnectionSection({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That connection could not be saved."),
+			setFailure({
+				error: error,
+				fallback: "That connection could not be saved.",
+			}),
 		onSuccess: () => {
 			// Cleared immediately. Neither secret has reason to sit in a form field.
 			setToken("");
@@ -811,7 +849,10 @@ function ConnectionSection({
 			).data,
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That connection could not be checked."),
+			setFailure({
+				error: error,
+				fallback: "That connection could not be checked.",
+			}),
 		onSuccess: (result) => {
 			setChecked(result);
 			void refresh();
@@ -835,7 +876,7 @@ function ConnectionSection({
 
 			{state?.present ? (
 				<div className="space-y-1.5">
-					<Fact label="Connected to" value={state.shopDomain ?? "—"} />
+					<Fact label="Connected to" value={state.shopDomain ?? "-"} />
 					<Fact label="Status" value={state.status} />
 					{state.lastError ? (
 						<p className="text-[11.5px] text-[var(--ink-45)] leading-5">
@@ -969,14 +1010,16 @@ function ConnectionSection({
 								key={sku}
 								className="text-[11.5px] text-[var(--ink-45)] leading-5"
 							>
-								{nameFor(sku)} — not recognised by this store
+								{nameFor(sku)}: not recognised by this store
 							</p>
 						))}
 					</div>
 				)
 			) : null}
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 		</section>
 	);
 }

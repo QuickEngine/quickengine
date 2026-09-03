@@ -254,7 +254,7 @@ export function ContentPreview({
 						>
 							{target}
 							{override ? (
-								<span className="ml-1.5 text-[10px] text-[#f5b44a]">
+								<span className="ml-1.5 text-[10px] text-[var(--signal-attention-text)]">
 									override
 								</span>
 							) : null}
@@ -291,7 +291,7 @@ export function ContentPreview({
 						) : null}
 						{frameWidth > 0 ? (
 							<span
-								title="How wide the page is right now — drag the divider to change it"
+								title="How wide the page is right now. Drag the divider to change it."
 								className="shrink-0 tabular-nums text-[11px] text-[var(--ink-30)]"
 							>
 								{frameWidth}px

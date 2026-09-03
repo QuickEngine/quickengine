@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { sessionApi } from "../../lib/api";
 import { quickDashQueries } from "../../lib/quickdash-api";
+import { WriteFailure } from "../page-state";
 import { Group, ReadOnly, Row, SaveButton, Segments } from "./controls";
 
 /**
@@ -39,7 +40,18 @@ export function WorkspaceGeneral({
 	const { theme, setTheme } = useTheme();
 	const org = encodeURIComponent(organizationId ?? "");
 	const [draft, setDraft] = useState(name);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [saved, setSaved] = useState(false);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: seed from the workspace, not from typing
@@ -67,7 +79,7 @@ export function WorkspaceGeneral({
 			setSaved(false);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That name did not save."),
+			setFailure({ error: error, fallback: "That name did not save." }),
 		onSuccess: async () => {
 			setSaved(true);
 			await refresh();
@@ -83,10 +95,10 @@ export function WorkspaceGeneral({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(
-				error?.message ??
-					"The mode locks once a workspace has taken a payment.",
-			),
+			setFailure({
+				error,
+				fallback: "The mode locks once a workspace has taken a payment.",
+			}),
 		onSuccess: refresh,
 	});
 
@@ -104,7 +116,7 @@ export function WorkspaceGeneral({
 				onSave={() => rename.mutate()}
 			/>
 			{failure ? (
-				<p className="text-[11.5px] text-[#ff6b6b] leading-5">{failure}</p>
+				<WriteFailure error={failure.error} message={failure.fallback} />
 			) : null}
 
 			<Group title="Workspace">
@@ -140,7 +152,7 @@ export function WorkspaceGeneral({
 			<Group title="Preferences">
 				<Row
 					label="Appearance"
-					description="Applies to you everywhere — QuickDash, Account and the sign-in screens."
+					description="Applies to you everywhere, QuickDash, Account and the sign-in screens."
 				>
 					<Segments
 						label="Appearance"
@@ -210,7 +222,7 @@ export function WorkspaceUsage({
 				{/* 🔑 Here so nobody has to leave a workspace to answer "how much is
 				    left". It is the same figure Account shows, from the same call. */}
 				What this account has used this period, on the{" "}
-				<span className="text-[var(--ink-70)]">{plan.data?.planId ?? "—"}</span>{" "}
+				<span className="text-[var(--ink-70)]">{plan.data?.planId ?? "-"}</span>{" "}
 				plan.
 			</p>
 
@@ -256,7 +268,7 @@ export function WorkspaceUsage({
 											style={{
 												width: `${Math.round(portion * 100)}%`,
 												background: meter.exceeded
-													? "#f5b44a"
+													? "var(--signal-attention)"
 													: "rgb(var(--console-ink) / 0.5)",
 											}}
 										/>
@@ -264,7 +276,9 @@ export function WorkspaceUsage({
 								</div>
 								<span
 									className={`w-[7rem] shrink-0 text-right text-[12px] tabular-nums ${
-										meter.exceeded ? "text-[#f5b44a]" : "text-[var(--ink-60)]"
+										meter.exceeded
+											? "text-[var(--signal-attention-text)]"
+											: "text-[var(--ink-60)]"
 									}`}
 								>
 									{portion !== null

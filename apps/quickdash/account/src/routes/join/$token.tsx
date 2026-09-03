@@ -117,7 +117,7 @@ function JoinPage() {
 					{session?.user?.email &&
 					session.user.email.toLowerCase() !==
 						invitation.data.email.toLowerCase() ? (
-						<p className="mt-3 text-[11px] text-[#f5b44a] leading-4">
+						<p className="mt-3 text-[11px] text-[var(--signal-attention-text)] leading-4">
 							You are signed in as {session.user.email}. Accepting will add that
 							account, not {invitation.data.email}.
 						</p>
@@ -133,15 +133,15 @@ function JoinPage() {
 					</button>
 
 					{accept.isError ? (
-						<p className="mt-3 text-[11.5px] text-[#ff6b6b] leading-4">
+						<p className="mt-3 text-[11.5px] text-[var(--signal-failure-text)] leading-4">
 							{(accept.error as { message?: string })?.message ??
 								"That could not be accepted."}
 						</p>
 					) : null}
 
 					<p className="mt-3 text-[11px] text-[var(--ink-25)] leading-4">
-						Not expecting this? Ignore it — the invitation expires on its own
-						and nothing is shared until you accept.
+						Not expecting this? Ignore it, the invitation expires on its own and
+						nothing is shared until you accept.
 					</p>
 				</div>
 			)}

@@ -167,7 +167,7 @@ function Thread({
 			{replyFailure ? (
 				<p
 					role="alert"
-					className="border-[var(--console-line-soft)] border-t px-4 pt-3 text-[11.5px] text-[var(--signal-attention)]"
+					className="border-[var(--console-line-soft)] border-t px-4 pt-3 text-[11.5px] text-[var(--signal-attention-text)]"
 				>
 					{replyFailure}
 				</p>
@@ -219,6 +219,7 @@ export function MessagesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Status", ["open", "closed"])}
 				filterCount={statusFilter.count}
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}

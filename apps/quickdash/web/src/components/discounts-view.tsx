@@ -112,7 +112,18 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 	const [valueType, setValueType] = useState<"percentage" | "fixed">(
 		"percentage",
 	);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [search, setSearch] = useState("");
 
 	const discounts = useQuery({
@@ -153,7 +164,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That code could not be created."),
+			setFailure({ error: error, fallback: "That code could not be created." }),
 		onSuccess: () => {
 			setCreating(false);
 			setCode("");
@@ -180,7 +191,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 			});
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That change did not save."),
+			setFailure({ error: error, fallback: "That change did not save." }),
 		onSuccess: refresh,
 	});
 
@@ -223,6 +234,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("State", [
 					"active",
 					"scheduled",
@@ -238,7 +250,9 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search codes"
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={discounts}

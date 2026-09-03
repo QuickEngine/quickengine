@@ -75,7 +75,18 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 
 	const [creating, setCreating] = useState(false);
 	const [search, setSearch] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [name, setName] = useState("");
 	const [interval, setInterval] = useState("month");
 	const [price, setPrice] = useState("");
@@ -139,7 +150,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That plan could not be created."),
+			setFailure({ error: error, fallback: "That plan could not be created." }),
 		onSuccess: () => {
 			setCreating(false);
 			setName("");
@@ -157,7 +168,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 			});
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be changed."),
+			setFailure({ error: error, fallback: "That could not be changed." }),
 		onSuccess: refresh,
 	});
 
@@ -219,6 +230,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Status", [
 					"active",
 					"past_due",
@@ -234,7 +246,9 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search subscriptions"
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			{/* Plans are the OFFER, subscriptions are who took it. Both belong here:
 			    a page of subscriptions with no way to see what is on sale sends
@@ -350,7 +364,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 										<span className="text-[11px] text-[var(--ink-30)]">
 											{row.nextRenewalAt
 												? new Date(row.nextRenewalAt).toLocaleDateString()
-												: "—"}
+												: "-"}
 										</span>
 									),
 								},

@@ -38,7 +38,7 @@ const problem = (integration: Integration): string | null => {
 	if (integration.status === "disabled")
 		return "The provider disabled this account. Payments cannot be taken.";
 	if (integration.status === "restricted")
-		return "The provider restricted this account — it usually wants more details before it will release money.";
+		return "The provider restricted this account, it usually wants more details before it will release money.";
 	if (!integration.chargesEnabled)
 		return "Onboarding is unfinished, so this workspace cannot take payments yet.";
 	if (!integration.payoutsEnabled)
@@ -67,8 +67,8 @@ function IntegrationsPage() {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<p className="mb-5 max-w-2xl text-[11.5px] text-[var(--ink-30)] leading-5">
-				Connections belong to a workspace — one business's payment account is
-				not another's. This is every one of them in{" "}
+				Connections belong to a workspace, one business's payment account is not
+				another's. This is every one of them in{" "}
 				{active?.name ?? "this organization"}, and whether it currently works.
 			</p>
 
@@ -98,7 +98,7 @@ function IntegrationsPage() {
 										{workspace.name}
 									</p>
 									{workspace.environment === "test" ? (
-										<span className="shrink-0 rounded-[3px] bg-[#f5a623]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[#f5b44a] uppercase tracking-[0.09em]">
+										<span className="shrink-0 rounded-[3px] bg-[var(--signal-attention)]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[var(--signal-attention-text)] uppercase tracking-[0.09em]">
 											Test
 										</span>
 									) : null}
@@ -114,8 +114,8 @@ function IntegrationsPage() {
 								    page. It cannot take a single payment, and nothing else about
 								    it being set up correctly changes that. */}
 								{connections.length === 0 ? (
-									<p className="mt-1.5 text-[11.5px] text-[#f5b44a]">
-										No payment provider connected — this workspace cannot take
+									<p className="mt-1.5 text-[11.5px] text-[var(--signal-attention-text)]">
+										No payment provider connected, this workspace cannot take
 										money.
 									</p>
 								) : (
@@ -131,8 +131,8 @@ function IntegrationsPage() {
 														aria-hidden="true"
 														className={`size-1.5 shrink-0 rounded-full ${
 															integration.connected
-																? "bg-[#3fb950]"
-																: "bg-[#f5b44a]"
+																? "bg-[var(--signal-success)]"
+																: "bg-[var(--signal-attention)]"
 														}`}
 													/>
 													<p className="text-[12px] text-[var(--ink-75)]">
@@ -145,7 +145,7 @@ function IntegrationsPage() {
 															: "connected, not default"}
 													</p>
 													{fault ? (
-														<p className="w-full text-[11px] text-[#f5b44a] leading-4">
+														<p className="w-full text-[11px] text-[var(--signal-attention-text)] leading-4">
 															{fault}
 														</p>
 													) : null}

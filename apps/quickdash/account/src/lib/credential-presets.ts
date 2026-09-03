@@ -27,7 +27,7 @@ export const credentialPresets: Record<CredentialPurpose, CredentialPreset> = {
 	"selling-storefront": {
 		label: "Storefront that sells",
 		description:
-			"Everything a public storefront can do, plus checkout. Safe in a browser because the server prices every order from your catalog — the site sends items and quantities, never amounts.",
+			"Everything a public storefront can do, plus checkout. Safe in a browser because the server prices every order from your catalog, the site sends items and quantities, never amounts.",
 		type: "storefront",
 		selectCapabilities: (available) =>
 			["catalog:read", "events:write", "checkout:write"].filter((item) =>

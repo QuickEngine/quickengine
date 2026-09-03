@@ -110,8 +110,8 @@ function UsagePage() {
 			{/* 🔴 The reason somebody opened this page, stated once at the top rather
 			    than left to be spotted in a list of six bars. */}
 			{pressing.length > 0 ? (
-				<div className="mb-6 rounded-lg border border-[#f5a623]/30 bg-[#f5a623]/[0.06] p-4">
-					<p className="text-[12px] text-[#f5b44a]">
+				<div className="mb-6 rounded-lg border border-[var(--signal-attention)]/30 bg-[var(--signal-attention)]/[0.06] p-4">
+					<p className="text-[12px] text-[var(--signal-attention-text)]">
 						{pressing.some((row) => row.state === "over")
 							? "You have passed a limit."
 							: "You are close to a limit."}
@@ -119,7 +119,8 @@ function UsagePage() {
 					<div className="mt-1.5 flex flex-col gap-0.5">
 						{pressing.map((row) => (
 							<p key={row.key} className="text-[11.5px] text-[var(--ink-45)]">
-								<span className="text-[var(--ink-75)]">{row.label}</span> —{" "}
+								<span className="text-[var(--ink-75)]">{row.label}</span>
+								{": "}
 								{row.consequence}
 							</p>
 						))}
@@ -143,9 +144,9 @@ function UsagePage() {
 							row.format === "bytes" ? bytes(value) : compact.format(value);
 						const tone =
 							row.state === "over"
-								? "text-[#ff6b6b]"
+								? "text-[var(--signal-failure-text)]"
 								: row.state === "warn"
-									? "text-[#f5b44a]"
+									? "text-[var(--signal-attention-text)]"
 									: "text-[var(--ink-85)]";
 						return (
 							<div key={row.key} className="py-3.5">
@@ -167,9 +168,9 @@ function UsagePage() {
 										<div
 											className={`h-full rounded-full transition-[width] duration-500 ${
 												row.state === "over"
-													? "bg-[#ff6b6b]"
+													? "bg-[var(--signal-failure)]"
 													: row.state === "warn"
-														? "bg-[#f5b44a]"
+														? "bg-[var(--signal-attention)]"
 														: "bg-[var(--ink-45)]"
 											}`}
 											style={{ width: `${Math.max(row.share * 100, 1)}%` }}

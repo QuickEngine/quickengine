@@ -126,7 +126,7 @@ function OnboardingPreview() {
 						</p>
 						<p className="mt-2 text-[12.5px] text-[var(--ink-35)] leading-5">
 							This decides what {name.trim() || "your workspace"} starts with.
-							Nothing is permanent — every part can be turned on or off later.
+							Nothing is permanent, every part can be turned on or off later.
 						</p>
 
 						<div className="mt-6 flex h-11 items-center gap-2 rounded-xl border border-[var(--console-line-strong)] px-4 transition-colors focus-within:border-[rgb(var(--console-ink)/0.2)]">
@@ -166,7 +166,7 @@ function OnboardingPreview() {
 							))}
 							{query.trim() && matches.length === 0 ? (
 								<p className="px-3 py-3 text-[12px] text-[var(--ink-30)] leading-5">
-									Nothing matches that. Pick whatever is closest — it only
+									Nothing matches that. Pick whatever is closest, it only
 									decides where you start.
 								</p>
 							) : null}
@@ -241,13 +241,13 @@ function OnboardingPreview() {
 						</p>
 						<p className="mt-2 text-[12.5px] text-[var(--ink-35)] leading-5">
 							QuickDash is where you run it. Your first job is waiting on the
-							home screen — one real thing, not a tour.
+							home screen: one real thing, not a tour.
 						</p>
 						<button type="button" className={`${primaryAction} mt-6`}>
 							Open QuickDash
 						</button>
 						<p className="mt-3 text-[11px] text-[var(--ink-25)] leading-4">
-							Preview — the live flow opens the workspace it just created.
+							Preview: the live flow opens the workspace it just created.
 						</p>
 					</div>
 				) : null}

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AdjustmentsView } from "../components/adjustments-view";
 import { CategoriesView } from "../components/categories-view";
 import { DiscountsView } from "../components/discounts-view";
@@ -82,7 +82,19 @@ function Page() {
 	if (module === "products-services" && section === "reviews") {
 		return <ReviewsView workspaceId={workspaceId} />;
 	}
-	return <main className="min-h-full bg-[var(--console-bg)]" />;
+	/**
+	 * 🔴 A 404, not a blank page.
+	 *
+	 * This returned an empty grey `<main>`, so `/orders/discounts` mistyped as
+	 * `/orders/discouts` painted nothing at all — no error, no explanation, the
+	 * chrome still there. Every reasonable person reads that as the console
+	 * being broken, and the 404 screen that exists to say otherwise was
+	 * unreachable by the commonest route to one: a typo.
+	 *
+	 * ⚠️ Unconditional here, unlike the module index. Sections are enumerated
+	 * above; a pair that is not in the list is not a page for anybody.
+	 */
+	throw notFound();
 }
 
 export const Route = createFileRoute("/$workspace/$module/$section")({

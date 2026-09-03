@@ -16,6 +16,7 @@ import {
 	SparkleIcon,
 	SquaresFourIcon,
 	SunIcon,
+	TerminalWindowIcon,
 } from "@phosphor-icons/react";
 import {
 	createContext,
@@ -69,7 +70,7 @@ const AnchorLink: ConsoleLink = ({ href, className, children }) => (
  * test-mode marker may never become. */
 export function SidebarBadge({ label }: { label: string }) {
 	return (
-		<span className="shrink-0 rounded-[3px] bg-[#f5a623]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[#f5b44a] uppercase tracking-[0.09em]">
+		<span className="shrink-0 rounded-[3px] bg-[color-mix(in_srgb,var(--signal-attention)_16%,transparent)] px-1.5 py-0.5 font-medium text-[9px] text-[var(--signal-attention-text)] uppercase tracking-[0.09em]">
 			{label}
 		</span>
 	);
@@ -228,7 +229,7 @@ export function SidebarName({
 									{notificationCount > 0 ? (
 										<span
 											aria-hidden="true"
-											className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[#ff3b3b] shadow-[0_0_0_1px_var(--console-panel)]"
+											className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[var(--signal-failure)] shadow-[0_0_0_1px_var(--console-panel)]"
 										/>
 									) : null}
 								</span>
@@ -485,7 +486,7 @@ export function ConsoleBell({
 						aria-hidden="true"
 						// ⚠️ Ringed in the surface it sits on, so the dot reads as raised
 						// off the bell rather than as part of the glyph.
-						className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[#ff3b3b] shadow-[0_0_0_1px_var(--console-bg)]"
+						className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[var(--signal-failure)] shadow-[0_0_0_1px_var(--console-bg)]"
 					/>
 				) : null}
 			</span>
@@ -579,9 +580,33 @@ export function ConsoleIntegrations({
 			{count > 0 ? (
 				<span
 					aria-hidden="true"
-					className="-right-1 -top-1 absolute size-2 rounded-full bg-[#3fb950] shadow-[0_0_0_2px_var(--console-bg)]"
+					className="-right-1 -top-1 absolute size-2 rounded-full bg-[var(--signal-success)] shadow-[0_0_0_2px_var(--console-bg)]"
 				/>
 			) : null}
+		</button>
+	);
+}
+
+/** The developer console, along the bottom. */
+export function ConsoleTerminal({
+	open,
+	onClick,
+}: {
+	open: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			aria-label="Developer console"
+			aria-pressed={open}
+			title="Developer console"
+			onClick={onClick}
+			className={`flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] transition-colors duration-150 hover:text-[var(--ink-90)] active:translate-y-px ${
+				open ? "text-[var(--ink-90)]" : "text-[var(--ink-40)]"
+			}`}
+		>
+			<TerminalWindowIcon size={15} />
 		</button>
 	);
 }
@@ -938,7 +963,17 @@ const AIDE_KEY = "quickengine-console-aide";
  */
 const TOOLS_DEFAULT = 224;
 const TOOLS_MIN = 120;
-const TOOLS_MAX = 520;
+/**
+ * ⚠️ Raised from 520 for the developer console.
+ *
+ * 520px is right for a strip of widgets and useless for a webhook payload —
+ * you drag it as tall as it goes and still cannot read a body. 78% of the
+ * window lets it become a real reading surface and drag back down to a
+ * two-line stream, which is the whole point of it being resizable.
+ */
+const TOOLS_MAX = Math.round(
+	(typeof window === "undefined" ? 1200 : window.innerHeight) * 0.78,
+);
 const TOOLS_KEY = "quickengine-console-tools";
 
 export function ConsoleShell({

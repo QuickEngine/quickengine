@@ -102,7 +102,9 @@ function NewWorkspacePage() {
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<div className="max-w-xl">
 				{failure ? (
-					<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+					<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+						{failure}
+					</p>
 				) : null}
 
 				<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">
@@ -183,7 +185,7 @@ function NewWorkspacePage() {
 								))}
 								{query.trim() && matches.length === 0 ? (
 									<p className="px-2 py-3 text-[11.5px] text-[var(--ink-30)] leading-5">
-										Nothing matches that. Pick the closest one — the modules are
+										Nothing matches that. Pick the closest one, the modules are
 										a starting point, not a commitment.
 									</p>
 								) : null}

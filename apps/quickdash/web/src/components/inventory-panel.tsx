@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useOnline } from "../lib/online";
 import {
 	Block,
 	BlockEmpty,
@@ -8,6 +9,7 @@ import {
 	DetailPanel,
 	Fact,
 } from "./detail-panel";
+import { WriteFailure } from "./page-state";
 import { Choice, Text } from "./product-fields";
 
 /**
@@ -64,7 +66,18 @@ export function InventoryPanel({
 }) {
 	const queryClient = useQueryClient();
 	const [threshold, setThreshold] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [movement, setMovement] = useState<string>("receive");
 	const [quantity, setQuantity] = useState("");
 	const [note, setNote] = useState("");
@@ -94,6 +107,7 @@ export function InventoryPanel({
 		if (item.data) setThreshold(String(item.data.lowStockThreshold));
 	}, [item.data?.id, item.data?.lowStockThreshold]);
 
+	const online = useOnline();
 	const save = useMutation({
 		mutationFn: async () => {
 			const value = Number(threshold.trim());
@@ -108,7 +122,7 @@ export function InventoryPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That did not save."),
+			setFailure({ error: error, fallback: "That did not save." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "inventory"],
@@ -145,7 +159,7 @@ export function InventoryPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That movement did not save."),
+			setFailure({ error: error, fallback: "That movement did not save." }),
 		onSuccess: () => {
 			setQuantity("");
 			setNote("");
@@ -169,17 +183,19 @@ export function InventoryPanel({
 			footer={
 				<>
 					{failure ? (
-						<p className="mb-2 text-[11.5px] text-[var(--signal-failure)]">
-							{failure}
-						</p>
+						<WriteFailure error={failure.error} message={failure.fallback} />
 					) : null}
 					<button
 						type="button"
-						disabled={save.isPending || !data}
+						disabled={save.isPending || !online || !data}
 						onClick={() => save.mutate()}
 						className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 					>
-						{save.isPending ? "Saving…" : "Save"}
+						{!online
+							? "Waiting for a connection…"
+							: save.isPending
+								? "Saving…"
+								: "Save"}
 					</button>
 				</>
 			}

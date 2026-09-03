@@ -73,7 +73,18 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [name, setName] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const projects = useQuery({
 		queryKey: ["quickdash", workspaceId, "projects"],
@@ -100,7 +111,10 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That project could not be created."),
+			setFailure({
+				error: error,
+				fallback: "That project could not be created.",
+			}),
 		onSuccess: () => {
 			setCreating(false);
 			setName("");
@@ -126,7 +140,7 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be archived."),
+			setFailure({ error: error, fallback: "That could not be archived." }),
 		onSuccess: refresh,
 	});
 
@@ -152,6 +166,7 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => setStatuses([])}
 				exportRows={() => projects.data?.items ?? []}
 				exportName="projects"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
@@ -182,7 +197,9 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={projects}
@@ -269,7 +286,7 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 											<span
 												className={`text-[11px] ${
 													isOverdue(project)
-														? "text-[var(--signal-attention)]"
+														? "text-[var(--signal-attention-text)]"
 														: "text-[var(--ink-30)]"
 												}`}
 											>

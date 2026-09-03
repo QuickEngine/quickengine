@@ -737,3 +737,135 @@ body {
 		font-size: 16px;
 	}
 }
+
+/* ══ Signals and elevation ═══════════════════════════════════════════════════
+   🔴 These live HERE, in the shared theme, and nowhere else.
+
+   They were authored in `apps/quickdash/web/src/styles.css` and the account
+   app quietly kept its own copy: dark values only, no light overrides, no text
+   variants, no `--signal-success`. So a light-mode fix landed in one console
+   and not the other, and 77 hardcoded hexes sat behind the gap.
+
+   That is the same shape as the TOTP bug — the same logic in two apps with
+   nothing linking them, where fixing one leaves the other broken and only CI
+   notices. Both apps already import this file. Define a signal once.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Signals ─────────────────────────────────────────────────────────────────
+   Colour carries MEANING here, not decoration, so each has exactly one job:
+
+   · news      — something new for you. An unread message, a new order. Nothing
+                 is wrong; there is simply something you have not seen.
+   · attention — something is wrong or at risk. Overdue, low stock, expired, a
+                 zone that cannot quote.
+   · failure   — something failed or is destructive. A declined payment, a
+                 dispute.
+   · success   — 🔑 TOASTS ONLY, and it is not in the stored enum on purpose.
+                 It means "the thing you just did worked". That is a receipt for
+                 an action you watched happen, never news, so it must never
+                 reach the bell — see `ToastSignal` in `components/toast.tsx`.
+
+   ⚠️ Reaching for "the nearest colour that stands out" is how an unread message
+   ends up looking like an overdue invoice. If a new signal does not fit one of
+   these four, the signal is probably wrong, not the palette. */
+:root {
+	--signal-news: #4d8df6;
+	/* On. A toggle drawn in two shades of the same grey states its position
+	   without stating its meaning: both read as "a control", neither as "this is
+	   running". Green is the one colour that needs no legend. Muted rather than
+	   vivid, because a settings page full of switches should not look like a
+	   mixing desk. */
+	--signal-on: #3f9a6a;
+	/* Your own action, and it worked. 🔑 Deliberately NOT `--signal-on`, which
+	   is a switch position rather than an event: a row of green toggles and a
+	   green toast that just appeared are different claims, and drawing them in
+	   the same green makes the toast read as state instead of as news of a
+	   change. Brighter, because this one has to carry against the toast ground
+	   for four seconds and then leave. */
+	--signal-success: #45b37a;
+	--signal-attention: #f5b44a;
+	--signal-failure: #ff6b6b;
+
+	/* ── The same four, for TEXT ────────────────────────────────────────────
+	   🔴 A dot and a sentence need different colours, and only on paper.
+
+	   On a near-black card a light hue is both a vivid mark AND readable text,
+	   so one value did both jobs and nobody noticed there were two. On white
+	   they pull apart: the colour vivid enough for a 6px dot is too pale for
+	   11px type, and the colour dark enough to read is a muddy dot. Trying to
+	   split the difference is what made light mode look dim — every mark was
+	   wearing the text colour.
+
+	   Dark keeps one value for both. Light overrides only the text pair. */
+	--signal-news-text: var(--signal-news);
+	--signal-success-text: var(--signal-success);
+	--signal-attention-text: var(--signal-attention);
+	--signal-failure-text: var(--signal-failure);
+
+	/* ── Real elevation ─────────────────────────────────────────────────────
+	   🔴 `--card-lift` is a 2px shadow. That is right for a tile sitting flat
+	   on a page and useless for a panel: at 400px wide a 2px drop is invisible,
+	   so a "raised" container read as a rectangle with a border.
+
+	   These are the two steps that actually cast. `--lift-panel` is the
+	   container; `--lift-card` is what sits INSIDE it and must still separate
+	   from it. Both carry a top inset highlight, which is what sells a raised
+	   edge more than the drop shadow does.
+
+	   ⚠️ Surfaces come with them. A shadow alone cannot lift something off a
+	   surface of its own colour, which is exactly the trap the picker fell
+	   into: dark had a ramp, light had `--console-card` and `--console-pop`
+	   both at #ffffff and no step at all. */
+	--surface-panel: #121212;
+	--surface-card: #1a1a1a;
+	--lift-panel:
+		0 1px 0 0 rgb(255 255 255 / 0.045) inset,
+		0 16px 36px -14px rgb(0 0 0 / 0.8), 0 4px 12px -6px rgb(0 0 0 / 0.55);
+	--lift-card:
+		0 1px 0 0 rgb(255 255 255 / 0.06) inset, 0 8px 18px -8px rgb(0 0 0 / 0.65),
+		0 2px 6px -3px rgb(0 0 0 / 0.5);
+}
+
+:root.light {
+	/* 🔴 Targets `.light`, not `:not(.dark)`. The theme provider toggles BOTH
+	   classes on <html>, so naming the one we mean removes any question about
+	   which block wins.
+
+	   ⚠️ Second attempt at these values. The first darkened the dark-mode hues
+	   for contrast and produced mud — the amber came out brown, the green
+	   olive. Contrast is not the only requirement: the colour still has to read
+	   as the thing it means. These are the standard 600 steps, which clear
+	   4.5:1 on white while staying recognisably amber and red. */
+	/* Marks — dots, icons, chips, borders. These carry no words, so they are
+	   free to be as saturated as the dark-mode ones look. */
+	--signal-news: #3b82f6;
+	--signal-success: #22c55e;
+	--signal-attention: #f59e0b;
+	--signal-failure: #ef4444;
+
+	/* Text — the same hues, taken down until 11px type is comfortably readable
+	   on white. Never used for a dot: that is what made everything look dim. */
+	--signal-news-text: #1d4ed8;
+	--signal-success-text: #15803d;
+	--signal-attention-text: #b45309;
+	--signal-failure-text: #b91c1c;
+
+	/* The same three steps, the other way up: the floor is tinted and each
+	   step climbs toward white, so a card is the lightest thing on the page. */
+	--surface-panel: #f7f7f9;
+	--surface-card: #ffffff;
+
+	/* 🔑 Light shadows are LAYERED and wide, never one dark blur.
+	   A single strong shadow on white reads as a grey slab behind the card and
+	   its own edges become visible — which is why a rounded toast looked like
+	   it had square corners. Three stacked shadows at low alpha, each wider and
+	   fainter than the last, fall off the way a real one does. */
+	--lift-panel:
+		0 1px 0 0 rgb(255 255 255 / 1) inset, 0 1px 2px 0 rgb(24 24 27 / 0.06),
+		0 6px 12px -4px rgb(24 24 27 / 0.08),
+		0 20px 36px -12px rgb(24 24 27 / 0.12);
+	--lift-card:
+		0 1px 0 0 rgb(255 255 255 / 1) inset, 0 1px 2px 0 rgb(24 24 27 / 0.07),
+		0 4px 10px -3px rgb(24 24 27 / 0.09),
+		0 12px 24px -8px rgb(24 24 27 / 0.13);
+}

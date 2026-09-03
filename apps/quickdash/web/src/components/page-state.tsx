@@ -4,10 +4,17 @@ import {
 } from "@quickengine/ui";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { clientEnv } from "../lib/env";
+import { TRANSIENT_TOAST } from "../lib/transient-toast";
+import { EnvironmentWall } from "./environment-wall";
+import { ContactSupport, GoBack } from "./error-actions";
 import { useDeclareTakeover } from "./header-action";
+import { NoAccess } from "./no-access";
+import { ErrorCard, OutletNotFound, RequestIdInline } from "./outlet-error";
+import { PlanWall } from "./plan-wall";
 import { SkeletonPanel, SkeletonRows } from "./skeletons";
+import { useToast } from "./toast";
 
 /**
  * Loading, failure and emptiness, decided once for every module page.
@@ -55,7 +62,30 @@ export function PageState<TData>({
 	// Development-only review switch; compiled away in production. Placed first
 	// so it wins over a query that has already succeeded — otherwise a page with
 	// cached data could never be made to show its failure state.
-	const forced = forcedFailure();
+	/**
+	 * `?after=3` holds the forced failure back for three seconds, so the page
+	 * LOADS and then breaks.
+	 *
+	 * 🔑 Without it a forced failure fires on the first render, which only ever
+	 * demonstrates "this page could not load". The interesting case is the
+	 * opposite and cannot otherwise be staged: data already on screen, a
+	 * background refetch fails, and what happens to the rows somebody is in the
+	 * middle of reading.
+	 */
+	const [armed, setArmed] = useState(() => {
+		if (!import.meta.env.DEV) return true;
+		return !new URLSearchParams(window.location.search).get("after");
+	});
+	useEffect(() => {
+		if (armed || !import.meta.env.DEV) return;
+		const wait = Number(
+			new URLSearchParams(window.location.search).get("after") ?? 0,
+		);
+		const timer = setTimeout(() => setArmed(true), wait * 1000);
+		return () => clearTimeout(timer);
+	}, [armed]);
+
+	const forced = armed ? forcedFailure() : null;
 	const failure = forced ?? (query.isError ? query.error : null);
 
 	/**
@@ -65,7 +95,34 @@ export function PageState<TData>({
 	 * its behalf would strip the list's search and filters because the thing you
 	 * clicked has gone. Panels identify themselves with `skeleton="panel"`.
 	 */
-	const takesOver = skeleton !== "panel" && isTakeoverFailure(failure);
+	/**
+	 * 🔴 STALE: a failure with good data already in hand.
+	 *
+	 * TanStack keeps the last successful `data` when a refetch fails, and this
+	 * checked `isError` before it checked whether there was anything to show.
+	 * So a background poll failing REPLACED the list somebody was reading:
+	 * forty-seven rows, the scroll position, the selection and any open panel,
+	 * all thrown away because one request did not come back. The data was still
+	 * sitting there the whole time.
+	 *
+	 * Old is not the same as gone. The rows were true a minute ago and are
+	 * almost certainly true now, so they stay, with a line saying they may have
+	 * moved on and a way to try again.
+	 *
+	 * ⚠️ TWO failures still take over, because they make what is on screen
+	 * WRONG rather than merely old: a dead session (every number came from a
+	 * login that no longer exists) and a permission loss (you are not entitled
+	 * to be reading this at all).
+	 */
+	const kindOf = failure ? presentRequestError(failure).kind : null;
+	const stale =
+		Boolean(failure) &&
+		query.data !== undefined &&
+		kindOf !== "authentication" &&
+		kindOf !== "permission";
+
+	const takesOver =
+		!stale && skeleton !== "panel" && isTakeoverFailure(failure);
 	useDeclareTakeover(takesOver);
 
 	// `isPending && !data` rather than `isPending`: a query holding placeholder
@@ -85,6 +142,20 @@ export function PageState<TData>({
 		);
 	}
 
+	if (stale && query.data !== undefined) {
+		return (
+			<>
+				<StaleNotice
+					error={failure}
+					onRetry={() => {
+						void query.refetch();
+					}}
+				/>
+				{children(query.data)}
+			</>
+		);
+	}
+
 	if (failure) {
 		/**
 		 * 🔴 A dead session invalidates the WHOLE console, not this page.
@@ -100,23 +171,84 @@ export function PageState<TData>({
 		 * throwing somebody out of the dashboard over a bad address is worse than
 		 * the address being bad.
 		 */
-		const kind = presentRequestError(failure).kind;
+		const it = presentRequestError(failure);
+		const kind = it.kind;
 		if (kind === "authentication") return <SessionEnded />;
 		/**
-		 * 🔴 A fault in the API, or no API at all, takes the whole screen.
+		 * 🔴 Neither a server fault nor an offline blip takes the screen.
+		 * Reversed 2026-09-03.
 		 *
-		 * Neither is a property of THIS page: if the server is failing or
-		 * unreachable, the sidebar counts are stale, the bell is stale, and every
-		 * other page would fail identically. Leaving somebody inside a console
-		 * that looks operable invites them to try five more pages and meet the
-		 * same wall five more times.
+		 * The old reasoning — "if the API is failing, every page fails, so take
+		 * the screen" — is wrong about both. A 500 is usually one route
+		 * throwing, not the API being down; orders can fail while products and
+		 * settings are fine. And going offline for four seconds on a train wiped
+		 * the page somebody was reading, when nothing was broken at all.
 		 *
-		 * ⚠️ Retry is the action, not sign-in — nothing is wrong with the session.
+		 * A server fault takes over the PAGE (see `isTakeoverFailure`): its
+		 * search and buttons stand down because there is nothing to operate on,
+		 * while the sidebar stays and you can navigate away.
+		 *
+		 * 🔑 Offline does not even do that. It is a property of the WINDOW, not
+		 * this page — the rows already on screen are still true — so it reports
+		 * itself as one inline line and `ConnectionBanner` says the rest. Two
+		 * places, because the line explains why THIS list is stale and the
+		 * banner explains why everything is.
 		 */
-		if (kind === "server" || kind === "network") {
+		/**
+		 * 🔑 The TRANSIENT failures, and the only two that heal themselves.
+		 *
+		 * Offline and rate-limited share the shape that matters: nothing is
+		 * broken, nobody has to decide anything, and the identical request will
+		 * succeed shortly. Both used to get a whole screen or a whole card —
+		 * treating "wait two seconds" like "this is gone". One line, the page
+		 * intact around it, and the rows already loaded still readable.
+		 *
+		 * ⚠️ A 429 should really RETRY ITSELF on the server's `Retry-After`
+		 * rather than asking a person to press a button on its behalf. That
+		 * needs the header carried through `presentRequestError`, which does not
+		 * expose it yet — recorded rather than bodged.
+		 */
+		/**
+		 * 🔴 A plan limit is an OFFER, not a fault.
+		 *
+		 * This rendered the error card: a refusal, a request id, and a Try again
+		 * that could not work. So the console answered a customer asking to use
+		 * MORE of the product — the most welcome sentence a business can hear —
+		 * with an apology and a dead end.
+		 */
+		if (kind === "plan-limit") return <PlanWall detail={it.message} />;
+
+		/**
+		 * 🔴 THE RULE: if the page keeps its controls, the failure is INLINE.
+		 *
+		 * Everything that does not take the page over still has its search box,
+		 * its filters and its create button sitting right there — and a big
+		 * centred card underneath a live toolbar is neither the page nor a
+		 * replacement for it. It reads as a dialog somebody forgot to finish.
+		 *
+		 * These four all leave the page usable:
+		 *   · network     — the wifi blinked; the rows on screen are still true
+		 *   · rate-limit  — wait a second and the same request works
+		 *   · conflict    — what you have is stale, so refresh and retry
+		 *   · invalid     — ONE request was refused; the page is fine
+		 *   · timeout     — it ran out of time, or a dependency is busy; both
+		 *                   heal themselves, so retrying is the whole answer
+		 *
+		 * So they get one line where the list would be, and the toolbar above it
+		 * still means something. The card is for the states that took the page
+		 * away — 404, 403, 500, a plan limit, a module switched off — where
+		 * there is no toolbar left to sit under.
+		 */
+		if (
+			kind === "network" ||
+			kind === "rate-limit" ||
+			kind === "conflict" ||
+			kind === "invalid" ||
+			kind === "timeout"
+		) {
 			return (
-				<FullPageFailure
-					failure={failure}
+				<FailureStatusLine
+					error={failure}
 					onRetry={() => {
 						void query.refetch();
 					}}
@@ -132,7 +264,15 @@ export function PageState<TData>({
 		 * somebody who does gets a path instead of a dead end.
 		 */
 		if (isModuleDisabled(failure)) return <ModuleDisabled />;
-		if (takesOver) return <OutletWall failure={failure} />;
+		if (takesOver)
+			return (
+				<OutletWall
+					failure={failure}
+					onRetry={() => {
+						void query.refetch();
+					}}
+				/>
+			);
 		return (
 			<RequestFailure
 				error={failure}
@@ -211,7 +351,23 @@ export function RequestFailure({
  * nothing is broken: the thing simply is not there.
  */
 function toneOf(kind: RequestErrorPresentation["kind"]): string {
-	if (kind === "network" || kind === "server") return "var(--signal-failure)";
+	/**
+	 * 🔴 Offline is AMBER. Not red, not blue.
+	 *
+	 * Not red, because nothing has broken and nobody is at fault — the machine
+	 * lost its network and will get it back, usually in seconds. Red is the
+	 * loudest thing this console can say and it belongs to a payment that
+	 * failed or a fault in our own system; spending it on a train tunnel is how
+	 * people learn to ignore red.
+	 *
+	 * Not blue either, because blue means "here is something you may want to
+	 * know" and this is not optional information — anything typed while it is
+	 * showing will not save. Something is at risk, which is exactly what amber
+	 * is for.
+	 */
+	if (kind === "network" || kind === "timeout" || kind === "environment")
+		return "var(--signal-attention)";
+	if (kind === "server") return "var(--signal-failure)";
 	if (kind === "not-found") return "var(--ink-30)";
 	// 🔑 A plan limit is an offer, so it takes the calm informational colour
 	// rather than the warning one. Amber here would make buying something feel
@@ -264,11 +420,7 @@ export function FailureRow({ error, onRetry }: FailureProps) {
 				<span className="min-w-0 flex-1 truncate text-[11.5px] text-[var(--ink-40)]">
 					{it.message}
 				</span>
-				{it.requestId ? (
-					<code className="hidden shrink-0 font-mono text-[10.5px] text-[var(--ink-25)] lg:block">
-						{it.requestId.slice(0, 8)}
-					</code>
-				) : null}
+				{it.requestId ? <RequestIdInline id={it.requestId} /> : null}
 				{onRetry ? (
 					<button
 						type="button"
@@ -306,11 +458,7 @@ export function FailureSentence({ error, onRetry }: FailureProps) {
 						Try again
 					</button>
 				) : null}
-				{it.requestId ? (
-					<span className="ml-2 font-mono text-[10.5px] text-[var(--ink-25)]">
-						{it.requestId.slice(0, 8)}
-					</span>
-				) : null}
+				{it.requestId ? <RequestIdInline id={it.requestId} /> : null}
 			</p>
 		</div>
 	);
@@ -325,33 +473,79 @@ export function FailureSentence({ error, onRetry }: FailureProps) {
  */
 export function FailureStatusLine({ error, onRetry }: FailureProps) {
 	const it = presentRequestError(error);
+	const toast = useToast();
+
+	/**
+	 * 🔑 A transient failure says it TWICE, in two different registers.
+	 *
+	 * The line explains why this list is stale. The toast explains that the
+	 * problem is bigger than this list — a throttle applies to the whole
+	 * account, so the next page will do the same thing, and somebody who
+	 * navigates away needs to know that before they blame the next screen.
+	 *
+	 * 🔴 The rule that decides who gets a toast: the fact is bigger than the
+	 * page. A 404, a 500 or a 403 is about the page in front of you and the page
+	 * is already saying it — toasting as well is the console repeating itself in
+	 * the corner.
+	 *
+	 * ⚠️ A fixed id, so a screen running five queries against a throttled API
+	 * raises one notice rather than five identical ones.
+	 *
+	 * ⚠️ Offline is toasted from BOTH here and `ConnectionBanner`, under one
+	 * shared id, so they collapse rather than duplicate. The banner is what
+	 * clears it — a failed query only ever sees the failure, never the recovery.
+	 */
+	const kind = it.kind;
+	useEffect(() => {
+		if (kind === "rate-limit") {
+			toast.show({
+				id: TRANSIENT_TOAST.rateLimit,
+				signal: "attention",
+				title: "Slow down a moment",
+				body: "QuickDash is throttling requests from this account. It will clear on its own.",
+			});
+		}
+		if (kind === "network") {
+			toast.show({
+				// 🔑 The SAME id `ConnectionBanner` uses. Both notice the same
+				// disconnect — one from the window's event, one from a request that
+				// did not come back — and sharing the id means they collapse into a
+				// single toast instead of two saying the same thing. It also lets
+				// the banner dismiss this one the moment the connection returns,
+				// which a failed query could never do on its own.
+				id: TRANSIENT_TOAST.offline,
+				// Amber. See `toneOf`: not a failure, but not merely news either —
+				// nothing typed while it shows will save.
+				signal: "attention",
+				title: "You’re offline",
+				body: "Changes won’t save until you reconnect.",
+			});
+		}
+	}, [kind, toast]);
+
 	return (
+		/* 🔴 No monospace. This was a status code, a request id and a lowercase
+		   "retry" all in mono, which reads as a terminal transcript pasted into
+		   the console — a different typeface saying a different product. The
+		   console has one voice; a failure does not get to speak in another.
+		   The status code is gone with it, for the same reason it left the error
+		   card: it names nothing the sentence beside it does not. */
 		<div
 			role="alert"
-			className="flex h-9 items-center gap-3 rounded-lg bg-[rgb(var(--console-ink)/0.035)] px-2.5"
+			className="flex h-9 items-center gap-2.5 rounded-lg bg-[rgb(var(--console-ink)/0.035)] px-3"
 		>
 			<Dot tone={toneOf(it.kind)} />
-			<code
-				className="shrink-0 font-mono text-[11px]"
-				style={{ color: toneOf(it.kind) }}
-			>
-				{it.code}
-			</code>
-			<span className="min-w-0 flex-1 truncate text-[11.5px] text-[var(--ink-50)]">
+			<span className="min-w-0 flex-1 truncate text-[11.5px] text-[var(--ink-60)]">
 				{it.message}
 			</span>
-			{it.requestId ? (
-				<code className="hidden shrink-0 font-mono text-[10.5px] text-[var(--ink-25)] md:block">
-					{it.requestId}
-				</code>
-			) : null}
+			{it.requestId ? <RequestIdInline id={it.requestId} /> : null}
 			{onRetry ? (
 				<button
 					type="button"
 					onClick={onRetry}
-					className="shrink-0 font-mono text-[11px] text-[var(--ink-50)] transition-colors hover:text-[var(--ink-90)]"
+					className="-mr-1 shrink-0 rounded-md px-2 py-1 text-[11.5px] text-[var(--ink-50)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)]"
 				>
-					retry
+					Retry
 				</button>
 			) : null}
 		</div>
@@ -371,37 +565,31 @@ export function FailureStatusLine({ error, onRetry }: FailureProps) {
 export function FailurePanel({ error, onRetry }: FailureProps) {
 	const it = presentRequestError(error);
 	return (
-		<div
-			role="alert"
-			className="rounded-xl border border-[var(--console-line-soft)] px-4 py-8 text-center"
-		>
-			<p className="flex items-center justify-center gap-2 text-[12.5px] text-[var(--ink-60)]">
-				<span
-					aria-hidden="true"
-					className="size-1.5 shrink-0 rounded-full"
-					style={{ background: toneOf(it.kind) }}
-				/>
-				{it.title}
-			</p>
-			<p className="mx-auto mt-1 max-w-sm text-[11.5px] text-[var(--ink-30)] leading-5">
-				{it.message}
-			</p>
-			{onRetry ? (
-				<div className="mt-3">
-					<button
-						type="button"
-						onClick={onRetry}
-						className="inline-flex h-8 items-center rounded-full border border-[var(--console-line-strong)] px-3.5 text-[12px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
-					>
-						Try again
-					</button>
-				</div>
-			) : null}
-			{it.requestId ? (
-				<p className="mt-3 font-mono text-[10.5px] text-[var(--ink-25)]">
-					{it.requestId}
-				</p>
-			) : null}
+		/* 🔑 The SAME card the route boundary uses, in the space the list would
+		   have filled. It used to be a bordered box with centred grey text, a
+		   pill button and a bare request id sitting underneath like a footnote —
+		   a different design for the same fault, and the one people actually
+		   meet. One card, two entry points. */
+		<div role="alert" className="flex justify-center py-6">
+			<ErrorCard
+				title={it.title}
+				detail={it.message}
+				requestId={it.requestId}
+				action={
+					onRetry ? (
+						<button
+							type="button"
+							onClick={onRetry}
+							/* The console's rectangular primary: 32px, 6px radius, ink
+							   fill. The pill it used to be belonged to no other button
+							   in QuickDash. */
+							className="inline-flex h-8 items-center rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] transition-opacity hover:opacity-90"
+						>
+							Try again
+						</button>
+					) : null
+				}
+			/>
 		</div>
 	);
 }
@@ -461,6 +649,20 @@ export function forcedFailure(): unknown {
 	if (!asked) return null;
 	if (asked === "offline") return new TypeError("Failed to fetch");
 	if (asked === "disabled") return { code: "MODULE_DISABLED" };
+	// Environment refusals are matched on their CODE, not a status, so they
+	// cannot be reached by number like the rest.
+	if (asked === "locked")
+		return Object.assign(new Error("ENVIRONMENT_LOCKED"), {
+			status: 409,
+			code: "ENVIRONMENT_LOCKED",
+			requestId: "3f2b91c4-8d17-4a6e-9c05-1b7e2d4a8f60",
+		});
+	if (asked === "mode")
+		return Object.assign(new Error("ENVIRONMENT_MISMATCH"), {
+			status: 409,
+			code: "ENVIRONMENT_MISMATCH",
+			requestId: "3f2b91c4-8d17-4a6e-9c05-1b7e2d4a8f60",
+		});
 	const status = Number(asked);
 	if (!Number.isFinite(status)) return null;
 	return Object.assign(new Error(`HTTP ${status}`), {
@@ -540,14 +742,12 @@ export function rowBusy(
  * in. This keeps the console's own background and its own left edge.
  */
 export function FullPageWall({
-	code,
 	title,
 	detail,
 	action,
 	requestId,
 	tone = "var(--ink-30)",
 }: {
-	code: string;
 	title: string;
 	detail: string;
 	action?: ReactNode;
@@ -570,7 +770,6 @@ export function FullPageWall({
 		 */
 		<main className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-y-auto bg-[var(--console-bg)] px-8">
 			<Wall
-				code={code}
 				tone={tone}
 				title={title}
 				detail={detail}
@@ -582,14 +781,12 @@ export function FullPageWall({
 }
 
 function Wall({
-	code,
 	tone,
 	title,
 	detail,
 	action,
 	requestId,
 }: {
-	code: string;
 	tone: string;
 	title: string;
 	detail: string;
@@ -607,18 +804,23 @@ function Wall({
 			role="alert"
 			className="flex min-h-[52vh] flex-col items-center justify-center text-center"
 		>
-			<code className="font-mono text-[11px] lowercase" style={{ color: tone }}>
-				{code}
-			</code>
-			<h2 className="mt-2.5 text-[15px] text-[var(--ink-90)]">{title}</h2>
+			{/* The dot carries the tone; the code was a mono string doing the same
+			    job in a typeface the console does not otherwise use. */}
+			<span
+				aria-hidden="true"
+				className="size-1.5 rounded-full"
+				style={{ background: tone }}
+			/>
+			<h2 className="mt-3 text-[15px] text-[var(--ink-90)]">{title}</h2>
 			<p className="mt-1.5 max-w-sm text-[12px] text-[var(--ink-45)] leading-6">
 				{detail}
 			</p>
 			{action ? <div className="mt-5">{action}</div> : null}
+			{/* Copyable, like every other request id. See `RequestIdInline`. */}
 			{requestId ? (
-				<p className="mt-7 font-mono text-[10.5px] text-[var(--ink-25)]">
-					{requestId}
-				</p>
+				<div className="mt-7">
+					<RequestIdInline id={requestId} />
+				</div>
 			) : null}
 		</div>
 	);
@@ -640,21 +842,38 @@ function SessionEnded() {
 		window.location.assign(target.toString());
 	};
 	return (
-		<FullPageWall
-			code="signed out"
-			tone="var(--signal-attention)"
-			title="Your session ended"
-			detail="You have been signed out, so nothing on this page is current any more. Sign in again and you will come straight back here."
-			action={
-				<button
-					type="button"
-					onClick={back}
-					className="inline-flex h-9 items-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85"
-				>
-					Sign in again
-				</button>
-			}
-		/>
+		/**
+		 * 🔑 The ONE error that is genuinely a modal.
+		 *
+		 * Everywhere else a dialog is wrong because the page behind it never
+		 * loaded — there is nothing to return to. Here the console behind IS
+		 * rendered: the sidebar, the counts, the rows, all of it drawn from a
+		 * session that has stopped existing. It is not missing, it is STALE, and
+		 * stale is the one thing a person cannot tell by looking.
+		 *
+		 * So it blocks rather than replaces, and the blur says why: everything
+		 * behind this is a photograph of a minute ago. Nothing back there can be
+		 * clicked, because every click would fail the same way.
+		 */
+		<div
+			role="dialog"
+			aria-modal="true"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-[rgb(0_0_0/0.35)] px-5 backdrop-blur-[3px]"
+		>
+			<ErrorCard
+				title="Your session ended"
+				detail="You have been signed out, so nothing on this page is current any more. Sign in again and you will come straight back here."
+				action={
+					<button
+						type="button"
+						onClick={back}
+						className="inline-flex h-8 items-center rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] transition-opacity hover:opacity-90"
+					>
+						Sign in again
+					</button>
+				}
+			/>
+		</div>
 	);
 }
 
@@ -671,11 +890,31 @@ function SessionEnded() {
  *
  * A 404 is the mild one and belongs here, because there is no list to search.
  */
+/**
+ * Whether the page has nothing left to operate on.
+ *
+ * 🔑 A takeover withdraws the PAGE's own controls — search, filters, Export,
+ * the create button — while leaving the console shell alone. That is the honest
+ * shape for these four: searching a list that could not load, or filtering one
+ * that does not exist, are offers the page cannot keep.
+ *
+ * 🔴 `server` added 2026-09-03. A 500 left the toolbar sitting above an error
+ * card, so the page invited you to search and filter nothing. It blocks the
+ * page, not the console: the sidebar stays, and navigating away still works.
+ *
+ * ⚠️ Callers pass `skeleton="panel"` to opt out. A detail panel that 404s has
+ * lost one record, not the list behind it.
+ */
 function isTakeoverFailure(error: unknown): boolean {
 	if (!error) return false;
 	if (isModuleDisabled(error)) return true;
 	const kind = presentRequestError(error).kind;
-	return kind === "not-found" || kind === "permission";
+	return (
+		kind === "not-found" ||
+		kind === "permission" ||
+		kind === "server" ||
+		kind === "environment"
+	);
 }
 
 /**
@@ -686,27 +925,81 @@ function isTakeoverFailure(error: unknown): boolean {
  * dashboard over a bad address is worse than the address being bad. Contrast
  * `FullPageWall`, used when the session itself is gone.
  */
-function OutletWall({ failure }: { failure: unknown }) {
+function OutletWall({
+	failure,
+	onRetry,
+}: {
+	failure: unknown;
+	onRetry?: () => void;
+}) {
 	const it = presentRequestError(failure);
+	const kind = it.kind;
+
+	/**
+	 * 🔴 ONE 404 in this console, whichever way you reach it.
+	 *
+	 * A mistyped address and a record that has been deleted are the same fact to
+	 * the person reading, but they arrive by different routes — the router's
+	 * not-found boundary, and a query answering 404 — and each had grown its own
+	 * screen. One showed the address you tried, a ⌘K hint and Back to Home; the
+	 * other said "Go back" and nothing else. Rendering the real component here
+	 * makes divergence impossible rather than merely discouraged.
+	 */
+	if (kind === "not-found") return <OutletNotFound />;
+
+	/**
+	 * The only error whose way out is a SWITCH. See `EnvironmentWall`.
+	 */
+	if (kind === "environment") {
+		return (
+			<div className="flex min-h-full items-center justify-center px-5 py-16">
+				<EnvironmentWall detail={it.message} title={it.title} />
+			</div>
+		);
+	}
+
+	/**
+	 * Permission gets its own card, because it is the one refusal with a person
+	 * on the other end of it. See `NoAccess`.
+	 */
+	if (kind === "permission") {
+		return (
+			<div className="flex min-h-full items-center justify-center px-5 py-16">
+				<NoAccess detail={it.message} action={<GoBack />} />
+			</div>
+		);
+	}
+
 	return (
-		<Wall
-			code={it.code}
-			tone={toneOf(it.kind)}
-			title={it.title}
-			detail={it.message}
-			requestId={it.requestId}
-			action={
-				// 🔴 Only the action that can actually help. "Try again" on a 403
-				// invites somebody to press a button that cannot succeed.
-				<button
-					type="button"
-					onClick={() => window.history.back()}
-					className="inline-flex h-9 items-center rounded-full border border-[var(--console-line-strong)] px-4 text-[12.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
-				>
-					Go back
-				</button>
-			}
-		/>
+		/* 🔴 The SAME `ErrorCard` as everywhere else. This was a THIRD error
+		   design — after the boundary's and the panel's — and adding `server` to
+		   the takeover rule routed the 500 straight into it, which is why a card
+		   that had just been restyled appeared to revert. Three components drew
+		   the same fault three ways; now one does. */
+		<div className="flex min-h-full items-center justify-center px-5 py-16">
+			<ErrorCard
+				title={it.title}
+				detail={it.message}
+				requestId={it.requestId}
+				action={
+					<>
+						{/* 🔑 Retry only where retrying can work. On a 403 or a 404 the
+						    next attempt fails identically, and a button that cannot
+						    succeed teaches people the buttons do not work. */}
+						{onRetry && kind === "server" ? (
+							<button
+								type="button"
+								onClick={onRetry}
+								className="inline-flex h-8 items-center rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] transition-opacity hover:opacity-90"
+							>
+								Try again
+							</button>
+						) : null}
+						<GoBack />
+					</>
+				}
+			/>
+		</div>
 	);
 }
 
@@ -729,54 +1022,36 @@ function ModuleDisabled() {
 		? `${clientEnv.ACCOUNT_URL}/workspaces/${encodeURIComponent(params.workspace)}`
 		: `${clientEnv.ACCOUNT_URL}/workspaces`;
 	return (
-		<Wall
-			code="not enabled"
-			tone="var(--ink-30)"
-			title="This module is switched off"
-			detail="It is part of QuickDash and it is not turned on for this workspace. Switching it on adds it to the sidebar with everything you already have, and nothing else changes."
-			action={
-				<a
-					href={manage}
-					className="inline-flex h-9 items-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85"
-				>
-					Turn it on
-				</a>
-			}
-		/>
-	);
-}
-
-/**
- * The API failed, or could not be reached at all.
- *
- * Full viewport, because the fault is the server's rather than this page's, and
- * every other page in the console would meet exactly the same wall.
- */
-function FullPageFailure({
-	failure,
-	onRetry,
-}: {
-	failure: unknown;
-	onRetry: () => void;
-}) {
-	const it = presentRequestError(failure);
-	return (
-		<FullPageWall
-			code={it.code}
-			tone={toneOf(it.kind)}
-			title={it.title}
-			detail={it.message}
-			requestId={it.requestId}
-			action={
-				<button
-					type="button"
-					onClick={onRetry}
-					className="inline-flex h-9 items-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85"
-				>
-					Try again
-				</button>
-			}
-		/>
+		/* 🔑 The same card as every other state, rather than the bare centred
+		   wall it used to be. Nothing has gone wrong here — a capability is off
+		   — but "nothing went wrong" is not a reason to look like a different
+		   product. */
+		<div className="flex min-h-full items-center justify-center px-5 py-16">
+			<ErrorCard
+				title="This module is switched off"
+				detail="It is part of QuickDash and it is not turned on for this workspace. Switching it on adds it to the sidebar with everything you already have, and nothing else changes."
+				action={
+					<>
+						<a
+							href={manage}
+							className="inline-flex h-8 items-center rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] no-underline transition-opacity hover:opacity-90"
+						>
+							Turn it on
+						</a>
+						<a
+							href={
+								params.workspace
+									? `/${encodeURIComponent(params.workspace)}`
+									: "/"
+							}
+							className="inline-flex h-8 items-center rounded-md border border-[var(--console-line-strong)] px-3 text-[12px] text-[var(--ink-60)] no-underline transition-colors hover:text-[var(--ink-90)]"
+						>
+							Not now
+						</a>
+					</>
+				}
+			/>
+		</div>
 	);
 }
 
@@ -797,7 +1072,103 @@ function FullPageFailure({
  * sits above a form that is still there and still correct, so it must be
  * compact enough not to shove the thing being fixed off the screen.
  */
-export function WriteFailure({ message }: { message: string }) {
+/**
+ * A page you can read and cannot change, and the reason why.
+ *
+ * 🔴 A screen with no create button and no editable field looks BROKEN, or
+ * looks like a permission you are missing. Purchase orders is the clearest
+ * case: they are raised automatically when an order is paid, and inventing one
+ * by hand would ask a supplier for goods nobody bought. That is a deliberate
+ * and defensible design — and until now the only place it was written down was
+ * a comment in the source, where no operator will ever read it.
+ *
+ * ⚠️ This is for records the SYSTEM owns, not for a role that lacks
+ * permission. That one is `NoAccess`, and it has somebody to ask; this one has
+ * nobody, because the answer is "nothing is wrong".
+ */
+/**
+ * What you are reading is real, and may have moved on.
+ *
+ * 🔑 Says WHEN, not just that something failed. "Could not refresh" invites the
+ * question "so how old is this", and a list of orders is exactly the place that
+ * question matters — somebody is about to act on a total or a stock level.
+ *
+ * ⚠️ Sits ABOVE the content rather than replacing it, and takes the same shape
+ * as every other inline failure. Nothing is withdrawn: the search, the filters
+ * and the rows all still work, because they are all still true.
+ */
+export function StaleNotice({
+	error,
+	onRetry,
+}: {
+	error: unknown;
+	onRetry: () => void;
+}) {
+	const it = presentRequestError(error);
+	return (
+		<div
+			role="status"
+			className="mb-3 flex items-center gap-2.5 rounded-lg bg-[rgb(var(--console-ink)/0.035)] px-3 py-2"
+		>
+			<Dot tone="var(--signal-attention)" />
+			<span className="min-w-0 flex-1 text-[11.5px] text-[var(--ink-55)]">
+				This did not refresh, so it may be out of date.
+			</span>
+			{it.requestId ? <RequestIdInline id={it.requestId} /> : null}
+			<button
+				type="button"
+				onClick={onRetry}
+				className="-mr-1 shrink-0 rounded-md px-2 py-1 text-[11.5px] text-[var(--ink-50)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)]"
+			>
+				Retry
+			</button>
+		</div>
+	);
+}
+
+export function ReadOnlyNote({ children }: { children: ReactNode }) {
+	return (
+		<p className="mb-3 flex items-start gap-2.5 rounded-xl border border-[var(--console-line)] px-3 py-2.5 text-[11.5px] text-[var(--ink-45)] leading-5">
+			<span
+				aria-hidden="true"
+				className="mt-[7px] size-1.5 shrink-0 rounded-full bg-[var(--signal-news)]"
+			/>
+			<span className="min-w-0 flex-1">{children}</span>
+		</p>
+	);
+}
+
+export function WriteFailure({
+	error,
+	message,
+}: {
+	/** The failure itself. Preferred — it carries the status and request id. */
+	error?: unknown;
+	/** Legacy: a message already turned into a string by the caller. */
+	message?: string;
+}) {
+	const it = error === undefined ? null : presentRequestError(error);
+
+	/**
+	 * 🔑 The API's OWN words when it has any, ours when it does not.
+	 *
+	 * `presentRequestError` deliberately refuses to echo API messages, because
+	 * a last-resort screen must never leak an unreviewed provider or parser
+	 * error. That is right for a wall and wrong here: a save failure is exactly
+	 * where the route's reviewed copy belongs — "That payment provider is not
+	 * connected" beats "Something went wrong" every time.
+	 *
+	 * A DomainError is recognisable by carrying a `code`, and its message has
+	 * been written for a person. Anything else falls back to our own wording,
+	 * which is what stops a raw `HTTP 500` reaching the screen — the exact bug
+	 * this replaced.
+	 */
+	const domain =
+		error && typeof error === "object" && "code" in error
+			? ((error as { message?: string }).message ?? null)
+			: null;
+	const text = domain ?? it?.message ?? message ?? "That did not save.";
+
 	return (
 		<div
 			role="alert"
@@ -806,11 +1177,22 @@ export function WriteFailure({ message }: { message: string }) {
 			<span
 				aria-hidden="true"
 				className="mt-[5px] size-1.5 shrink-0 rounded-full"
-				style={{ background: "var(--signal-failure)" }}
+				style={{ background: toneOf(it?.kind ?? "server") }}
 			/>
-			<p className="min-w-0 flex-1 text-[11.5px] text-[var(--ink-60)] leading-5">
-				{message}
-			</p>
+			<div className="min-w-0 flex-1">
+				<p className="text-[11.5px] text-[var(--ink-60)] leading-5">{text}</p>
+				{/* Mandatory wherever a request id exists — see `RequestIdInline`.
+				    A save that failed is the single most likely thing somebody
+				    quotes to support. */}
+				{/* A failed SAVE is the single most likely thing anybody quotes to
+				    support, so the id and the way to send it sit together. */}
+				{it?.requestId ? (
+					<div className="-ml-1.5 mt-1 flex flex-wrap items-center gap-1">
+						<RequestIdInline id={it.requestId} />
+						<ContactSupport requestId={it.requestId} />
+					</div>
+				) : null}
+			</div>
 		</div>
 	);
 }

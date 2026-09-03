@@ -59,7 +59,9 @@ function InvitationsPage() {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			{failure ? (
-				<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+					{failure}
+				</p>
 			) : null}
 
 			<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">

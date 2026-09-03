@@ -23,7 +23,7 @@ const quietAction =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--console-line-strong)] px-4 text-[12.5px] text-[var(--ink-60)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)] disabled:pointer-events-none disabled:opacity-40";
 
 const dangerAction =
-	"inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[#ff3b3b]/30 px-4 text-[12.5px] text-[#ff6b6b] outline-none transition-colors hover:bg-[#ff3b3b]/[0.08] disabled:pointer-events-none disabled:opacity-40";
+	"inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--signal-failure)]/30 px-4 text-[12.5px] text-[var(--signal-failure-text)] outline-none transition-colors hover:bg-[var(--signal-failure)]/[0.08] disabled:pointer-events-none disabled:opacity-40";
 
 const field =
 	"h-9 w-72 max-w-full rounded-full border border-[var(--console-line-strong)] bg-transparent px-3.5 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-30)] focus:border-[rgb(var(--console-ink)/0.18)]";
@@ -154,20 +154,22 @@ function WorkspaceDetailPage() {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			{failure ? (
-				<div className="mb-6 flex max-w-2xl items-start gap-2.5 rounded-lg border border-[#f5a623]/30 bg-[#f5a623]/[0.06] p-3.5">
+				<div className="mb-6 flex max-w-2xl items-start gap-2.5 rounded-lg border border-[var(--signal-attention)]/30 bg-[var(--signal-attention)]/[0.06] p-3.5">
 					<WarningIcon
 						size={14}
-						className="mt-0.5 shrink-0 text-[#f5b44a]"
+						className="mt-0.5 shrink-0 text-[var(--signal-attention-text)]"
 						weight="fill"
 					/>
-					<p className="text-[12px] text-[#f5b44a] leading-5">{failure}</p>
+					<p className="text-[12px] text-[var(--signal-attention-text)] leading-5">
+						{failure}
+					</p>
 				</div>
 			) : null}
 
 			<div className="mb-6 flex flex-wrap items-center gap-3">
 				<p className="text-[17px] text-[var(--ink-90)]">{workspace.name}</p>
 				{sandbox ? (
-					<span className="rounded-[3px] bg-[#f5a623]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[#f5b44a] uppercase tracking-[0.09em]">
+					<span className="rounded-[3px] bg-[var(--signal-attention)]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[var(--signal-attention-text)] uppercase tracking-[0.09em]">
 						Sandbox
 					</span>
 				) : null}
@@ -260,7 +262,7 @@ function WorkspaceDetailPage() {
 				</div>
 				<p className="mt-3 text-[11px] text-[var(--ink-30)] leading-5">
 					Locks as soon as this workspace connects a payment provider, takes an
-					order or receives a payment — switching afterwards would leave real
+					order or receives a payment, switching afterwards would leave real
 					money in a workspace labelled sandbox.
 				</p>
 			</div>
@@ -324,8 +326,10 @@ function WorkspaceDetailPage() {
 					})}
 			</div>
 
-			<p className="mt-10 mb-1 text-[12.5px] text-[#ff6b6b]">Danger zone</p>
-			<div className="max-w-2xl divide-y divide-[#ff3b3b]/15 border-[#ff3b3b]/20 border-t">
+			<p className="mt-10 mb-1 text-[12.5px] text-[var(--signal-failure-text)]">
+				Danger zone
+			</p>
+			<div className="max-w-2xl divide-y divide-[var(--signal-failure)]/15 border-[var(--signal-failure)]/20 border-t">
 				<div className="flex flex-wrap items-center gap-4 py-4">
 					<p className="min-w-0 flex-1 text-[11.5px] text-[var(--ink-40)] leading-5">
 						{archived
@@ -344,7 +348,7 @@ function WorkspaceDetailPage() {
 
 				<div className="py-4">
 					<p className="max-w-xl text-[11.5px] text-[var(--ink-40)] leading-5">
-						Deleting removes this workspace and every record in it — customers,
+						Deleting removes this workspace and every record in it, customers,
 						orders, payments, files. It cannot be undone.
 					</p>
 					{confirmDelete ? (

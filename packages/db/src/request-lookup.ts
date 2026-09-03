@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, or } from "drizzle-orm";
 import { db } from "./client";
 import { apiAuditEvents, apiMutations } from "./schema/api-platform";
 
@@ -102,4 +102,75 @@ export async function getRequestTrace(
 		})),
 		auditEvents,
 	};
+}
+
+/** One line in the developer console's request stream. */
+export type RecentRequest = {
+	requestId: string | null;
+	operation: string;
+	state: string;
+	source: string | null;
+	actorType: string | null;
+	responseStatus: number | null;
+	/** Milliseconds, or null while it is still running. */
+	durationMs: number | null;
+	startedAt: string;
+};
+
+/**
+ * The last requests this workspace made, newest first.
+ *
+ * 🔴 `api_mutations` records WRITES only, which is the honest scope: reads are
+ * not idempotency-tracked and never were. Calling this a request log would
+ * overpromise — it is the log of everything that CHANGED something, which is
+ * also the only half anybody debugs.
+ *
+ * ⚠️ Scoped to the workspace, like everything else here. A developer console
+ * that showed another tenant's traffic would be the worst possible leak.
+ */
+export async function listRecentRequests(
+	workspaceId: string,
+	options: { limit?: number; failuresOnly?: boolean } = {},
+): Promise<RecentRequest[]> {
+	const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+	const rows = await db
+		.select({
+			requestId: apiMutations.requestId,
+			operation: apiMutations.operation,
+			state: apiMutations.state,
+			source: apiMutations.source,
+			actorType: apiMutations.actorType,
+			responseStatus: apiMutations.responseStatus,
+			startedAt: apiMutations.startedAt,
+			completedAt: apiMutations.completedAt,
+		})
+		.from(apiMutations)
+		.where(
+			options.failuresOnly
+				? and(
+						eq(apiMutations.workspaceId, workspaceId),
+						// A write that never completed is a failure too, and the one
+						// most worth seeing — it is the request that hung.
+						or(
+							gte(apiMutations.responseStatus, 400),
+							isNull(apiMutations.completedAt),
+						),
+					)
+				: eq(apiMutations.workspaceId, workspaceId),
+		)
+		.orderBy(desc(apiMutations.startedAt))
+		.limit(limit);
+
+	return rows.map((row) => ({
+		requestId: row.requestId,
+		operation: row.operation,
+		state: row.state,
+		source: row.source,
+		actorType: row.actorType,
+		responseStatus: row.responseStatus,
+		durationMs: row.completedAt
+			? row.completedAt.getTime() - row.startedAt.getTime()
+			: null,
+		startedAt: row.startedAt.toISOString(),
+	}));
 }

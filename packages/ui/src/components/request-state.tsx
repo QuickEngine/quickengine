@@ -34,6 +34,8 @@ export type RequestErrorPresentation = {
 		| "network"
 		| "invalid"
 		| "plan-limit"
+		| "environment"
+		| "timeout"
 		| "server";
 };
 
@@ -96,8 +98,16 @@ export function presentRequestError(error: unknown): RequestErrorPresentation {
 		return {
 			code: "402",
 			title: "That needs a larger plan",
+			/**
+			 * 🔑 Leads with the business, not the ceiling.
+			 *
+			 * "Your plan's allowance for this is used up" is an accountant's
+			 * sentence — it opens on the limit and makes growth sound like an
+			 * error somebody made. Running out of allowance means the workspace
+			 * is being used, which is the good news in the sentence.
+			 */
 			message:
-				"Your plan's allowance for this is used up. Nothing has been lost, and raising the plan or freeing some of the allowance lets it through.",
+				"You have used everything this plan includes for that, which usually means things are going well. A larger plan lifts it straight away, or you can free some allowance instead.",
 			requestId,
 			kind: "plan-limit",
 		};
@@ -115,8 +125,17 @@ export function presentRequestError(error: unknown): RequestErrorPresentation {
 		return {
 			code: "403",
 			title: "You don't have access",
+			/**
+			 * 🔑 Says whose decision it is, not just that the answer is no.
+			 *
+			 * "Your account does not have permission to view or change this
+			 * workspace resource" reads like a policy notice: it restates the
+			 * refusal in longer words, names nothing anybody can act on, and
+			 * "resource" is a word for the people who built the API rather than
+			 * the person who just clicked a link.
+			 */
 			message:
-				"Your account does not have permission to view or change this workspace resource.",
+				"Your role in this workspace cannot open this page. Someone who manages the workspace can change that.",
 			requestId,
 			kind: "permission",
 		};
@@ -131,6 +150,41 @@ export function presentRequestError(error: unknown): RequestErrorPresentation {
 			kind: "not-found",
 		};
 	}
+	/**
+	 * 🔴 Matched on the CODE, not the status.
+	 *
+	 * Environment refusals answer 409, so they were being described as
+	 * conflicts — "this changed before we could finish", which is a story about
+	 * timing and stale data. Nothing changed and nothing is stale: this
+	 * workspace is in one mode and the thing being asked for belongs to the
+	 * other. Telling somebody to refresh and retry sends them round a loop that
+	 * cannot end, because retrying is not what fixes it.
+	 *
+	 * ⚠️ Its own kind because the WAY OUT is different from every other error.
+	 * Not retry, not go back, not upgrade — switch mode, or accept that this
+	 * workspace has taken real money and never can.
+	 */
+	const code = candidate && "code" in candidate ? String(candidate.code) : "";
+	if (
+		code === "ENVIRONMENT_LOCKED" ||
+		code === "ENVIRONMENT_MISMATCH" ||
+		code === "PAYMENT_ENVIRONMENT_MISMATCH"
+	) {
+		return {
+			code: "environment",
+			title:
+				code === "ENVIRONMENT_LOCKED"
+					? "This workspace is locked to its mode"
+					: "That belongs to the other mode",
+			message:
+				code === "ENVIRONMENT_LOCKED"
+					? "It already holds orders, payments or a connected provider, so test and live cannot be swapped. Rehearsals and real books cannot share one ledger."
+					: "This workspace is in one mode and what you asked for was set up in the other. Switch mode, or use the credentials that belong to this one.",
+			requestId,
+			kind: "environment",
+		};
+	}
+
 	if (status === 409) {
 		return {
 			code: "409",
@@ -141,12 +195,60 @@ export function presentRequestError(error: unknown): RequestErrorPresentation {
 			kind: "conflict",
 		};
 	}
+	/**
+	 * 🔴 413 was falling through to "Something went wrong on our side".
+	 *
+	 * It is not our side and nothing is wrong: the thing being sent is too big.
+	 * A person uploading a product photo, a logo or a CSV was told the platform
+	 * had broken, which sends them to support for a problem they could have
+	 * fixed in ten seconds.
+	 *
+	 * ⚠️ No size in the copy. The ceiling differs per route — images, imports
+	 * and attachments do not share one — and a number that is wrong on three
+	 * screens out of four is worse than no number.
+	 */
+	if (status === 413) {
+		return {
+			code: "413",
+			title: "That was too large to send",
+			message:
+				"The file or request exceeded the limit for this action, so nothing was uploaded. Try a smaller file, or split the import into parts.",
+			requestId,
+			// `invalid` because the page is fine and one request was refused. It
+			// belongs inline with the toolbar intact, exactly like a 400.
+			kind: "invalid",
+		};
+	}
+
+	/**
+	 * 🔴 503 and 504 were also becoming the generic 500, which TAKES THE PAGE.
+	 *
+	 * Both are temporary by definition — a dependency that has not answered
+	 * yet, or a request that ran out of time — and the identical attempt often
+	 * succeeds seconds later. Walling the console over something that heals
+	 * itself is the same overreaction the offline screen used to make.
+	 */
+	if (status === 503 || status === 504) {
+		return {
+			code: String(status),
+			title: status === 504 ? "That took too long" : "That service is busy",
+			message:
+				status === 504
+					? "The request ran out of time before it finished. Nothing was changed, so it is safe to try again."
+					: "Something QuickDash depends on is not answering right now. It usually clears in a moment.",
+			requestId,
+			kind: "timeout",
+		};
+	}
+
 	if (status === 429) {
 		return {
 			code: "429",
 			title: "Too many requests",
+			// Says how long, because "a moment" is the word people use when they
+			// do not know — and the reader's next question is always "how long".
 			message:
-				"QuickDash paused this request to protect the workspace. Wait a moment, then try again.",
+				"QuickDash slowed this request down to protect the workspace. Give it a few seconds and retry.",
 			requestId,
 			kind: "rate-limit",
 		};
@@ -185,11 +287,21 @@ export function presentRequestError(error: unknown): RequestErrorPresentation {
 			kind: "network",
 		};
 	}
+	/**
+	 * 🔴 Only promise a request id when there IS one.
+	 *
+	 * This branch catches two different things: a request that failed, which
+	 * carries an id, and a CRASH in the console's own code, which cannot. Both
+	 * were told to "include the request ID when asking for help" — so half the
+	 * time the console asked for something it had just failed to give, and the
+	 * reader went looking for an id that was never there.
+	 */
 	return {
 		code: status && status >= 500 ? String(status) : "ERROR",
 		title: "Something went wrong",
-		message:
-			"QuickDash couldn't load this page. Try again; if it keeps happening, include the request ID when asking for help.",
+		message: requestId
+			? "QuickDash couldn't load this page. Try again; if it keeps happening, quote the request ID below when asking for help."
+			: "QuickDash couldn't load this page. Try again; if it keeps happening, tell us what you were doing and we will look into it.",
 		requestId,
 		kind: "server",
 	};

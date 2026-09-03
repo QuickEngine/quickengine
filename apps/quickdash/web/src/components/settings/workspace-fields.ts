@@ -191,7 +191,7 @@ export const WORKSPACE_SETTINGS: Readonly<Record<string, WorkspaceSection>> = {
 						kind: "toggle",
 						path: "showCodeFieldAtCheckout",
 						label: "Show a code box at checkout",
-						hint: "Off hides it — some shops find it prompts people to go looking.",
+						hint: "Off hides it, some shops find it prompts people to go looking.",
 					},
 				],
 			},

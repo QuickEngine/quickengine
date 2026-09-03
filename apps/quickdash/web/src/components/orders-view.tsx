@@ -7,7 +7,7 @@ import { useSelectedRecord } from "../lib/selected-record";
 import { detailCard } from "./detail-panel";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState } from "./page-state";
+import { EmptyState, PageState, WriteFailure } from "./page-state";
 import {
 	ShipmentComposer,
 	type ShippableOrder,
@@ -246,7 +246,18 @@ function OrderPanel({
 	onClose: () => void;
 }) {
 	const [shipping, setShipping] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const queryClient = useQueryClient();
 	const detail = useQuery({
 		queryKey: ["quickdash", workspaceId, "order", orderId],
@@ -268,7 +279,10 @@ function OrderPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That order could not be changed."),
+			setFailure({
+				error: error,
+				fallback: "That order could not be changed.",
+			}),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "order", orderId],
@@ -331,7 +345,10 @@ function OrderPanel({
 								</div>
 							) : null}
 							{failure ? (
-								<p className="mt-1.5 text-[10.5px] text-[#ff6b6b]">{failure}</p>
+								<WriteFailure
+									error={failure.error}
+									message={failure.fallback}
+								/>
 							) : null}
 
 							<p className="mt-3 text-[11px] text-[var(--ink-45)]">Customer</p>
@@ -522,6 +539,7 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => setStatuses([])}
 				exportRows={() => filteredOrders}
 				exportName="orders"
 				query={query}
@@ -563,75 +581,72 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 					/>
 				}
 			>
-				{() =>
-					filteredOrders.length === 0 ? (
-						<EmptyState
-							title="Nothing matches"
-							detail="Try a different search, or clear the status filter."
-						/>
-					) : (
-						<PagedTable
-							workspaceId={workspaceId}
-							layout={layout}
-							caption="Orders"
-							rowSignal={rowSignal}
-							rows={filteredOrders}
-							selectedId={selectedId}
-							onOpen={(order) => setSelectedId(order.id)}
-							columns={[
-								{
-									key: "number",
-									header: "Order",
-									width: "w-28",
-									tight: true,
-									render: (order) => (
-										<span className="font-mono text-[11.5px] text-[var(--ink-60)]">
-											{order.number}
-										</span>
-									),
-								},
-								{
-									key: "customer",
-									header: "Customer",
-									render: (order) => order.clientName,
-								},
-								{
-									key: "status",
-									header: "Status",
-									width: "w-28",
-									tight: true,
-									render: (order) => (
-										<span className={chip}>
-											{refundState(order) === "full"
-												? "refunded"
-												: order.status}
-										</span>
-									),
-								},
-								{
-									key: "placed",
-									header: "Placed",
-									width: "w-28",
-									align: "right",
-									tight: true,
-									render: (order) => (
-										<span className="text-[11px] text-[var(--ink-30)]">
-											{when(order.createdAt)}
-										</span>
-									),
-								},
-								{
-									key: "total",
-									header: "Total",
-									width: "w-28",
-									align: "right",
-									tight: true,
-									render: (order) => money(order.totalCents, order.currency),
-								},
-							]}
-						/>
-					)
-				}
+				{() => (
+					<PagedTable
+						empty={
+							<EmptyState
+								title="Nothing matches"
+								detail="Try a different search, or clear the status filter."
+							/>
+						}
+						workspaceId={workspaceId}
+						layout={layout}
+						caption="Orders"
+						rowSignal={rowSignal}
+						rows={filteredOrders}
+						selectedId={selectedId}
+						onOpen={(order) => setSelectedId(order.id)}
+						columns={[
+							{
+								key: "number",
+								header: "Order",
+								width: "w-28",
+								tight: true,
+								render: (order) => (
+									<span className="font-mono text-[11.5px] text-[var(--ink-60)]">
+										{order.number}
+									</span>
+								),
+							},
+							{
+								key: "customer",
+								header: "Customer",
+								render: (order) => order.clientName,
+							},
+							{
+								key: "status",
+								header: "Status",
+								width: "w-28",
+								tight: true,
+								render: (order) => (
+									<span className={chip}>
+										{refundState(order) === "full" ? "refunded" : order.status}
+									</span>
+								),
+							},
+							{
+								key: "placed",
+								header: "Placed",
+								width: "w-28",
+								align: "right",
+								tight: true,
+								render: (order) => (
+									<span className="text-[11px] text-[var(--ink-30)]">
+										{when(order.createdAt)}
+									</span>
+								),
+							},
+							{
+								key: "total",
+								header: "Total",
+								width: "w-28",
+								align: "right",
+								tight: true,
+								render: (order) => money(order.totalCents, order.currency),
+							},
+						]}
+					/>
+				)}
 			</PageState>
 
 			{selectedId ? (

@@ -13,15 +13,17 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceRouteImport } from './routes/$workspace'
 import { Route as NativeSigninRouteImport } from './routes/native-signin'
 import { Route as WorkspaceIndexRouteImport } from './routes/$workspace.index'
+import { Route as WorkspaceSplatRouteImport } from './routes/$workspace.$'
 import { Route as WorkspaceModuleRouteImport } from './routes/$workspace.$module'
 import { Route as WorkspaceAuditRouteImport } from './routes/$workspace.audit'
 import { Route as WorkspaceConnectRouteImport } from './routes/$workspace.connect'
 import { Route as WorkspaceMediaRouteImport } from './routes/$workspace.media'
-import { Route as WorkspaceSettingsRouteImport } from './routes/$workspace.settings'
 import { Route as WorkspaceStatesRouteImport } from './routes/$workspace.states'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as WorkspaceModuleIndexRouteImport } from './routes/$workspace.$module.index'
 import { Route as WorkspaceModuleSectionRouteImport } from './routes/$workspace.$module.$section'
+import { Route as WorkspaceErrorsIndexRouteImport } from './routes/$workspace.errors.index'
+import { Route as WorkspaceErrorsCodeRouteImport } from './routes/$workspace.errors.$code'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,6 +43,11 @@ const NativeSigninRoute = NativeSigninRouteImport.update({
 const WorkspaceIndexRoute = WorkspaceIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceSplatRoute = WorkspaceSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => WorkspaceRoute,
 } as any)
 const WorkspaceModuleRoute = WorkspaceModuleRouteImport.update({
@@ -63,11 +70,6 @@ const WorkspaceMediaRoute = WorkspaceMediaRouteImport.update({
   path: '/media',
   getParentRoute: () => WorkspaceRoute,
 } as any)
-const WorkspaceSettingsRoute = WorkspaceSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
 const WorkspaceStatesRoute = WorkspaceStatesRouteImport.update({
   id: '/states',
   path: '/states',
@@ -88,50 +90,66 @@ const WorkspaceModuleSectionRoute = WorkspaceModuleSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => WorkspaceModuleRoute,
 } as any)
+const WorkspaceErrorsIndexRoute = WorkspaceErrorsIndexRouteImport.update({
+  id: '/errors/',
+  path: '/errors/',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceErrorsCodeRoute = WorkspaceErrorsCodeRouteImport.update({
+  id: '/errors/$code',
+  path: '/errors/$code',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$workspace': typeof WorkspaceRouteWithChildren
   '/native-signin': typeof NativeSigninRoute
+  '/$workspace/$': typeof WorkspaceSplatRoute
   '/$workspace/$module': typeof WorkspaceModuleRouteWithChildren
   '/$workspace/audit': typeof WorkspaceAuditRoute
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
-  '/$workspace/settings': typeof WorkspaceSettingsRoute
   '/$workspace/states': typeof WorkspaceStatesRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
+  '/$workspace/errors/$code': typeof WorkspaceErrorsCodeRoute
   '/$workspace/$module/': typeof WorkspaceModuleIndexRoute
+  '/$workspace/errors/': typeof WorkspaceErrorsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/native-signin': typeof NativeSigninRoute
+  '/$workspace/$': typeof WorkspaceSplatRoute
   '/$workspace/audit': typeof WorkspaceAuditRoute
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
-  '/$workspace/settings': typeof WorkspaceSettingsRoute
   '/$workspace/states': typeof WorkspaceStatesRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
+  '/$workspace/errors/$code': typeof WorkspaceErrorsCodeRoute
   '/$workspace/$module': typeof WorkspaceModuleIndexRoute
+  '/$workspace/errors': typeof WorkspaceErrorsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$workspace': typeof WorkspaceRouteWithChildren
   '/native-signin': typeof NativeSigninRoute
+  '/$workspace/$': typeof WorkspaceSplatRoute
   '/$workspace/$module': typeof WorkspaceModuleRouteWithChildren
   '/$workspace/audit': typeof WorkspaceAuditRoute
   '/$workspace/connect': typeof WorkspaceConnectRoute
   '/$workspace/media': typeof WorkspaceMediaRoute
-  '/$workspace/settings': typeof WorkspaceSettingsRoute
   '/$workspace/states': typeof WorkspaceStatesRoute
   '/sign/$token': typeof SignTokenRoute
   '/$workspace/': typeof WorkspaceIndexRoute
   '/$workspace/$module/$section': typeof WorkspaceModuleSectionRoute
+  '/$workspace/errors/$code': typeof WorkspaceErrorsCodeRoute
   '/$workspace/$module/': typeof WorkspaceModuleIndexRoute
+  '/$workspace/errors/': typeof WorkspaceErrorsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,44 +157,50 @@ export interface FileRouteTypes {
     | '/'
     | '/$workspace'
     | '/native-signin'
+    | '/$workspace/$'
     | '/$workspace/$module'
     | '/$workspace/audit'
     | '/$workspace/connect'
     | '/$workspace/media'
-    | '/$workspace/settings'
     | '/$workspace/states'
     | '/sign/$token'
     | '/$workspace/'
     | '/$workspace/$module/$section'
+    | '/$workspace/errors/$code'
     | '/$workspace/$module/'
+    | '/$workspace/errors/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/native-signin'
+    | '/$workspace/$'
     | '/$workspace/audit'
     | '/$workspace/connect'
     | '/$workspace/media'
-    | '/$workspace/settings'
     | '/$workspace/states'
     | '/sign/$token'
     | '/$workspace'
     | '/$workspace/$module/$section'
+    | '/$workspace/errors/$code'
     | '/$workspace/$module'
+    | '/$workspace/errors'
   id:
     | '__root__'
     | '/'
     | '/$workspace'
     | '/native-signin'
+    | '/$workspace/$'
     | '/$workspace/$module'
     | '/$workspace/audit'
     | '/$workspace/connect'
     | '/$workspace/media'
-    | '/$workspace/settings'
     | '/$workspace/states'
     | '/sign/$token'
     | '/$workspace/'
     | '/$workspace/$module/$section'
+    | '/$workspace/errors/$code'
     | '/$workspace/$module/'
+    | '/$workspace/errors/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -216,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceIndexRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/$workspace/$': {
+      id: '/$workspace/$'
+      path: '/$'
+      fullPath: '/$workspace/$'
+      preLoaderRoute: typeof WorkspaceSplatRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/$workspace/$module': {
       id: '/$workspace/$module'
       path: '/$module'
@@ -242,13 +273,6 @@ declare module '@tanstack/react-router' {
       path: '/media'
       fullPath: '/$workspace/media'
       preLoaderRoute: typeof WorkspaceMediaRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/$workspace/settings': {
-      id: '/$workspace/settings'
-      path: '/settings'
-      fullPath: '/$workspace/settings'
-      preLoaderRoute: typeof WorkspaceSettingsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/$workspace/states': {
@@ -279,6 +303,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceModuleSectionRouteImport
       parentRoute: typeof WorkspaceModuleRoute
     }
+    '/$workspace/errors/': {
+      id: '/$workspace/errors/'
+      path: '/errors'
+      fullPath: '/$workspace/errors/'
+      preLoaderRoute: typeof WorkspaceErrorsIndexRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/$workspace/errors/$code': {
+      id: '/$workspace/errors/$code'
+      path: '/errors/$code'
+      fullPath: '/$workspace/errors/$code'
+      preLoaderRoute: typeof WorkspaceErrorsCodeRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
   }
 }
 
@@ -297,23 +335,27 @@ const WorkspaceModuleRouteWithChildren = WorkspaceModuleRoute._addFileChildren(
 )
 
 interface WorkspaceRouteChildren {
+  WorkspaceSplatRoute: typeof WorkspaceSplatRoute
   WorkspaceModuleRoute: typeof WorkspaceModuleRouteWithChildren
   WorkspaceAuditRoute: typeof WorkspaceAuditRoute
   WorkspaceConnectRoute: typeof WorkspaceConnectRoute
   WorkspaceMediaRoute: typeof WorkspaceMediaRoute
-  WorkspaceSettingsRoute: typeof WorkspaceSettingsRoute
   WorkspaceStatesRoute: typeof WorkspaceStatesRoute
   WorkspaceIndexRoute: typeof WorkspaceIndexRoute
+  WorkspaceErrorsCodeRoute: typeof WorkspaceErrorsCodeRoute
+  WorkspaceErrorsIndexRoute: typeof WorkspaceErrorsIndexRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
+  WorkspaceSplatRoute: WorkspaceSplatRoute,
   WorkspaceModuleRoute: WorkspaceModuleRouteWithChildren,
   WorkspaceAuditRoute: WorkspaceAuditRoute,
   WorkspaceConnectRoute: WorkspaceConnectRoute,
   WorkspaceMediaRoute: WorkspaceMediaRoute,
-  WorkspaceSettingsRoute: WorkspaceSettingsRoute,
   WorkspaceStatesRoute: WorkspaceStatesRoute,
   WorkspaceIndexRoute: WorkspaceIndexRoute,
+  WorkspaceErrorsCodeRoute: WorkspaceErrorsCodeRoute,
+  WorkspaceErrorsIndexRoute: WorkspaceErrorsIndexRoute,
 }
 
 const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(

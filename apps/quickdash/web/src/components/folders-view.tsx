@@ -44,7 +44,18 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 	const [creating, setCreating] = useState(false);
 	const [search, setSearch] = useState("");
 	const [name, setName] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const folders = useQuery({
 		queryKey: ["quickdash", workspaceId, "file-folders"],
@@ -71,7 +82,10 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That folder could not be created."),
+			setFailure({
+				error: error,
+				fallback: "That folder could not be created.",
+			}),
 		onSuccess: () => {
 			setCreating(false);
 			setName("");
@@ -97,7 +111,10 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That folder could not be removed."),
+			setFailure({
+				error: error,
+				fallback: "That folder could not be removed.",
+			}),
 		onSuccess: refresh,
 	});
 
@@ -123,6 +140,7 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Depth", ["top level", "nested"])}
 				filterCount={statusFilter.count}
 				exportRows={() => folders.data?.items ?? []}
@@ -133,7 +151,9 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search folders"
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={folders}

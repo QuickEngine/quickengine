@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { sessionApi, workspaceApi } from "../../lib/api";
 import { webhookQueries } from "../../lib/webhooks-api";
+import { FailureStatusLine, WriteFailure } from "../page-state";
 import { Choice, Group, Row } from "./controls";
 
 /**
@@ -21,9 +22,21 @@ const primary =
 const quiet =
 	"flex h-7 shrink-0 items-center rounded-md border border-[var(--console-line-strong)] px-2.5 text-[11.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
 
-function Failure({ message }: { message: string | null }) {
-	if (!message) return null;
-	return <p className="text-[11.5px] text-[#ff6b6b] leading-5">{message}</p>;
+/**
+ * 🔴 No error is ever raw text on the background.
+ *
+ * This was a bare red `<p>`: no container, no request id, and identical for a
+ * 403, a 409 and a 500. `WriteFailure` is the one shape a failed write takes
+ * anywhere in this console, so a local one-off is just a place for the design
+ * to fall behind.
+ */
+function Failure({
+	failure,
+}: {
+	failure: { error: unknown; fallback: string } | null;
+}) {
+	if (!failure) return null;
+	return <WriteFailure error={failure.error} message={failure.fallback} />;
 }
 
 /* ── Webhooks ─────────────────────────────────────────────────────────── */
@@ -33,7 +46,18 @@ export function WorkspaceWebhooks({ workspaceId }: { workspaceId: string }) {
 	const endpoints = useQuery(webhookQueries.endpoints(workspaceId));
 	const [url, setUrl] = useState("");
 	const [description, setDescription] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	/**
 	 * 🔴 Held in state because it is returned ONCE and there is no route to read
 	 * it back. Losing it means deleting the endpoint and making another.
@@ -60,7 +84,10 @@ export function WorkspaceWebhooks({ workspaceId }: { workspaceId: string }) {
 			setSecret(null);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That endpoint could not be registered."),
+			setFailure({
+				error: error,
+				fallback: "That endpoint could not be registered.",
+			}),
 		onSuccess: async (created) => {
 			setSecret(created.secret);
 			setUrl("");
@@ -80,7 +107,10 @@ export function WorkspaceWebhooks({ workspaceId }: { workspaceId: string }) {
 			});
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That endpoint could not be changed."),
+			setFailure({
+				error: error,
+				fallback: "That endpoint could not be changed.",
+			}),
 		onSettled: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "webhook-endpoints"],
@@ -95,12 +125,12 @@ export function WorkspaceWebhooks({ workspaceId }: { workspaceId: string }) {
 				all of them.
 			</p>
 
-			<Failure message={failure} />
+			<Failure failure={failure} />
 
 			{secret ? (
 				<div className="rounded-xl border border-[var(--console-line-strong)] p-3">
 					<p className="text-[11.5px] text-[var(--ink-70)]">
-						Signing secret — copy it now
+						Signing secret: copy it now
 					</p>
 					<p className="mt-1 text-[11px] text-[var(--ink-35)] leading-4">
 						This is the only time it is shown. There is no way to read it back.
@@ -167,7 +197,7 @@ export function WorkspaceWebhooks({ workspaceId }: { workspaceId: string }) {
 							<div className="flex items-center gap-3">
 								<span
 									aria-hidden="true"
-									className={`size-1.5 shrink-0 rounded-full ${endpoint.enabled ? "bg-[#3fb950]" : "bg-[var(--ink-25)]"}`}
+									className={`size-1.5 shrink-0 rounded-full ${endpoint.enabled ? "bg-[var(--signal-success)]" : "bg-[var(--ink-25)]"}`}
 								/>
 								<button
 									type="button"
@@ -213,7 +243,10 @@ export function WorkspaceApiKeys({
 	const org = encodeURIComponent(organizationId ?? "");
 	const [name, setName] = useState("");
 	const [type, setType] = useState("secret");
-	const [failure, setFailure] = useState<string | null>(null);
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	/** Same one-time rule as a webhook secret: shown once, never readable. */
 	const [issued, setIssued] = useState<string | null>(null);
 
@@ -244,7 +277,7 @@ export function WorkspaceApiKeys({
 			setIssued(null);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That key could not be issued."),
+			setFailure({ error: error, fallback: "That key could not be issued." }),
 		onSuccess: async (created) => {
 			setIssued(created.key);
 			setName("");
@@ -262,7 +295,7 @@ export function WorkspaceApiKeys({
 			);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That key could not be revoked."),
+			setFailure({ error: error, fallback: "That key could not be revoked." }),
 		onSettled: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "api-keys"],
@@ -279,7 +312,7 @@ export function WorkspaceApiKeys({
 				to the addresses you name on the Developers page.
 			</p>
 
-			<Failure message={failure} />
+			<Failure failure={failure} />
 
 			{issued ? (
 				<div className="rounded-xl border border-[var(--console-line-strong)] p-3">
@@ -400,10 +433,10 @@ export function WorkspaceMembers({
 	}
 	if (members.isError) {
 		return (
-			<p className="text-[11.5px] text-[#ff6b6b] leading-5">
-				{(members.error as { message?: string })?.message ??
-					"The team could not be loaded."}
-			</p>
+			<FailureStatusLine
+				error={members.error}
+				onRetry={() => void members.refetch()}
+			/>
 		);
 	}
 
@@ -460,10 +493,10 @@ export function WorkspaceRoles({
 	}
 	if (roles.isError) {
 		return (
-			<p className="text-[11.5px] text-[#ff6b6b] leading-5">
-				{(roles.error as { message?: string })?.message ??
-					"Roles could not be loaded."}
-			</p>
+			<FailureStatusLine
+				error={roles.error}
+				onRetry={() => void roles.refetch()}
+			/>
 		);
 	}
 

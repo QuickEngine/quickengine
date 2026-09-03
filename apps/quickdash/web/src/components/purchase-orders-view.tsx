@@ -5,7 +5,7 @@ import { money } from "../lib/catalog";
 import { useListLayout } from "../lib/list-view";
 import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState } from "./page-state";
+import { EmptyState, PageState, ReadOnlyNote } from "./page-state";
 
 type PurchaseOrderLine = {
 	supplierSku: string;
@@ -59,7 +59,7 @@ const STATUS_LABELS: Record<string, string> = {
 	 * genuinely never got the order, which somebody has to act on. If both look
 	 * identical the real one gets ignored.
 	 */
-	skipped_sandbox: "Held back — sandbox",
+	skipped_sandbox: "Held back, sandbox",
 };
 
 /** Only two states are worth colouring. Everything else is ordinary progress. */
@@ -97,6 +97,7 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Status", Object.keys(STATUS_LABELS))}
 				filterCount={statusFilter.count}
 				exportRows={() => purchaseOrders.data?.items ?? []}
@@ -107,6 +108,19 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search by supplier, order or tracking"
 			/>
 
+			{/* 🔴 ONE state at a time, never both.
+			    The note and the empty wall said the same thing stacked on top of
+			    each other — a notice explaining the page cannot be edited, and
+			    directly beneath it a wall explaining the page cannot be edited.
+			    The explanation belongs to whichever one is actually showing: the
+			    wall when there is nothing here, this line when there is. */}
+			{purchaseOrders.data?.items.length ? (
+				<ReadOnlyNote>
+					Raised automatically when an order is paid, so there is nothing to
+					create or edit here.
+				</ReadOnlyNote>
+			) : null}
+
 			<PageState
 				query={purchaseOrders}
 				loadingLabel="Loading purchase orders…"
@@ -114,7 +128,7 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 				empty={
 					<EmptyState
 						title="Nothing has been ordered from a supplier yet"
-						detail="When a customer pays for something one of your suppliers makes, the ask is raised here automatically and sent the way that supplier is reached. Nothing is ordered by hand."
+						detail="When a customer pays for something one of your suppliers makes, the ask is raised here automatically and sent the way that supplier is reached. Nothing is ordered by hand, and nothing here can be edited. This page answers whether the supplier got it, and where it is."
 					/>
 				}
 			>
@@ -168,7 +182,7 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 									render: (row) =>
 										row.lines.length === 0 ? (
 											<span className="text-[11px] text-[var(--ink-45)]">
-												—
+												-
 											</span>
 										) : (
 											<span className="text-[11px] text-[var(--ink-30)]">
@@ -199,7 +213,7 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 										if (priced.length === 0) {
 											return (
 												<span className="text-[11px] text-[var(--ink-45)]">
-													—
+													-
 												</span>
 											);
 										}
@@ -222,7 +236,7 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 									tight: true,
 									render: (row) => (
 										<span className="text-[11px] text-[var(--ink-30)]">
-											{row.orderNumber ?? "—"}
+											{row.orderNumber ?? "-"}
 										</span>
 									),
 								},
@@ -248,7 +262,7 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 											 * visible without anybody going looking for it.
 											 */}
 											{row.failureReason ? (
-												<span className="text-[10.5px] text-[var(--signal-failure)]">
+												<span className="text-[10.5px] text-[var(--signal-failure-text)]">
 													{row.failureReason}
 												</span>
 											) : null}
@@ -264,7 +278,7 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 										if (!row.trackingNumber) {
 											return (
 												<span className="text-[11px] text-[var(--ink-45)]">
-													—
+													-
 												</span>
 											);
 										}

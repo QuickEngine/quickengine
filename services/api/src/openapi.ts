@@ -3309,6 +3309,30 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/account/notifications/{id}/unread": {
+				post: {
+					operationId: "markNotificationUnread",
+					summary: "Mark a notification unread",
+					description:
+						"The undo for opening one. Reading a notification marks it read automatically, so this is what lets you decide to deal with it later.",
+					responses: {
+						"200": { description: "Marked as unread." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account/notifications/{id}": {
+				delete: {
+					operationId: "dismissNotification",
+					summary: "Dismiss a notification",
+					description:
+						"Removes it from your inbox permanently. The record it points at \u2014 the order, the invoice, the dispute \u2014 is unaffected.",
+					responses: {
+						"200": { description: "Dismissed." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
 			"/v1/account/notifications": {
 				get: {
 					operationId: "listNotifications",
@@ -3341,6 +3365,18 @@ function declaredDocument(config: ApiConfig) {
 					responses: {
 						"201": { description: "The public URL of the stored image." },
 						"400": { description: "That file is not a usable image." },
+						"401": { description: "Sign in to continue." },
+					},
+				},
+			},
+			"/v1/account/notifications/clear-read": {
+				post: {
+					operationId: "clearReadNotifications",
+					summary: "Clear notifications you have read",
+					description:
+						"Removes every notification already marked read. Unread ones are untouched, so this can never discard something you have not seen.",
+					responses: {
+						"200": { description: "Read notifications were cleared." },
 						"401": { description: "Sign in to continue." },
 					},
 				},
@@ -3736,6 +3772,15 @@ function declaredDocument(config: ApiConfig) {
 					description:
 						"Reports providers running on a stand-in and what stops working. `severity` escalates `data-loss` above `feature-loss`. Carries environment variable NAMES only, never values.",
 					responses: { "200": { description: "Current provider health." } },
+				},
+			},
+			"/v1/requests": {
+				get: {
+					operationId: "listRecentRequests",
+					summary: "What this workspace has been doing, newest first",
+					description:
+						"The stream behind the developer console. `limit` bounds the page and `failures=true` narrows it to what went wrong, which is the view you want while an integration is misbehaving.",
+					responses: { "200": { description: "Recent requests." } },
 				},
 			},
 			"/v1/requests/{requestId}": {

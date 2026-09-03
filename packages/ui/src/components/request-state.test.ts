@@ -14,7 +14,17 @@ describe("presentRequestError", () => {
 		[404, "not-found", "This resource wasn't found"],
 		[409, "conflict", "This changed before we could finish"],
 		[429, "rate-limit", "Too many requests"],
-		[503, "server", "Something went wrong"],
+		// 🔴 503 is a TIMEOUT, not a server fault. Changed 2026-09-03.
+		//
+		// It used to fall through to the generic 500, which TAKES THE PAGE. Both
+		// 503 and 504 are temporary by definition, so walling the console over
+		// something that heals itself was the same overreaction the offline
+		// screen used to make. They report themselves as one inline line now.
+		[503, "timeout", "That service is busy"],
+		[504, "timeout", "That took too long"],
+		// The statuses that arrived with their own kinds in the same pass.
+		[402, "plan-limit", "That needs a larger plan"],
+		[413, "invalid", "That was too large to send"],
 	] as const)("maps %s without leaking raw errors", (status, kind, title) => {
 		const result = presentRequestError(requestError(status));
 		expect(result).toMatchObject({

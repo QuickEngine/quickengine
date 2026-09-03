@@ -154,7 +154,7 @@ export function IntegrationsPanel({
 					<p className="px-1 text-[11.5px] text-[var(--ink-30)]">Checking…</p>
 				) : mine.length === 0 ? (
 					<p className="px-1 pb-2 text-[11.5px] text-[var(--ink-35)] leading-5">
-						Nothing connected yet. Payments is the one you need first — without
+						Nothing connected yet. Payments is the one you need first, without
 						it this workspace cannot take money.
 					</p>
 				) : (
@@ -187,7 +187,9 @@ export function IntegrationsPanel({
 								<span
 									aria-hidden="true"
 									className={`size-1.5 shrink-0 rounded-full ${
-										row.chargesEnabled ? "bg-[#3fb950]" : "bg-[#f5a623]"
+										row.chargesEnabled
+											? "bg-[var(--signal-success)]"
+											: "bg-[var(--signal-attention)]"
 									}`}
 								/>
 							</div>

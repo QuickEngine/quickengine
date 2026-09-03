@@ -45,7 +45,18 @@ function flatten(
 export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [selectedId, setSelectedId] = useSelectedRecord();
 	// Opening a record accounts for whatever it was flagged for.
 	useAcknowledgeRecord(workspaceId, selectedId);
@@ -119,7 +130,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That order could not be saved."),
+			setFailure({ error: error, fallback: "That order could not be saved." }),
 		onSuccess: () => refresh(),
 	});
 
@@ -142,7 +153,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 			).data,
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be created."),
+			setFailure({ error: error, fallback: "That could not be created." }),
 		onSuccess: async (created: { id: string }) => {
 			await refresh();
 			setSelectedId(created.id);
@@ -168,6 +179,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Kind", [
 					"category",
 					"collection",
@@ -182,7 +194,9 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search categories"
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={categories}
@@ -274,7 +288,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 											</span>
 										</div>
 										{!node.visible ? (
-											<span className="mt-1.5 inline-block rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[#f5b44a]">
+											<span className="mt-1.5 inline-block rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention-text)]">
 												Hidden
 											</span>
 										) : null}

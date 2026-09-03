@@ -1,12 +1,24 @@
+/**
+ * Every workspace setting that is actually BUILT.
+ *
+ * 🔴 Moved out of `routes/$workspace.settings.tsx`, which no longer exists.
+ *
+ * Settings are a DIALOG. The page was the original home and stayed reachable
+ * by URL long after the dialog replaced it, so `SidebarAccount` was being
+ * handed both a `settingsHref` and an `onSettings` — one of them dead,
+ * depending on which the shell preferred. Two front doors to one screen is how
+ * they drift: a section added to the dialog and forgotten on the page.
+ *
+ * The dialog imported these sections out of the route file, so the page could
+ * not simply be deleted. Now they live here and the dialog is the only caller.
+ */
 import { CheckIcon, WarningIcon } from "@phosphor-icons/react";
 import { ThemeSwitch } from "@quickengine/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { OutletError, OutletNotFound } from "../components/outlet-error";
-import { sessionApi, workspaceApi } from "../lib/api";
-import { clientEnv } from "../lib/env";
-import { quickDashQueries } from "../lib/quickdash-api";
+import { sessionApi, workspaceApi } from "../../lib/api";
+import { clientEnv } from "../../lib/env";
+import { quickDashQueries } from "../../lib/quickdash-api";
 
 type TemplateCopy = {
 	subject?: string | null;
@@ -78,7 +90,18 @@ export function SettingsSections({
 	const workspace = workspaceId;
 	const context = useQuery(quickDashQueries.context(workspace));
 	const queryClient = useQueryClient();
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [environmentFailure, setEnvironmentFailure] = useState(false);
 	const [saved, setSaved] = useState(false);
 
@@ -130,7 +153,7 @@ export function SettingsSections({
 		},
 		onError: (error: { message?: string }) => {
 			setEnvironmentFailure(false);
-			setFailure(error?.message ?? "That could not be saved.");
+			setFailure({ error: error, fallback: "That could not be saved." });
 		},
 	});
 
@@ -205,7 +228,7 @@ export function SettingsSections({
 		},
 		onError: (error: { message?: string }) => {
 			setEnvironmentFailure(false);
-			setFailure(error?.message ?? "That could not be saved.");
+			setFailure({ error: error, fallback: "That could not be saved." });
 		},
 	});
 
@@ -252,7 +275,10 @@ export function SettingsSections({
 		},
 		onError: (error: { message?: string }) => {
 			setEnvironmentFailure(false);
-			setFailure(error?.message ?? "That wording could not be saved.");
+			setFailure({
+				error: error,
+				fallback: "That wording could not be saved.",
+			});
 		},
 	});
 	const [sentTo, setSentTo] = useState<string | null>(null);
@@ -275,7 +301,7 @@ export function SettingsSections({
 		// gets their mail, so if it does not appear here it appears nowhere.
 		onError: (error: { message?: string }) => {
 			setEnvironmentFailure(false);
-			setFailure(error?.message ?? "That test could not be sent.");
+			setFailure({ error: error, fallback: "That test could not be sent." });
 		},
 	});
 
@@ -297,10 +323,11 @@ export function SettingsSections({
 		// not.
 		onError: (error: { message?: string }) => {
 			setEnvironmentFailure(true);
-			setFailure(
-				error?.message ??
+			setFailure({
+				error,
+				fallback:
 					"That could not be changed. This workspace has already taken payments.",
-			);
+			});
 		},
 	});
 
@@ -316,14 +343,16 @@ export function SettingsSections({
 		 */
 		<main className={only ? "" : "min-h-full bg-[var(--console-bg)] px-5 py-5"}>
 			{failure ? (
-				<div className="mb-6 flex max-w-2xl items-start gap-2.5 rounded-lg border border-[#f5a623]/30 bg-[#f5a623]/[0.06] p-3.5">
+				<div className="mb-6 flex max-w-2xl items-start gap-2.5 rounded-lg border border-[var(--signal-attention)]/30 bg-[var(--signal-attention)]/[0.06] p-3.5">
 					<WarningIcon
 						size={14}
-						className="mt-0.5 shrink-0 text-[#f5b44a]"
+						className="mt-0.5 shrink-0 text-[var(--signal-attention-text)]"
 						weight="fill"
 					/>
 					<div>
-						<p className="text-[12px] text-[#f5b44a]">{failure}</p>
+						<p className="text-[12px] text-[var(--signal-attention-text)]">
+							{failure.fallback}
+						</p>
 						{/* 🔴 Only for the environment refusal.
 						    This advice used to show for EVERY failure on the page, so a
 						    rejected support email told somebody to create a sandbox
@@ -332,7 +361,7 @@ export function SettingsSections({
 						{environmentFailure ? (
 							<>
 								<p className="mt-1.5 text-[11.5px] text-[var(--ink-40)] leading-5">
-									Create a separate sandbox workspace instead — it gets its own
+									Create a separate sandbox workspace instead, it gets its own
 									records, API keys and payment provider, and nothing in it can
 									touch this business.
 								</p>
@@ -365,9 +394,9 @@ export function SettingsSections({
 							<div className="min-w-0 flex-1">
 								<p className="text-[12.5px] text-[var(--ink-85)]">Theme</p>
 								<p className="mt-1 text-[11.5px] text-[var(--ink-35)] leading-5">
-									Applies to you everywhere — QuickDash, Account and the sign-in
-									screens — on this device and any other you sign in from.
-									System follows your operating system.
+									Applies to you everywhere, QuickDash, Account and the sign-in
+									screens: on this device and any other you sign in from. System
+									follows your operating system.
 								</p>
 							</div>
 							<ThemeSwitch />
@@ -424,7 +453,7 @@ export function SettingsSections({
 						{/* ⚠️ Stated before it is attempted, not after the refusal. */}
 						<p className="mt-4 text-[11px] text-[var(--ink-30)] leading-5">
 							The environment locks as soon as a workspace connects a payment
-							provider, takes an order, or receives a payment — switching
+							provider, takes an order, or receives a payment. Switching
 							afterwards would leave real money in a workspace labelled sandbox.
 							Run parallel sandboxes as separate workspaces instead; each has
 							its own records, keys and provider.
@@ -446,7 +475,7 @@ export function SettingsSections({
 
 						<BrandField
 							label="Business name"
-							hint={`shown as the sender and in the header — defaults to ${brand?.workspaceName ?? "your workspace name"}`}
+							hint={`shown as the sender and in the header. Defaults to ${brand?.workspaceName ?? "your workspace name"}`}
 							value={brand?.displayName ?? ""}
 							onChange={(value) =>
 								setBrand((was) => (was ? { ...was, displayName: value } : was))
@@ -758,7 +787,7 @@ export function SettingsSections({
 														HTML
 													</span>
 													<p className="mt-1 mb-1.5 text-[11px] text-[var(--ink-30)] leading-4">
-														The whole email, yours to change — layout, styles,
+														The whole email, yours to change, layout, styles,
 														all of it. The system fills in{" "}
 														<code className="text-[var(--ink-60)]">
 															{"{{details}}"}
@@ -978,14 +1007,3 @@ function BrandField({
 		</label>
 	);
 }
-
-function SettingsPage() {
-	const { workspaceId } = Route.useRouteContext();
-	return <SettingsSections workspaceId={workspaceId} />;
-}
-
-export const Route = createFileRoute("/$workspace/settings")({
-	errorComponent: OutletError,
-	notFoundComponent: OutletNotFound,
-	component: SettingsPage,
-});

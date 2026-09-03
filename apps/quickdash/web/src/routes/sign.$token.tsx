@@ -81,7 +81,7 @@ function SigningPage() {
 			<main className="mx-auto max-w-lg p-6 text-center">
 				<div className="rounded-xl border p-6">
 					<h1 className="font-medium text-lg">
-						{done === "signed" ? "Signed — thank you" : "Declined"}
+						{done === "signed" ? "Signed, thank you" : "Declined"}
 					</h1>
 					<p className="mt-2 text-muted-foreground text-sm">
 						Your response has been recorded. You can close this page.

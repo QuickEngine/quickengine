@@ -197,6 +197,7 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Area", areas)}
 				filterCount={statusFilter.count}
 				exportRows={() => audit.data?.items ?? []}

@@ -47,7 +47,7 @@ const chip =
 	"rounded-full bg-[rgb(var(--console-ink)/0.06)] px-2 py-0.5 text-[10.5px] text-[var(--ink-50)]";
 
 const testBadge =
-	"shrink-0 rounded-[3px] bg-[#f5a623]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[#f5b44a] uppercase tracking-[0.09em]";
+	"shrink-0 rounded-[3px] bg-[var(--signal-attention)]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[var(--signal-attention-text)] uppercase tracking-[0.09em]";
 
 const mutedBadge =
 	"shrink-0 rounded-[3px] bg-[rgb(var(--console-ink)/0.07)] px-1.5 py-0.5 font-medium text-[9px] text-[var(--ink-40)] uppercase tracking-[0.09em]";

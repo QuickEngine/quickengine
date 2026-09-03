@@ -8,6 +8,50 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A list you are reading is no longer thrown away when a refresh fails.** It stays, with a line
+  saying it may be out of date and a way to try again. Only a lost session or a lost permission
+  replaces the page now.
+
+- **A dashboard tile that cannot load says so.** They used to report good news instead: nothing
+  waiting, a quiet day, or a count of zero, which made a broken dashboard look like a slow morning.
+
+- **The board holds its shape while it loads,** and tells the difference between a workspace with
+  nothing switched on, a board you have cleared, and one that could not load at all.
+
+- **A workspace with nothing in it says so.** Opening a brand new workspace showed an empty
+  dashboard telling you to add tiles, while the sidebar said no modules were enabled. It now explains
+  what a module is and takes you to choose them.
+
+- **Saving while offline no longer loses what you typed.** The save button waits for a connection
+  instead of failing and leaving your work in a form you might close.
+
+- **Deleting several things at once counts as it goes,** so if it stops partway you can see how far
+  it got.
+
+- **Read only pages say why.** Purchase orders are raised automatically when an order is paid, and
+  the page now says so rather than leaving you to wonder where the create button went.
+
+- **Products has a table view,** alongside the card view it already had, and its cards match the
+  rest of the console.
+
+- **Clearing a search or filter is one press,** from the table's own toolbar.
+
+- **Every failure says the right thing, in the right shape.** A page that cannot be found, a page you
+  cannot open, a fault on our side, a plan you have outgrown, a workspace in the wrong mode and a
+  module that is switched off each get their own screen, inside the console rather than instead of
+  it. Losing your network, being asked to slow down, a clash and a refused request stay out of the
+  way as a single line, because the page still works. Whatever the failure, the sidebar stays and you
+  can carry on somewhere else.
+
+- **A request ID you can actually use.** Every error shows the identifier support needs, with one
+  press to copy it and one to open a message that already contains it.
+
+- **Told when you go offline, and when you come back.** A short notice in the corner rather than a
+  screen that throws away the page you were reading.
+
+- **Somebody to ask.** A page you do not have permission for now names the people who can grant it,
+  and lets you email them from the message itself.
+
 - **Your shop, from the header.** A shop button that opens your own site, and closes it for
   maintenance without touching anything about how you take payment. Closed is marked; open is the
   normal state and says nothing.
@@ -35,6 +79,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   decided instead.
 
 ### Fixed
+
+- **Proper punctuation everywhere.** Dashes used mid sentence are gone from every screen.
+
+- **The search box in a table no longer loses your typing.** Searching a list stopped after one
+  character whenever the search emptied it, because the table went away and took the box with it. The
+  table now keeps its frame and says "nothing matches" inside it.
+
+- **Settings live in one place.** The old settings page has gone; everything it held is in the
+  settings dialog, which was already the way in.
+
+- **Errors read the same everywhere.** Warning and failure colours were chosen against the dark
+  console and were unreadable on the light one, and forty one screens printed raw text like
+  `HTTP 500` where a sentence belonged.
 
 - **The upgrade card at the foot of the sidebar had stopped appearing at all.** It was tied to the
   account row, and when that moved to the header it went with it.

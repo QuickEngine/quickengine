@@ -79,7 +79,18 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 	 * every rate under it — and building the whole thing again.
 	 */
 	const [editingId, setEditingId] = useState<string | null>(null);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const zones = useQuery({
 		queryKey: ["quickdash", workspaceId, "shipping-zones"],
@@ -131,7 +142,7 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That zone could not be created."),
+			setFailure({ error: error, fallback: "That zone could not be created." }),
 		onSuccess: () => {
 			setCreating(false);
 			setEditingId(null);
@@ -161,7 +172,7 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That zone could not be removed."),
+			setFailure({ error: error, fallback: "That zone could not be removed." }),
 		onSuccess: refresh,
 	});
 
@@ -197,7 +208,7 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 					/>
 					<TextField
 						label="Regions"
-						hint="optional — leave empty for the whole country"
+						hint="optional: leave empty for the whole country"
 						value={regions}
 						onChange={setRegions}
 						placeholder="AB, BC"
@@ -220,6 +231,7 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("State", ["active", "off"])}
 				filterCount={statusFilter.count}
 				exportRows={() => zones.data?.items ?? []}
@@ -230,7 +242,9 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search zones"
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={zones}
@@ -284,7 +298,7 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 									render: (zone) =>
 										// 🔴 The state that silently breaks checkout.
 										zone.rates.length === 0 ? (
-											<span className="rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention)]">
+											<span className="rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention-text)]">
 												No rates, cannot quote
 											</span>
 										) : (

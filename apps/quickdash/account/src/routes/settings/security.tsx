@@ -124,9 +124,15 @@ function SecurityPage() {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			{failure ? (
-				<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+					{failure}
+				</p>
 			) : null}
-			{note ? <p className="mb-4 text-[12px] text-[#3fb950]">{note}</p> : null}
+			{note ? (
+				<p className="mb-4 text-[12px] text-[var(--signal-success-text)]">
+					{note}
+				</p>
+			) : null}
 
 			<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Passkeys</p>
 			<div className="flex flex-wrap items-center gap-4 border-[var(--console-line-soft)] border-t py-4">
@@ -152,7 +158,7 @@ function SecurityPage() {
 				<div className="flex flex-wrap items-center gap-4">
 					<ShieldCheckIcon
 						size={16}
-						className={`shrink-0 ${enabled ? "text-[#3fb950]" : "text-[var(--ink-45)]"}`}
+						className={`shrink-0 ${enabled ? "text-[var(--signal-success-text)]" : "text-[var(--ink-45)]"}`}
 					/>
 					<p className="min-w-0 flex-1 text-[11.5px] text-[var(--ink-40)] leading-5">
 						{enabled
@@ -243,7 +249,7 @@ function SecurityPage() {
 				    them safe, and it is also what makes this the only chance. */}
 				{step === "codes" ? (
 					<div className="mt-4">
-						<p className="text-[12px] text-[#f5b44a] leading-5">
+						<p className="text-[12px] text-[var(--signal-attention-text)] leading-5">
 							Save these recovery codes now. They are the only way back in if
 							you lose your authenticator, and they cannot be shown again.
 						</p>

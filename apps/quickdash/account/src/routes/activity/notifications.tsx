@@ -84,8 +84,8 @@ function NotificationsPage() {
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-3">
 				<p className="max-w-2xl text-[11.5px] text-[var(--ink-30)] leading-5">
-					Addressed to you, not to the organization — a teammate signed in
-					beside you has their own list.
+					Addressed to you, not to the organization, a teammate signed in beside
+					you has their own list.
 				</p>
 				<div className="flex items-center gap-2">
 					<div className="flex items-center gap-1">
@@ -123,7 +123,9 @@ function NotificationsPage() {
 			</div>
 
 			{failure ? (
-				<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+					{failure}
+				</p>
 			) : null}
 
 			{notifications.isPending ? (

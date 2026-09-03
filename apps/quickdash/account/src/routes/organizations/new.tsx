@@ -59,7 +59,9 @@ function NewOrganizationPage() {
 				className="max-w-xl"
 			>
 				{failure ? (
-					<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+					<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+						{failure}
+					</p>
 				) : null}
 
 				<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">
@@ -78,7 +80,7 @@ function NewOrganizationPage() {
 					<p className="mt-3 max-w-lg text-[11.5px] text-[var(--ink-35)] leading-5">
 						An organization owns workspaces, people and billing. Everyone you
 						invite to it can open every workspace inside it, so keep unrelated
-						businesses in separate organizations — that separation is the only
+						businesses in separate organizations, that separation is the only
 						thing keeping one team out of another&rsquo;s records.
 					</p>
 

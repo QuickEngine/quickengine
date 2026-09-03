@@ -67,7 +67,18 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 	} | null>(null);
 	const [search, setSearch] = useState("");
 	const [lowOnly, setLowOnly] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [drafts, setDrafts] = useState<Record<string, string>>({});
 	const [tracking, setTracking] = useState(false);
 	const [product, setProduct] = useState("");
@@ -119,7 +130,10 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That product could not be tracked."),
+			setFailure({
+				error: error,
+				fallback: "That product could not be tracked.",
+			}),
 		onSuccess: () => {
 			setTracking(false);
 			setProduct("");
@@ -144,7 +158,7 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That adjustment did not save."),
+			setFailure({ error: error, fallback: "That adjustment did not save." }),
 		onSuccess: (_result, input) => {
 			setDrafts((current) => ({ ...current, [input.id]: "" }));
 			queryClient.invalidateQueries({
@@ -205,6 +219,7 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => setLowOnly(false)}
 				exportRows={() => inventory.data?.items ?? []}
 				exportName="inventory"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
@@ -224,7 +239,9 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={inventory}
@@ -301,7 +318,7 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 										<span
 											className={
 												available(item) <= item.lowStockThreshold
-													? "text-[var(--signal-attention)]"
+													? "text-[var(--signal-attention-text)]"
 													: "text-[var(--ink-85)]"
 											}
 										>

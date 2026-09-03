@@ -491,7 +491,18 @@ function statusOf(status: ConnectStatus | undefined) {
 
 export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 	const queryClient = useQueryClient();
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	// Which provider's credential form is open. A connected provider keeps its
 	// form closed until somebody chooses to replace what is stored.
 	const [editing, setEditing] = useState<string | null>(null);
@@ -540,7 +551,7 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That did not work."),
+			setFailure({ error: error, fallback: "That did not work." }),
 		onSuccess: (url) => {
 			window.location.assign(url);
 		},
@@ -579,7 +590,7 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be disconnected."),
+			setFailure({ error: error, fallback: "That could not be disconnected." }),
 		onSuccess: refresh,
 	});
 
@@ -597,7 +608,10 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "Those credentials were not accepted."),
+			setFailure({
+				error: error,
+				fallback: "Those credentials were not accepted.",
+			}),
 		onSuccess: () => {
 			setEditing(null);
 			refresh();
@@ -613,7 +627,7 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That provider is not connected."),
+			setFailure({ error: error, fallback: "That provider is not connected." }),
 		onSuccess: refresh,
 	});
 
@@ -633,7 +647,9 @@ export function PaymentsView({ workspaceId }: { workspaceId: string }) {
 				</p>
 			</div>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			{/*
 			 * 🔴 Cards on a grid, not hairline rows in a narrow stack. Providers

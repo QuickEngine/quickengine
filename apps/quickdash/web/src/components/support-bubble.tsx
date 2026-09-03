@@ -1,4 +1,5 @@
 import { XIcon } from "@phosphor-icons/react";
+import { STATUS_URL } from "@quickengine/ui";
 import { clientEnv } from "../lib/env";
 
 /**
@@ -45,13 +46,11 @@ export function SupportBubble({
 	open,
 	onClose,
 	workspaceName,
-	onFeedback,
 }: {
 	open: boolean;
 	onClose: () => void;
 	workspaceName?: string;
 	/** Opens the same dialog the account menu uses, rather than a second form. */
-	onFeedback: () => void;
 }) {
 	if (!open) return null;
 
@@ -85,10 +84,20 @@ export function SupportBubble({
 			<a href={`${clientEnv.WEB_URL}/docs`} className={row}>
 				Read the documentation
 			</a>
-			<button type="button" className={row} onClick={onFeedback}>
+			{/* 🔴 The account's support page, not the feedback dialog.
+			    Feedback is "here is a thought about the product" and goes into a
+			    pile. This is "something is wrong and I need a person", which has
+			    an actual destination — a form that reaches a human, carries your
+			    organisation with it, and takes the request id. Pointing it at
+			    feedback quietly turned every support request into a suggestion
+			    nobody was waiting on. */}
+			<a href={`${clientEnv.ACCOUNT_URL}/support`} className={row}>
 				Send us a message
-			</button>
-			<a href={`${clientEnv.WEB_URL}/status`} className={row}>
+			</a>
+			{/* The real status page, not a marketing route that does not exist.
+			    `STATUS_URL` is the same constant the error cards link to, so
+			    there is one answer to "is it just me". */}
+			<a href={STATUS_URL} target="_blank" rel="noreferrer" className={row}>
 				Check service status
 			</a>
 

@@ -43,7 +43,18 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [search, setSearch] = useState("");
 
 	/**
@@ -94,7 +105,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That decision did not save."),
+			setFailure({ error: error, fallback: "That decision did not save." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "reviews"],
@@ -104,6 +115,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				exportRows={() => reviews.data?.items ?? []}
 				exportName="reviews"
 				filter={statusFilter.chips("Status", [...STATUSES])}
@@ -114,7 +126,9 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 				placeholder="Search reviews by author or words"
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={reviews}

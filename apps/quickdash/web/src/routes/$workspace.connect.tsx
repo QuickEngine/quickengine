@@ -10,7 +10,6 @@ import {
 	suggestedKeyName,
 } from "../_lib/connect-config";
 import { Card } from "../components/dash-card";
-import { OutletError, OutletNotFound } from "../components/outlet-error";
 import { SkeletonRows } from "../components/skeletons";
 import { WorkingSpinner } from "../components/working-spinner";
 import { sessionApi, workspaceApi } from "../lib/api";
@@ -268,8 +267,8 @@ function ConnectPage() {
 							[
 								"Environment",
 								context.data?.workspace.environment === "test"
-									? "Sandbox — payments are not charged"
-									: "Live — payments are real",
+									? "Sandbox: payments are not charged"
+									: "Live: payments are real",
 							],
 						].map(([label, value]) => (
 							<div key={label} className="flex items-baseline gap-4 py-3">
@@ -290,7 +289,7 @@ function ConnectPage() {
 					) : (endpoints.data ?? []).length === 0 ? (
 						<p className="max-w-xl text-[11.5px] text-[var(--ink-35)] leading-5">
 							No endpoints yet. Register one and this workspace will post every
-							event to it — signed, retried on failure, and replayable from the
+							event to it, signed, retried on failure, and replayable from the
 							delivery history.
 						</p>
 					) : (
@@ -308,7 +307,7 @@ function ConnectPage() {
 								>
 									<span
 										aria-hidden="true"
-										className={`size-1.5 shrink-0 rounded-full ${endpoint.enabled ? "bg-[#3fb950]" : "bg-[var(--ink-25)]"}`}
+										className={`size-1.5 shrink-0 rounded-full ${endpoint.enabled ? "bg-[var(--signal-success)]" : "bg-[var(--ink-25)]"}`}
 									/>
 									<span className="min-w-0 flex-1">
 										<span className="block truncate font-mono text-[11.5px] text-[var(--ink-80)]">
@@ -344,7 +343,7 @@ function ConnectPage() {
 											className="flex items-baseline gap-3 py-2.5 text-[11.5px]"
 										>
 											<span
-												className={`w-16 shrink-0 ${delivery.status === "delivered" ? "text-[#3fb950]" : "text-[#f5b44a]"}`}
+												className={`w-16 shrink-0 ${delivery.status === "delivered" ? "text-[var(--signal-success-text)]" : "text-[var(--signal-attention-text)]"}`}
 											>
 												{delivery.status}
 											</span>
@@ -352,7 +351,7 @@ function ConnectPage() {
 												{delivery.eventName}
 											</span>
 											<span className="shrink-0 text-[var(--ink-30)]">
-												{delivery.responseStatus ?? delivery.error ?? "—"}
+												{delivery.responseStatus ?? delivery.error ?? "-"}
 											</span>
 											<span className="w-16 shrink-0 text-right text-[var(--ink-25)]">
 												{delivery.attempts} tr
@@ -370,7 +369,7 @@ function ConnectPage() {
 				<Card title="Look up a request">
 					<p className="max-w-xl text-[11.5px] text-[var(--ink-35)] leading-5">
 						Every response carries a request ID. Paste one here to see what the
-						API actually did — the mutation it committed and the audit it wrote.
+						API actually did, the mutation it committed and the audit it wrote.
 					</p>
 					<div className="mt-3 flex flex-wrap items-center gap-2">
 						<input
@@ -411,12 +410,15 @@ function ConnectPage() {
 						<>
 							{firstContact ? (
 								<p className="flex items-center gap-2 text-[11.5px] text-[var(--ink-45)]">
-									<CheckIcon size={12} className="text-[#3fb950]" />
+									<CheckIcon
+										size={12}
+										className="text-[var(--signal-success-text)]"
+									/>
 									Your site first reached this workspace on{" "}
 									{new Date(firstContact).toLocaleString()}.
 								</p>
 							) : (
-								<p className="flex items-center gap-2 text-[11.5px] text-[#f5b44a]">
+								<p className="flex items-center gap-2 text-[11.5px] text-[var(--signal-attention-text)]">
 									{/* The same ring the sidebar shows, resolving to the checkmark
 									    above once contact lands — so waiting and done are the same
 									    control in two states rather than two different marks. */}
@@ -475,7 +477,10 @@ function ConnectPage() {
 						<p className="text-[12px] text-[var(--ink-30)]">Checking…</p>
 					) : health.data?.healthy ? (
 						<p className="flex items-center gap-2 text-[11.5px] text-[var(--ink-45)]">
-							<CheckIcon size={12} className="text-[#3fb950]" />
+							<CheckIcon
+								size={12}
+								className="text-[var(--signal-success-text)]"
+							/>
 							Everything QuickDash depends on is running normally.
 						</p>
 					) : (
@@ -483,9 +488,10 @@ function ConnectPage() {
 							{(health.data?.providers ?? []).map((provider) => (
 								<p
 									key={provider.provider}
-									className="text-[11.5px] text-[#f5b44a] leading-5"
+									className="text-[11.5px] text-[var(--signal-attention-text)] leading-5"
 								>
-									<span className="capitalize">{provider.provider}</span> —{" "}
+									<span className="capitalize">{provider.provider}</span>
+									{": "}
 									{provider.consequence}
 								</p>
 							))}

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "./client";
 import { notifications } from "./schema/notifications";
 
@@ -166,6 +166,58 @@ export async function markNotificationRead(
 		.update(notifications)
 		.set({ readAt: new Date() })
 		.where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+}
+
+/**
+ * Put one back to unread.
+ *
+ * 🔑 The undo for a misclick, and the reason "mark read" can be a one-press
+ * action rather than a confirmation. Opening a notification marks it read
+ * automatically, so without this, glancing at something and deciding to deal
+ * with it later left no way to make it look like it still needs dealing with.
+ */
+export async function markNotificationUnread(
+	userId: string,
+	id: string,
+): Promise<void> {
+	await db
+		.update(notifications)
+		.set({ readAt: null })
+		.where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+}
+
+/**
+ * Remove one from the inbox for good.
+ *
+ * ⚠️ A hard delete, and that is the right shape here. A notification is never
+ * the only copy of anything — it points at an order, an invoice, a dispute,
+ * all of which outlive it — so keeping a dismissed row would preserve nothing
+ * but the fact that somebody dismissed it. Scoped to the owner, so one person
+ * can never clear another's inbox.
+ */
+export async function dismissNotification(
+	userId: string,
+	id: string,
+): Promise<void> {
+	await db
+		.delete(notifications)
+		.where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+}
+
+/**
+ * Empty the inbox of everything already dealt with.
+ *
+ * 🔴 READ rows only, and that restriction is the whole design. "Clear all"
+ * would let one press destroy something the person has never laid eyes on,
+ * which is precisely the silent bulk action this panel is trying not to be.
+ * Clearing what you have already read cannot lose you anything.
+ */
+export async function dismissReadNotifications(userId: string): Promise<void> {
+	await db
+		.delete(notifications)
+		.where(
+			and(eq(notifications.userId, userId), isNotNull(notifications.readAt)),
+		);
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {

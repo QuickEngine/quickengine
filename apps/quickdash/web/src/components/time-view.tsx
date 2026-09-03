@@ -51,7 +51,18 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const entries = useQuery({
 		queryKey: ["quickdash", workspaceId, "time-entries"],
@@ -87,7 +98,7 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That timer did not stop."),
+			setFailure({ error: error, fallback: "That timer did not stop." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "time-entries"],
@@ -103,7 +114,7 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That entry could not be voided."),
+			setFailure({ error: error, fallback: "That entry could not be voided." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "time-entries"],
@@ -143,7 +154,9 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={entries}
@@ -262,7 +275,7 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 							{running.length > 0 ? (
 								<section className="mb-5">
 									<p className="mb-1 flex items-center gap-2 text-[11px] text-[var(--ink-45)]">
-										<span className="size-1.5 animate-pulse rounded-full bg-[#f5b44a]" />
+										<span className="size-1.5 animate-pulse rounded-full bg-[var(--signal-attention)]" />
 										Running now
 									</p>
 									<PagedTable

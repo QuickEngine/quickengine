@@ -12,9 +12,10 @@ import {
 	SidebarName,
 } from "@quickengine/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { type MouseEventHandler, useState } from "react";
 import { AssistantPanel } from "../components/assistant-panel";
+import { ConnectionBanner } from "../components/connection-banner";
 import { DevConsole } from "../components/dev-console";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { HeaderActionProvider } from "../components/header-action";
@@ -377,12 +378,9 @@ function WorkspaceFrame() {
 							planId={plan.data?.planId ?? null}
 							accountUrl={clientEnv.ACCOUNT_URL}
 							authUrl={clientEnv.AUTH_URL}
-							settingsHref={`/${workspace}/settings`}
-							settingsLink={({ href, className, children }) => (
-								<Link to={href} className={className}>
-									{children}
-								</Link>
-							)}
+							// 🔴 No `settingsHref`. Settings are a DIALOG, and passing a
+							// link as well left the shell to choose between two front
+							// doors to one screen — the surest way for them to drift.
 							onSettings={() => setSettingsOpen(true)}
 							onSignOut={nativeSignOut}
 							onFeedback={() => setFeedbackOpen(true)}
@@ -485,6 +483,11 @@ function WorkspaceFrame() {
 			assistant={<AssistantPanel onClose={() => setAssistantOpen(false)} />}
 			overlays={
 				<>
+					{/* 🔑 In `overlays`, so it outlives every page. Connectivity is a
+					    property of the WINDOW — remounting it per route would make it
+					    vanish and reappear on navigation, which is the one moment it
+					    most needs to stay put. */}
+					<ConnectionBanner />
 					<WorkspaceSearch
 						open={searchOpen}
 						onOpenChange={setSearchOpen}
@@ -503,7 +506,6 @@ function WorkspaceFrame() {
 						open={helpOpen}
 						onClose={() => showHelp(false)}
 						workspaceName={context.data?.workspace.name}
-						onFeedback={() => setFeedbackOpen(true)}
 					/>
 					{/* Reads the same list the bell does, so a toast is only ever a
 					    preview of a row that is already durable. */}
@@ -546,16 +548,31 @@ export const Route = createFileRoute("/$workspace")({
 	beforeLoad: async ({ context, params }) => {
 		const key = params.workspace;
 		if (UUID.test(key)) return { workspaceId: key };
-		const workspaces = await context.queryClient.ensureQueryData(
-			quickDashQueries.workspaces(),
-		);
-		const match = workspaces.items.find(
-			(workspace) => workspace.slug === key || workspace.id === key,
-		);
-		// Unmatched falls through as-is: the API answers 404 for a workspace that
-		// does not exist, which is the honest error rather than a redirect that
-		// hides a typo.
-		return { workspaceId: match?.id ?? key };
+		/**
+		 * 🔴 NEVER throws.
+		 *
+		 * A throw here happens ABOVE the shell, so it hits the root boundary and
+		 * replaces the entire console — sidebar, header and search — for a
+		 * failure that belongs on one page. This lookup only turns a slug into an
+		 * id; if it cannot, falling through with the slug lets the shell render
+		 * and the page report the failure inside the outlet, where you can still
+		 * navigate away from it.
+		 *
+		 * ⚠️ Unmatched also falls through as-is: the API answers 404 for a
+		 * workspace that does not exist, which is the honest error rather than a
+		 * redirect that hides a typo.
+		 */
+		try {
+			const workspaces = await context.queryClient.ensureQueryData(
+				quickDashQueries.workspaces(),
+			);
+			const match = workspaces.items.find(
+				(workspace) => workspace.slug === key || workspace.id === key,
+			);
+			return { workspaceId: match?.id ?? key };
+		} catch {
+			return { workspaceId: key };
+		}
 	},
 	component: WorkspaceShell,
 });

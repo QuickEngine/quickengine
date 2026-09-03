@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { detailCard } from "./detail-panel";
+import { WriteFailure } from "./page-state";
 import { Area, Choice, Section, Text, Toggle } from "./product-fields";
 
 /**
@@ -65,7 +66,18 @@ export function CategoryPanel({
 }) {
 	const queryClient = useQueryClient();
 	const [draft, setDraft] = useState<CategoryDraft>(() => draftFrom(node));
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on identity, not on every field
 	useEffect(() => {
@@ -104,7 +116,10 @@ export function CategoryPanel({
 		},
 		onSuccess: (url) => set("imageUrl", url),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That picture could not be uploaded."),
+			setFailure({
+				error: error,
+				fallback: "That picture could not be uploaded.",
+			}),
 	});
 
 	/**
@@ -127,7 +142,7 @@ export function CategoryPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be deleted."),
+			setFailure({ error: error, fallback: "That could not be deleted." }),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "categories"],
@@ -155,7 +170,7 @@ export function CategoryPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That did not save."),
+			setFailure({ error: error, fallback: "That did not save." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "categories"],
@@ -325,9 +340,7 @@ export function CategoryPanel({
 
 			<footer className="shrink-0 border-[var(--console-line-soft)] border-t px-4 py-3">
 				{failure ? (
-					<p className="mb-2 text-[11.5px] text-[var(--signal-failure)]">
-						{failure}
-					</p>
+					<WriteFailure error={failure.error} message={failure.fallback} />
 				) : null}
 				<button
 					type="button"
@@ -349,7 +362,7 @@ export function CategoryPanel({
 							remove.mutate();
 						}
 					}}
-					className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-full border border-[var(--console-line-strong)] text-[12.5px] text-[var(--ink-50)] transition-colors hover:text-[var(--signal-failure)] disabled:opacity-40"
+					className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-full border border-[var(--console-line-strong)] text-[12.5px] text-[var(--ink-50)] transition-colors hover:text-[var(--signal-failure-text)] disabled:opacity-40"
 				>
 					{remove.isPending ? "Deleting…" : "Delete category"}
 				</button>

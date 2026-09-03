@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { workspaceApi } from "../../lib/api";
+import { FailureStatusLine, WriteFailure } from "../page-state";
 import { SaveButton } from "./controls";
 import { FieldRow, read, write } from "./module-settings-form";
 import { WORKSPACE_SETTINGS } from "./workspace-fields";
@@ -31,7 +32,18 @@ export function WorkspaceSettingsForm({
 		{},
 	);
 	const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [saved, setSaved] = useState(false);
 
 	const settings = useQuery({
@@ -84,7 +96,7 @@ export function WorkspaceSettingsForm({
 			setSaved(false);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "Those settings did not save."),
+			setFailure({ error: error, fallback: "Those settings did not save." }),
 		onSuccess: async () => {
 			setSaved(true);
 			setDirty(new Set());
@@ -99,11 +111,7 @@ export function WorkspaceSettingsForm({
 		return <p className="text-[12px] text-[var(--ink-30)]">Loading…</p>;
 	}
 	if (settings.isError) {
-		return (
-			<p className="text-[11.5px] text-[#ff6b6b] leading-5">
-				These settings could not be loaded.
-			</p>
-		);
+		return <FailureStatusLine error={settings.error} />;
 	}
 
 	return (
@@ -147,7 +155,7 @@ export function WorkspaceSettingsForm({
 			))}
 
 			{failure ? (
-				<p className="text-[11.5px] text-[#ff6b6b] leading-5">{failure}</p>
+				<WriteFailure error={failure.error} message={failure.fallback} />
 			) : null}
 
 			<SaveButton

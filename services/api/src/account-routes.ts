@@ -21,6 +21,8 @@ import { getCacheProvider } from "@quickengine/cache";
 import {
 	createOrganization,
 	deleteUserAccount,
+	dismissNotification,
+	dismissReadNotifications,
 	getOrganizationRevenue,
 	getUserOnboardingState,
 	listControlPlaneAudit,
@@ -31,6 +33,7 @@ import {
 	listOrganizationsForUser,
 	markAllNotificationsRead,
 	markNotificationRead,
+	markNotificationUnread,
 	recordControlPlaneAudit,
 	updateUserProfile,
 	workspaceBelongsToOrganization,
@@ -909,6 +912,41 @@ export function registerAccountRoutes(
 	app.post("/v1/account/notifications/:id/read", session, async (c) => {
 		await markNotificationRead(c.get("account").userId, c.req.param("id"));
 		return respond(c, { read: true });
+	});
+
+	/**
+	 * Put one back to unread.
+	 *
+	 * Opening a notification marks it read, so this is what makes that safe:
+	 * looking at something and deciding to deal with it later is a normal thing
+	 * to do, and without an undo the inbox punishes it.
+	 */
+	app.post("/v1/account/notifications/:id/unread", session, async (c) => {
+		await markNotificationUnread(c.get("account").userId, c.req.param("id"));
+		return respond(c, { read: false });
+	});
+
+	/**
+	 * Remove one from the inbox.
+	 *
+	 * ⚠️ Permanent, and deliberately not confirmed. A notification points at a
+	 * record that outlives it, so the worst case is losing a pointer to
+	 * something still sitting in Orders — not worth a dialog on every dismissal.
+	 */
+	app.delete("/v1/account/notifications/:id", session, async (c) => {
+		await dismissNotification(c.get("account").userId, c.req.param("id"));
+		return respond(c, { dismissed: true });
+	});
+
+	/**
+	 * Clear out everything already read.
+	 *
+	 * ⚠️ Read rows ONLY. Nothing you have not seen can be removed by pressing
+	 * this, which is what makes it safe to offer without a confirmation.
+	 */
+	app.post("/v1/account/notifications/clear-read", session, async (c) => {
+		await dismissReadNotifications(c.get("account").userId);
+		return respond(c, { cleared: true });
 	});
 
 	app.post("/v1/account/notifications/read-all", session, async (c) => {

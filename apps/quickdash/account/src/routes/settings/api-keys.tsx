@@ -325,13 +325,15 @@ function ApiKeysPage() {
 			</div>
 
 			{failure ? (
-				<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+					{failure}
+				</p>
 			) : null}
 
 			{/* 🔴 The only time this value exists in readable form. */}
 			{issued ? (
-				<div className="mb-6 rounded-lg border border-[#f5a623]/30 bg-[#f5a623]/[0.06] p-4">
-					<p className="text-[12px] text-[#f5b44a]">
+				<div className="mb-6 rounded-lg border border-[var(--signal-attention)]/30 bg-[var(--signal-attention)]/[0.06] p-4">
+					<p className="text-[12px] text-[var(--signal-attention-text)]">
 						Copy this key now. It is stored hashed and cannot be shown again.
 					</p>
 					<div className="mt-3 flex items-center gap-2">
@@ -550,7 +552,7 @@ function ApiKeysPage() {
 										type="button"
 										disabled={revoke.isPending}
 										onClick={() => revoke.mutate(row.id)}
-										className="inline-flex h-7 items-center rounded-full border border-[#ff3b3b]/25 px-3 text-[11px] text-[#ff6b6b] transition-colors hover:bg-[#ff3b3b]/[0.08]"
+										className="inline-flex h-7 items-center rounded-full border border-[var(--signal-failure)]/25 px-3 text-[11px] text-[var(--signal-failure-text)] transition-colors hover:bg-[var(--signal-failure)]/[0.08]"
 									>
 										{revoke.isPending ? "Revoking…" : "Confirm"}
 									</button>

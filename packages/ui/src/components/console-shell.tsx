@@ -70,7 +70,7 @@ const AnchorLink: ConsoleLink = ({ href, className, children }) => (
  * test-mode marker may never become. */
 export function SidebarBadge({ label }: { label: string }) {
 	return (
-		<span className="shrink-0 rounded-[3px] bg-[#f5a623]/[0.14] px-1.5 py-0.5 font-medium text-[9px] text-[#f5b44a] uppercase tracking-[0.09em]">
+		<span className="shrink-0 rounded-[3px] bg-[color-mix(in_srgb,var(--signal-attention)_16%,transparent)] px-1.5 py-0.5 font-medium text-[9px] text-[var(--signal-attention-text)] uppercase tracking-[0.09em]">
 			{label}
 		</span>
 	);
@@ -229,7 +229,7 @@ export function SidebarName({
 									{notificationCount > 0 ? (
 										<span
 											aria-hidden="true"
-											className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[#ff3b3b] shadow-[0_0_0_1px_var(--console-panel)]"
+											className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[var(--signal-failure)] shadow-[0_0_0_1px_var(--console-panel)]"
 										/>
 									) : null}
 								</span>
@@ -486,7 +486,7 @@ export function ConsoleBell({
 						aria-hidden="true"
 						// ⚠️ Ringed in the surface it sits on, so the dot reads as raised
 						// off the bell rather than as part of the glyph.
-						className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[#ff3b3b] shadow-[0_0_0_1px_var(--console-bg)]"
+						className="-right-1.5 -top-1.5 absolute size-2 rounded-full bg-[var(--signal-failure)] shadow-[0_0_0_1px_var(--console-bg)]"
 					/>
 				) : null}
 			</span>
@@ -580,7 +580,7 @@ export function ConsoleIntegrations({
 			{count > 0 ? (
 				<span
 					aria-hidden="true"
-					className="-right-1 -top-1 absolute size-2 rounded-full bg-[#3fb950] shadow-[0_0_0_2px_var(--console-bg)]"
+					className="-right-1 -top-1 absolute size-2 rounded-full bg-[var(--signal-success)] shadow-[0_0_0_2px_var(--console-bg)]"
 				/>
 			) : null}
 		</button>

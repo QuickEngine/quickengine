@@ -53,10 +53,10 @@ const time = new Intl.DateTimeFormat("en", {
 /** Colour by what it MEANS, not by how loud it is. */
 function tone(status: number | null, state?: string): string {
 	if (state === "pending") return "var(--ink-35)";
-	if (status === null) return "#f5a623";
-	if (status >= 500) return "#ff6b6b";
-	if (status >= 400) return "#f5a623";
-	return "#3fb950";
+	if (status === null) return "var(--signal-attention)";
+	if (status >= 500) return "var(--signal-failure)";
+	if (status >= 400) return "var(--signal-attention)";
+	return "var(--signal-success)";
 }
 
 export function DevConsole({ workspaceId }: { workspaceId: string }) {

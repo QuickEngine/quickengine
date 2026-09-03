@@ -123,7 +123,9 @@ function NotificationsPage() {
 			</div>
 
 			{failure ? (
-				<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+					{failure}
+				</p>
 			) : null}
 
 			{notifications.isPending ? (

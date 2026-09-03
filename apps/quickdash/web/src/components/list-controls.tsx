@@ -17,6 +17,7 @@ import {
 	usePageTakenOver,
 	useTableRail,
 } from "./header-action";
+import { useToast } from "./toast";
 
 /**
  * The bar above every list: search, filter, and the page's one create action.
@@ -71,6 +72,7 @@ export function ListControls({
 	exportRows?: () => ReadonlyArray<Record<string, unknown>>;
 	exportName?: string;
 }) {
+	const toast = useToast();
 	// The page registers its action through `useHeaderAction`; this is where it
 	// now appears. The registration API is unchanged, so no page needed editing.
 	const { action: createAction } = useHeaderSlots();
@@ -99,7 +101,21 @@ export function ListControls({
 			{exportRows ? (
 				<button
 					type="button"
-					onClick={() => downloadCsv(exportName ?? "export", exportRows())}
+					onClick={() => {
+						const rows = exportRows();
+						downloadCsv(exportName ?? "export", rows);
+						/**
+						 * 🔑 A download is invisible. The browser may drop the file
+						 * into a folder with no prompt and no visible bar, so
+						 * pressing Export and seeing nothing change is
+						 * indistinguishable from the button being broken — which is
+						 * exactly what somebody concludes the second time.
+						 */
+						toast.show({
+							signal: "success",
+							title: `${rows.length} ${rows.length === 1 ? "row" : "rows"} exported`,
+						});
+					}}
 					title="Export what you can see, as a spreadsheet"
 					className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[12px] text-[var(--ink-50)] outline-none transition-[box-shadow,color] duration-150 hover:text-[var(--ink-85)] active:translate-y-px"
 				>

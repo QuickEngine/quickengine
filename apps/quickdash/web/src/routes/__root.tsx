@@ -129,7 +129,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function NotFoundScreen() {
 	return (
 		<FullPageWall
-			code="404"
 			title="That page doesn't exist"
 			detail="The address is wrong, or whatever was here has moved. Nothing in your workspace has changed."
 			action={
@@ -153,7 +152,6 @@ function ErrorScreen({ error, reset }: { error: Error; reset: () => void }) {
 	const it = presentRequestError(error);
 	return (
 		<FullPageWall
-			code={it.code}
 			tone="var(--signal-failure)"
 			title={it.title}
 			detail={it.message}

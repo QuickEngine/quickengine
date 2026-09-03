@@ -307,7 +307,7 @@ function ConnectPage() {
 								>
 									<span
 										aria-hidden="true"
-										className={`size-1.5 shrink-0 rounded-full ${endpoint.enabled ? "bg-[#3fb950]" : "bg-[var(--ink-25)]"}`}
+										className={`size-1.5 shrink-0 rounded-full ${endpoint.enabled ? "bg-[var(--signal-success)]" : "bg-[var(--ink-25)]"}`}
 									/>
 									<span className="min-w-0 flex-1">
 										<span className="block truncate font-mono text-[11.5px] text-[var(--ink-80)]">
@@ -343,7 +343,7 @@ function ConnectPage() {
 											className="flex items-baseline gap-3 py-2.5 text-[11.5px]"
 										>
 											<span
-												className={`w-16 shrink-0 ${delivery.status === "delivered" ? "text-[#3fb950]" : "text-[#f5b44a]"}`}
+												className={`w-16 shrink-0 ${delivery.status === "delivered" ? "text-[var(--signal-success-text)]" : "text-[var(--signal-attention-text)]"}`}
 											>
 												{delivery.status}
 											</span>
@@ -410,12 +410,15 @@ function ConnectPage() {
 						<>
 							{firstContact ? (
 								<p className="flex items-center gap-2 text-[11.5px] text-[var(--ink-45)]">
-									<CheckIcon size={12} className="text-[#3fb950]" />
+									<CheckIcon
+										size={12}
+										className="text-[var(--signal-success-text)]"
+									/>
 									Your site first reached this workspace on{" "}
 									{new Date(firstContact).toLocaleString()}.
 								</p>
 							) : (
-								<p className="flex items-center gap-2 text-[11.5px] text-[#f5b44a]">
+								<p className="flex items-center gap-2 text-[11.5px] text-[var(--signal-attention-text)]">
 									{/* The same ring the sidebar shows, resolving to the checkmark
 									    above once contact lands — so waiting and done are the same
 									    control in two states rather than two different marks. */}
@@ -474,7 +477,10 @@ function ConnectPage() {
 						<p className="text-[12px] text-[var(--ink-30)]">Checking…</p>
 					) : health.data?.healthy ? (
 						<p className="flex items-center gap-2 text-[11.5px] text-[var(--ink-45)]">
-							<CheckIcon size={12} className="text-[#3fb950]" />
+							<CheckIcon
+								size={12}
+								className="text-[var(--signal-success-text)]"
+							/>
 							Everything QuickDash depends on is running normally.
 						</p>
 					) : (
@@ -482,7 +488,7 @@ function ConnectPage() {
 							{(health.data?.providers ?? []).map((provider) => (
 								<p
 									key={provider.provider}
-									className="text-[11.5px] text-[#f5b44a] leading-5"
+									className="text-[11.5px] text-[var(--signal-attention-text)] leading-5"
 								>
 									<span className="capitalize">{provider.provider}</span> —{" "}
 									{provider.consequence}

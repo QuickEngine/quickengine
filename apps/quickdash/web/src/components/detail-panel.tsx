@@ -30,6 +30,7 @@ export function DetailPanel({
 	title,
 	subtitle,
 	onClose,
+	notice,
 	actions,
 	footer,
 	children,
@@ -38,6 +39,17 @@ export function DetailPanel({
 	/** The one line of context worth carrying in the header. Status, total, count. */
 	subtitle?: ReactNode;
 	onClose: () => void;
+	/**
+	 * Something that went wrong with this record, directly under the header.
+	 *
+	 * 🔴 NOT beside the Save button, where it started. A failure squeezed onto
+	 * the footer row competes with the one control you want somebody to press,
+	 * gets clipped by the panel's width, and sits at the bottom of a form they
+	 * may have scrolled away from — so a save could fail with the message off
+	 * screen entirely. Under the title it is the first thing read on the way
+	 * back to the fields, which is where the problem actually is.
+	 */
+	notice?: ReactNode;
 	/** Lifecycle moves, shown under the header. Not the primary commit. */
 	actions?: ReactNode;
 	/** The primary commit, pinned so it never scrolls out of reach. */
@@ -79,6 +91,8 @@ export function DetailPanel({
 					Close
 				</button>
 			</header>
+
+			{notice ? <div className="shrink-0 px-4 pt-3">{notice}</div> : null}
 
 			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 				{actions ? (

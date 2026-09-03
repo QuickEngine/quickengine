@@ -13,6 +13,7 @@ import {
 } from "../lib/catalog";
 import { parseAmount } from "../lib/money-input";
 import { BlockFailure, detailCard } from "./detail-panel";
+import { WriteFailure } from "./page-state";
 import {
 	Area,
 	CATALOG_ITEM_TYPES,
@@ -103,7 +104,19 @@ export function ProductPanel({
 	const fileInput = useRef<HTMLInputElement>(null);
 	const [dragging, setDragging] = useState(false);
 	const [held, setHeld] = useState<number | null>(null);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * This stored a string, so everything the failure knew — its status, its
+	 * request id — was thrown away at the moment it arrived, and a 500 printed
+	 * a raw `HTTP 500` into the footer. `fallback` survives because the
+	 * per-action wording ("that upload did not work") is better than anything a
+	 * generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [confirming, setConfirming] = useState(false);
 	const [draft, setDraft] = useState<ProductDraft>(() => draftFrom(item));
 	const images = imagesOf(item.metadata);
@@ -158,7 +171,10 @@ export function ProductPanel({
 			);
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That category change did not save."),
+			setFailure({
+				error: error,
+				fallback: "That category change did not save.",
+			}),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "catalog", item.id, "categories"],
@@ -253,7 +269,7 @@ export function ProductPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That did not save."),
+			setFailure({ error: error, fallback: "That did not save." }),
 		onSuccess: refresh,
 	});
 
@@ -274,7 +290,7 @@ export function ProductPanel({
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) => {
 			setConfirming(false);
-			setFailure(error?.message ?? "That could not be deleted.");
+			setFailure({ error: error, fallback: "That could not be deleted." });
 		},
 		onSuccess: async () => {
 			await refresh();
@@ -292,7 +308,10 @@ export function ProductPanel({
 			});
 		},
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That status change did not save."),
+			setFailure({
+				error: error,
+				fallback: "That status change did not save.",
+			}),
 		onSuccess: refresh,
 	});
 
@@ -328,7 +347,7 @@ export function ProductPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That upload did not work."),
+			setFailure({ error: error, fallback: "That upload did not work." }),
 		onSuccess: refresh,
 	});
 
@@ -381,6 +400,18 @@ export function ProductPanel({
 				</button>
 			</header>
 
+			{/* 🔴 Under the header, not beside Save.
+			    On the footer row it competed with the one control you want
+			    pressed, got clipped by the panel's width, and sat at the bottom
+			    of a long form — so a save could fail with its own message
+			    scrolled off screen. Here it is the first thing read on the way
+			    back to the fields, which is where the problem is. */}
+			{failure ? (
+				<div className="shrink-0 px-4 pt-3">
+					<WriteFailure error={failure.error} message={failure.fallback} />
+				</div>
+			) : null}
+
 			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 				{/* The lifecycle moves that are NOT publishing. Publish lives in the
 				    footer beside Save; showing it here as well would put the same
@@ -414,7 +445,7 @@ export function ProductPanel({
 					{item.status === "archived" ? (
 						<button
 							type="button"
-							className={`${quiet} ml-auto border-[rgb(255_107_107/0.35)] text-[var(--signal-failure)] hover:text-[var(--signal-failure)]`}
+							className={`${quiet} ml-auto border-[rgb(255_107_107/0.35)] text-[var(--signal-failure-text)] hover:text-[var(--signal-failure-text)]`}
 							disabled={remove.isPending}
 							onClick={() => {
 								if (confirming) remove.mutate();
@@ -672,11 +703,7 @@ export function ProductPanel({
 							? "Uploading…"
 							: "Drop images here, or click to pick"}
 					</button>
-					{uploadFailure ? (
-						<p className="text-[11.5px] text-[var(--signal-failure)] leading-4">
-							{uploadFailure}
-						</p>
-					) : null}
+					{uploadFailure ? <WriteFailure message={uploadFailure} /> : null}
 
 					<input
 						ref={fileInput}
@@ -711,13 +738,8 @@ export function ProductPanel({
 			</div>
 
 			<footer className="shrink-0 border-[var(--console-line-soft)] border-t px-4 py-3">
-				{failure ? (
-					<p className="mb-2 text-[11.5px] text-[var(--signal-failure)]">
-						{failure}
-					</p>
-				) : null}
 				{missingPrice ? (
-					<p className="mb-2 text-[11.5px] text-[var(--signal-attention)]">
+					<p className="mb-2 text-[11.5px] text-[var(--signal-attention-text)]">
 						{draft.pricingModel.replace(/_/g, " ")} pricing needs a price.
 					</p>
 				) : null}

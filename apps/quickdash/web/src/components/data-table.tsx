@@ -15,6 +15,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { downloadCsv } from "../lib/csv";
 import { useTableRail } from "./header-action";
+import { useToast } from "./toast";
 
 /**
  * The table every list page uses.
@@ -121,6 +122,7 @@ export function DataTable<TRow extends { id: string }>({
 	sort = null,
 	onSort,
 	bulkActions,
+	empty,
 	exportName,
 }: {
 	columns: Array<Column<TRow>>;
@@ -165,9 +167,26 @@ export function DataTable<TRow extends { id: string }>({
 	 * generic "delete" that guessed would eventually guess wrong.
 	 */
 	bulkActions?: (rows: TRow[]) => ReactNode;
+	/**
+	 * What to show INSIDE the frame when there are no rows.
+	 *
+	 * 🔴 This exists because of a focus bug, and the bug is worth remembering.
+	 * Views used to swap the whole table out for an empty state the moment a
+	 * search matched nothing — which unmounted the table, and with it the strip
+	 * that the search box is PORTALLED into. So the input was destroyed and
+	 * rebuilt in its fallback container on the keystroke that emptied the list,
+	 * and you lost the caret after one character. Typing in an already-empty
+	 * list worked fine, which is what made it look like a mystery.
+	 *
+	 * Keeping the frame mounted keeps the rail mounted, so the input is never
+	 * re-created. The empty message belongs inside the box anyway: the border
+	 * is what tells you where the data starts and stops.
+	 */
+	empty?: ReactNode;
 	/** Names the file when a selection is exported. */
 	exportName?: string;
 }) {
+	const toast = useToast();
 	const { setTableRail } = useTableRail();
 
 	/**
@@ -239,7 +258,15 @@ export function DataTable<TRow extends { id: string }>({
 			    page, which is the only thing that knows what deleting means. */}
 			<button
 				type="button"
-				onClick={() => downloadCsv(exportName ?? "selection", chosen)}
+				onClick={() => {
+					downloadCsv(exportName ?? "selection", chosen);
+					// Same reasoning as the page-level Export: the file arrives
+					// silently, so nothing on screen would otherwise change.
+					toast.show({
+						signal: "success",
+						title: `${chosen.length} ${chosen.length === 1 ? "row" : "rows"} exported`,
+					});
+				}}
 				className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[11.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
 			>
 				<DownloadSimpleIcon size={13} />
@@ -365,201 +392,212 @@ export function DataTable<TRow extends { id: string }>({
 			className="overflow-hidden rounded-xl border border-[var(--console-line)] bg-[var(--console-card)]"
 		>
 			{chosen.length > 0 ? bar : strip}
-			{/* Wide tables scroll inside the box rather than pushing the page
+			{rows.length === 0 && empty ? (
+				<div className="px-4 py-10">{empty}</div>
+			) : (
+				<>
+					{/* Wide tables scroll inside the box rather than pushing the page
 			    sideways, which would drag the sidebar off screen with them. */}
-			<div className="overflow-x-auto">
-				<table className="w-full border-collapse text-left">
-					{caption ? <caption className="sr-only">{caption}</caption> : null}
-					<thead>
-						<tr className="border-[var(--console-line-soft)] border-b bg-[rgb(var(--console-ink)/0.02)]">
-							{/* The signal gutter. Headed by nothing — a column of dots needs
+					<div className="overflow-x-auto">
+						<table className="w-full border-collapse text-left">
+							{caption ? (
+								<caption className="sr-only">{caption}</caption>
+							) : null}
+							<thead>
+								<tr className="border-[var(--console-line-soft)] border-b bg-[rgb(var(--console-ink)/0.02)]">
+									{/* The signal gutter. Headed by nothing — a column of dots needs
 							    no label, and one would be wider than the column. */}
-							<th scope="col" className="w-9 pl-2">
-								<TickBox
-									checked={allOnPage}
-									partial={onPage > 0 && !allOnPage}
-									onChange={pickAll}
-									label="Select all on page"
-								/>
-							</th>
-							{rowSignal ? <th scope="col" className="w-6" /> : null}
-							{columns.map((column) => (
-								<th
-									key={column.key}
-									scope="col"
-									aria-sort={
-										sort?.key === column.key
-											? sort.dir === "asc"
-												? "ascending"
-												: "descending"
-											: undefined
-									}
-									className={`${column.width ?? ""} whitespace-nowrap px-3 py-2 font-normal text-[10.5px] text-[var(--ink-30)] uppercase tracking-[0.08em] ${
-										column.align === "right" ? "text-right" : "text-left"
-									}`}
-								>
-									{/* 🔑 The heading is the shortcut; the popover is the menu.
+									<th scope="col" className="w-9 pl-2">
+										<TickBox
+											checked={allOnPage}
+											partial={onPage > 0 && !allOnPage}
+											onChange={pickAll}
+											label="Select all on page"
+										/>
+									</th>
+									{rowSignal ? <th scope="col" className="w-6" /> : null}
+									{columns.map((column) => (
+										<th
+											key={column.key}
+											scope="col"
+											aria-sort={
+												sort?.key === column.key
+													? sort.dir === "asc"
+														? "ascending"
+														: "descending"
+													: undefined
+											}
+											className={`${column.width ?? ""} whitespace-nowrap px-3 py-2 font-normal text-[10.5px] text-[var(--ink-30)] uppercase tracking-[0.08em] ${
+												column.align === "right" ? "text-right" : "text-left"
+											}`}
+										>
+											{/* 🔑 The heading is the shortcut; the popover is the menu.
 									    Pressing a column is what people try first, and it is
 									    also the only way to discover the list is sortable at
 									    all. Columns that name no field stay plain text. */}
-									{sortable(column) ? (
-										<button
-											type="button"
-											onClick={() => toggleSort(column.key)}
-											className={`inline-flex items-center gap-1 uppercase tracking-[0.08em] transition-colors hover:text-[var(--ink-60)] ${
-												sort?.key === column.key ? "text-[var(--ink-70)]" : ""
-											}`}
-										>
-											{column.header ?? column.key}
-											{sort?.key === column.key ? (
-												sort.dir === "asc" ? (
-													<ArrowUpIcon size={10} weight="bold" />
-												) : (
-													<ArrowDownIcon size={10} weight="bold" />
-												)
-											) : null}
-										</button>
-									) : (
-										(column.header ?? column.key)
-									)}
-								</th>
-							))}
-							{/* Headed by nothing: a column of grab handles needs no label,
+											{sortable(column) ? (
+												<button
+													type="button"
+													onClick={() => toggleSort(column.key)}
+													className={`inline-flex items-center gap-1 uppercase tracking-[0.08em] transition-colors hover:text-[var(--ink-60)] ${
+														sort?.key === column.key
+															? "text-[var(--ink-70)]"
+															: ""
+													}`}
+												>
+													{column.header ?? column.key}
+													{sort?.key === column.key ? (
+														sort.dir === "asc" ? (
+															<ArrowUpIcon size={10} weight="bold" />
+														) : (
+															<ArrowDownIcon size={10} weight="bold" />
+														)
+													) : null}
+												</button>
+											) : (
+												(column.header ?? column.key)
+											)}
+										</th>
+									))}
+									{/* Headed by nothing: a column of grab handles needs no label,
 							    and any word would be wider than the column. */}
-							{onReorder ? <th scope="col" className="w-9" /> : null}
-						</tr>
-					</thead>
-					<tbody className="divide-y divide-[var(--console-line-soft)]">
-						{rows.map((row) => (
-							<tr
-								key={row.id}
-								/* The WHOLE row is the thing you pick up; the handle on the
+									{onReorder ? <th scope="col" className="w-9" /> : null}
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-[var(--console-line-soft)]">
+								{rows.map((row) => (
+									<tr
+										key={row.id}
+										/* The WHOLE row is the thing you pick up; the handle on the
 								   right is what tells you so. Restricting the gesture to the
 								   handle made a 9px target out of a full-width row. */
-								draggable={Boolean(onReorder)}
-								onDragStart={
-									onReorder
-										? (event) => {
-												event.dataTransfer.setData("text/plain", row.id);
-												event.dataTransfer.effectAllowed = "move";
-											}
-										: undefined
-								}
-								// Without preventDefault the browser refuses the drop outright.
-								onDragOver={
-									onReorder ? (event) => event.preventDefault() : undefined
-								}
-								onDrop={
-									onReorder
-										? (event) => {
-												event.preventDefault();
-												const from = event.dataTransfer.getData("text/plain");
-												if (from) onReorder(from, row.id);
-											}
-										: undefined
-								}
-								onClick={onOpen ? () => onOpen(row) : undefined}
-								onKeyDown={
-									onOpen
-										? (event) => {
-												if (event.key === "Enter" || event.key === " ") {
-													event.preventDefault();
-													onOpen(row);
-												}
-											}
-										: undefined
-								}
-								tabIndex={onOpen ? 0 : undefined}
-								className={`group/row transition-colors outline-none ${onOpen ? "cursor-pointer focus-visible:bg-[rgb(var(--console-ink)/0.05)]" : ""} ${
-									selectedId === row.id
-										? "bg-[rgb(var(--console-ink)/0.04)]"
-										: onOpen
-											? "hover:bg-[rgb(var(--console-ink)/0.025)]"
-											: ""
-								}`}
-							>
-								{/*
+										draggable={Boolean(onReorder)}
+										onDragStart={
+											onReorder
+												? (event) => {
+														event.dataTransfer.setData("text/plain", row.id);
+														event.dataTransfer.effectAllowed = "move";
+													}
+												: undefined
+										}
+										// Without preventDefault the browser refuses the drop outright.
+										onDragOver={
+											onReorder ? (event) => event.preventDefault() : undefined
+										}
+										onDrop={
+											onReorder
+												? (event) => {
+														event.preventDefault();
+														const from =
+															event.dataTransfer.getData("text/plain");
+														if (from) onReorder(from, row.id);
+													}
+												: undefined
+										}
+										onClick={onOpen ? () => onOpen(row) : undefined}
+										onKeyDown={
+											onOpen
+												? (event) => {
+														if (event.key === "Enter" || event.key === " ") {
+															event.preventDefault();
+															onOpen(row);
+														}
+													}
+												: undefined
+										}
+										tabIndex={onOpen ? 0 : undefined}
+										className={`group/row transition-colors outline-none ${onOpen ? "cursor-pointer focus-visible:bg-[rgb(var(--console-ink)/0.05)]" : ""} ${
+											selectedId === row.id
+												? "bg-[rgb(var(--console-ink)/0.04)]"
+												: onOpen
+													? "hover:bg-[rgb(var(--console-ink)/0.025)]"
+													: ""
+										}`}
+									>
+										{/*
 								  🔑 A COLUMN, not a mark inside the first cell. That cell
 								  carries `truncate` — `overflow: hidden` — which clips
 								  anything positioned in its padding, and inserting the dot
 								  inline pushed every name in the table sideways. A gutter
 								  does neither, and reads as a scannable line down the edge.
 								*/}
-								{/* 🔴 Stops the click here. Without this, ticking a row would
+										{/* 🔴 Stops the click here. Without this, ticking a row would
 								    also fire the row's own open handler and throw the detail
 								    panel over the list you are selecting in. */}
-								<td
-									className="w-9 pl-2 align-middle"
-									onClick={(event) => event.stopPropagation()}
-									onKeyDown={(event) => event.stopPropagation()}
-								>
-									<TickBox
-										checked={picked.has(row.id)}
-										onChange={(checked) =>
-											setPicked((current) => {
-												const next = new Set(current);
-												if (checked) next.add(row.id);
-												else next.delete(row.id);
-												return next;
-											})
-										}
-										label="Select row"
-									/>
-								</td>
-								{rowSignal ? (
-									<td className="w-6 pl-3 align-middle">
-										<RowDot signal={rowSignal(row) ?? null} />
-									</td>
-								) : null}
-								{columns.map((column, _index) => (
-									<td
-										key={column.key}
-										className={`h-10 whitespace-nowrap px-3 align-middle text-[12.5px] text-[var(--ink-85)] ${
-											column.align === "right" ? "text-right" : ""
-										} ${column.tight ? "" : "max-w-0 truncate"}`}
-									>
-										{/* 🔑 The WHOLE row opens the record. Only cells holding
+										<td
+											className="w-9 pl-2 align-middle"
+											onClick={(event) => event.stopPropagation()}
+											onKeyDown={(event) => event.stopPropagation()}
+										>
+											<TickBox
+												checked={picked.has(row.id)}
+												onChange={(checked) =>
+													setPicked((current) => {
+														const next = new Set(current);
+														if (checked) next.add(row.id);
+														else next.delete(row.id);
+														return next;
+													})
+												}
+												label="Select row"
+											/>
+										</td>
+										{rowSignal ? (
+											<td className="w-6 pl-3 align-middle">
+												<RowDot signal={rowSignal(row) ?? null} />
+											</td>
+										) : null}
+										{columns.map((column, _index) => (
+											<td
+												key={column.key}
+												className={`h-10 whitespace-nowrap px-3 align-middle text-[12.5px] text-[var(--ink-85)] ${
+													column.align === "right" ? "text-right" : ""
+												} ${column.tight ? "" : "max-w-0 truncate"}`}
+											>
+												{/* 🔑 The WHOLE row opens the record. Only cells holding
 										    their own controls swallow the click, so pressing an
 										    action button never also opens the panel behind it. */}
-										{(column.interactive ?? column.header === "") ? (
-											// biome-ignore lint/a11y/useKeyWithClickEvents: this only stops a click reaching the row
-											// biome-ignore lint/a11y/noStaticElementInteractions: a wrapper, not a control
-											<span onClick={(event) => event.stopPropagation()}>
-												{column.render(row)}
-											</span>
-										) : (
-											column.render(row)
-										)}
-									</td>
+												{(column.interactive ?? column.header === "") ? (
+													// biome-ignore lint/a11y/useKeyWithClickEvents: this only stops a click reaching the row
+													// biome-ignore lint/a11y/noStaticElementInteractions: a wrapper, not a control
+													<span onClick={(event) => event.stopPropagation()}>
+														{column.render(row)}
+													</span>
+												) : (
+													column.render(row)
+												)}
+											</td>
+										))}
+										{/*
+										 * The grab handle, and the ONLY draggable thing in the row.
+										 *
+										 * 🔴 `draggable` used to sit on the whole `<tr>`, which meant
+										 * you could not select text in a cell without the browser
+										 * starting a drag instead. A handle makes the gesture
+										 * deliberate and tells you the rows move, which a draggable
+										 * row with no affordance never did.
+										 *
+										 * ⚠️ Always visible, not revealed on hover: a control you can
+										 * only find by accident is not discoverable, and on a touch
+										 * screen there is no hover to reveal it with.
+										 */}
+										{onReorder ? (
+											<td className="w-9 pr-2 align-middle">
+												<span
+													aria-hidden="true"
+													className="flex size-7 cursor-grab items-center justify-center rounded-md text-[var(--ink-30)] transition-colors group-hover/row:text-[var(--ink-60)] active:cursor-grabbing"
+												>
+													<DotsSixVerticalIcon size={15} />
+												</span>
+											</td>
+										) : null}
+									</tr>
 								))}
-								{/*
-								 * The grab handle, and the ONLY draggable thing in the row.
-								 *
-								 * 🔴 `draggable` used to sit on the whole `<tr>`, which meant
-								 * you could not select text in a cell without the browser
-								 * starting a drag instead. A handle makes the gesture
-								 * deliberate and tells you the rows move, which a draggable
-								 * row with no affordance never did.
-								 *
-								 * ⚠️ Always visible, not revealed on hover: a control you can
-								 * only find by accident is not discoverable, and on a touch
-								 * screen there is no hover to reveal it with.
-								 */}
-								{onReorder ? (
-									<td className="w-9 pr-2 align-middle">
-										<span
-											aria-hidden="true"
-											className="flex size-7 cursor-grab items-center justify-center rounded-md text-[var(--ink-30)] transition-colors group-hover/row:text-[var(--ink-60)] active:cursor-grabbing"
-										>
-											<DotsSixVerticalIcon size={15} />
-										</span>
-									</td>
-								) : null}
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
+							</tbody>
+						</table>
+					</div>
+				</>
+			)}
 		</div>
 	);
 }

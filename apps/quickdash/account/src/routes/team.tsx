@@ -41,7 +41,7 @@ const quietAction =
 	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)] focus-visible:bg-[rgb(var(--console-ink)/0.06)] disabled:pointer-events-none disabled:opacity-40";
 
 const dangerAction =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[#ff3b3b]/25 px-3 text-[11px] text-[#ff6b6b] outline-none transition-colors hover:bg-[#ff3b3b]/[0.08] focus-visible:bg-[#ff3b3b]/[0.08] disabled:pointer-events-none disabled:opacity-40";
+	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--signal-failure)]/25 px-3 text-[11px] text-[var(--signal-failure-text)] outline-none transition-colors hover:bg-[var(--signal-failure)]/[0.08] focus-visible:bg-[var(--signal-failure)]/[0.08] disabled:pointer-events-none disabled:opacity-40";
 
 const field =
 	"h-9 min-w-0 flex-1 rounded-full border border-[var(--console-line-strong)] bg-transparent px-3.5 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-30)] focus:border-[rgb(var(--console-ink)/0.18)]";
@@ -292,7 +292,9 @@ function TeamPage() {
 			</p>
 
 			{failure ? (
-				<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+					{failure}
+				</p>
 			) : null}
 
 			{inviteUrl ? (

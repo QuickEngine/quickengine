@@ -3,6 +3,7 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { parseAmount } from "../lib/money-input";
 import { CreatePanel } from "./create-panel";
+import { WriteFailure } from "./page-state";
 import { Text as TextField } from "./product-fields";
 
 /**
@@ -101,7 +102,18 @@ export function ShipmentComposer({
 	onClose: () => void;
 }) {
 	const queryClient = useQueryClient();
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [weight, setWeight] = useState("");
 	const [carrier, setCarrier] = useState("");
 	const [tracking, setTracking] = useState("");
@@ -171,7 +183,10 @@ export function ShipmentComposer({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That shipment could not be created."),
+			setFailure({
+				error: error,
+				fallback: "That shipment could not be created.",
+			}),
 		onSuccess: async () => {
 			// Both the order (its shipment list grows) and the shipments page.
 			await Promise.all([
@@ -250,9 +265,7 @@ export function ShipmentComposer({
 					))}
 				</div>
 				{overShipped ? (
-					<p className="mt-1.5 text-[10.5px] text-[#ff6b6b]">
-						A shipment cannot contain more of a line than is still outstanding.
-					</p>
+					<WriteFailure message="A shipment cannot contain more of a line than is still outstanding." />
 				) : (
 					<p className="mt-1.5 text-[10.5px] text-[var(--ink-30)]">
 						Send less than the full quantity to make a partial shipment. The

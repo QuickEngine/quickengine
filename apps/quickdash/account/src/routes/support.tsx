@@ -40,7 +40,19 @@ function SupportPage() {
 	const { data: session } = useSession();
 	const { active } = useActiveOrganization();
 	const [topic, setTopic] = useState<string>(TOPICS[0]);
-	const [message, setMessage] = useState("");
+	/**
+	 * 🔑 Prefilled from `?requestId=`, so the console can HAND OVER the id
+	 * instead of asking somebody to copy it, find this page, and paste it back.
+	 *
+	 * Every error screen tells you to quote the request id. Until now that was
+	 * the end of the instruction: no link, no destination, and a thirty-six
+	 * character string to carry by hand. The one that arrives here is already
+	 * in the box.
+	 */
+	const requestId = Route.useSearch().requestId;
+	const [message, setMessage] = useState(
+		requestId ? `Request ID: ${requestId}\n\n` : "",
+	);
 	const [copied, setCopied] = useState(false);
 
 	const send = useMutation({
@@ -72,8 +84,10 @@ function SupportPage() {
 					</p>
 
 					{send.isSuccess ? (
-						<div className="mt-5 rounded-lg border border-[#3fb950]/25 bg-[#3fb950]/[0.06] p-4">
-							<p className="text-[12.5px] text-[#3fb950]">Message sent.</p>
+						<div className="mt-5 rounded-lg border border-[var(--signal-success)]/25 bg-[var(--signal-success)]/[0.06] p-4">
+							<p className="text-[12.5px] text-[var(--signal-success-text)]">
+								Message sent.
+							</p>
 							<p className="mt-1.5 text-[11.5px] text-[var(--ink-40)] leading-5">
 								We will reply to {session?.user?.email}. If it is urgent, email{" "}
 								{SUPPORT_EMAIL} directly.
@@ -122,7 +136,7 @@ function SupportPage() {
 							</p>
 
 							{send.isError ? (
-								<p className="mt-3 text-[12px] text-[#ff6b6b]">
+								<p className="mt-3 text-[12px] text-[var(--signal-failure-text)]">
 									{(send.error as { message?: string })?.message ??
 										`That did not send. Email ${SUPPORT_EMAIL} instead.`}
 								</p>
@@ -197,4 +211,14 @@ function SupportPage() {
 	);
 }
 
-export const Route = createFileRoute("/support")({ component: SupportPage });
+export const Route = createFileRoute("/support")({
+	component: SupportPage,
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { requestId?: string } => ({
+		requestId:
+			typeof search.requestId === "string" && search.requestId.length <= 64
+				? search.requestId
+				: undefined,
+	}),
+});

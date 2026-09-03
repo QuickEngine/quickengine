@@ -23,11 +23,11 @@ import {
 	DialogTitle,
 } from "@quickengine/ui/components/ui/dialog";
 import { useState } from "react";
-import { SettingsSections } from "../routes/$workspace.settings";
 import { ModuleIcon } from "./module-icon";
 import { SaveRailProvider, useSaveRail } from "./settings/controls";
 import { MODULE_SETTINGS } from "./settings/module-fields";
 import { ModuleSettingsForm } from "./settings/module-settings-form";
+import { SettingsSections } from "./settings/sections";
 import {
 	WorkspaceApiKeys,
 	WorkspaceMembers,
@@ -109,10 +109,14 @@ type Section = {
 	/** Where it already lives, if it is built somewhere else entirely. */
 	built?: string;
 	/**
-	 * The id `SettingsSections` knows this by. Set it and the dialog renders the
-	 * real thing rather than describing it — one implementation, shown here.
+	 * The ids `SettingsSections` knows this by. Set them and the dialog renders
+	 * the real thing rather than describing it — one implementation, shown here.
+	 *
+	 * ⚠️ A LIST, because a dialog section is not always one page section.
+	 * "General" is the workspace's name, its theme AND its environment, which
+	 * were three separate blocks when this lived on a page.
 	 */
-	renders?: string;
+	renders?: readonly string[];
 	/** Extra words the in-dialog search should match on. */
 	keywords?: string;
 	/**
@@ -136,6 +140,10 @@ const GROUPS: Array<{ group: string; items: Section[] }> = [
 				label: "General",
 				blurb:
 					"What this workspace is called, how it looks to you, and whether it takes real money.",
+				// 🔴 These were described here and rendered nowhere. The page was
+				// the only place appearance and environment existed, so deleting it
+				// would have taken both with it.
+				renders: ["appearance", "environment"],
 				keywords:
 					"name theme dark light appearance environment sandbox live id api",
 			},
@@ -176,7 +184,7 @@ const GROUPS: Array<{ group: string; items: Section[] }> = [
 				id: "shipping",
 				label: "Shipping",
 				blurb: "Where you ship from, and what a carrier is told.",
-				renders: "shipping",
+				renders: ["shipping"],
 				needs: "shipping",
 				keywords: "address parcel carrier tracking labels",
 			},
@@ -214,6 +222,7 @@ const GROUPS: Array<{ group: string; items: Section[] }> = [
 				label: "Email & alerts",
 				blurb:
 					"What reaches your customers automatically, and what reaches you.",
+				renders: ["email"],
 				keywords:
 					"notifications order shipped delivered review marketing summary",
 			},
@@ -564,10 +573,13 @@ export function SettingsDialog({
 							   stack. Shown one at a time there is nothing above to be
 							   spaced from, so the first heading is pulled back up. */
 									<div className={`${CARD} [&_p.mt-9]:mt-0`}>
-										<SettingsSections
-											workspaceId={workspaceId}
-											only={section.renders}
-										/>
+										{section.renders.map((only) => (
+											<SettingsSections
+												key={only}
+												workspaceId={workspaceId}
+												only={only}
+											/>
+										))}
 									</div>
 								) : openModule ? (
 									<div className={CARD}>

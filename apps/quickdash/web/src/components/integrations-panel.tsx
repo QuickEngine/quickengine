@@ -187,7 +187,9 @@ export function IntegrationsPanel({
 								<span
 									aria-hidden="true"
 									className={`size-1.5 shrink-0 rounded-full ${
-										row.chargesEnabled ? "bg-[#3fb950]" : "bg-[#f5a623]"
+										row.chargesEnabled
+											? "bg-[var(--signal-success)]"
+											: "bg-[var(--signal-attention)]"
 									}`}
 								/>
 							</div>

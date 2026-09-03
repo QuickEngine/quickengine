@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { WriteFailure } from "./page-state";
 
 /**
  * Attaching or correcting a parcel's tracking after the fact.
@@ -35,7 +36,18 @@ export function TrackingForm({
 }) {
 	const queryClient = useQueryClient();
 	const [open, setOpen] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [draft, setDraft] = useState({
 		carrier: carrier ?? "",
 		serviceLevel: serviceLevel ?? "",
@@ -64,7 +76,10 @@ export function TrackingForm({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That tracking could not be saved."),
+			setFailure({
+				error: error,
+				fallback: "That tracking could not be saved.",
+			}),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "shipments"],
@@ -112,7 +127,7 @@ export function TrackingForm({
 			))}
 
 			{failure ? (
-				<p className="text-[10.5px] text-[#ff6b6b]">{failure}</p>
+				<WriteFailure error={failure.error} message={failure.fallback} />
 			) : null}
 
 			<div className="flex items-center gap-1.5">

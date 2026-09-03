@@ -51,7 +51,7 @@ const NEXT_STATUS: Record<string, { label: string; status: string }> = {
 /** Urgent and high are worth seeing at a glance; the rest are not. */
 const priorityTone = (priority: string) =>
 	priority === "urgent" || priority === "high"
-		? "text-[#f5b44a]"
+		? "text-[var(--signal-attention-text)]"
 		: "text-[var(--ink-30)]";
 
 export function TasksView({ workspaceId }: { workspaceId: string }) {
@@ -59,7 +59,18 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const tasks = useQuery({
 		queryKey: ["quickdash", workspaceId, "tasks"],
@@ -88,7 +99,7 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That change did not save."),
+			setFailure({ error: error, fallback: "That change did not save." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "tasks"],
@@ -128,7 +139,9 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={tasks}

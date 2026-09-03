@@ -170,7 +170,7 @@ function Fact({
 				{label}
 			</p>
 			<p
-				className={`shrink-0 text-[12.5px] tabular-nums ${warn ? "text-[#f5b44a]" : "text-[var(--ink-85)]"}`}
+				className={`shrink-0 text-[12.5px] tabular-nums ${warn ? "text-[var(--signal-attention-text)]" : "text-[var(--ink-85)]"}`}
 			>
 				{value}
 			</p>
@@ -207,9 +207,9 @@ function Meter({
 	const share = limit && limit > 0 ? Math.min(used / limit, 1) : null;
 	const tone =
 		state === "over"
-			? "text-[#ff6b6b]"
+			? "text-[var(--signal-failure-text)]"
 			: state === "warn"
-				? "text-[#f5b44a]"
+				? "text-[var(--signal-attention-text)]"
 				: "text-[var(--ink-85)]";
 
 	return (
@@ -230,9 +230,9 @@ function Meter({
 					<div
 						className={`h-full rounded-full ${
 							state === "over"
-								? "bg-[#ff6b6b]"
+								? "bg-[var(--signal-failure)]"
 								: state === "warn"
-									? "bg-[#f5b44a]"
+									? "bg-[var(--signal-attention)]"
 									: "bg-[var(--ink-45)]"
 						}`}
 						style={{ width: `${Math.max(share * 100, 1)}%` }}
@@ -624,7 +624,7 @@ function OverviewPage() {
 									</span>
 								) : null}
 								{payment.environment === "test" ? (
-									<span className="shrink-0 text-[11px] text-[#f5b44a]">
+									<span className="shrink-0 text-[11px] text-[var(--signal-attention-text)]">
 										test
 									</span>
 								) : null}
@@ -699,7 +699,7 @@ function OverviewPage() {
 						/>
 					</div>
 					{credits.data?.autoRecharge?.lastFailureAt ? (
-						<p className="mt-2 text-[11px] text-[#f5b44a]">
+						<p className="mt-2 text-[11px] text-[var(--signal-attention-text)]">
 							Last auto-recharge failed
 							{credits.data.autoRecharge.lastFailureReason
 								? `: ${credits.data.autoRecharge.lastFailureReason}`

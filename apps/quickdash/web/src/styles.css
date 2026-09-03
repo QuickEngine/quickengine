@@ -124,14 +124,19 @@ body,
    when your eyes are on the middle of the screen, which is the whole point of
    the thing. Short and eased out; a toast that takes half a second to arrive
    has already spent a tenth of the time it exists for. */
+/* 🔑 In from the RIGHT, out the same way.
+   A toast lives in the bottom-right corner, so arriving from off that edge and
+   leaving back through it reads as one object coming and going rather than two
+   unrelated fades. Rising from below was the old behaviour and gave dismissal
+   nowhere to go — it simply blinked out. */
 @keyframes quickdash-toast-in {
 	from {
 		opacity: 0;
-		transform: translateY(0.5rem) scale(0.98);
+		transform: translateX(1.5rem);
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0) scale(1);
+		transform: translateX(0);
 	}
 }
 
@@ -139,8 +144,17 @@ body,
 	animation: quickdash-toast-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* 🔑 The exit is a TRANSITION on the inline transform, in `toast.tsx`, not a
+   keyframe here — a keyframe has to declare where it starts, and the start
+   depends on how far the card was dragged. This only stops a leaving card
+   catching a stray press on its way out. */
+.quickdash-toast-leaving {
+	pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-	.quickdash-toast {
+	.quickdash-toast,
+	.quickdash-toast-leaving {
 		animation: none;
 	}
 }
@@ -179,27 +193,12 @@ body,
 	}
 }
 
-/* ── Signals ─────────────────────────────────────────────────────────────────
-   Colour carries MEANING here, not decoration, so each has exactly one job:
+/* ── The same four signals, re-tuned for paper ───────────────────────────────
+   🔴 These were picked against a #121212 card and only ever checked there. On
+   the white toast and the white notification row they are the wrong colours:
+   a mid amber on white carries almost no contrast, and the soft red reads
+   pink — "gentle" is the last thing a failed payment should look like.
 
-   · news      — something new for you. An unread message, a new order. Nothing
-                 is wrong; there is simply something you have not seen.
-   · attention — something is wrong or at risk. Overdue, low stock, expired, a
-                 zone that cannot quote.
-   · failure   — something failed or is destructive. A declined payment, a
-                 dispute.
-
-   ⚠️ Reaching for "the nearest colour that stands out" is how an unread message
-   ends up looking like an overdue invoice. If a new signal does not fit one of
-   these three, the signal is probably wrong, not the palette. */
-:root {
-	--signal-news: #4d8df6;
-	/* On. A toggle drawn in two shades of the same grey states its position
-	   without stating its meaning: both read as "a control", neither as "this is
-	   running". Green is the one colour that needs no legend. Muted rather than
-	   vivid, because a settings page full of switches should not look like a
-	   mixing desk. */
-	--signal-on: #3f9a6a;
-	--signal-attention: #f5b44a;
-	--signal-failure: #ff6b6b;
-}
+   Same hues, darker and more saturated, so the meaning survives the ground.
+   Anything that sets one of these must take it from the token; a literal hex
+   would be right in one theme and wrong in the other. */

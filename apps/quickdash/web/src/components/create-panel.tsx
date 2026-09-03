@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { DetailPanel } from "./detail-panel";
+import { WriteFailure } from "./page-state";
 
 /**
  * Making a new record, in the same panel that shows an existing one.
@@ -32,29 +33,29 @@ export function CreatePanel({
 	busy?: boolean;
 	/** Whether the form can be submitted at all. */
 	valid?: boolean;
-	failure?: string | null;
+	/** The failure itself, so it can reach the status and the request id. */
+	failure?: { error: unknown; fallback: string } | null;
 	children: ReactNode;
 }) {
 	return (
 		<DetailPanel
 			title={title}
 			onClose={onClose}
+			// Under the header, not beside the submit button — see `DetailPanel`.
+			notice={
+				failure ? (
+					<WriteFailure error={failure.error} message={failure.fallback} />
+				) : null
+			}
 			footer={
-				<>
-					{failure ? (
-						<p className="mb-2 text-[11.5px] text-[var(--signal-failure)]">
-							{failure}
-						</p>
-					) : null}
-					<button
-						type="submit"
-						form="create-panel-form"
-						disabled={busy || !valid}
-						className={`${busy ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
-					>
-						{busy ? "Saving…" : submitLabel}
-					</button>
-				</>
+				<button
+					type="submit"
+					form="create-panel-form"
+					disabled={busy || !valid}
+					className={`${busy ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
+				>
+					{busy ? "Saving…" : submitLabel}
+				</button>
 			}
 		>
 			{/*

@@ -18,7 +18,7 @@ const quietAction =
 	"inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)] focus-visible:bg-[rgb(var(--console-ink)/0.06)] disabled:pointer-events-none disabled:opacity-40";
 
 const dangerAction =
-	"inline-flex h-8 shrink-0 items-center justify-center rounded-full border border-[#ff3b3b]/25 px-3.5 text-[11.5px] text-[#ff6b6b] outline-none transition-colors hover:bg-[#ff3b3b]/[0.08] focus-visible:bg-[#ff3b3b]/[0.08] disabled:pointer-events-none disabled:opacity-40";
+	"inline-flex h-8 shrink-0 items-center justify-center rounded-full border border-[var(--signal-failure)]/25 px-3.5 text-[11.5px] text-[var(--signal-failure-text)] outline-none transition-colors hover:bg-[var(--signal-failure)]/[0.08] focus-visible:bg-[var(--signal-failure)]/[0.08] disabled:pointer-events-none disabled:opacity-40";
 
 type SessionRow = {
 	id: string;
@@ -132,7 +132,9 @@ function SessionsPage() {
 			</div>
 
 			{failure ? (
-				<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+					{failure}
+				</p>
 			) : null}
 
 			{sessions.isPending ? (

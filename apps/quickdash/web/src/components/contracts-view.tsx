@@ -66,7 +66,18 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 	const [selectedId, setSelectedId] = useSelectedRecord();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const contracts = useQuery({
 		queryKey: ["quickdash", workspaceId, "contracts"],
@@ -90,7 +101,7 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That did not save."),
+			setFailure({ error: error, fallback: "That did not save." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "contracts"],
@@ -130,7 +141,9 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 				}
 			/>
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={contracts}
@@ -227,7 +240,7 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 										<span
 											className={`text-[11px] capitalize ${
 												isLapsed(contract)
-													? "text-[var(--signal-attention)]"
+													? "text-[var(--signal-attention-text)]"
 													: "text-[var(--ink-30)]"
 											}`}
 										>

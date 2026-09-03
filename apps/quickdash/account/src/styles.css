@@ -897,28 +897,3 @@ body {
 		animation: none;
 	}
 }
-
-/* ── Signals ─────────────────────────────────────────────────────────────────
-   Colour carries MEANING here, not decoration, so each has exactly one job:
-
-   · news      — something new for you. An unread message, a new order. Nothing
-                 is wrong; there is simply something you have not seen.
-   · attention — something is wrong or at risk. Overdue, low stock, expired, a
-                 zone that cannot quote.
-   · failure   — something failed or is destructive. A declined payment, a
-                 dispute.
-
-   ⚠️ Reaching for "the nearest colour that stands out" is how an unread message
-   ends up looking like an overdue invoice. If a new signal does not fit one of
-   these three, the signal is probably wrong, not the palette. */
-:root {
-	--signal-news: #4d8df6;
-	/* On. A toggle drawn in two shades of the same grey states its position
-	   without stating its meaning: both read as "a control", neither as "this is
-	   running". Green is the one colour that needs no legend. Muted rather than
-	   vivid, because a settings page full of switches should not look like a
-	   mixing desk. */
-	--signal-on: #3f9a6a;
-	--signal-attention: #f5b44a;
-	--signal-failure: #ff6b6b;
-}

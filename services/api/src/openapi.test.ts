@@ -78,6 +78,8 @@ const BODYLESS = new Set([
 	"disconnectPaymentAccount",
 	// Nothing to send: which notification is in the path, and who is the session.
 	"markNotificationRead",
+	"markNotificationUnread",
+	"clearReadNotifications",
 	"markAllNotificationsRead",
 	"markCustomerConversationRead",
 	"markOperatorCustomerConversationRead",

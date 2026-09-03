@@ -152,6 +152,8 @@ export function PagedTable<TRow extends { id: string }>({
 	onReorder?: (fromId: string, toId: string) => void;
 	/** What this page can do to a set of ticked rows. */
 	bulkActions?: (rows: TRow[]) => ReactNode;
+	/** Shown inside the frame when there are no rows — see `DataTable`. */
+	empty?: ReactNode;
 	exportName?: string;
 }) {
 	/**

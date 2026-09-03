@@ -138,7 +138,18 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 	const [draftsOnly, setDraftsOnly] = useState(false);
 	const [editing, setEditing] = useState<string | null>(null);
 	const [draft, setDraft] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	/**
 	 * Whether the customer's site is shown beside the words.
@@ -353,7 +364,10 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That image could not be uploaded."),
+			setFailure({
+				error: error,
+				fallback: "That image could not be uploaded.",
+			}),
 		onSuccess: async () => await refresh(),
 	});
 
@@ -383,7 +397,7 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That change could not be saved."),
+			setFailure({ error: error, fallback: "That change could not be saved." }),
 		onSuccess: async () => await refresh(),
 	});
 
@@ -428,7 +442,7 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That could not be cleared."),
+			setFailure({ error: error, fallback: "That could not be cleared." }),
 		onSuccess: async () => await refresh(),
 	});
 
@@ -492,11 +506,13 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(
-				error instanceof SyntaxError
-					? "That is not valid JSON, so it was not saved."
-					: (error?.message ?? "That did not save."),
-			),
+			setFailure({
+				error,
+				fallback:
+					error instanceof SyntaxError
+						? "That is not valid JSON, so it was not saved."
+						: "That did not save.",
+			}),
 		onSuccess: () => {
 			setEditing(null);
 			refresh();
@@ -512,7 +528,7 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That did not save."),
+			setFailure({ error: error, fallback: "That did not save." }),
 		onSuccess: async () => await refresh(),
 	});
 
@@ -610,7 +626,9 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 		<>
 			{controls}
 
-			{failure ? <WriteFailure message={failure} /> : null}
+			{failure ? (
+				<WriteFailure error={failure.error} message={failure.fallback} />
+			) : null}
 
 			<PageState
 				query={content}
@@ -775,7 +793,7 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 															</div>
 
 															{!entry.published ? (
-																<span className="shrink-0 rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[#f5b44a]">
+																<span className="shrink-0 rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention-text)]">
 																	Not published
 																</span>
 															) : null}

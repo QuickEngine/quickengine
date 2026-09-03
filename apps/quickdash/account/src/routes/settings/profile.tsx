@@ -26,7 +26,7 @@ const quietAction =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--console-line-strong)] px-4 text-[12.5px] text-[var(--ink-60)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)] disabled:pointer-events-none disabled:opacity-40";
 
 const dangerAction =
-	"inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[#ff3b3b]/30 px-4 text-[12.5px] text-[#ff6b6b] outline-none transition-colors hover:bg-[#ff3b3b]/[0.08] disabled:pointer-events-none disabled:opacity-40";
+	"inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--signal-failure)]/30 px-4 text-[12.5px] text-[var(--signal-failure-text)] outline-none transition-colors hover:bg-[var(--signal-failure)]/[0.08] disabled:pointer-events-none disabled:opacity-40";
 
 const field =
 	"h-9 w-72 max-w-full rounded-full border border-[var(--console-line-strong)] bg-transparent px-3.5 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-30)] focus:border-[rgb(var(--console-ink)/0.18)]";
@@ -163,9 +163,15 @@ function ProfilePage() {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			{failure ? (
-				<p className="mb-4 text-[12px] text-[#ff6b6b]">{failure}</p>
+				<p className="mb-4 text-[12px] text-[var(--signal-failure-text)]">
+					{failure}
+				</p>
 			) : null}
-			{note ? <p className="mb-4 text-[12px] text-[#3fb950]">{note}</p> : null}
+			{note ? (
+				<p className="mb-4 text-[12px] text-[var(--signal-success-text)]">
+					{note}
+				</p>
+			) : null}
 
 			<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">You</p>
 			<div className="border-[var(--console-line-soft)] border-t py-4">
@@ -358,8 +364,10 @@ function ProfilePage() {
 			</div>
 
 			{/* 🔴 Irreversible, and it takes the workspaces with it. */}
-			<p className="mt-10 mb-1 text-[12.5px] text-[#ff6b6b]">Delete account</p>
-			<div className="border-[#ff3b3b]/20 border-t py-4">
+			<p className="mt-10 mb-1 text-[12.5px] text-[var(--signal-failure-text)]">
+				Delete account
+			</p>
+			<div className="border-[var(--signal-failure)]/20 border-t py-4">
 				<p className="max-w-2xl text-[11.5px] text-[var(--ink-40)] leading-5">
 					Deleting your account removes it permanently, along with every
 					workspace you own

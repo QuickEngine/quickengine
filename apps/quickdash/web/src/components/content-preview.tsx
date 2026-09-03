@@ -254,7 +254,7 @@ export function ContentPreview({
 						>
 							{target}
 							{override ? (
-								<span className="ml-1.5 text-[10px] text-[#f5b44a]">
+								<span className="ml-1.5 text-[10px] text-[var(--signal-attention-text)]">
 									override
 								</span>
 							) : null}

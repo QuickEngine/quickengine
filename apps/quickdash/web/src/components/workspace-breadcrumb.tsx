@@ -7,7 +7,7 @@ import {
 	PlugsIcon,
 } from "@phosphor-icons/react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { useHeaderRail } from "./header-action";
+import { useHeaderRail, usePageTakenOver } from "./header-action";
 import { ModuleIcon } from "./module-icon";
 import { MODULE_CHILDREN } from "./workspace-nav";
 
@@ -44,6 +44,12 @@ export function WorkspaceBreadcrumb({
 }) {
 	const { pathname } = useLocation();
 	const { setRail } = useHeaderRail();
+	/**
+	 * ⚠️ `invisible`, not unmounted. The row still holds its height, so the card
+	 * underneath does not jump up the moment a page fails and back down when it
+	 * recovers.
+	 */
+	const takenOver = usePageTakenOver();
 
 	// Everything after the workspace slug. Parsed from the path rather than read
 	// from route params because this renders in the LAYOUT, above the outlet —
@@ -111,9 +117,16 @@ export function WorkspaceBreadcrumb({
 		 * side by side — and pushed every table down with it.
 		 */
 		<div className="flex items-center justify-between gap-3">
+			{/* 🔴 Withdrawn during a takeover, like the page's own controls.
+			    "🛒 Orders" above a card saying the page does not exist, or that
+			    you cannot open it, is the console insisting you are somewhere you
+			    have just been told you are not. The sidebar still shows where you
+			    were; the trail to a page that is not there is a lie. */}
 			<nav
 				aria-label="Breadcrumb"
-				className="flex min-w-0 items-center gap-1.5 text-[13px]"
+				className={`flex min-w-0 items-center gap-1.5 text-[13px] ${
+					takenOver ? "invisible" : ""
+				}`}
 			>
 				{moduleId ? (
 					<ModuleIcon

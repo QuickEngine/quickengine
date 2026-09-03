@@ -167,7 +167,7 @@ function Thread({
 			{replyFailure ? (
 				<p
 					role="alert"
-					className="border-[var(--console-line-soft)] border-t px-4 pt-3 text-[11.5px] text-[var(--signal-attention)]"
+					className="border-[var(--console-line-soft)] border-t px-4 pt-3 text-[11.5px] text-[var(--signal-attention-text)]"
 				>
 					{replyFailure}
 				</p>

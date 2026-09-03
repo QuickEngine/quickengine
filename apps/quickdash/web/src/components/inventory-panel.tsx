@@ -8,6 +8,7 @@ import {
 	DetailPanel,
 	Fact,
 } from "./detail-panel";
+import { WriteFailure } from "./page-state";
 import { Choice, Text } from "./product-fields";
 
 /**
@@ -64,7 +65,18 @@ export function InventoryPanel({
 }) {
 	const queryClient = useQueryClient();
 	const [threshold, setThreshold] = useState("");
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 	const [movement, setMovement] = useState<string>("receive");
 	const [quantity, setQuantity] = useState("");
 	const [note, setNote] = useState("");
@@ -108,7 +120,7 @@ export function InventoryPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That did not save."),
+			setFailure({ error: error, fallback: "That did not save." }),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
 				queryKey: ["quickdash", workspaceId, "inventory"],
@@ -145,7 +157,7 @@ export function InventoryPanel({
 		},
 		onMutate: () => setFailure(null),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "That movement did not save."),
+			setFailure({ error: error, fallback: "That movement did not save." }),
 		onSuccess: () => {
 			setQuantity("");
 			setNote("");
@@ -169,9 +181,7 @@ export function InventoryPanel({
 			footer={
 				<>
 					{failure ? (
-						<p className="mb-2 text-[11.5px] text-[var(--signal-failure)]">
-							{failure}
-						</p>
+						<WriteFailure error={failure.error} message={failure.fallback} />
 					) : null}
 					<button
 						type="button"

@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { inlineFailure } from "./page-state";
+import { useToast } from "./toast";
 
 /**
  * Deleting a set of ticked rows.
@@ -33,8 +35,20 @@ export function BulkDelete<TRow extends { id: string }>({
 	invalidate: readonly unknown[];
 }) {
 	const queryClient = useQueryClient();
+	const toast = useToast();
 	const [confirming, setConfirming] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
+	/**
+	 * 🔴 The ERROR, not `error.message`.
+	 *
+	 * A string threw away the status and the request id at the moment the
+	 * failure arrived, so a 500 printed a raw `HTTP 500` and support had
+	 * nothing to trace. `fallback` survives because the per-action wording is
+	 * better than anything a generic handler could produce.
+	 */
+	const [failure, setFailure] = useState<{
+		error: unknown;
+		fallback: string;
+	} | null>(null);
 
 	const remove = useMutation({
 		mutationFn: async () => {
@@ -60,8 +74,23 @@ export function BulkDelete<TRow extends { id: string }>({
 			}
 		},
 		onMutate: () => setFailure(null),
+		/**
+		 * 🔑 The one place a toast earns its keep here.
+		 *
+		 * On success the ticked rows vanish, the selection bar vanishes with
+		 * them, and nothing on screen says how many went. Deleting eleven things
+		 * and being shown a slightly shorter list is not confirmation — you
+		 * cannot tell it from having deleted eight. The failure path stays
+		 * INLINE, on the button, because that is where you are looking and
+		 * because it must not time out.
+		 */
+		onSuccess: () =>
+			toast.show({
+				signal: "success",
+				title: `${rows.length} ${rows.length === 1 ? noun.replace(/s$/, "") : noun} deleted`,
+			}),
 		onError: (error: { message?: string }) =>
-			setFailure(error?.message ?? "Those could not be deleted."),
+			setFailure({ error: error, fallback: "Those could not be deleted." }),
 		onSettled: async () => {
 			setConfirming(false);
 			await queryClient.invalidateQueries({ queryKey: invalidate });
@@ -69,14 +98,29 @@ export function BulkDelete<TRow extends { id: string }>({
 	});
 
 	if (failure) {
+		/**
+		 * ⚠️ The one place a failure is a BUTTON rather than a card.
+		 *
+		 * It lives in the selection strip — a 28px row beside Export and the
+		 * count — where a card would push the controls off the line somebody is
+		 * mid-way through using. So it stays compact, keeps a border and a tone
+		 * so it is never bare text on the background, carries the full sentence
+		 * in its title, and clears when pressed.
+		 *
+		 * 🔑 The words come from `presentRequestError`, so a 500 here says the
+		 * same thing a 500 says anywhere else instead of leaking `HTTP 500`.
+		 */
+		const said = failure.error
+			? inlineFailure(failure.error)
+			: failure.fallback;
 		return (
 			<button
 				type="button"
 				onClick={() => setFailure(null)}
-				title={failure}
-				className="flex h-7 shrink-0 items-center rounded-md border border-[#ff3b3b]/30 px-2.5 text-[11.5px] text-[#ff6b6b]"
+				title={said}
+				className="flex h-7 shrink-0 items-center rounded-md border border-[var(--signal-failure)]/30 px-2.5 text-[11.5px] text-[var(--signal-failure-text)]"
 			>
-				{failure.length > 42 ? `${failure.slice(0, 42)}…` : failure}
+				{said.length > 42 ? `${said.slice(0, 42)}…` : said}
 			</button>
 		);
 	}
@@ -89,8 +133,8 @@ export function BulkDelete<TRow extends { id: string }>({
 			onBlur={() => setConfirming(false)}
 			className={`flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11.5px] transition-colors disabled:opacity-40 ${
 				confirming
-					? "border-transparent bg-[#ff3b3b] text-white"
-					: "border-[#ff3b3b]/30 text-[#ff6b6b] hover:bg-[#ff3b3b]/[0.08]"
+					? "border-transparent bg-[var(--signal-failure)] text-white"
+					: "border-[var(--signal-failure)]/30 text-[var(--signal-failure-text)] hover:bg-[var(--signal-failure)]/[0.08]"
 			}`}
 		>
 			{remove.isPending

@@ -248,7 +248,7 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 											 * visible without anybody going looking for it.
 											 */}
 											{row.failureReason ? (
-												<span className="text-[10.5px] text-[var(--signal-failure)]">
+												<span className="text-[10.5px] text-[var(--signal-failure-text)]">
 													{row.failureReason}
 												</span>
 											) : null}

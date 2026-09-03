@@ -4,7 +4,7 @@ import {
 } from "@quickengine/ui";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { clientEnv } from "../lib/env";
 import { TRANSIENT_TOAST } from "../lib/transient-toast";
 import { EnvironmentWall } from "./environment-wall";
@@ -62,7 +62,30 @@ export function PageState<TData>({
 	// Development-only review switch; compiled away in production. Placed first
 	// so it wins over a query that has already succeeded — otherwise a page with
 	// cached data could never be made to show its failure state.
-	const forced = forcedFailure();
+	/**
+	 * `?after=3` holds the forced failure back for three seconds, so the page
+	 * LOADS and then breaks.
+	 *
+	 * 🔑 Without it a forced failure fires on the first render, which only ever
+	 * demonstrates "this page could not load". The interesting case is the
+	 * opposite and cannot otherwise be staged: data already on screen, a
+	 * background refetch fails, and what happens to the rows somebody is in the
+	 * middle of reading.
+	 */
+	const [armed, setArmed] = useState(() => {
+		if (!import.meta.env.DEV) return true;
+		return !new URLSearchParams(window.location.search).get("after");
+	});
+	useEffect(() => {
+		if (armed || !import.meta.env.DEV) return;
+		const wait = Number(
+			new URLSearchParams(window.location.search).get("after") ?? 0,
+		);
+		const timer = setTimeout(() => setArmed(true), wait * 1000);
+		return () => clearTimeout(timer);
+	}, [armed]);
+
+	const forced = armed ? forcedFailure() : null;
 	const failure = forced ?? (query.isError ? query.error : null);
 
 	/**
@@ -72,7 +95,34 @@ export function PageState<TData>({
 	 * its behalf would strip the list's search and filters because the thing you
 	 * clicked has gone. Panels identify themselves with `skeleton="panel"`.
 	 */
-	const takesOver = skeleton !== "panel" && isTakeoverFailure(failure);
+	/**
+	 * 🔴 STALE: a failure with good data already in hand.
+	 *
+	 * TanStack keeps the last successful `data` when a refetch fails, and this
+	 * checked `isError` before it checked whether there was anything to show.
+	 * So a background poll failing REPLACED the list somebody was reading:
+	 * forty-seven rows, the scroll position, the selection and any open panel,
+	 * all thrown away because one request did not come back. The data was still
+	 * sitting there the whole time.
+	 *
+	 * Old is not the same as gone. The rows were true a minute ago and are
+	 * almost certainly true now, so they stay, with a line saying they may have
+	 * moved on and a way to try again.
+	 *
+	 * ⚠️ TWO failures still take over, because they make what is on screen
+	 * WRONG rather than merely old: a dead session (every number came from a
+	 * login that no longer exists) and a permission loss (you are not entitled
+	 * to be reading this at all).
+	 */
+	const kindOf = failure ? presentRequestError(failure).kind : null;
+	const stale =
+		Boolean(failure) &&
+		query.data !== undefined &&
+		kindOf !== "authentication" &&
+		kindOf !== "permission";
+
+	const takesOver =
+		!stale && skeleton !== "panel" && isTakeoverFailure(failure);
 	useDeclareTakeover(takesOver);
 
 	// `isPending && !data` rather than `isPending`: a query holding placeholder
@@ -88,6 +138,20 @@ export function PageState<TData>({
 					{loadingLabel}
 				</span>
 				{skeleton === "panel" ? <SkeletonPanel /> : <SkeletonRows />}
+			</>
+		);
+	}
+
+	if (stale && query.data !== undefined) {
+		return (
+			<>
+				<StaleNotice
+					error={failure}
+					onRetry={() => {
+						void query.refetch();
+					}}
+				/>
+				{children(query.data)}
 			</>
 		);
 	}
@@ -1022,6 +1086,46 @@ function ModuleDisabled() {
  * permission. That one is `NoAccess`, and it has somebody to ask; this one has
  * nobody, because the answer is "nothing is wrong".
  */
+/**
+ * What you are reading is real, and may have moved on.
+ *
+ * 🔑 Says WHEN, not just that something failed. "Could not refresh" invites the
+ * question "so how old is this", and a list of orders is exactly the place that
+ * question matters — somebody is about to act on a total or a stock level.
+ *
+ * ⚠️ Sits ABOVE the content rather than replacing it, and takes the same shape
+ * as every other inline failure. Nothing is withdrawn: the search, the filters
+ * and the rows all still work, because they are all still true.
+ */
+export function StaleNotice({
+	error,
+	onRetry,
+}: {
+	error: unknown;
+	onRetry: () => void;
+}) {
+	const it = presentRequestError(error);
+	return (
+		<div
+			role="status"
+			className="mb-3 flex items-center gap-2.5 rounded-lg bg-[rgb(var(--console-ink)/0.035)] px-3 py-2"
+		>
+			<Dot tone="var(--signal-attention)" />
+			<span className="min-w-0 flex-1 text-[11.5px] text-[var(--ink-55)]">
+				This did not refresh, so it may be out of date.
+			</span>
+			{it.requestId ? <RequestIdInline id={it.requestId} /> : null}
+			<button
+				type="button"
+				onClick={onRetry}
+				className="-mr-1 shrink-0 rounded-md px-2 py-1 text-[11.5px] text-[var(--ink-50)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)]"
+			>
+				Retry
+			</button>
+		</div>
+	);
+}
+
 export function ReadOnlyNote({ children }: { children: ReactNode }) {
 	return (
 		<p className="mb-3 flex items-start gap-2.5 rounded-xl border border-[var(--console-line)] px-3 py-2.5 text-[11.5px] text-[var(--ink-45)] leading-5">

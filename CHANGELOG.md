@@ -8,6 +8,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A list you are reading is no longer thrown away when a refresh fails.** It stays, with a line
+  saying it may be out of date and a way to try again. Only a lost session or a lost permission
+  replaces the page now.
+
+- **A dashboard tile that cannot load says so.** They used to report good news instead: nothing
+  waiting, a quiet day, or a count of zero, which made a broken dashboard look like a slow morning.
+
+- **The board holds its shape while it loads,** and tells the difference between a workspace with
+  nothing switched on, a board you have cleared, and one that could not load at all.
+
 - **A workspace with nothing in it says so.** Opening a brand new workspace showed an empty
   dashboard telling you to add tiles, while the sidebar said no modules were enabled. It now explains
   what a module is and takes you to choose them.

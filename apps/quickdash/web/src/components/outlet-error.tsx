@@ -176,7 +176,12 @@ export function RequestIdInline({ id }: { id: string }) {
 					})
 					.catch(() => undefined);
 			}}
-			className="hidden shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-[10.5px] text-[var(--ink-25)] tabular-nums transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-60)] md:flex"
+			/* ⚠️ `max-w-full` and truncating rather than hidden below a breakpoint.
+			   It used to disappear under `md`, which keys off the VIEWPORT and not
+			   the space it actually has — so on a wide screen it showed inside a
+			   240px dashboard tile and overflowed, and on a narrow one it vanished
+			   from a full-width error card where there was plenty of room. */
+			className="flex max-w-full shrink items-center gap-1.5 truncate rounded-md px-1.5 py-1 text-[10.5px] text-[var(--ink-25)] tabular-nums transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-60)]"
 		>
 			{id}
 			{copied ? (

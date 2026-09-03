@@ -1,10 +1,12 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
+import { presentRequestError } from "@quickengine/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { workspaceApi } from "../../lib/api";
 import { type HomeEntry, quickDashQueries } from "../../lib/quickdash-api";
 import { Area, Bars, Card, Stat } from "../dash-card";
+import { RequestIdInline } from "../outlet-error";
 import { RequestFailure } from "../page-state";
 import { SkeletonRows } from "../skeletons";
 
@@ -248,6 +250,8 @@ function NeedsYouTile({
 		<Card title="Needs you">
 			{home.isPending ? (
 				<SkeletonRows rows={3} />
+			) : home.isError ? (
+				<TileFailure error={home.error} onRetry={() => void home.refetch()} />
 			) : rows.length === 0 ? (
 				<p className="text-[11.5px] text-[var(--ink-35)] leading-5">
 					Nothing waiting. No orders to fulfil, no messages to answer.
@@ -276,6 +280,10 @@ function TodayTile({
 		<Card title="Happening today">
 			{home.isPending ? (
 				<SkeletonRows rows={3} />
+			) : home.isError ? (
+				/* "A quiet day so far" is the most expensive sentence on this board
+				   to get wrong, and it was what a failed request produced. */
+				<TileFailure error={home.error} onRetry={() => void home.refetch()} />
 			) : rows.length === 0 ? (
 				<p className="text-[11.5px] text-[var(--ink-35)] leading-5">
 					A quiet day so far.
@@ -304,6 +312,11 @@ function ActivityTile({ workspaceId }: { workspaceId: string }) {
 		<Card title="Recent activity">
 			{activity.isPending ? (
 				<SkeletonRows rows={4} />
+			) : activity.isError ? (
+				<TileFailure
+					error={activity.error}
+					onRetry={() => void activity.refetch()}
+				/>
 			) : events.length === 0 ? (
 				<p className="text-[11.5px] text-[var(--ink-35)]">
 					Nothing has happened here yet.
@@ -354,10 +367,68 @@ function CountTile({
 		<Card title={title}>
 			{rows.isPending ? (
 				<SkeletonRows rows={1} />
+			) : rows.isError ? (
+				<TileFailure error={rows.error} onRetry={() => void rows.refetch()} />
 			) : (
 				<Stat value={String(rows.data?.items?.length ?? 0)} sub={sub} />
 			)}
 		</Card>
+	);
+}
+
+/**
+ * A tile whose own request did not come back.
+ *
+ * 🔴 Four of the five tiles reported GOOD NEWS when they failed. "Needs you"
+ * said "Nothing waiting. No orders to fulfil, no messages to answer", activity
+ * said "Nothing has happened here yet", and the counters showed 0 — all of them
+ * reading `data ?? []` after a failure they never checked for. So a broken
+ * dashboard looked exactly like a quiet morning, which is the one lie a
+ * business cannot afford on the screen it opens first.
+ *
+ * ⚠️ Compact on purpose. A tile is one of eight on a board, and a full error
+ * card in each would make one dead request look like a dead console. It says
+ * what happened, offers the retry, and lets the rest of the board be read.
+ */
+function TileFailure({
+	error,
+	onRetry,
+}: {
+	error: unknown;
+	onRetry: () => void;
+}) {
+	const it = presentRequestError(error);
+	return (
+		<div role="alert" className="flex flex-col gap-1.5">
+			<div className="flex items-center gap-2">
+				<span
+					aria-hidden="true"
+					className="size-1.5 shrink-0 rounded-full bg-[var(--signal-attention)]"
+				/>
+				{/* 🔴 A tile is not a page, and it must not borrow the page's words.
+				    `inlineFailure` returns "QuickDash couldn't load this page. Try
+				    again; if it keeps happening, quote the request ID below" —
+				    written for a screen that has taken over, and wrong in every
+				    clause here: it is not the page, there was no ID below because
+				    this never rendered one, and "below" pointed at nothing. */}
+				<span className="min-w-0 flex-1 truncate text-[11.5px] text-[var(--ink-50)]">
+					{it.kind === "network" ? "No connection." : "This didn’t load."}
+				</span>
+				<button
+					type="button"
+					onClick={onRetry}
+					className="-mr-1 shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-[var(--ink-45)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)]"
+				>
+					Retry
+				</button>
+			</div>
+			{/* Now it is actually there, and copyable, like everywhere else. */}
+			{it.requestId ? (
+				<div className="-ml-1.5">
+					<RequestIdInline id={it.requestId} />
+				</div>
+			) : null}
+		</div>
 	);
 }
 

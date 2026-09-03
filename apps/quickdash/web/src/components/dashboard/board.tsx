@@ -14,7 +14,7 @@ import {
 } from "../../lib/dashboard-layout";
 import { clientEnv } from "../../lib/env";
 import { useHeaderRail } from "../header-action";
-import { WriteFailure } from "../page-state";
+import { inlineFailure, WriteFailure } from "../page-state";
 import { BOARD_COLUMNS, TILES } from "./tiles";
 
 /**
@@ -37,11 +37,17 @@ import { BOARD_COLUMNS, TILES } from "./tiles";
 export function DashboardBoard({
 	workspaceId,
 	workspace,
+	modulesKnown = true,
+	modulesError = null,
 	modules,
 }: {
 	workspaceId: string;
 	/** The slug, for links inside tiles. */
 	workspace: string;
+	/** True only when the module list actually loaded. See `firstRun`. */
+	modulesKnown?: boolean;
+	/** Why it did not load, when it did not. */
+	modulesError?: unknown;
 	modules: ReadonlyArray<{ id: string }>;
 }) {
 	const layout = useDashboardLayout(workspaceId);
@@ -56,11 +62,27 @@ export function DashboardBoard({
 	const enabled = new Set(modules.map((module) => module.id));
 	/**
 	 * ⚠️ Nothing to arrange, so nothing that arranges it. "Edit board" on a
-	 * workspace with no modules opens a tray with no tiles in it — a control
-	 * that works perfectly and achieves nothing, which is how somebody decides
-	 * the product is broken rather than unconfigured.
+	 * workspace with no modules opens a tray with no tiles in it, a control that
+	 * works perfectly and achieves nothing, which is how somebody decides the
+	 * product is broken rather than unconfigured.
+	 *
+	 * 🔴 `modulesKnown` gates it. An empty array means "none are on" ONLY when
+	 * the request came back; when it failed it means "we have no idea", and
+	 * telling a working business to go and configure itself is the worse of the
+	 * two mistakes by a distance.
 	 */
-	const firstRun = modules.length === 0;
+	const firstRun = modulesKnown && modules.length === 0;
+	/**
+	 * 🔑 Loading is a THIRD answer, and the board had no word for it.
+	 *
+	 * While the module list is in flight nothing is known: not which tiles
+	 * belong here, not whether any do. The board drew the three tiles that need
+	 * no module and left the rest of the page blank, so the first thing anybody
+	 * saw was a lopsided half board that then rearranged itself. A skeleton in
+	 * the shape of the real grid holds the space instead, and flips to whichever
+	 * answer arrives.
+	 */
+	const loadingModules = !modulesKnown && !modulesError;
 	const available = TILES.filter(
 		(tile) => !tile.module || enabled.has(tile.module),
 	);
@@ -153,7 +175,7 @@ export function DashboardBoard({
 			{/* 🔑 The board's one control rides the breadcrumb row, the same rail
 			    every list page portals its controls into — so Home does not have a
 			    button bar of its own that no other page has. */}
-			{rail && !firstRun
+			{rail && !firstRun && !loadingModules
 				? createPortal(
 						<button
 							type="button"
@@ -192,7 +214,51 @@ export function DashboardBoard({
 			    A workspace this new has nothing to arrange yet. It needs telling
 			    what a module IS and where to turn one on, which is a different
 			    sentence and a different destination. */}
-			{modules.length === 0 ? (
+			{loadingModules ? (
+				/* An even grid, deliberately: eight identical cards on the real
+				   geometry. A skeleton that guesses at the finished arrangement
+				   is a second layout to maintain, and it is wrong the moment
+				   somebody rearranges their board. */
+				<div
+					aria-busy="true"
+					className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:auto-rows-[104px] lg:grid-cols-4"
+				>
+					<span className="sr-only">Loading your board…</span>
+					{Array.from({ length: 8 }, (_, index) => (
+						<div
+							// biome-ignore lint/suspicious/noArrayIndexKey: fixed length placeholder
+							key={index}
+							style={{ boxShadow: "var(--card-lift)" }}
+							className="shimmer lg:row-span-2 flex h-full min-h-[104px] flex-col gap-2 rounded-xl border border-[var(--console-line)] bg-[var(--console-card)] p-4"
+						>
+							<div className="h-2.5 w-24 rounded bg-[rgb(var(--console-ink)/0.07)]" />
+							<div className="mt-1 h-6 w-16 rounded bg-[rgb(var(--console-ink)/0.06)]" />
+							<div className="mt-auto h-2 w-full rounded bg-[rgb(var(--console-ink)/0.05)]" />
+						</div>
+					))}
+				</div>
+			) : modulesError ? (
+				/* 🔴 Silence was the third possible answer, and the worst one.
+				   With the module list unavailable the board had no tiles to draw
+				   and no first-run message it was allowed to show, so it rendered
+				   an empty page: identical to a workspace with nothing in it, and
+				   identical to a board somebody had cleared. Say which. */
+				<div className="flex flex-col items-center rounded-xl border border-[var(--console-line)] px-6 py-16 text-center">
+					<p className="text-[13px] text-[var(--ink-80)]">
+						This board could not load
+					</p>
+					<p className="mt-1.5 max-w-[26rem] text-[11.5px] text-[var(--ink-35)] leading-5">
+						{inlineFailure(modulesError)}
+					</p>
+					<button
+						type="button"
+						onClick={() => window.location.reload()}
+						className="mt-5 inline-flex h-8 items-center rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] transition-opacity hover:opacity-90"
+					>
+						Try again
+					</button>
+				</div>
+			) : firstRun ? (
 				<div className="flex flex-col items-center rounded-xl border border-[var(--console-line)] px-6 py-16 text-center">
 					<p className="text-[13px] text-[var(--ink-80)]">
 						This workspace is empty
@@ -226,8 +292,16 @@ export function DashboardBoard({
 				</div>
 			) : null}
 
+			{/* 🔴 The grid was a SIBLING of the message, so it drew anyway.
+			    "This workspace is empty" printed with three tiles stacked under
+			    it, and "This board could not load" printed above a board that had
+			    visibly loaded. The three moduleless tiles are workspace scoped on
+			    purpose, so they survive with no modules enabled and were exactly
+			    the ones that showed through. A message that replaces the board has
+			    to replace the board. */}
 			<div
 				ref={gridRef}
+				hidden={loadingModules || Boolean(modulesError) || firstRun}
 				className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:auto-rows-[104px] lg:grid-cols-4"
 			>
 				{shown.map((entry) => {

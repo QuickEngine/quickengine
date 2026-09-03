@@ -42,6 +42,31 @@ function forcedWriteStatus(): number | null {
 	return Number.isFinite(status) ? status : null;
 }
 
+/**
+ * The same switch for READS, and it reaches further than `?fail=` can.
+ *
+ * 🔑 `forcedFailure` in `page-state.tsx` fails whatever `PageState` is wrapping,
+ * which is a page's primary query. It cannot touch anything that runs its own
+ * `useQuery` — the dashboard tiles, the notification bell, the plan badge — and
+ * those are exactly where a PARTIAL failure lives: the page loads and one piece
+ * of it quietly does not.
+ *
+ * `?readFail=500` fails every GET instead, so a board of eight tiles can be
+ * seen with all eight broken. Pair it with `?readFail=500&only=/reports` to
+ * break one path and leave the rest working, which is the case worth looking
+ * at hardest.
+ */
+function forcedReadStatus(path: string): number | null {
+	if (!import.meta.env.DEV) return null;
+	const params = new URLSearchParams(window.location.search);
+	const asked = params.get("readFail");
+	if (!asked) return null;
+	const only = params.get("only");
+	if (only && !path.startsWith(only)) return null;
+	const status = Number(asked);
+	return Number.isFinite(status) ? status : null;
+}
+
 type Requester = { request: (...args: never[]) => Promise<unknown> };
 
 function reviewable<T>(client: T): T {
@@ -49,9 +74,10 @@ function reviewable<T>(client: T): T {
 	const target = client as T & Requester;
 	const original = target.request.bind(target);
 	target.request = ((path: string, init?: { method?: string }) => {
-		const status = forcedWriteStatus();
 		const method = (init?.method ?? "GET").toUpperCase();
-		if (status !== null && method !== "GET") {
+		const status =
+			method === "GET" ? forcedReadStatus(path) : forcedWriteStatus();
+		if (status !== null) {
 			return Promise.reject(
 				Object.assign(new Error(`HTTP ${status}`), {
 					status,

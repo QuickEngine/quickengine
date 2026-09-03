@@ -152,7 +152,7 @@ export function WorkspaceGeneral({
 			<Group title="Preferences">
 				<Row
 					label="Appearance"
-					description="Applies to you everywhere — QuickDash, Account and the sign-in screens."
+					description="Applies to you everywhere, QuickDash, Account and the sign-in screens."
 				>
 					<Segments
 						label="Appearance"
@@ -222,7 +222,7 @@ export function WorkspaceUsage({
 				{/* 🔑 Here so nobody has to leave a workspace to answer "how much is
 				    left". It is the same figure Account shows, from the same call. */}
 				What this account has used this period, on the{" "}
-				<span className="text-[var(--ink-70)]">{plan.data?.planId ?? "—"}</span>{" "}
+				<span className="text-[var(--ink-70)]">{plan.data?.planId ?? "-"}</span>{" "}
 				plan.
 			</p>
 

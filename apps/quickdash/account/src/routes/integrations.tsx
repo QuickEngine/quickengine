@@ -38,7 +38,7 @@ const problem = (integration: Integration): string | null => {
 	if (integration.status === "disabled")
 		return "The provider disabled this account. Payments cannot be taken.";
 	if (integration.status === "restricted")
-		return "The provider restricted this account — it usually wants more details before it will release money.";
+		return "The provider restricted this account, it usually wants more details before it will release money.";
 	if (!integration.chargesEnabled)
 		return "Onboarding is unfinished, so this workspace cannot take payments yet.";
 	if (!integration.payoutsEnabled)
@@ -67,8 +67,8 @@ function IntegrationsPage() {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<p className="mb-5 max-w-2xl text-[11.5px] text-[var(--ink-30)] leading-5">
-				Connections belong to a workspace — one business's payment account is
-				not another's. This is every one of them in{" "}
+				Connections belong to a workspace, one business's payment account is not
+				another's. This is every one of them in{" "}
 				{active?.name ?? "this organization"}, and whether it currently works.
 			</p>
 
@@ -115,7 +115,7 @@ function IntegrationsPage() {
 								    it being set up correctly changes that. */}
 								{connections.length === 0 ? (
 									<p className="mt-1.5 text-[11.5px] text-[var(--signal-attention-text)]">
-										No payment provider connected — this workspace cannot take
+										No payment provider connected, this workspace cannot take
 										money.
 									</p>
 								) : (

@@ -1008,6 +1008,32 @@ function ModuleDisabled() {
  * sits above a form that is still there and still correct, so it must be
  * compact enough not to shove the thing being fixed off the screen.
  */
+/**
+ * A page you can read and cannot change, and the reason why.
+ *
+ * 🔴 A screen with no create button and no editable field looks BROKEN, or
+ * looks like a permission you are missing. Purchase orders is the clearest
+ * case: they are raised automatically when an order is paid, and inventing one
+ * by hand would ask a supplier for goods nobody bought. That is a deliberate
+ * and defensible design — and until now the only place it was written down was
+ * a comment in the source, where no operator will ever read it.
+ *
+ * ⚠️ This is for records the SYSTEM owns, not for a role that lacks
+ * permission. That one is `NoAccess`, and it has somebody to ask; this one has
+ * nobody, because the answer is "nothing is wrong".
+ */
+export function ReadOnlyNote({ children }: { children: ReactNode }) {
+	return (
+		<p className="mb-3 flex items-start gap-2.5 rounded-xl border border-[var(--console-line)] px-3 py-2.5 text-[11.5px] text-[var(--ink-45)] leading-5">
+			<span
+				aria-hidden="true"
+				className="mt-[7px] size-1.5 shrink-0 rounded-full bg-[var(--signal-news)]"
+			/>
+			<span className="min-w-0 flex-1">{children}</span>
+		</p>
+	);
+}
+
 export function WriteFailure({
 	error,
 	message,

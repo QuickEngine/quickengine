@@ -154,6 +154,8 @@ export function PagedTable<TRow extends { id: string }>({
 	bulkActions?: (rows: TRow[]) => ReactNode;
 	/** Shown inside the frame when there are no rows — see `DataTable`. */
 	empty?: ReactNode;
+	/** A page's own card body, for grids that lead with an image. */
+	renderCard?: (row: TRow) => ReactNode;
 	exportName?: string;
 }) {
 	/**

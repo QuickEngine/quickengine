@@ -166,6 +166,7 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => setStatuses([])}
 				exportRows={() => projects.data?.items ?? []}
 				exportName="projects"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}

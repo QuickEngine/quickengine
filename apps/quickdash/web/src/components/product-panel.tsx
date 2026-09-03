@@ -12,6 +12,7 @@ import {
 	toCents,
 } from "../lib/catalog";
 import { parseAmount } from "../lib/money-input";
+import { useOnline } from "../lib/online";
 import { BlockFailure, detailCard } from "./detail-panel";
 import { WriteFailure } from "./page-state";
 import {
@@ -192,6 +193,7 @@ export function ProductPanel({
 	const set = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) =>
 		setDraft((current) => ({ ...current, [key]: value }));
 
+	const online = useOnline();
 	const save = useMutation({
 		mutationFn: async () => {
 			const priced = wantsPrice(draft.pricingModel);
@@ -750,11 +752,15 @@ export function ProductPanel({
 				<div className="flex items-center gap-2">
 					<button
 						type="button"
-						disabled={save.isPending || !valid}
+						disabled={save.isPending || !online || !valid}
 						onClick={() => save.mutate()}
 						className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 min-w-0 flex-1 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 					>
-						{save.isPending ? "Saving…" : "Save"}
+						{!online
+							? "Waiting for a connection…"
+							: save.isPending
+								? "Saving…"
+								: "Save"}
 					</button>
 
 					{/* Publishing is a separate commit from saving fields, because the

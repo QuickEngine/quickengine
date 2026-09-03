@@ -12,6 +12,7 @@ import {
 	type PlacedTile,
 	useDashboardLayout,
 } from "../../lib/dashboard-layout";
+import { clientEnv } from "../../lib/env";
 import { useHeaderRail } from "../header-action";
 import { WriteFailure } from "../page-state";
 import { BOARD_COLUMNS, TILES } from "./tiles";
@@ -53,6 +54,13 @@ export function DashboardBoard({
 	const resizing = useRef<string | null>(null);
 
 	const enabled = new Set(modules.map((module) => module.id));
+	/**
+	 * ⚠️ Nothing to arrange, so nothing that arranges it. "Edit board" on a
+	 * workspace with no modules opens a tray with no tiles in it — a control
+	 * that works perfectly and achieves nothing, which is how somebody decides
+	 * the product is broken rather than unconfigured.
+	 */
+	const firstRun = modules.length === 0;
 	const available = TILES.filter(
 		(tile) => !tile.module || enabled.has(tile.module),
 	);
@@ -145,7 +153,7 @@ export function DashboardBoard({
 			{/* 🔑 The board's one control rides the breadcrumb row, the same rail
 			    every list page portals its controls into — so Home does not have a
 			    button bar of its own that no other page has. */}
-			{rail
+			{rail && !firstRun
 				? createPortal(
 						<button
 							type="button"
@@ -173,7 +181,36 @@ export function DashboardBoard({
 				</p>
 			) : null}
 
-			{shown.length === 0 ? (
+			{/* 🔴 FIRST RUN, and it is not the same thing as an empty board.
+			    A workspace with no modules showed "Your board is empty — press
+			    Edit board to add the things you want to see", which is advice
+			    that cannot be followed: every tile belongs to a module and none
+			    are on. Meanwhile the sidebar said "No modules are enabled". Two
+			    panels, contradicting each other, on the first screen somebody
+			    ever sees.
+
+			    A workspace this new has nothing to arrange yet. It needs telling
+			    what a module IS and where to turn one on, which is a different
+			    sentence and a different destination. */}
+			{modules.length === 0 ? (
+				<div className="flex flex-col items-center rounded-xl border border-[var(--console-line)] px-6 py-16 text-center">
+					<p className="text-[13px] text-[var(--ink-80)]">
+						This workspace is empty
+					</p>
+					<p className="mt-1.5 max-w-[26rem] text-[11.5px] text-[var(--ink-35)] leading-5">
+						Nothing is switched on yet. A module is one part of running a
+						business, such as orders, products, customers or invoicing, and you
+						pick the ones you need. Everything on this page comes from them, so
+						it stays empty until at least one is on.
+					</p>
+					<a
+						href={`${clientEnv.ACCOUNT_URL}/workspaces/${encodeURIComponent(workspace)}`}
+						className="mt-5 inline-flex h-8 items-center rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] no-underline transition-opacity hover:opacity-90"
+					>
+						Choose your modules
+					</a>
+				</div>
+			) : shown.length === 0 ? (
 				/* 🔑 Removing every tile is a legitimate thing to do, and a board
 				   that answered it with a blank page would read as broken. It says
 				   what happened and offers the way back. */

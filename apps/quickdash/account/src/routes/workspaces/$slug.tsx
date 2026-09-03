@@ -262,7 +262,7 @@ function WorkspaceDetailPage() {
 				</div>
 				<p className="mt-3 text-[11px] text-[var(--ink-30)] leading-5">
 					Locks as soon as this workspace connects a payment provider, takes an
-					order or receives a payment — switching afterwards would leave real
+					order or receives a payment, switching afterwards would leave real
 					money in a workspace labelled sandbox.
 				</p>
 			</div>
@@ -348,7 +348,7 @@ function WorkspaceDetailPage() {
 
 				<div className="py-4">
 					<p className="max-w-xl text-[11.5px] text-[var(--ink-40)] leading-5">
-						Deleting removes this workspace and every record in it — customers,
+						Deleting removes this workspace and every record in it, customers,
 						orders, payments, files. It cannot be undone.
 					</p>
 					{confirmDelete ? (

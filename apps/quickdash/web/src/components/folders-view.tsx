@@ -140,6 +140,7 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Depth", ["top level", "nested"])}
 				filterCount={statusFilter.count}
 				exportRows={() => folders.data?.items ?? []}

@@ -197,6 +197,7 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("State", ["active", "off"])}
 				filterCount={statusFilter.count}
 				exportRows={() => links.data?.items ?? []}
@@ -269,7 +270,7 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 										<span className="text-[11px] text-[var(--ink-30)]">
 											{link.commissionBasisPoints
 												? `${link.commissionBasisPoints / 100}%`
-												: "—"}
+												: "-"}
 										</span>
 									),
 								},

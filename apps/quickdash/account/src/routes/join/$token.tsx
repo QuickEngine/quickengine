@@ -140,8 +140,8 @@ function JoinPage() {
 					) : null}
 
 					<p className="mt-3 text-[11px] text-[var(--ink-25)] leading-4">
-						Not expecting this? Ignore it — the invitation expires on its own
-						and nothing is shared until you accept.
+						Not expecting this? Ignore it, the invitation expires on its own and
+						nothing is shared until you accept.
 					</p>
 				</div>
 			)}

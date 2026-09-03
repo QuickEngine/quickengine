@@ -31,7 +31,7 @@ function ErrorIndex() {
 			<p className="max-w-lg text-[11.5px] text-[var(--ink-40)] leading-5">
 				Every failure screen the console can show, rendered by the real
 				component from a real error. Each one appears in the outlet, with the
-				sidebar and header still there — the way a failure on one page should
+				sidebar and header still there, the way a failure on one page should
 				never take the whole window with it.
 			</p>
 			<ul className="flex max-w-lg flex-col gap-1">

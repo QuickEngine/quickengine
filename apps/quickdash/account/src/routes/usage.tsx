@@ -119,7 +119,8 @@ function UsagePage() {
 					<div className="mt-1.5 flex flex-col gap-0.5">
 						{pressing.map((row) => (
 							<p key={row.key} className="text-[11.5px] text-[var(--ink-45)]">
-								<span className="text-[var(--ink-75)]">{row.label}</span> —{" "}
+								<span className="text-[var(--ink-75)]">{row.label}</span>
+								{": "}
 								{row.consequence}
 							</p>
 						))}

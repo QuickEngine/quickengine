@@ -263,7 +263,7 @@ export function WorkspaceDanger({
 					Delete
 				</p>
 				<p className="mt-1 text-[11.5px] text-[var(--ink-35)] leading-5">
-					Removes this workspace and everything in it — products, customers,
+					Removes this workspace and everything in it, products, customers,
 					orders and payments. This cannot be undone.
 				</p>
 				{/* ⚠️ Typing the NAME, not a checkbox. The point is to make somebody

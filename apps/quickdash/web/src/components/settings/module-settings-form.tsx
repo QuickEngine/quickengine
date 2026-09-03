@@ -231,7 +231,7 @@ export function FieldRow({
 					value={typeof value === "string" ? value : ""}
 					options={CURRENCIES.map((currency) => ({
 						value: currency.code,
-						label: `${currency.code} — ${currency.name}`,
+						label: `${currency.code}, ${currency.name}`,
 						hint: currency.symbol,
 					}))}
 					onChange={onChange}

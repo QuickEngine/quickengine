@@ -539,6 +539,7 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => setStatuses([])}
 				exportRows={() => filteredOrders}
 				exportName="orders"
 				query={query}

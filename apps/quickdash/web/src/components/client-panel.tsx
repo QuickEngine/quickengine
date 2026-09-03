@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { money } from "../lib/catalog";
+import { useOnline } from "../lib/online";
 import {
 	Block,
 	BlockEmpty,
@@ -130,6 +131,7 @@ export function ClientPanel({
 			).data,
 	});
 
+	const online = useOnline();
 	const save = useMutation({
 		mutationFn: async () => {
 			await workspaceApi(workspaceId).request(`/clients/${client.id}`, {
@@ -181,11 +183,15 @@ export function ClientPanel({
 			footer={
 				<button
 					type="button"
-					disabled={save.isPending || draft.name.trim().length === 0}
+					disabled={save.isPending || !online || draft.name.trim().length === 0}
 					onClick={() => save.mutate()}
 					className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 				>
-					{save.isPending ? "Saving…" : "Save"}
+					{!online
+						? "Waiting for a connection…"
+						: save.isPending
+							? "Saving…"
+							: "Save"}
 				</button>
 			}
 		>

@@ -361,7 +361,7 @@ export function SettingsSections({
 						{environmentFailure ? (
 							<>
 								<p className="mt-1.5 text-[11.5px] text-[var(--ink-40)] leading-5">
-									Create a separate sandbox workspace instead — it gets its own
+									Create a separate sandbox workspace instead, it gets its own
 									records, API keys and payment provider, and nothing in it can
 									touch this business.
 								</p>
@@ -394,9 +394,9 @@ export function SettingsSections({
 							<div className="min-w-0 flex-1">
 								<p className="text-[12.5px] text-[var(--ink-85)]">Theme</p>
 								<p className="mt-1 text-[11.5px] text-[var(--ink-35)] leading-5">
-									Applies to you everywhere — QuickDash, Account and the sign-in
-									screens — on this device and any other you sign in from.
-									System follows your operating system.
+									Applies to you everywhere, QuickDash, Account and the sign-in
+									screens: on this device and any other you sign in from. System
+									follows your operating system.
 								</p>
 							</div>
 							<ThemeSwitch />
@@ -453,7 +453,7 @@ export function SettingsSections({
 						{/* ⚠️ Stated before it is attempted, not after the refusal. */}
 						<p className="mt-4 text-[11px] text-[var(--ink-30)] leading-5">
 							The environment locks as soon as a workspace connects a payment
-							provider, takes an order, or receives a payment — switching
+							provider, takes an order, or receives a payment. Switching
 							afterwards would leave real money in a workspace labelled sandbox.
 							Run parallel sandboxes as separate workspaces instead; each has
 							its own records, keys and provider.
@@ -475,7 +475,7 @@ export function SettingsSections({
 
 						<BrandField
 							label="Business name"
-							hint={`shown as the sender and in the header — defaults to ${brand?.workspaceName ?? "your workspace name"}`}
+							hint={`shown as the sender and in the header. Defaults to ${brand?.workspaceName ?? "your workspace name"}`}
 							value={brand?.displayName ?? ""}
 							onChange={(value) =>
 								setBrand((was) => (was ? { ...was, displayName: value } : was))
@@ -787,7 +787,7 @@ export function SettingsSections({
 														HTML
 													</span>
 													<p className="mt-1 mb-1.5 text-[11px] text-[var(--ink-30)] leading-4">
-														The whole email, yours to change — layout, styles,
+														The whole email, yours to change, layout, styles,
 														all of it. The system fills in{" "}
 														<code className="text-[var(--ink-60)]">
 															{"{{details}}"}

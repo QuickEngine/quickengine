@@ -148,6 +148,7 @@ export function FilesView({ workspaceId }: { workspaceId: string }) {
 			/>
 
 			<ListControls
+				onClearFilter={() => setStatuses([])}
 				exportRows={() => files.data?.items ?? []}
 				exportName="files"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}

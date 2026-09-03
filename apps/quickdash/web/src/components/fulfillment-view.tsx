@@ -110,6 +110,7 @@ export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => setStatuses([])}
 				exportRows={() => fulfillments.data?.items ?? []}
 				exportName="fulfillments"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}
@@ -151,7 +152,7 @@ export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 				empty={
 					<EmptyState
 						title="Nothing to deliver"
-						detail="Work appears here when a paid order needs delivering — a parcel to pack, a file to send, an appointment to keep."
+						detail="Work appears here when a paid order needs delivering: a parcel to pack, a file to send, an appointment to keep."
 					/>
 				}
 			>

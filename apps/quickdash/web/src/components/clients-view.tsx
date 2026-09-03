@@ -130,6 +130,7 @@ export function ClientsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Details", ["has email", "has company"])}
 				filterCount={statusFilter.count}
 				exportRows={() => clients.data?.items ?? []}

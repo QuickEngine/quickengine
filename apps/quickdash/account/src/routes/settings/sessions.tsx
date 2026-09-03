@@ -116,8 +116,8 @@ function SessionsPage() {
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-3">
 				<p className="max-w-2xl text-[11.5px] text-[var(--ink-30)] leading-5">
-					Every browser signed in as you. Revoking one signs it out immediately
-					— it does not wait for the session to expire.
+					Every browser signed in as you. Revoking one signs it out immediately.
+					It does not wait for the session to expire.
 				</p>
 				{others > 0 ? (
 					<button

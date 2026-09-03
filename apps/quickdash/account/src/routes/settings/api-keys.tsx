@@ -124,7 +124,7 @@ const KEY_TYPES = [
 	{
 		id: "secret",
 		label: "Secret",
-		detail: "Server only. Full workspace access — never ship it to a browser.",
+		detail: "Server only. Full workspace access, never ship it to a browser.",
 		browser: false,
 		/**
 		 * 🔴 Actually full access, because that is what the label promises.

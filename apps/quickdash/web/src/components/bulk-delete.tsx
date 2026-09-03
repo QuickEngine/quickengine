@@ -50,6 +50,17 @@ export function BulkDelete<TRow extends { id: string }>({
 		fallback: string;
 	} | null>(null);
 
+	/**
+	 * 🔴 Progress, because this is NOT one request.
+	 *
+	 * Rows are deleted one at a time and deliberately so — a refusal halfway
+	 * through leaves the earlier ones gone. "Deleting…" for eleven seconds
+	 * tells somebody nothing about how much of that has already happened, and
+	 * the one question during a destructive run is exactly that. If it stops on
+	 * row seven, the count is what says seven went.
+	 */
+	const [done, setDone] = useState(0);
+
 	const remove = useMutation({
 		mutationFn: async () => {
 			let removed = 0;
@@ -73,7 +84,10 @@ export function BulkDelete<TRow extends { id: string }>({
 				}
 			}
 		},
-		onMutate: () => setFailure(null),
+		onMutate: () => {
+			setDone(0);
+			setFailure(null);
+		},
 		/**
 		 * 🔑 The one place a toast earns its keep here.
 		 *
@@ -131,14 +145,14 @@ export function BulkDelete<TRow extends { id: string }>({
 			disabled={remove.isPending}
 			onClick={() => (confirming ? remove.mutate() : setConfirming(true))}
 			onBlur={() => setConfirming(false)}
-			className={`flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11.5px] transition-colors disabled:opacity-40 ${
+			className={`${remove.isPending ? "shimmer-busy" : ""} flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11.5px] transition-colors disabled:opacity-40 ${
 				confirming
 					? "border-transparent bg-[var(--signal-failure)] text-white"
 					: "border-[var(--signal-failure)]/30 text-[var(--signal-failure-text)] hover:bg-[var(--signal-failure)]/[0.08]"
 			}`}
 		>
 			{remove.isPending
-				? "Deleting…"
+				? `Deleting ${done + 1} of ${rows.length}…`
 				: confirming
 					? `Delete ${rows.length} ${noun}?`
 					: "Delete"}

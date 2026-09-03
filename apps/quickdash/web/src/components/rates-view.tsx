@@ -301,7 +301,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 					/>
 					<TextField
 						label="Free over"
-						hint="orders at or above this ship free — leave empty for never"
+						hint="orders at or above this ship free. Leave empty for never"
 						value={freeOver}
 						onChange={setFreeOver}
 						placeholder="250.00"
@@ -338,7 +338,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 					*/}
 					<TextField
 						label="Only over"
-						hint="order value — leave empty to always apply"
+						hint="order value. Leave empty to always apply"
 						value={minOrder}
 						onChange={setMinOrder}
 						placeholder=""
@@ -372,6 +372,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("State", ["active", "off"])}
 				filterCount={statusFilter.count}
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}

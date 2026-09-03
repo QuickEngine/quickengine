@@ -123,6 +123,7 @@ export function DataTable<TRow extends { id: string }>({
 	onSort,
 	bulkActions,
 	empty,
+	renderCard,
 	exportName,
 }: {
 	columns: Array<Column<TRow>>;
@@ -183,6 +184,19 @@ export function DataTable<TRow extends { id: string }>({
 	 * is what tells you where the data starts and stops.
 	 */
 	empty?: ReactNode;
+	/**
+	 * A page's OWN card, for when generic columns are the wrong shape.
+	 *
+	 * 🔴 Products is the reason. A product card leads with a photograph — that
+	 * is what somebody scans a catalogue by — and the generic card leads with
+	 * the first column and labels the rest. So Products grew a hand-rolled grid
+	 * outside this component and lost everything it provides: the raised strip,
+	 * the layout toggle, paging, selection, export. It also lost the surface
+	 * and shadow, which is why it was flat while every other card view was not.
+	 *
+	 * Supplying the card here keeps the design and gets the rest back.
+	 */
+	renderCard?: (row: TRow) => ReactNode;
 	/** Names the file when a selection is exported. */
 	exportName?: string;
 }) {
@@ -372,7 +386,15 @@ export function DataTable<TRow extends { id: string }>({
 					{strip}
 				</div>
 				<CardList
-					{...{ columns, rows, onOpen, selectedId, rowSignal, onReorder }}
+					{...{
+						columns,
+						rows,
+						onOpen,
+						selectedId,
+						rowSignal,
+						onReorder,
+						renderCard,
+					}}
 				/>
 			</>
 		);
@@ -388,8 +410,19 @@ export function DataTable<TRow extends { id: string }>({
 		 * rounded corners instead of squaring them off.
 		 */
 		<div
-			style={{ boxShadow: "var(--card-lift)" }}
-			className="overflow-hidden rounded-xl border border-[var(--console-line)] bg-[var(--console-card)]"
+			/* 🔑 Raised when it holds something, flat when it does not.
+			   An empty list is an outline around an absence — giving it a shadow
+			   makes the console insist on a container that has nothing in it.
+			   With rows, the frame is an object sitting on the page and the lift
+			   is what separates the data from the floor. Same rule the workspace
+			   picker follows, and the reason the two screenshots looked like two
+			   different products before. */
+			style={{
+				boxShadow: rows.length === 0 ? undefined : "var(--card-lift)",
+			}}
+			className={`overflow-hidden rounded-xl border border-[var(--console-line)] ${
+				rows.length === 0 ? "" : "bg-[var(--console-card)]"
+			}`}
 		>
 			{chosen.length > 0 ? bar : strip}
 			{rows.length === 0 && empty ? (
@@ -617,6 +650,7 @@ function CardList<TRow extends { id: string }>({
 	selectedId,
 	rowSignal,
 	onReorder,
+	renderCard,
 }: {
 	columns: Array<Column<TRow>>;
 	rows: TRow[];
@@ -624,6 +658,7 @@ function CardList<TRow extends { id: string }>({
 	selectedId?: string | null;
 	rowSignal?: (row: TRow) => "news" | "attention" | "failure" | null;
 	onReorder?: (fromId: string, toId: string) => void;
+	renderCard?: (row: TRow) => ReactNode;
 }) {
 	const [lead, ...rest] = columns;
 	return (
@@ -662,24 +697,39 @@ function CardList<TRow extends { id: string }>({
 							: undefined
 					}
 					tabIndex={onOpen ? 0 : undefined}
-					style={{ boxShadow: "var(--card-lift)" }}
-					className={`relative rounded-xl border bg-[var(--console-card)] p-3 outline-none transition-colors ${
-						onOpen ? "cursor-pointer" : ""
+					/* 🔴 A real card, not a rectangle with a hairline.
+					   `--card-lift` is a 2px drop — right for a tile lying flat on
+					   a page, invisible on something 240px wide that is supposed to
+					   look picked up. And `--console-card` is one step off the
+					   floor, so the shadow had almost nothing to fall onto. The
+					   same surface and elevation the workspace picker uses:
+					   `--surface-card` on the page ground, `--lift-card` under it,
+					   and a pixel of rise on hover so it answers the pointer. */
+					style={{ boxShadow: "var(--lift-card)" }}
+					className={`relative rounded-xl border bg-[var(--surface-card)] p-3 outline-none transition-[transform,border-color] duration-150 ${
+						onOpen ? "cursor-pointer hover:-translate-y-px" : ""
 					} ${
 						selectedId === row.id
 							? "border-[rgb(var(--console-ink)/0.35)]"
-							: "border-[var(--console-line-soft)] hover:border-[var(--console-line-strong)]"
+							: "border-[var(--console-line)] hover:border-[var(--console-line-strong)]"
 					}`}
 				>
 					{/* In the card's own padding, at the corner — same reasoning as the
 					    table: the heading must not shift because something needs
 					    attention. */}
 					<RowDot signal={rowSignal?.(row) ?? null} inCard />
-					<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-						{lead.render(row)}
-					</p>
+					{/* A page's own card replaces the body, never the frame — the
+					    surface, the lift, the selection border and the dot are the
+					    parts that must look the same everywhere. */}
+					{renderCard ? (
+						renderCard(row)
+					) : (
+						<p className="truncate text-[12.5px] text-[var(--ink-85)]">
+							{lead.render(row)}
+						</p>
+					)}
 
-					<dl className="mt-2 space-y-1">
+					<dl className={renderCard ? "hidden" : "mt-2 space-y-1"}>
 						{rest.map((column) => {
 							const value = column.render(row);
 							// Nothing to say is better said by absence than by an empty row.

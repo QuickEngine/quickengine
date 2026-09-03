@@ -267,8 +267,8 @@ function ConnectPage() {
 							[
 								"Environment",
 								context.data?.workspace.environment === "test"
-									? "Sandbox — payments are not charged"
-									: "Live — payments are real",
+									? "Sandbox: payments are not charged"
+									: "Live: payments are real",
 							],
 						].map(([label, value]) => (
 							<div key={label} className="flex items-baseline gap-4 py-3">
@@ -289,7 +289,7 @@ function ConnectPage() {
 					) : (endpoints.data ?? []).length === 0 ? (
 						<p className="max-w-xl text-[11.5px] text-[var(--ink-35)] leading-5">
 							No endpoints yet. Register one and this workspace will post every
-							event to it — signed, retried on failure, and replayable from the
+							event to it, signed, retried on failure, and replayable from the
 							delivery history.
 						</p>
 					) : (
@@ -351,7 +351,7 @@ function ConnectPage() {
 												{delivery.eventName}
 											</span>
 											<span className="shrink-0 text-[var(--ink-30)]">
-												{delivery.responseStatus ?? delivery.error ?? "—"}
+												{delivery.responseStatus ?? delivery.error ?? "-"}
 											</span>
 											<span className="w-16 shrink-0 text-right text-[var(--ink-25)]">
 												{delivery.attempts} tr
@@ -369,7 +369,7 @@ function ConnectPage() {
 				<Card title="Look up a request">
 					<p className="max-w-xl text-[11.5px] text-[var(--ink-35)] leading-5">
 						Every response carries a request ID. Paste one here to see what the
-						API actually did — the mutation it committed and the audit it wrote.
+						API actually did, the mutation it committed and the audit it wrote.
 					</p>
 					<div className="mt-3 flex flex-wrap items-center gap-2">
 						<input
@@ -490,7 +490,8 @@ function ConnectPage() {
 									key={provider.provider}
 									className="text-[11.5px] text-[var(--signal-attention-text)] leading-5"
 								>
-									<span className="capitalize">{provider.provider}</span> —{" "}
+									<span className="capitalize">{provider.provider}</span>
+									{": "}
 									{provider.consequence}
 								</p>
 							))}

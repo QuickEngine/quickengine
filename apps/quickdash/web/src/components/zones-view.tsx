@@ -208,7 +208,7 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 					/>
 					<TextField
 						label="Regions"
-						hint="optional — leave empty for the whole country"
+						hint="optional: leave empty for the whole country"
 						value={regions}
 						onChange={setRegions}
 						placeholder="AB, BC"
@@ -231,6 +231,7 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("State", ["active", "off"])}
 				filterCount={statusFilter.count}
 				exportRows={() => zones.data?.items ?? []}

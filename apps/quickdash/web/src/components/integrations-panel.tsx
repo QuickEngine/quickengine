@@ -154,7 +154,7 @@ export function IntegrationsPanel({
 					<p className="px-1 text-[11.5px] text-[var(--ink-30)]">Checking…</p>
 				) : mine.length === 0 ? (
 					<p className="px-1 pb-2 text-[11.5px] text-[var(--ink-35)] leading-5">
-						Nothing connected yet. Payments is the one you need first — without
+						Nothing connected yet. Payments is the one you need first, without
 						it this workspace cannot take money.
 					</p>
 				) : (

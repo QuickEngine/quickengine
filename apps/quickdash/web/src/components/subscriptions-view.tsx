@@ -230,6 +230,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Status", [
 					"active",
 					"past_due",
@@ -363,7 +364,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 										<span className="text-[11px] text-[var(--ink-30)]">
 											{row.nextRenewalAt
 												? new Date(row.nextRenewalAt).toLocaleDateString()
-												: "—"}
+												: "-"}
 										</span>
 									),
 								},

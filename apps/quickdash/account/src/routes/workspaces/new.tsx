@@ -185,7 +185,7 @@ function NewWorkspacePage() {
 								))}
 								{query.trim() && matches.length === 0 ? (
 									<p className="px-2 py-3 text-[11.5px] text-[var(--ink-30)] leading-5">
-										Nothing matches that. Pick the closest one — the modules are
+										Nothing matches that. Pick the closest one, the modules are
 										a starting point, not a commitment.
 									</p>
 								) : null}

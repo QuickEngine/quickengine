@@ -17,10 +17,10 @@ import { TrackingForm } from "./tracking-form";
  */
 
 const date = (value: string | null | undefined) =>
-	value ? new Date(value).toLocaleDateString() : "—";
+	value ? new Date(value).toLocaleDateString() : "-";
 
 const dateTime = (value: string | null | undefined) =>
-	value ? new Date(value).toLocaleString() : "—";
+	value ? new Date(value).toLocaleString() : "-";
 
 const titleCase = (value: string) => value.replace(/[_-]/g, " ");
 
@@ -254,8 +254,8 @@ export function PaymentPanel({ workspaceId, id, onClose }: PanelProps) {
 				<>
 					<div className="grid grid-cols-2 gap-3">
 						<Fact label="Provider">{payment.provider}</Fact>
-						<Fact label="Method">{payment.paymentMethod ?? "—"}</Fact>
-						<Fact label="Reference">{payment.reference ?? "—"}</Fact>
+						<Fact label="Method">{payment.paymentMethod ?? "-"}</Fact>
+						<Fact label="Reference">{payment.reference ?? "-"}</Fact>
 						<Fact label="Succeeded">{dateTime(payment.succeededAt)}</Fact>
 					</div>
 					<Block title="Refunds" aside={payment.refunds?.length || undefined}>
@@ -336,8 +336,8 @@ export function ShipmentPanel({ workspaceId, id, onClose }: PanelProps) {
 			{(shipment) => (
 				<>
 					<div className="grid grid-cols-2 gap-3">
-						<Fact label="Carrier">{shipment.carrier ?? "—"}</Fact>
-						<Fact label="Service">{shipment.serviceLevel ?? "—"}</Fact>
+						<Fact label="Carrier">{shipment.carrier ?? "-"}</Fact>
+						<Fact label="Service">{shipment.serviceLevel ?? "-"}</Fact>
 						<Fact label="Tracking">
 							{shipment.trackingUrl && shipment.trackingNumber ? (
 								<a
@@ -349,11 +349,11 @@ export function ShipmentPanel({ workspaceId, id, onClose }: PanelProps) {
 									{shipment.trackingNumber}
 								</a>
 							) : (
-								(shipment.trackingNumber ?? "—")
+								(shipment.trackingNumber ?? "-")
 							)}
 						</Fact>
 						<Fact label="Destination">
-							{shipment.shipToName ?? shipment.shipToCity ?? "—"}
+							{shipment.shipToName ?? shipment.shipToCity ?? "-"}
 						</Fact>
 					</div>
 					{/* A number rarely exists while the box is being packed; it turns up

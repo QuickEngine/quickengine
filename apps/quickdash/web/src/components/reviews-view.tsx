@@ -115,6 +115,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				exportRows={() => reviews.data?.items ?? []}
 				exportName="reviews"
 				filter={statusFilter.chips("Status", [...STATUSES])}

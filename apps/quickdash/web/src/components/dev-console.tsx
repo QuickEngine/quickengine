@@ -185,7 +185,7 @@ export function DevConsole({ workspaceId }: { workspaceId: string }) {
 									{row.operation}
 								</span>
 								<span className="w-16 shrink-0 text-right text-[var(--ink-30)] tabular-nums">
-									{row.durationMs === null ? "—" : `${row.durationMs}ms`}
+									{row.durationMs === null ? "-" : `${row.durationMs}ms`}
 								</span>
 								<span className="w-[5.5rem] shrink-0 truncate text-right text-[var(--ink-25)]">
 									{copied === row.requestId

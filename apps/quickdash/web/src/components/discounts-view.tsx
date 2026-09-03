@@ -234,6 +234,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("State", [
 					"active",
 					"scheduled",

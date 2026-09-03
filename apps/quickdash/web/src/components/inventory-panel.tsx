@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useOnline } from "../lib/online";
 import {
 	Block,
 	BlockEmpty,
@@ -106,6 +107,7 @@ export function InventoryPanel({
 		if (item.data) setThreshold(String(item.data.lowStockThreshold));
 	}, [item.data?.id, item.data?.lowStockThreshold]);
 
+	const online = useOnline();
 	const save = useMutation({
 		mutationFn: async () => {
 			const value = Number(threshold.trim());
@@ -185,11 +187,15 @@ export function InventoryPanel({
 					) : null}
 					<button
 						type="button"
-						disabled={save.isPending || !data}
+						disabled={save.isPending || !online || !data}
 						onClick={() => save.mutate()}
 						className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 					>
-						{save.isPending ? "Saving…" : "Save"}
+						{!online
+							? "Waiting for a connection…"
+							: save.isPending
+								? "Saving…"
+								: "Save"}
 					</button>
 				</>
 			}

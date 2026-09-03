@@ -110,6 +110,7 @@ export function InvoicesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => setStatuses([])}
 				exportRows={() => invoices.data?.items ?? []}
 				exportName="invoices"
 				action={<LayoutToggle layout={layout} onChange={setLayout} />}

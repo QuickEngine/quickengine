@@ -8,6 +8,24 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A workspace with nothing in it says so.** Opening a brand new workspace showed an empty
+  dashboard telling you to add tiles, while the sidebar said no modules were enabled. It now explains
+  what a module is and takes you to choose them.
+
+- **Saving while offline no longer loses what you typed.** The save button waits for a connection
+  instead of failing and leaving your work in a form you might close.
+
+- **Deleting several things at once counts as it goes,** so if it stops partway you can see how far
+  it got.
+
+- **Read only pages say why.** Purchase orders are raised automatically when an order is paid, and
+  the page now says so rather than leaving you to wonder where the create button went.
+
+- **Products has a table view,** alongside the card view it already had, and its cards match the
+  rest of the console.
+
+- **Clearing a search or filter is one press,** from the table's own toolbar.
+
 - **Every failure says the right thing, in the right shape.** A page that cannot be found, a page you
   cannot open, a fault on our side, a plan you have outgrown, a workspace in the wrong mode and a
   module that is switched off each get their own screen, inside the console rather than instead of
@@ -51,6 +69,8 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   decided instead.
 
 ### Fixed
+
+- **Proper punctuation everywhere.** Dashes used mid sentence are gone from every screen.
 
 - **The search box in a table no longer loses your typing.** Searching a list stopped after one
   character whenever the search emptied it, because the table went away and took the box with it. The

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useOnline } from "../lib/online";
 import { DetailPanel } from "./detail-panel";
 import { WriteFailure } from "./page-state";
 
@@ -37,6 +38,7 @@ export function CreatePanel({
 	failure?: { error: unknown; fallback: string } | null;
 	children: ReactNode;
 }) {
+	const online = useOnline();
 	return (
 		<DetailPanel
 			title={title}
@@ -51,10 +53,19 @@ export function CreatePanel({
 				<button
 					type="submit"
 					form="create-panel-form"
-					disabled={busy || !valid}
+					disabled={busy || !valid || !online}
+					/* 🔴 Refuses BEFORE it can lose the work.
+					   Offline, this used to submit, fail, and leave the reason under
+					   a form still full of typing — so the data survived only while
+					   the panel stayed open. The button says what it is waiting for
+					   instead, which keeps everything on screen until it can go. */
 					className={`${busy ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 				>
-					{busy ? "Saving…" : submitLabel}
+					{!online
+						? "Waiting for a connection…"
+						: busy
+							? "Saving…"
+							: submitLabel}
 				</button>
 			}
 		>

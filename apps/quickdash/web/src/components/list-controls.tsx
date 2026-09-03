@@ -42,6 +42,7 @@ export function ListControls({
 	action,
 	exportRows,
 	exportName,
+	onClearFilter,
 }: {
 	/**
 	 * ⚠️ Still accepted, no longer rendered. The console has one search, in the
@@ -71,6 +72,8 @@ export function ListControls({
 	 */
 	exportRows?: () => ReadonlyArray<Record<string, unknown>>;
 	exportName?: string;
+	/** Resets the page's own filters. Search is cleared here regardless. */
+	onClearFilter?: () => void;
 }) {
 	const toast = useToast();
 	// The page registers its action through `useHeaderAction`; this is where it
@@ -165,6 +168,25 @@ export function ListControls({
 					{filterCount}
 				</span>
 			) : null}
+			{/* 🔴 Thirty views tell you to "clear the status filter" in their
+			    empty state, and not one of them gave you a way to do it — you had
+			    to work out which control was hiding your rows and undo it by
+			    hand. It belongs HERE rather than in each empty state: this is
+			    where the narrowing happened, it is one control instead of thirty,
+			    and it is still there when the list is merely SHORT rather than
+			    empty, which is when people actually get confused. */}
+			{query || filterCount ? (
+				<button
+					type="button"
+					onClick={() => {
+						onQueryChange("");
+						onClearFilter?.();
+					}}
+					className="shrink-0 rounded-md px-1.5 py-1 text-[11px] text-[var(--ink-40)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)]"
+				>
+					Clear
+				</button>
+			) : null}
 			<label className="flex min-w-0 flex-1 items-center gap-2">
 				<MagnifyingGlassIcon
 					size={14}
@@ -254,6 +276,8 @@ export function useChipFilter() {
 	const [selected, setSelected] = useState<readonly string[]>([]);
 	return {
 		count: selected.length,
+		/** Put every chip back, so a filtered-empty list has a way out. */
+		clear: () => setSelected([]),
 		/** True when a row's value survives the current selection. */
 		keep: (value: string | null | undefined) =>
 			selected.length === 0 ||

@@ -74,7 +74,7 @@ const quiet =
 
 const money = (cents: number | null, currency: string) =>
 	cents === null
-		? "—"
+		? "-"
 		: new Intl.NumberFormat(undefined, {
 				style: "currency",
 				currency,
@@ -244,6 +244,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Handoff", [
 					"email",
 					"manual",
@@ -309,7 +310,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 									header: "Contact",
 									render: (supplier) => (
 										<span className="text-[11px] text-[var(--ink-30)]">
-											{supplier.contactEmail ?? supplier.contactName ?? "—"}
+											{supplier.contactEmail ?? supplier.contactName ?? "-"}
 										</span>
 									),
 								},
@@ -875,7 +876,7 @@ function ConnectionSection({
 
 			{state?.present ? (
 				<div className="space-y-1.5">
-					<Fact label="Connected to" value={state.shopDomain ?? "—"} />
+					<Fact label="Connected to" value={state.shopDomain ?? "-"} />
 					<Fact label="Status" value={state.status} />
 					{state.lastError ? (
 						<p className="text-[11.5px] text-[var(--ink-45)] leading-5">
@@ -1009,7 +1010,7 @@ function ConnectionSection({
 								key={sku}
 								className="text-[11.5px] text-[var(--ink-45)] leading-5"
 							>
-								{nameFor(sku)} — not recognised by this store
+								{nameFor(sku)}: not recognised by this store
 							</p>
 						))}
 					</div>

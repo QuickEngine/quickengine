@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useOnline } from "../lib/online";
 import { detailCard } from "./detail-panel";
 import { WriteFailure } from "./page-state";
 import { Area, Choice, Section, Text, Toggle } from "./product-fields";
@@ -151,6 +152,7 @@ export function CategoryPanel({
 		},
 	});
 
+	const online = useOnline();
 	const save = useMutation({
 		mutationFn: async () => {
 			const order = Number(draft.sortOrder.trim());
@@ -344,11 +346,15 @@ export function CategoryPanel({
 				) : null}
 				<button
 					type="button"
-					disabled={save.isPending || !valid}
+					disabled={save.isPending || !online || !valid}
 					onClick={() => save.mutate()}
 					className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 				>
-					{save.isPending ? "Saving…" : "Save"}
+					{!online
+						? "Waiting for a connection…"
+						: save.isPending
+							? "Saving…"
+							: "Save"}
 				</button>
 				<button
 					type="button"

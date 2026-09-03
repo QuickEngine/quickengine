@@ -3,6 +3,7 @@ import { useConsoleFocus } from "@quickengine/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useOnline } from "../lib/online";
 import { ContentPreview } from "./content-preview";
 import { FilterChip, ListControls } from "./list-controls";
 import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
@@ -478,6 +479,7 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 		});
 	};
 
+	const online = useOnline();
 	const save = useMutation({
 		mutationFn: async (input: { entry: ContentEntry; text: string }) => {
 			const { entry, text } = input;
@@ -910,12 +912,16 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 																	<button
 																		type="button"
 																		className={`${solid} ${save.isPending ? "shimmer-busy" : ""}`}
-																		disabled={save.isPending}
+																		disabled={save.isPending || !online}
 																		onClick={() =>
 																			save.mutate({ entry, text: draft })
 																		}
 																	>
-																		{save.isPending ? "Saving…" : "Save"}
+																		{!online
+																			? "Waiting for a connection…"
+																			: save.isPending
+																				? "Saving…"
+																				: "Save"}
 																	</button>
 																	<p className="text-[11px] text-[var(--ink-30)]">
 																		{entry.published
@@ -1014,7 +1020,7 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 			<button
 				type="button"
 				aria-label="Resize the editor"
-				title="Drag to resize — narrows the page to phone width"
+				title="Drag to resize. Narrows the page to phone width."
 				onPointerDown={(event) => {
 					event.preventDefault();
 					// Keeps every subsequent pointer event aimed at this element even

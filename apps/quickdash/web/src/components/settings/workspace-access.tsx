@@ -130,7 +130,7 @@ export function WorkspaceWebhooks({ workspaceId }: { workspaceId: string }) {
 			{secret ? (
 				<div className="rounded-xl border border-[var(--console-line-strong)] p-3">
 					<p className="text-[11.5px] text-[var(--ink-70)]">
-						Signing secret — copy it now
+						Signing secret: copy it now
 					</p>
 					<p className="mt-1 text-[11px] text-[var(--ink-35)] leading-4">
 						This is the only time it is shown. There is no way to read it back.

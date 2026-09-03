@@ -59,6 +59,7 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Use", ["shown first", "additional"])}
 				filterCount={statusFilter.count}
 				exportRows={() => catalog.data?.items ?? []}

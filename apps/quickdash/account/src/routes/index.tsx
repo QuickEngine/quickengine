@@ -685,7 +685,7 @@ function OverviewPage() {
 						<Fact
 							label="Credits"
 							value={
-								credits.data ? creditBalance(credits.data.balanceMicros) : "—"
+								credits.data ? creditBalance(credits.data.balanceMicros) : "-"
 							}
 							hint={
 								credits.data?.autoRecharge?.enabled

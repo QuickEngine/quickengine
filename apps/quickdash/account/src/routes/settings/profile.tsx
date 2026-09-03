@@ -38,7 +38,7 @@ const joined = (value: string | Date | undefined) =>
 				day: "numeric",
 				year: "numeric",
 			}).format(new Date(value))
-		: "—";
+		: "-";
 
 function ProfilePage() {
 	const { data: session } = useSession();
@@ -286,7 +286,7 @@ function ProfilePage() {
 						    identity change that has to be verified through the auth app, not
 						    a text field on a settings page. */}
 						<p className="truncate text-[13px] text-[var(--ink-85)]">
-							{user?.email ?? "—"}
+							{user?.email ?? "-"}
 						</p>
 						<p className="mt-0.5 text-[11px] text-[var(--ink-30)]">
 							Joined {joined(user?.createdAt)}
@@ -371,7 +371,7 @@ function ProfilePage() {
 				<p className="max-w-2xl text-[11.5px] text-[var(--ink-40)] leading-5">
 					Deleting your account removes it permanently, along with every
 					workspace you own
-					{ownedWorkspaces > 0 ? ` — ${ownedWorkspaces} right now — ` : " "}
+					{ownedWorkspaces > 0 ? `: ${ownedWorkspaces} right now, ` : " "}
 					and all of their records. It cannot be undone, and it is refused while
 					any of those workspaces still hold stored files.
 				</p>

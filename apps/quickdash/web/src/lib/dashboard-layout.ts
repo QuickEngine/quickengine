@@ -21,6 +21,48 @@ import { workspaceApi } from "./api";
  * could have given them.
  */
 
+/**
+ * How far back the whole board looks.
+ *
+ * 🔑 ONE range for the board, not one per card. A dashboard is read as a single
+ * picture: revenue over 7 days beside traffic over 90 is two questions on one
+ * screen, and nothing on it can be compared. Every tile that takes a range
+ * takes this one.
+ */
+export const BOARD_RANGES = [
+	{ id: "7d", label: "7D", days: 7 },
+	{ id: "30d", label: "30D", days: 30 },
+	{ id: "90d", label: "90D", days: 90 },
+	{ id: "1y", label: "1Y", days: 365 },
+] as const;
+
+export type BoardRange = (typeof BOARD_RANGES)[number]["id"];
+
+const RANGE_KEY = "quickdash.board.range";
+
+/** Remembered per person, like the theme: it is a way of looking, not data. */
+export function readBoardRange(): BoardRange {
+	try {
+		const saved = localStorage.getItem(RANGE_KEY);
+		return BOARD_RANGES.some((range) => range.id === saved)
+			? (saved as BoardRange)
+			: "7d";
+	} catch {
+		return "7d";
+	}
+}
+
+export function writeBoardRange(range: BoardRange) {
+	try {
+		localStorage.setItem(RANGE_KEY, range);
+	} catch {
+		// It applies for this session and simply is not remembered.
+	}
+}
+
+export const rangeDays = (range: BoardRange) =>
+	BOARD_RANGES.find((entry) => entry.id === range)?.days ?? 7;
+
 const MODULE_ID = "dashboard";
 const VIEW_NAME = "home";
 
@@ -30,6 +72,29 @@ export type PlacedTile = {
 	cols: number;
 	/** Rows tall, 1 upwards. */
 	rows: number;
+	/**
+	 * Where the tile sits, 1-indexed like CSS grid lines.
+	 *
+	 * 🔴 Boards used to be a LIST: order in the array, flowed by the grid. That
+	 * made a gap impossible to fill on purpose — a tile could only take another
+	 * tile's place, never an empty spot, because the empty spot had no identity.
+	 * A position gives the board holes, which is what "arrange it how I like"
+	 * actually means.
+	 *
+	 * ⚠️ Optional, and absent means "flow". Every board saved before this has no
+	 * positions, and inventing some on read would silently rearrange boards
+	 * people already built. They keep flowing until something is dragged.
+	 */
+	col?: number;
+	row?: number;
+	/**
+	 * How this tile draws its series.
+	 *
+	 * ⚠️ Optional, and absent means the tile's own default. A board saved before
+	 * the picker existed has no opinion, and inventing one would change charts
+	 * people never asked to change.
+	 */
+	chart?: string;
 };
 
 /**
@@ -46,10 +111,18 @@ function toPlaced(value: unknown): PlacedTile | null {
 		cols?: unknown;
 		rows?: unknown;
 		span?: unknown;
+		col?: unknown;
+		row?: unknown;
+		chart?: unknown;
 	};
 	if (typeof row.id !== "string") return null;
+	const at = {
+		col: typeof row.col === "number" ? row.col : undefined,
+		row: typeof row.row === "number" ? row.row : undefined,
+		chart: typeof row.chart === "string" ? row.chart : undefined,
+	};
 	if (typeof row.cols === "number" && typeof row.rows === "number") {
-		return { id: row.id, cols: row.cols, rows: row.rows };
+		return { id: row.id, cols: row.cols, rows: row.rows, ...at };
 	}
 	if (typeof row.span === "string") {
 		const [cols, rows] = row.span.split("x").map(Number);

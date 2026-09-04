@@ -121,12 +121,12 @@ describe("Reporting & Analytics persistence", () => {
 		expect(stored.visitor_hash).not.toBe(input.visitorId);
 		const report = await getWorkspaceReport(workspaceId, range);
 		expect(report.traffic.data.summary).toEqual({
-			pageViews: 1,
+			views: 1,
 			visitors: 1,
 			sessions: 1,
 		});
 		expect(report.traffic.data.series).toEqual([
-			expect.objectContaining({ pageViews: 1, visitors: 1, sessions: 1 }),
+			expect.objectContaining({ views: 1, visitors: 1, sessions: 1 }),
 		]);
 	});
 

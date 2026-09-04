@@ -1,5 +1,6 @@
 import {
 	ArrowsOutCardinalIcon,
+	ChartPieSliceIcon,
 	CheckIcon,
 	PlusIcon,
 	SlidersHorizontalIcon,
@@ -8,11 +9,17 @@ import {
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+	BOARD_RANGES,
+	type BoardRange,
 	defaultLayout,
 	type PlacedTile,
+	rangeDays,
+	readBoardRange,
 	useDashboardLayout,
+	writeBoardRange,
 } from "../../lib/dashboard-layout";
 import { clientEnv } from "../../lib/env";
+import { CHART_LABEL, type ChartKind } from "../charts";
 import { useHeaderRail } from "../header-action";
 import { inlineFailure, WriteFailure } from "../page-state";
 import { BOARD_COLUMNS, TILES } from "./tiles";
@@ -53,6 +60,10 @@ export function DashboardBoard({
 	const layout = useDashboardLayout(workspaceId);
 	const [editing, setEditing] = useState(false);
 	const [dragging, setDragging] = useState<string | null>(null);
+	/** Whether the chart picker is showing. See the note on the control. */
+	const [picking, setPicking] = useState(false);
+	/** How far back every tile on this board looks. See `BOARD_RANGES`. */
+	const [range, setRange] = useState<BoardRange>(readBoardRange);
 	/** The order being previewed mid-drag, before anything is written. */
 	const [preview, setPreview] = useState<PlacedTile[] | null>(null);
 	const gridRef = useRef<HTMLDivElement>(null);
@@ -100,16 +111,80 @@ export function DashboardBoard({
 		(tile) => !placed.some((entry) => entry.id === tile.id),
 	);
 
-	/** Move `fromId` to sit where `overId` currently is. */
-	const reorder = (list: PlacedTile[], fromId: string, overId: string) => {
-		if (fromId === overId) return list;
-		const next = [...list];
-		const from = next.findIndex((entry) => entry.id === fromId);
-		const to = next.findIndex((entry) => entry.id === overId);
-		if (from < 0 || to < 0) return list;
-		const [moved] = next.splice(from, 1);
-		next.splice(to, 0, moved);
-		return next;
+	/**
+	 * The grid cell under the pointer.
+	 *
+	 * 🔑 Geometry, not the layout. A tile's `col`/`row` say where it was PUT; the
+	 * question here is where somebody is pointing, and only the rendered grid
+	 * knows how wide a column came out at this window size.
+	 */
+	const cellAt = (clientX: number, clientY: number) => {
+		const grid = gridRef.current;
+		if (!grid) return null;
+		const box = grid.getBoundingClientRect();
+		const gap = 12;
+		const cell = (box.width - gap * (BOARD_COLUMNS - 1)) / BOARD_COLUMNS;
+		const rowHeight = 104 + gap;
+		const col = Math.floor((clientX - box.left) / (cell + gap)) + 1;
+		const row = Math.floor((clientY - box.top) / rowHeight) + 1;
+		return {
+			col: Math.min(Math.max(1, col), BOARD_COLUMNS),
+			row: Math.max(1, row),
+		};
+	};
+
+	/**
+	 * Put a tile at a cell, and keep it on the board.
+	 *
+	 * ⚠️ Clamped so a wide tile dropped near the right edge does not hang off it:
+	 * a three column tile can start at column 2 at the widest, and a grid line
+	 * past the end is a tile nobody can see.
+	 */
+	const placeAt = (
+		list: PlacedTile[],
+		id: string,
+		at: { col: number; row: number },
+	) => {
+		const moving = list.find((entry) => entry.id === id);
+		if (!moving) return list;
+		const width = Math.min(moving.cols, BOARD_COLUMNS);
+		const col = Math.min(Math.max(1, at.col), BOARD_COLUMNS - width + 1);
+		const placed = { ...moving, col, row: Math.max(1, at.row) };
+
+		/**
+		 * 🔴 Two tiles could hold the same cell, and the grid drew them ON TOP of
+		 * each other.
+		 *
+		 * Free placement is what made that possible. A list cannot overlap, since
+		 * flow gives every tile its own space; a tile that states its own grid
+		 * line can state one somebody else is already using, and CSS Grid does not
+		 * arbitrate — it stacks them and whichever comes later in the DOM wins.
+		 *
+		 * 🔑 So whatever the dropped tile lands on is PUSHED DOWN rather than the
+		 * drop being refused. Refusing means a drag that silently does nothing,
+		 * which reads as broken. Pushing is predictable: the thing you dropped
+		 * goes where you dropped it, and what was there moves out of the way.
+		 */
+		const covers = (a: PlacedTile, b: PlacedTile) => {
+			if (!a.col || !a.row || !b.col || !b.row) return false;
+			const aRight = a.col + Math.min(a.cols, BOARD_COLUMNS);
+			const bRight = b.col + Math.min(b.cols, BOARD_COLUMNS);
+			return (
+				a.col < bRight &&
+				b.col < aRight &&
+				a.row < b.row + b.rows &&
+				b.row < a.row + a.rows
+			);
+		};
+
+		return list.map((entry) => {
+			if (entry.id === id) return placed;
+			// An unplaced tile is still flowing and cannot collide with anything.
+			if (!entry.col || !entry.row) return entry;
+			return covers(placed, entry)
+				? { ...entry, row: placed.row + placed.rows }
+				: entry;
+		});
 	};
 
 	/**
@@ -177,39 +252,98 @@ export function DashboardBoard({
 			    button bar of its own that no other page has. */}
 			{rail && !firstRun && !loadingModules
 				? createPortal(
-						<button
-							type="button"
-							onClick={() => setEditing((open) => !open)}
-							/* 🔑 The same control as the header's, because it is the same
+						<div className="flex items-center gap-1.5">
+							{/* 🔴 OUTSIDE edit mode, unlike the other two. Changing how far
+						    back the board looks is reading, not arranging: it is the
+						    question somebody asks while using the dashboard, and putting
+						    it behind Edit board would mean entering a mode where cards can
+						    be dragged just to ask it. */}
+							<div
+								className="flex items-center gap-0.5 rounded-[7px] bg-[var(--view-face)] p-0.5"
+								style={{ boxShadow: "var(--lift-inset)" }}
+							>
+								{BOARD_RANGES.map((entry) => (
+									<button
+										key={entry.id}
+										type="button"
+										aria-pressed={range === entry.id}
+										data-hint={`The last ${entry.days} days`}
+										onClick={() => {
+											setRange(entry.id);
+											writeBoardRange(entry.id);
+										}}
+										className={
+											range === entry.id
+												? "control-raised flex h-7 items-center rounded-[5px] border-0 px-2 text-[11px] text-[var(--ink-90)]"
+												: "flex h-7 items-center rounded-[5px] px-2 text-[11px] text-[var(--ink-35)] transition-colors hover:text-[var(--ink-70)]"
+										}
+									>
+										{entry.label}
+									</button>
+								))}
+							</div>
+							{/* 🔴 Only while editing. A chart control on a board nobody is
+						    editing changes something you did not ask to change; it belongs
+						    to the same mode as dragging and resizing. */}
+							{editing ? (
+								<button
+									type="button"
+									onClick={() => setPicking((open) => !open)}
+									data-hint="Choose how each card draws its data"
+									className={`control-raised flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] ${
+										picking
+											? "border-[var(--console-line-strong)] text-[var(--ink-90)]"
+											: "border-[var(--console-line)] text-[var(--ink-50)] hover:text-[var(--ink-85)]"
+									}`}
+								>
+									<ChartPieSliceIcon size={13} />
+									Charts
+								</button>
+							) : null}
+							<button
+								type="button"
+								onClick={() => {
+									setEditing((open) => !open);
+									// Closing the board closes the picker with it: coming back to
+									// an editing mode you did not choose is its own confusion.
+									setPicking(false);
+								}}
+								/* 🔑 The same control as the header's, because it is the same
 							   kind of thing: a button you press on the console's chrome.
 							   `control-lift` while editing so the ink fill survives, see
 							   the note on `.control-raised`. */
-							className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] ${
-								/* 🔴 No ink fill for the active state.
+								className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] ${
+									/* 🔴 No ink fill for the active state.
 								   `--console-ink` is off white in dark, so "Done" became a
 								   bright slab in a header of dark raised controls: the one
 								   element that broke the surface it sat on. The button is
 								   the same object either way, and being ON is said by the
 								   ink of its label, not by inverting it. */
-								editing
-									? "control-raised border-[var(--console-line-strong)] text-[var(--ink-90)]"
-									: "control-raised border-[var(--console-line)] text-[var(--ink-50)] hover:text-[var(--ink-85)]"
-							}`}
-						>
-							{editing ? (
-								<CheckIcon size={13} />
-							) : (
-								<SlidersHorizontalIcon size={13} />
-							)}
-							{editing ? "Done" : "Edit board"}
-						</button>,
+									editing
+										? "control-raised border-[var(--console-line-strong)] text-[var(--ink-90)]"
+										: "control-raised border-[var(--console-line)] text-[var(--ink-50)] hover:text-[var(--ink-85)]"
+								}`}
+							>
+								{editing ? (
+									<CheckIcon size={13} />
+								) : (
+									<SlidersHorizontalIcon size={13} />
+								)}
+								{editing ? "Done" : "Edit board"}
+							</button>
+						</div>,
 						rail,
 					)
 				: null}
 
 			{editing ? (
+				/* 🔑 The instruction follows the MODE. Pressing Charts changed
+				   something at the foot of two cards and said nothing about it,
+				   which is indistinguishable from a button that does nothing. */
 				<p className="mb-3 text-[11.5px] text-[var(--ink-35)]">
-					Drag a card to move it. Drag its bottom-right corner to resize.
+					{picking
+						? "Pick how each card draws its data. Cards with only one shape are left alone."
+						: "Drag a card to move it. Drag its bottom-right corner to resize."}
 				</p>
 			) : null}
 
@@ -318,9 +452,8 @@ export function DashboardBoard({
 						Your board is empty
 					</p>
 					<p className="mt-1.5 max-w-[24rem] text-[11.5px] text-[var(--ink-35)] leading-5">
-						{editing
-							? "Pick something from below to put on it."
-							: "Press Edit board to add the things you want to see first thing in the morning."}
+						Pick something from below to put on it. Press Edit board when you
+						want to move things around.
 					</p>
 				</div>
 			) : null}
@@ -332,9 +465,29 @@ export function DashboardBoard({
 			    purpose, so they survive with no modules enabled and were exactly
 			    the ones that showed through. A message that replaces the board has
 			    to replace the board. */}
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: the grid is the
+			    drop surface while editing, and a drop target is not a control. The
+			    keyboard path to every tile is the remove button in its overlay,
+			    which is a real button. */}
 			<div
 				ref={gridRef}
 				hidden={loadingModules || Boolean(modulesError) || firstRun}
+				/* 🔑 The GRID listens, not each tile. Empty space belongs to the grid,
+				   so a handler that only lives on tiles can never hear a drop into a
+				   gap — which was the whole bug. */
+				onDragOver={
+					editing
+						? (event) => {
+								if (!dragging) return;
+								event.preventDefault();
+								const at = cellAt(event.clientX, event.clientY);
+								if (!at) return;
+								setPreview((current) =>
+									placeAt(current ?? shown, dragging, at),
+								);
+							}
+						: undefined
+				}
 				className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:auto-rows-[104px] lg:grid-cols-4"
 			>
 				{shown.map((entry) => {
@@ -346,9 +499,16 @@ export function DashboardBoard({
 						   button in its overlay, which is a real button. */
 						<div
 							key={entry.id}
+							/* 🔑 A tile that has been placed states its line; one that never
+							   has still flows. That is what lets an existing board keep its
+							   arrangement until somebody actually moves something. */
 							style={{
-								gridColumn: `span ${Math.min(entry.cols, BOARD_COLUMNS)}`,
-								gridRow: `span ${entry.rows}`,
+								gridColumn: entry.col
+									? `${entry.col} / span ${Math.min(entry.cols, BOARD_COLUMNS)}`
+									: `span ${Math.min(entry.cols, BOARD_COLUMNS)}`,
+								gridRow: entry.row
+									? `${entry.row} / span ${entry.rows}`
+									: `span ${entry.rows}`,
 							}}
 							className={`relative min-w-0 transition-opacity ${
 								dragging === entry.id ? "opacity-40" : ""
@@ -367,20 +527,62 @@ export function DashboardBoard({
 									return null;
 								});
 							}}
-							onDragOver={
-								editing
-									? (event) => {
-											event.preventDefault();
-											if (!dragging || dragging === entry.id) return;
-											// 🔑 Reflow AS YOU MOVE, not on drop.
-											setPreview((current) =>
-												reorder(current ?? shown, dragging, entry.id),
-											);
-										}
-									: undefined
-							}
 						>
-							<tile.Render workspaceId={workspaceId} workspace={workspace} />
+							<tile.Render
+								workspaceId={workspaceId}
+								workspace={workspace}
+								chart={entry.chart as ChartKind | undefined}
+								days={rangeDays(range)}
+							/>
+
+							{/* 🔴 The picker sits ON the tile it changes, not in a dialog
+							    listing ten tile names. Choosing a shape is a judgement about
+							    THIS data, and a menu somewhere else makes you hold the card
+							    in your head while you decide. It also previews instantly,
+							    because the only way to know whether bars beat a line here is
+							    to see them. */}
+							{/* ⚠️ Shown even when the card is set to "None": the control that
+							    turned the chart off has to be the one that turns it back on,
+							    and a picker that disappears with the chart is a one way
+							    door. */}
+							{picking && tile.charts && tile.charts.length > 1 ? (
+								<div
+									/* 🔴 `z-10`, and a real box shadow. The edit overlay is
+									   `absolute inset-0` and comes AFTER this in the DOM, so
+									   without a stacking order it painted straight over the
+									   picker: the control existed, did its job, and could not be
+									   seen. `shadow-[var(…)]` does not emit either, which is why
+									   the elevation is set inline like every other raised
+									   surface in this console. */
+									style={{ boxShadow: "var(--lift-pop)" }}
+									className="absolute inset-x-2 bottom-2 z-10 flex flex-wrap items-center gap-1 rounded-lg bg-[var(--console-pop)] p-1"
+								>
+									{tile.charts.map((kind) => (
+										<button
+											key={kind}
+											type="button"
+											aria-pressed={(entry.chart ?? tile.charts?.[0]) === kind}
+											onClick={() =>
+												layout.save(
+													shown.map((row) =>
+														row.id === entry.id ? { ...row, chart: kind } : row,
+													),
+												)
+											}
+											/* `flex-1` with a floor: ten shapes across a two column tile
+											   would each be twelve pixels wide, which is a row of
+											   slivers. They wrap instead. */
+											className={`h-6 min-w-[46px] flex-1 rounded-md px-1.5 text-[10.5px] transition-colors ${
+												(entry.chart ?? tile.charts?.[0]) === kind
+													? "control-raised border-0 text-[var(--ink-90)]"
+													: "text-[var(--ink-40)] hover:text-[var(--ink-80)]"
+											}`}
+										>
+											{CHART_LABEL[kind]}
+										</button>
+									))}
+								</div>
+							) : null}
 
 							{editing ? (
 								/* Laid OVER the tile: a tile knows nothing about being
@@ -446,7 +648,14 @@ export function DashboardBoard({
 				})}
 			</div>
 
-			{editing && unplaced.length > 0 ? (
+			{/* 🔴 Shown while EDITING, or whenever the board is empty.
+			    Adding a card and arranging cards are different jobs. Arranging
+			    needs a mode, because dragging and resizing have to be off while
+			    somebody is reading; adding does not, and hiding it behind Edit
+			    board meant an empty dashboard told you to go and find a mode
+			    before it would show you what it could do. An empty board should
+			    offer its contents. */}
+			{(editing || shown.length === 0) && unplaced.length > 0 ? (
 				<div className="mt-6">
 					<p className="mb-2 text-[10.5px] text-[var(--ink-30)] uppercase tracking-[0.08em]">
 						Add to your board

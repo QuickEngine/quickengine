@@ -253,7 +253,9 @@ widths remembered per person. A full-width header carries the workspace switcher
 your own shop on the left, one search that reaches the whole workspace in the middle, and on the
 right a create button that only ever offers what this workspace has switched on, QuickTools, the
 assistant, the theme switch and your account. The assistant keeps its conversations, and while it
-is open the sidebar lists them beside the work you are doing. Every page
+is open the sidebar lists them beside the work you are doing. The theme control offers fifty
+palettes, each with its own light and dark mode, and the drifting ground behind the console takes
+the colour of whichever one is chosen. Every page
 says where you are on a trail at the top, with the page's own controls on the same line. Every list
 can be filtered, searched from a strip on the table itself, selected by row, dragged into order and
 exported as a spreadsheet of exactly what is on screen. Home is a grid of tiles rather than a

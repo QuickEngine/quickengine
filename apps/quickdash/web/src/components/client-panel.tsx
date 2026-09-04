@@ -187,12 +187,12 @@ export function ClientPanel({
 			footer={
 				<button
 					type="button"
-					title={
+					data-hint={
 						draft.name.trim() ? undefined : "Give this customer a name first"
 					}
 					disabled={save.isPending || !online || draft.name.trim().length === 0}
 					onClick={() => save.mutate()}
-					className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
+					className={`${save.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 w-full items-center justify-center rounded-md border border-[var(--console-line-strong)] font-medium text-[12.5px] text-[var(--ink-90)] outline-none disabled:opacity-40`}
 				>
 					<SaveLabel
 						saving={save.isPending}
@@ -274,7 +274,7 @@ export function ClientPanel({
 				) : theirOrders.length === 0 ? (
 					<BlockEmpty>Nothing ordered yet.</BlockEmpty>
 				) : (
-					<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+					<div className="">
 						{theirOrders.map((order) => (
 							<div key={order.id} className="flex items-center gap-3 py-2">
 								<span className="w-24 shrink-0 font-mono text-[11.5px] text-[var(--ink-60)]">

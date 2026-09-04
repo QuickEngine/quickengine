@@ -67,7 +67,7 @@ export function CreatePanel({
 				<button
 					type="submit"
 					form="create-panel-form"
-					title={
+					data-hint={
 						!online
 							? "Waiting for a connection"
 							: !valid
@@ -80,7 +80,7 @@ export function CreatePanel({
 					   a form still full of typing — so the data survived only while
 					   the panel stayed open. The button says what it is waiting for
 					   instead, which keeps everything on screen until it can go. */
-					className={`${busy ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
+					className={`${busy ? "shimmer-busy" : ""} control-raised inline-flex h-9 w-full items-center justify-center rounded-md border border-[var(--console-line-strong)] font-medium text-[12.5px] text-[var(--ink-90)] outline-none disabled:opacity-40`}
 				>
 					<SaveLabel
 						saving={busy}

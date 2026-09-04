@@ -38,14 +38,14 @@ type InventoryItem = {
 type CatalogItem = { id: string; name: string };
 
 const quiet =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
+	"control-raised inline-flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)] disabled:opacity-40";
 
 // Matched to `quiet` rather than the console's usual field: this input sits
 // between two pill buttons, so a taller square-cornered box breaks the row's
 // shared edge. Same height, same radius, same border — it reads as one control
 // group instead of a form dropped into a table cell.
 const field =
-	"h-7 w-16 shrink-0 rounded-full border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[11px] text-[var(--ink-85)] outline-none focus:border-[rgb(var(--console-ink)/0.25)]";
+	"h-7 w-16 shrink-0 rounded-full border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[11px] text-[var(--ink-85)] outline-none";
 
 /**
  * What a person can actually sell right now.

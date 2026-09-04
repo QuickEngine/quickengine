@@ -294,14 +294,14 @@ function OrderPanel({
 
 	return (
 		<aside className={detailCard}>
-			<header className="flex items-center gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
+			<header className="flex items-center gap-3 px-4 py-3">
 				<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
 					{detail.data ? `Order ${detail.data.number}` : "Order"}
 				</p>
 				<button
 					type="button"
 					onClick={onClose}
-					className="h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+					className="control-raised h-7 rounded-md border px-3 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 				>
 					Close
 				</button>
@@ -331,14 +331,28 @@ function OrderPanel({
 							    the server would accept them. A paid order arrives `placed`
 							    and must be confirmed before it can be shipped. */}
 							{(ORDER_MOVES[order.status] ?? []).length > 0 ? (
-								<div className="mt-2.5 flex flex-wrap gap-1.5">
+								/* 🔴 NOT a control group, and the data is why.
+								   Every state offers exactly two moves: one step forward and
+								   "Cancel order". A group of one is not a group, and joining
+								   the two would put killing the order flush against advancing
+								   it, as though they were peers. They are not, so they are
+								   separated: the forward move sits where the eye lands, and
+								   cancelling is pushed to the far end and only shows its
+								   colour when you go near it. A destructive action that looks
+								   identical to the routine one beside it is how the wrong
+								   button gets pressed. */
+								<div className="mt-2.5 flex flex-wrap items-center gap-1.5">
 									{(ORDER_MOVES[order.status] ?? []).map((next) => (
 										<button
 											key={next}
 											type="button"
 											disabled={move.isPending}
 											onClick={() => move.mutate(next)}
-											className={`${move.isPending && move.variables === next ? "shimmer-busy" : ""} h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40`}
+											className={`${move.isPending && move.variables === next ? "shimmer-busy" : ""} control-raised h-7 rounded-md border px-3 text-[11px] outline-none disabled:opacity-40 ${
+												next === "cancelled"
+													? "ml-auto text-[var(--ink-45)] hover:text-[var(--signal-failure-text)]"
+													: "text-[var(--ink-75)] hover:text-[var(--ink-90)]"
+											}`}
 										>
 											<SaveLabel
 												saving={move.isPending && move.variables === next}
@@ -370,7 +384,7 @@ function OrderPanel({
 							<p className="mt-4 mb-1 text-[11px] text-[var(--ink-45)]">
 								Items
 							</p>
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-y">
+							<div className="">
 								{order.lineItems.length === 0 ? (
 									<p className="py-2 text-[11.5px] text-[var(--ink-30)]">
 										No items recorded on this order.
@@ -465,7 +479,7 @@ function OrderPanel({
 								<button
 									type="button"
 									onClick={() => setShipping(true)}
-									className="mt-2.5 h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+									className="mt-2.5 control-raised h-7 rounded-md border px-3 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 								>
 									{order.shipments.length === 0
 										? "Create shipment"

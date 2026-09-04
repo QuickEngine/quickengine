@@ -131,7 +131,7 @@ export function BulkDelete<TRow extends { id: string }>({
 			<button
 				type="button"
 				onClick={() => setFailure(null)}
-				title={said}
+				data-hint={said}
 				className="control-raised flex h-7 shrink-0 items-center rounded-md border border-[var(--signal-failure)]/30 px-2.5 text-[11.5px] text-[var(--signal-failure-text)] outline-none"
 			>
 				{said.length > 42 ? `${said.slice(0, 42)}…` : said}

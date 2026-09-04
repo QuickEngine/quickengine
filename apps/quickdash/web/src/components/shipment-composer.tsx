@@ -260,7 +260,7 @@ export function ShipmentComposer({
 									}))
 								}
 								inputMode="numeric"
-								className="h-7 w-14 shrink-0 rounded-full border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[11px] text-[var(--ink-85)] outline-none focus:border-[rgb(var(--console-ink)/0.25)]"
+								className="h-7 w-14 shrink-0 rounded-full border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[11px] text-[var(--ink-85)] outline-none"
 							/>
 						</div>
 					))}

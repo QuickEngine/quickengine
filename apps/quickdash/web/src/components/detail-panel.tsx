@@ -10,9 +10,15 @@ import { inlineFailure } from "./page-state";
  * panel is a fresh chance to get it wrong; consistency by CONSTRUCTION means a
  * new one cannot. Nothing here is configurable that should not be.
  *
- * 🔑 Half the window, floored at 24rem. Wide enough to edit in without the list
- * behind it becoming useless — moving between records is the whole reason these
- * are panels rather than pages.
+ * 🔑 Half the window, floored at 24rem and now CAPPED at 36rem. Wide enough to
+ * edit in without the list behind it becoming useless, since moving between
+ * records is the whole reason these are panels rather than pages.
+ *
+ * 🔴 The cap is the part that was missing. Half a window with no ceiling is a
+ * 900px column on a wide monitor, holding label-and-value rows: the lines run
+ * long enough to be tiring, the right half of every row is empty, and the list
+ * behind it gets squeezed for space nothing is using. A reading column wants
+ * roughly this width whatever the screen is doing.
  */
 
 /**
@@ -23,8 +29,19 @@ import { inlineFailure } from "./page-state";
  * between changing the shape once and changing it four times — which is how
  * three different widths appeared in the first place.
  */
+/**
+ * 🔴 `--console-pop` and no border, the same as every other floating thing.
+ *
+ * It was painted `--console-panel`, which IS the outlet: a card the colour of
+ * the ground it sits on cannot look like it is above that ground, whatever
+ * shadow you give it, and no amount of tuning the elevation was ever going to
+ * fix it. That is why this panel stayed flat while the popovers around it
+ * gained depth. The hairline goes for the reason it went on those: an outline
+ * around a floating card reads as a sticker, and the shadow plus a lighter face
+ * already say everything the border was trying to.
+ */
 export const detailCard =
-	"fixed top-3 right-3 bottom-3 z-30 flex w-[calc(50%-0.75rem)] min-w-[24rem] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl border bg-[var(--console-panel)] lift-sheet";
+	"fixed top-3 right-3 bottom-3 z-30 flex w-[calc(50%-0.75rem)] min-w-[24rem] max-w-[min(36rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-xl border-0 bg-[var(--console-pop)] lift-sheet";
 
 export function DetailPanel({
 	title,
@@ -74,7 +91,19 @@ export function DetailPanel({
 			 */
 			className={detailCard}
 		>
-			<header className="flex items-start gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
+			{/* 🔴 A tinted STRIP, not a bare rule, and that distinction is the whole
+			    fix. A hairline drawn across a flat sheet chops the card into three
+			    pieces, which is why the dividers looked wrong. The same line under a
+			    filled band is not a divider at all: it is the edge of the band, and
+			    it is exactly how every table in this console is built. So the panel
+			    is constructed like one. A record is the same material as the list it
+			    came out of, and it should look like it.
+
+			    ⚠️ The band, WITHOUT the line under it. A table draws that edge; this
+			    panel does not, because a rule anywhere on this card reads as the
+			    card being cut up. The change in surface is enough to separate the
+			    title from what it titles. */}
+			<header className="flex shrink-0 items-start gap-3 bg-[rgb(var(--console-ink)/0.02)] px-4 py-3">
 				<div className="min-w-0 flex-1">
 					<p className="truncate text-[12.5px] text-[var(--ink-85)]">{title}</p>
 					{subtitle ? (
@@ -86,7 +115,10 @@ export function DetailPanel({
 				<button
 					type="button"
 					onClick={onClose}
-					className="h-7 shrink-0 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+					/* A key, and rectangular. It was the pill shape the whole console
+					   left behind, sitting in the corner of the one surface people spend
+					   the most time in front of. */
+					className="control-raised flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 				>
 					Close
 				</button>
@@ -104,7 +136,8 @@ export function DetailPanel({
 			</div>
 
 			{footer ? (
-				<footer className="shrink-0 border-[var(--console-line-soft)] border-t px-4 py-3">
+				/* The header's strip, the other way up. */
+				<footer className="shrink-0 bg-[rgb(var(--console-ink)/0.02)] px-4 py-3">
 					{footer}
 				</footer>
 			) : null}
@@ -127,11 +160,19 @@ export function Fact({
 	children: ReactNode;
 }) {
 	return (
-		<div className="min-w-0">
-			<p className="text-[10.5px] text-[var(--ink-30)] uppercase tracking-[0.08em]">
+		/* 🔴 A ROW, label left and value right, the shape a table row already has.
+		   It used to stack the label above the value, on the reasoning that values
+		   vary wildly in length and a two-column grid wraps badly. That is true of
+		   a GRID, where every column must agree on a width; it is not true here,
+		   because the label column is fixed and the value simply wraps within its
+		   own half. What the stack cost was rhythm: a column of little
+		   two-line blocks that reads as a form somebody abandoned rather than as a
+		   record you can scan down. */
+		<div className="flex min-w-0 items-baseline gap-4 py-1">
+			<p className="w-28 shrink-0 text-[11.5px] text-[var(--ink-35)]">
 				{label}
 			</p>
-			<div className="mt-0.5 text-[12.5px] text-[var(--ink-85)] leading-5">
+			<div className="min-w-0 flex-1 text-[12.5px] text-[var(--ink-85)] leading-5">
 				{children}
 			</div>
 		</div>
@@ -150,7 +191,7 @@ export function Block({
 	aside?: ReactNode;
 }) {
 	return (
-		<section className="border-[var(--console-line-soft)] border-t py-3">
+		<section className="py-3">
 			<div className="mb-2 flex items-center gap-2">
 				<p className="min-w-0 flex-1 text-[11px] text-[var(--ink-45)] uppercase tracking-[0.1em]">
 					{title}

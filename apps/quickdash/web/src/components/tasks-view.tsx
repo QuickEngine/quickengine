@@ -44,7 +44,7 @@ type Task = {
 type Project = { id: string; name: string };
 
 const quiet =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
+	"control-raised inline-flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)] disabled:opacity-40";
 
 const readable = (value: string) => value.replace(/_/g, " ");
 

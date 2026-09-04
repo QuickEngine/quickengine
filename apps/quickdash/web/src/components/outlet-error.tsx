@@ -70,7 +70,7 @@ export function RequestId({ id }: { id: string }) {
 					})
 					.catch(() => undefined);
 			}}
-			title="Copy the request ID"
+			data-hint="Copy the request ID"
 			className="mt-5 flex w-full items-center gap-2 rounded-md border border-[var(--console-line)] bg-[var(--console-bg)] px-2.5 py-2 text-left transition-colors hover:border-[var(--console-line-strong)]"
 		>
 			<span className="text-[9.5px] text-[var(--ink-25)] uppercase tracking-[0.1em]">
@@ -116,7 +116,17 @@ export function ErrorCard({
 	   Centred prose reads as a marketing page; an operator wants this to look
 	   like a panel reporting a fact. */
 	return (
-		<div className="w-full max-w-[27rem] overflow-hidden rounded-xl bg-[var(--console-card)] p-6 shadow-[var(--card-lift)]">
+		<div
+			/* 🔴 `--lift-card` and `--surface-tile`, the console's real relief, set
+			   INLINE. Two problems in one line: it was on `--card-lift`, the
+			   original 2px drop every other surface has left behind, and it was
+			   written as a Tailwind arbitrary `shadow-[var(…)]`, which does not
+			   reliably emit — so the card may well have been casting nothing at
+			   all. Every working raised surface in this console sets `boxShadow`
+			   as a style for exactly that reason. */
+			style={{ boxShadow: "var(--lift-card)" }}
+			className="w-full max-w-[27rem] overflow-hidden rounded-xl bg-[var(--surface-tile)] p-6"
+		>
 			{/* 🔑 The status sits IN the headline, not in a chip above it.
 				    An icon tile with the number tucked underneath made the code
 				    decorative — the one thing everybody reads first, shrunk to a
@@ -171,7 +181,7 @@ export function RequestIdInline({ id }: { id: string }) {
 	return (
 		<button
 			type="button"
-			title="Copy the request ID"
+			data-hint="Copy the request ID"
 			aria-label="Copy the request ID"
 			onClick={() => {
 				// Clipboard access is refused in some contexts and REJECTS rather

@@ -77,6 +77,7 @@ export function SupportBubble({
 				<button
 					type="button"
 					aria-label="Close help"
+					data-hint="Close help"
 					onClick={onClose}
 					className="flex size-6 shrink-0 items-center justify-center rounded-md text-[var(--ink-30)] transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-85)]"
 				>

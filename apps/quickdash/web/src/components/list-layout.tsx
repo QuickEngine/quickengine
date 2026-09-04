@@ -39,6 +39,7 @@ export function LayoutToggle({
 			role="switch"
 			aria-checked={layout === "cards"}
 			aria-label={`View: ${layout}. Switch to ${layout === "cards" ? "table" : "cards"}.`}
+			data-hint={layout === "cards" ? "Show as a table" : "Show as cards"}
 			onClick={() => onChange(layout === "cards" ? "table" : "cards")}
 			/**
 			 * 🔴 A SWITCH, not a toggle, and it is styled to say so.
@@ -136,6 +137,7 @@ export function Pager({
 				disabled={page <= 1}
 				onClick={() => onPage(page - 1)}
 				aria-label="Previous page"
+				data-hint="Previous page"
 			>
 				<CaretLeftIcon size={13} />
 			</button>
@@ -145,6 +147,7 @@ export function Pager({
 				disabled={page >= pageCount}
 				onClick={() => onPage(page + 1)}
 				aria-label="Next page"
+				data-hint="Next page"
 			>
 				<CaretRightIcon size={13} />
 			</button>
@@ -254,6 +257,21 @@ export function PagedTable<TRow extends { id: string }>({
 				   nothing, which reads as the drag being broken. */
 				onReorder={sort ? undefined : arrangement.move}
 				rows={ordered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)}
+				/* Into the table's own strip, beside Sort. Only once something has
+				   been moved: an ever-present "reset" implies a list is arranged
+				   when it is simply in its natural order. */
+				resetOrder={
+					arrangement.arranged ? (
+						<button
+							type="button"
+							onClick={arrangement.reset}
+							data-hint="Put the rows back in their natural order"
+							className="control-raised flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-50)] outline-none hover:text-[var(--ink-90)]"
+						>
+							Reset order
+						</button>
+					) : null
+				}
 			/>
 			<div className="flex items-center justify-end gap-3">
 				<Pager
@@ -262,17 +280,6 @@ export function PagedTable<TRow extends { id: string }>({
 					total={ordered.length}
 					onPage={setPage}
 				/>
-				{/* Only once something has been moved: an ever-present "reset" implies
-				    a list is arranged when it is simply in its natural order. */}
-				{arrangement.arranged ? (
-					<button
-						type="button"
-						onClick={arrangement.reset}
-						className="mt-3 shrink-0 text-[11px] text-[var(--ink-30)] transition-colors hover:text-[var(--ink-75)]"
-					>
-						Reset order
-					</button>
-				) : null}
 			</div>
 		</>
 	);

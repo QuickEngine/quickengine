@@ -68,7 +68,7 @@ function statusLabel(from: string, to: string) {
 }
 
 const quiet =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
+	"control-raised inline-flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)] disabled:opacity-40";
 
 function draftFrom(item: CatalogItem): ProductDraft {
 	return {
@@ -387,7 +387,7 @@ export function ProductPanel({
 
 	return (
 		<aside className={detailCard}>
-			<header className="flex items-start gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
+			<header className="flex items-start gap-3 px-4 py-3">
 				<div className="min-w-0 flex-1">
 					<p className="truncate text-[12.5px] text-[var(--ink-85)]">
 						{item.name}
@@ -400,7 +400,7 @@ export function ProductPanel({
 				<button
 					type="button"
 					onClick={onClose}
-					className="h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+					className="control-raised h-7 rounded-md border px-3 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 				>
 					Close
 				</button>
@@ -743,7 +743,7 @@ export function ProductPanel({
 				</Section>
 			</div>
 
-			<footer className="shrink-0 border-[var(--console-line-soft)] border-t px-4 py-3">
+			<footer className="shrink-0 px-4 py-3">
 				{missingPrice ? (
 					<p className="mb-2 text-[11.5px] text-[var(--signal-attention-text)]">
 						{draft.pricingModel.replace(/_/g, " ")} pricing needs a price.
@@ -756,7 +756,7 @@ export function ProductPanel({
 				<div className="flex items-center gap-2">
 					<button
 						type="button"
-						title={
+						data-hint={
 							!draft.name.trim()
 								? "Give this product a name"
 								: missingPrice
@@ -765,7 +765,7 @@ export function ProductPanel({
 						}
 						disabled={save.isPending || !online || !valid}
 						onClick={() => save.mutate()}
-						className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 min-w-0 flex-1 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
+						className={`${save.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 min-w-0 flex-1 items-center justify-center rounded-md border border-[var(--console-line-strong)] font-medium text-[12.5px] text-[var(--ink-90)] outline-none disabled:opacity-40`}
 					>
 						<SaveLabel saving={save.isPending} saved={saved}>
 							Save
@@ -780,7 +780,7 @@ export function ProductPanel({
 							type="button"
 							disabled={setStatus.isPending}
 							onClick={() => setStatus.mutate("active")}
-							className={`${setStatus.isPending ? "shimmer-busy" : ""} inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--console-line-strong)] px-4 text-[12.5px] text-[var(--ink-85)] transition-colors hover:bg-[rgb(var(--console-ink)/0.05)] disabled:opacity-40`}
+							className={`${setStatus.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 shrink-0 items-center justify-center rounded-md border px-3.5 text-[12.5px] text-[var(--ink-85)] outline-none disabled:opacity-40`}
 						>
 							{setStatus.isPending ? "Publishing…" : "Publish"}
 						</button>

@@ -309,7 +309,6 @@ function ModuleItem({
 			<Link
 				to="/$workspace/$module"
 				params={{ workspace: workspaceId, module: module.id }}
-				title={module.description}
 				className={`${row} ${within ? active : idle}`}
 			>
 				<ModuleIcon id={module.id} className="size-[15px] shrink-0" />
@@ -338,7 +337,6 @@ function ModuleItem({
 				type="button"
 				onClick={() => onToggle(!expanded)}
 				aria-expanded={expanded}
-				title={module.description}
 				className={`${row} ${within ? active : idle}`}
 			>
 				<ModuleIcon id={module.id} className="size-[15px] shrink-0" />
@@ -579,7 +577,7 @@ export function WorkspaceNav({
 							<button
 								type="button"
 								onClick={collapseAll}
-								title="Collapse all"
+								data-hint="Collapse all"
 								aria-label="Collapse all groups"
 								className="-translate-y-1/2 absolute top-1/2 right-1 flex size-6 items-center justify-center rounded text-[var(--ink-35)] transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] hover:text-[var(--ink-85)]"
 							>

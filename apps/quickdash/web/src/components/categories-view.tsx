@@ -31,7 +31,7 @@ const _pill =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] outline-none transition-opacity hover:opacity-85 disabled:opacity-40";
 
 const _field =
-	"h-9 w-full rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
+	"h-9 w-full field rounded-md px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-20)]";
 
 /** Depth-first, so a child always renders under its parent rather than beside it. */
 function flatten(
@@ -267,14 +267,14 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 										<img
 											src={node.imageUrl}
 											alt=""
-											className="aspect-square w-full rounded-lg border border-[var(--console-line-soft)] object-cover"
+											className="aspect-square w-full rounded-md object-cover"
 										/>
 									) : (
-										<div className="flex aspect-square w-full items-center justify-center rounded-lg border border-[var(--empty-line)] border-dashed text-[11px] text-[var(--ink-25)]">
+										<div className="flex aspect-square w-full items-center justify-center rounded-md border border-[var(--empty-line)] border-dashed text-[11px] text-[var(--ink-25)]">
 											No picture
 										</div>
 									)}
-									<p className="mt-2.5 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
+									<p className="mt-2 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
 										{node.name}
 									</p>
 									<div className="mt-1.5 flex items-center gap-1.5">

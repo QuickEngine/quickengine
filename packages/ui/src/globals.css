@@ -255,8 +255,30 @@
    The border goes for the same reason it went on the popovers: a hairline
    around a floating card reads as a sticker, not as something with thickness. */
 .lift-sheet {
+	/* ⚠️ `--lift-modal`, not `--lift-pop`. This is the largest floating surface
+	   in the console, half the window tall, and a popover's throw under
+	   something that size falls away long before its own edges do. Same reason
+	   the settings dialog uses it. */
 	box-shadow: var(--lift-modal);
-	border-color: var(--control-edge);
+}
+
+/* Anything you type into: cut IN, never raised. See `--face-field`.
+   ⚠️ `:focus-within` as well as `:focus`, because several of these are a label
+   wrapping an input with an icon beside it, and the focus ring has to land on
+   the box somebody can see rather than on the bare input inside it. */
+.field {
+	background: var(--face-field);
+	box-shadow: var(--lift-inset);
+	border-color: transparent;
+	transition: box-shadow 120ms ease;
+}
+
+.field:focus,
+.field:focus-within {
+	box-shadow:
+		var(--lift-inset),
+		0 0 0 2px rgb(var(--console-ink) / 0.16);
+	outline: none;
 }
 
 /* 🔴 The same raised face, WITHOUT the press.

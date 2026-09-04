@@ -8,6 +8,16 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Fifty themes, and every one has a light mode.** Colour and light are separate choices now, so
+  picking Peacock keeps Peacock when your machine switches to light in the evening. Arrow through
+  the list and the console repaints as you pass each one.
+
+- **The background takes the colour of your theme,** and drifts along the bottom of the screen
+  instead of sitting still in one corner.
+
+- **Tooltips are the product's own,** in your theme, instead of the operating system's grey box a
+  second after you stop moving.
+
 - **The assistant is a real chat.** It keeps every conversation, lists them in the sidebar beside
   your work, and lets you pick which model answers. It is still waiting on a model, and says so
   rather than pretending.
@@ -89,6 +99,20 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **A record panel is its own object again.** It was painted the same colour as the page behind it,
+  so nothing could make it look like it was floating. It is also narrower: half a wide screen was a
+  reading column nobody wanted and it squeezed the list for space it never used.
+
+- **No more lines chopping up panels and settings.** Around fifty hairlines are gone; spacing does
+  the grouping.
+
+- **Text boxes are cut into the page and buttons stand out of it,** so you can tell what you type
+  into and what you press without reading either.
+
+- **Product, media and category pictures are bigger,** with a thinner frame around them.
+
+- **Reset order moved to the top of the table,** next to Sort, where the rest of the controls are.
+
 - **The header holds four buttons instead of eight.** Your shop moved next to the workspace it
   belongs to, integrations moved into Settings alongside everything else you configure, and the
   developer console moved to the Developers page. Nothing was removed; each went where it belonged.
@@ -108,6 +132,15 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   decided instead.
 
 ### Fixed
+
+- **Cancelling an order no longer looks like confirming one.** They were identical grey buttons side
+  by side; the one that kills the order now sits apart and only shows its colour when you reach it.
+
+- **Three pages could take the whole console down when they failed.** They had no error handling of
+  their own, so a fault escaped to the top and replaced everything, sidebar included.
+
+- **A failure no longer blanks the screen.** You can see your dashboard behind it, which is calmer
+  and truer.
 
 - **Notifications no longer close your chats.** Opening the bell while the assistant was open, then
   closing it again, dropped you back to plain navigation with no way back except reopening the

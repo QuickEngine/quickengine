@@ -1,5 +1,6 @@
 import { resolveSession } from "@quickengine/auth/session";
 import {
+	HintLayer,
 	MobileNotice,
 	presentRequestError,
 	ThemeProvider,
@@ -98,17 +99,44 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 		},
 		// The toast overlay is mounted at the root so any view can raise one
 		// without each route re-providing it. It renders nothing until it has to.
-		component: () => (
-			<ThemeProvider>
-				<ToastProvider>
-					<Outlet />
-					{/* Every surface was designed at desktop width first, and the small
+		component: () => {
+			/**
+			 * 🔑 `?boom` previews the ROOT failure, and `?boom=outlet` the ordinary
+			 * one. They look different on purpose: a fault at the root means the
+			 * console itself never rendered, so there is genuinely nothing behind
+			 * the wall, while a route failing inside a working console keeps the
+			 * sidebar and header and puts the card in the outlet. See the outlet
+			 * throw in `$workspace.index`.
+			 *
+			 * It THROWS rather than rendering the screen directly, so what you look
+			 * at is the real boundary catching a real fault, not a copy that can
+			 * drift. These screens are the hardest in the console to reach, which
+			 * is exactly why they kept missing design passes.
+			 *
+			 * ⚠️ `import.meta.env.DEV` only. Vite strips the branch from a
+			 * production build, so nobody can crash their console with a query
+			 * string.
+			 */
+			if (
+				import.meta.env.DEV &&
+				new URLSearchParams(window.location.search).get("boom") === ""
+			) {
+				throw new Error("Previewing the error screen. Remove ?boom to leave.");
+			}
+			return (
+				<ThemeProvider>
+					<ToastProvider>
+						<Outlet />
+						{/* Every surface was designed at desktop width first, and the small
 				    screen passes have not been done. Saying so is the difference
 				    between a product under construction and one that looks broken. */}
-					<MobileNotice />
-				</ToastProvider>
-			</ThemeProvider>
-		),
+						<MobileNotice />
+						{/* Upgrades every `title` in the product. See `HintLayer`. */}
+						<HintLayer />
+					</ToastProvider>
+				</ThemeProvider>
+			);
+		},
 		errorComponent: ErrorScreen,
 		notFoundComponent: NotFoundScreen,
 		/**

@@ -187,7 +187,7 @@ export function CategoryPanel({
 
 	return (
 		<aside className={detailCard}>
-			<header className="flex items-start gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
+			<header className="flex items-start gap-3 px-4 py-3">
 				<div className="min-w-0 flex-1">
 					<p className="truncate text-[12.5px] text-[var(--ink-85)]">
 						{node.name}
@@ -203,7 +203,7 @@ export function CategoryPanel({
 				<button
 					type="button"
 					onClick={onClose}
-					className="h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+					className="control-raised h-7 rounded-md border px-3 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 				>
 					Close
 				</button>
@@ -262,7 +262,7 @@ export function CategoryPanel({
 								/>
 								<button
 									type="button"
-									className="inline-flex h-7 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+									className="control-raised inline-flex h-7 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 									onClick={() => set("imageUrl", "")}
 								>
 									Remove
@@ -344,13 +344,13 @@ export function CategoryPanel({
 				</Section>
 			</div>
 
-			<footer className="shrink-0 border-[var(--console-line-soft)] border-t px-4 py-3">
+			<footer className="shrink-0 px-4 py-3">
 				{failure ? (
 					<WriteFailure error={failure.error} message={failure.fallback} />
 				) : null}
 				<button
 					type="button"
-					title={
+					data-hint={
 						!draft.name.trim()
 							? "Give this category a name"
 							: !draft.slug.trim()
@@ -359,7 +359,7 @@ export function CategoryPanel({
 					}
 					disabled={save.isPending || !online || !valid}
 					onClick={() => save.mutate()}
-					className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
+					className={`${save.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 w-full items-center justify-center rounded-md border border-[var(--console-line-strong)] font-medium text-[12.5px] text-[var(--ink-90)] outline-none disabled:opacity-40`}
 				>
 					<SaveLabel saving={save.isPending} saved={saved}>
 						Save
@@ -377,7 +377,7 @@ export function CategoryPanel({
 							remove.mutate();
 						}
 					}}
-					className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-full border border-[var(--console-line-strong)] text-[12.5px] text-[var(--ink-50)] transition-colors hover:text-[var(--signal-failure-text)] disabled:opacity-40"
+					className="mt-2 control-raised inline-flex h-9 w-full items-center justify-center rounded-md border text-[12.5px] text-[var(--ink-50)] outline-none hover:text-[var(--signal-failure-text)] disabled:opacity-40"
 				>
 					{remove.isPending ? "Deleting…" : "Delete category"}
 				</button>

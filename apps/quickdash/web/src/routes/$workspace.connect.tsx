@@ -16,6 +16,7 @@ import {
 	suggestedKeyName,
 } from "../_lib/connect-config";
 import { Card } from "../components/dash-card";
+import { OutletError, OutletNotFound } from "../components/outlet-error";
 import { SkeletonRows } from "../components/skeletons";
 import { WorkingSpinner } from "../components/working-spinner";
 import { sessionApi, workspaceApi } from "../lib/api";
@@ -95,7 +96,7 @@ function Snippet({ label, value }: { label: string; value: string }) {
 						setCopied(true);
 					}}
 					aria-label={copied ? "Copied" : "Copy"}
-					title={copied ? "Copied" : "Copy"}
+					data-hint={copied ? "Copied" : "Copy"}
 					className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-md text-[var(--ink-30)] opacity-0 transition-opacity hover:text-[var(--ink-85)] focus-visible:opacity-100 group-hover:opacity-100"
 				>
 					{copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
@@ -289,7 +290,7 @@ function ConnectPage() {
 				</Card>
 
 				<Card title="This workspace">
-					<div className="divide-y divide-[var(--console-line-soft)]">
+					<div className="">
 						{[
 							["Workspace ID", workspace],
 							["API", clientEnv.API_URL],
@@ -365,7 +366,7 @@ function ConnectPage() {
 									Nothing delivered yet.
 								</p>
 							) : (
-								<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+								<div>
 									{(deliveries.data ?? []).slice(0, 8).map((delivery) => (
 										<div
 											key={delivery.id}
@@ -473,7 +474,7 @@ function ConnectPage() {
 								</p>
 							)}
 
-							<div className="mt-3.5 divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+							<div className="mt-3.5">
 								{liveKeys.map((key) => (
 									<div key={key.id} className="py-2.5">
 										<div className="flex items-center gap-2">
@@ -635,5 +636,12 @@ function DevConsoleCard() {
 }
 
 export const Route = createFileRoute("/$workspace/connect")({
+	/* 🔴 Without these, a fault here escapes to the ROOT boundary, which
+	   replaces the entire application: the sidebar, the header and the page
+	   you were on all vanish behind a wall. Registered here, the console
+	   survives and the card appears in the outlet where the page would have
+	   been, which is what every other route already does. */
+	errorComponent: OutletError,
+	notFoundComponent: OutletNotFound,
 	component: ConnectPage,
 });

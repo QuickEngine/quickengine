@@ -6,6 +6,19 @@ import { OutletError, OutletNotFound } from "../components/outlet-error";
 import { quickDashQueries } from "../lib/quickdash-api";
 
 function HomePage() {
+	/**
+	 * 🔑 `?boom=outlet` previews the ordinary failure: a route breaking inside a
+	 * working console. The sidebar, the header and the trail all survive and the
+	 * card appears where the page would have been, which is the case somebody
+	 * actually meets. `?boom` on its own throws at the root instead, where there
+	 * is genuinely nothing left behind the wall. Dev only; Vite strips it.
+	 */
+	if (
+		import.meta.env.DEV &&
+		new URLSearchParams(window.location.search).get("boom") === "outlet"
+	) {
+		throw new Error("Previewing the outlet error. Remove ?boom to leave.");
+	}
 	const { workspaceId: workspace } = Route.useRouteContext();
 	const { workspace: slug } = Route.useParams();
 	const context = useQuery(quickDashQueries.context(workspace));

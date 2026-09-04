@@ -26,7 +26,7 @@ function Thumb({ item, size }: { item: CatalogItem; size: "sm" | "lg" }) {
 			? // Square, matching the category tiles — the two grids sit one click
 				// apart and a card that changes shape between them reads as a
 				// different kind of thing. Square is also what a browse page uses.
-				"aspect-square w-full rounded-lg"
+				"aspect-square w-full rounded-md"
 			: // 28px, not 36. A table row is 40px tall, so a 36px thumbnail left
 				// two pixels of air and pushed the row taller than every other
 				// list in the console. This sits inside the row it belongs to.
@@ -245,7 +245,7 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 							return (
 								<>
 									<Thumb item={item} size="lg" />
-									<p className="mt-2.5 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
+									<p className="mt-2 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
 										{item.name}
 									</p>
 									<div className="mt-1.5 flex items-baseline gap-1.5">

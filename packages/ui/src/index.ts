@@ -29,6 +29,7 @@ export {
 	useConsoleFocus,
 } from "./components/console-shell";
 export { GlobalErrorScreen } from "./components/global-error-screen";
+export { HintLayer } from "./components/hint-layer";
 export { InitialsAvatar } from "./components/initials-avatar";
 export { Logo } from "./components/logo";
 export { MobileNotice } from "./components/mobile-notice";

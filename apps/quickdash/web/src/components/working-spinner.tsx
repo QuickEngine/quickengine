@@ -42,7 +42,7 @@ export function WorkingSpinner({
 		<span
 			role="status"
 			aria-label={label}
-			title={label}
+			data-hint={label}
 			className="flex size-3 shrink-0 items-center justify-center"
 		>
 			<l-ring-2

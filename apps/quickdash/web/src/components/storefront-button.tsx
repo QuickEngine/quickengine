@@ -78,7 +78,7 @@ export function StorefrontButton({
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger
 				aria-label="Your shop"
-				title={published ? "Your shop is open" : "Your shop is closed"}
+				data-hint={published ? "Your shop is open" : "Your shop is closed"}
 				className="relative control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] text-[var(--ink-40)] hover:text-[var(--ink-90)] data-[state=open]:text-[var(--ink-90)]"
 			>
 				<StorefrontIcon size={15} />

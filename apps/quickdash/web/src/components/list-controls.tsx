@@ -122,7 +122,7 @@ export function ListControls({
 							title: `${rows.length} ${rows.length === 1 ? "row" : "rows"} exported`,
 						});
 					}}
-					title="Export what you can see, as a spreadsheet"
+					data-hint="Export what you can see, as a spreadsheet"
 					/* `.control-raised`, the same object as the page action beside it.
 					   Export was the last hand rolled button on the breadcrumb row:
 					   a flat bordered rectangle standing next to a raised one, which
@@ -155,7 +155,7 @@ export function ListControls({
 				<Popover>
 					<PopoverTrigger
 						aria-label="Filter"
-						title="Filter"
+						data-hint="Filter"
 						/* See the note on Sort: a key, and the open state is ink
 						   rather than a fill that would flatten its face. */
 						className="control-raised flex size-7 shrink-0 items-center justify-center rounded-md border text-[var(--ink-45)] outline-none hover:text-[var(--ink-85)] data-[state=open]:text-[var(--ink-85)]"
@@ -263,7 +263,7 @@ export function ListControls({
 						type="button"
 						disabled
 						aria-label="Sort"
-						title="Nothing to sort yet"
+						data-hint="Nothing to sort yet"
 						className="control-raised flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11.5px] text-[var(--ink-45)] outline-none"
 					>
 						<SortAscendingIcon size={15} />

@@ -106,7 +106,7 @@ function RowAction({
 	return (
 		<button
 			type="button"
-			title={label}
+			data-hint={label}
 			aria-label={label}
 			onClick={onClick}
 			className="flex size-6 items-center justify-center rounded text-[var(--ink-35)] transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] hover:text-[var(--ink-85)]"

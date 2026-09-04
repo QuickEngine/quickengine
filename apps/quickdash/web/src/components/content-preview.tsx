@@ -224,7 +224,7 @@ export function ContentPreview({
 
 	return (
 		<div className="flex h-full flex-col">
-			<div className="flex items-center gap-2 border-[var(--console-line-soft)] border-b px-3 py-1.5">
+			<div className="flex items-center gap-2 px-3 py-1.5">
 				{editingUrl ? (
 					<input
 						type="url"
@@ -249,7 +249,7 @@ export function ContentPreview({
 						<button
 							type="button"
 							className="min-w-0 flex-1 truncate text-left text-[11px] text-[var(--ink-30)] hover:text-[var(--ink-60)]"
-							title="Preview a different address"
+							data-hint="Preview a different address"
 							onClick={() => setEditingUrl(true)}
 						>
 							{target}
@@ -291,7 +291,7 @@ export function ContentPreview({
 						) : null}
 						{frameWidth > 0 ? (
 							<span
-								title="How wide the page is right now. Drag the divider to change it."
+								data-hint="How wide the page is right now. Drag the divider to change it."
 								className="shrink-0 tabular-nums text-[11px] text-[var(--ink-30)]"
 							>
 								{frameWidth}px

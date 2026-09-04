@@ -306,7 +306,7 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 										</span>
 										<span
 											className="ml-auto text-[11px] text-[var(--ink-30)]"
-											title={new Date(row.occurredAt).toLocaleString()}
+											data-hint={new Date(row.occurredAt).toLocaleString()}
 										>
 											{when(row.occurredAt)}
 										</span>
@@ -356,7 +356,7 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 										<button
 											type="button"
 											onClick={() => setRequestId(row.requestId)}
-											title="Show everything that happened in this action"
+											data-hint="Show everything that happened in this action"
 											className="rounded-md px-1.5 py-0.5 font-mono text-[10.5px] text-[var(--ink-30)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-70)]"
 										>
 											{row.requestId.slice(0, 8)}
@@ -367,7 +367,7 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 									key: "occurredAt",
 									header: "When",
 									render: (row) => (
-										<span title={new Date(row.occurredAt).toLocaleString()}>
+										<span data-hint={new Date(row.occurredAt).toLocaleString()}>
 											{when(row.occurredAt)}
 										</span>
 									),

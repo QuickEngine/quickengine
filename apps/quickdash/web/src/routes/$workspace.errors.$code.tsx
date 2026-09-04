@@ -64,5 +64,12 @@ function ErrorPreview() {
 }
 
 export const Route = createFileRoute("/$workspace/errors/$code")({
+	/* 🔴 Without these, a fault here escapes to the ROOT boundary, which
+	   replaces the entire application: the sidebar, the header and the page
+	   you were on all vanish behind a wall. Registered here, the console
+	   survives and the card appears in the outlet where the page would have
+	   been, which is what every other route already does. */
+	errorComponent: OutletError,
+	notFoundComponent: OutletNotFound,
 	component: ErrorPreview,
 });

@@ -100,7 +100,7 @@ export function DevConsole({ workspaceId }: { workspaceId: string }) {
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<div className="flex h-9 shrink-0 items-center gap-1 border-[var(--console-line-soft)] border-b px-2">
+			<div className="flex h-9 shrink-0 items-center gap-1 px-2">
 				<TerminalWindowIcon
 					size={14}
 					className="mx-1 shrink-0 text-[var(--ink-35)]"
@@ -124,7 +124,7 @@ export function DevConsole({ workspaceId }: { workspaceId: string }) {
 					<button
 						type="button"
 						onClick={() => setFailuresOnly((only) => !only)}
-						title="Only what failed"
+						data-hint="Only what failed"
 						className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[11.5px] transition-colors ${
 							failuresOnly
 								? "bg-[rgb(var(--console-ink)/0.07)] text-[var(--ink-85)]"
@@ -138,7 +138,7 @@ export function DevConsole({ workspaceId }: { workspaceId: string }) {
 				<button
 					type="button"
 					aria-label="Refresh"
-					title="Refresh"
+					data-hint="Refresh"
 					onClick={() => {
 						void (tab === "requests"
 							? requests.refetch()
@@ -169,7 +169,7 @@ export function DevConsole({ workspaceId }: { workspaceId: string }) {
 								key={`${row.requestId ?? "none"}-${row.startedAt}-${row.operation}`}
 								type="button"
 								onClick={() => row.requestId && copy(row.requestId)}
-								title={row.requestId ? "Copy request id" : undefined}
+								data-hint={row.requestId ? "Copy request id" : undefined}
 								className="flex w-full items-center gap-3 px-3 py-1.5 text-left transition-colors hover:bg-[rgb(var(--console-ink)/0.04)]"
 							>
 								<span className="w-[4.5rem] shrink-0 text-[var(--ink-25)] tabular-nums">

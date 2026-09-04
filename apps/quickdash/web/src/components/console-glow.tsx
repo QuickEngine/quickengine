@@ -32,9 +32,12 @@ export function ConsoleGlow() {
 	 */
 	return (
 		<div aria-hidden="true" className="console-glow">
-			{/* Three soft masses low on the screen, drifting on unrelated periods so
-			    the light at the bottom is never quite the same twice. */}
+			{/* Four soft masses, one near each edge, wandering on periods that are
+			    not multiples of one another so the arrangement never repeats itself
+			    in any watchable amount of time. Three of them low, one high and
+			    right, because the top of the gutter was otherwise a dead band. */}
 			<div className="console-clouds">
+				<span className="console-cloud" />
 				<span className="console-cloud" />
 				<span className="console-cloud" />
 				<span className="console-cloud" />

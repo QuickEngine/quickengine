@@ -150,7 +150,7 @@ export function FeedbackDialog({
 					) : null}
 					<button
 						type="submit"
-						title={
+						data-hint={
 							!topic
 								? "Pick what this is about"
 								: message.trim().length < 10

@@ -473,6 +473,7 @@ function ToastCard({
 				data-toast-close
 				onClick={() => onDismiss(toast.id)}
 				aria-label="Dismiss notification"
+				data-hint="Dismiss"
 				className="flex size-6 shrink-0 items-center justify-center rounded-md text-[var(--ink-25)] transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-75)]"
 			>
 				<XIcon size={12} />

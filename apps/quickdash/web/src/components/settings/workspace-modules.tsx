@@ -275,7 +275,7 @@ export function WorkspaceDanger({
 					<input
 						value={confirm}
 						onChange={(event) => setConfirm(event.target.value)}
-						className="h-9 w-full rounded-md border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none"
+						className="h-9 w-full field rounded-md px-3 text-[12.5px] text-[var(--ink-85)] outline-none"
 					/>
 				</label>
 				<button

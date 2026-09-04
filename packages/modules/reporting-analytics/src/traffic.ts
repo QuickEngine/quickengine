@@ -109,7 +109,12 @@ export async function getTrafficSummary(
 	const range = reportRangeInputSchema.parse(input);
 	const [summary] = await db
 		.select({
-			pageViews: sql<number>`count(*)::int`,
+			/* ⚠️ `views`, not `pageViews`. This is the name the SDK publishes in
+			   `QuickTrafficSummary`, and a summary that answers with a different
+			   key is a contract nobody can consume: the dashboard read `views`,
+			   got undefined, and said "nothing reported yet" while four thousand
+			   events sat in the table. */
+			views: sql<number>`count(*)::int`,
 			visitors: sql<number>`count(distinct ${reportingTrafficEvents.visitorHash})::int`,
 			sessions: sql<number>`count(distinct ${reportingTrafficEvents.sessionHash})::int`,
 		})
@@ -121,5 +126,5 @@ export async function getTrafficSummary(
 				lt(reportingTrafficEvents.occurredAt, range.to),
 			),
 		);
-	return summary ?? { pageViews: 0, visitors: 0, sessions: 0 };
+	return summary ?? { views: 0, visitors: 0, sessions: 0 };
 }

@@ -39,7 +39,7 @@ export type HomeConcern = {
 };
 
 export type HomeToday = {
-	id: "bookings.today" | "tasks.due";
+	id: "orders.today" | "bookings.today" | "tasks.due";
 	count: number;
 	samples: Array<{ id: string; label: string; detail?: string }>;
 };
@@ -267,6 +267,49 @@ export async function getWorkspaceHome(
 					id: row.id,
 					label: row.name,
 					detail: `${row.onHand - row.reserved} left`,
+				})),
+			});
+		}
+	}
+
+	/**
+	 * 🔴 What happened TODAY in a shop, and the reason this was added.
+	 *
+	 * "Happening today" only ever read bookings and project tasks, which are
+	 * service-business modules. A workspace selling products has neither, so the
+	 * tile said "a quiet day so far" on a day that had taken four orders and
+	 * several hundred pounds — a panel that could never say anything true for
+	 * most of the customers on the platform.
+	 *
+	 * ⚠️ Orders PLACED today, not orders outstanding: "needs you" already carries
+	 * what is waiting, and repeating it here would make the two panels argue.
+	 * This one is the day's news.
+	 */
+	if (enabled.has("orders")) {
+		const rows = await db
+			.select({
+				id: orders.id,
+				number: orders.number,
+				clientName: orders.clientName,
+			})
+			.from(orders)
+			.where(
+				and(
+					eq(orders.workspaceId, workspaceId),
+					eq(orders.environment, environment),
+					gte(orders.createdAt, start),
+					lt(orders.createdAt, end),
+				),
+			)
+			.orderBy(asc(orders.createdAt));
+		if (rows.length > 0) {
+			today.push({
+				id: "orders.today",
+				count: rows.length,
+				samples: rows.slice(0, SAMPLE).map((row) => ({
+					id: row.id,
+					label: row.number,
+					detail: row.clientName ?? undefined,
 				})),
 			});
 		}

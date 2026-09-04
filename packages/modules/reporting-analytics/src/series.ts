@@ -75,7 +75,7 @@ export async function getTrafficSeries(
 	return db
 		.select({
 			bucket,
-			pageViews: sql<number>`count(*)::int`,
+			views: sql<number>`count(*)::int`,
 			visitors: sql<number>`count(distinct ${reportingTrafficEvents.visitorHash})::int`,
 			sessions: sql<number>`count(distinct ${reportingTrafficEvents.sessionHash})::int`,
 		})

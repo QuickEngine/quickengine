@@ -8,6 +8,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **A Markets card.** Watch a coin's price with real candles, switch between candles and a line, and
+  add or remove the symbols you care about. It watches a price and nothing else: no wallet, no
+  balance, nothing of yours is connected.
+
+- **Charts you can read without hovering.** Values sit in their own column down the right and dates
+  along the foot, so a chart answers at a glance instead of only under the cursor.
+
+- **Pick how each card draws its data,** from ten shapes including none at all, and a range for the
+  whole board: seven days, thirty, ninety or a year.
+
+- **Cards go where you put them.** Drag one into an empty space and it stays there, and anything it
+  lands on moves out of the way instead of being drawn on top of.
+
+- **An empty board offers its cards straight away,** without having to find an edit mode first.
+
 - **Fifty themes, and every one has a light mode.** Colour and light are separate choices now, so
   picking Peacock keeps Peacock when your machine switches to light in the evening. Arrow through
   the list and the console repaints as you pass each one.
@@ -132,6 +147,24 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   decided instead.
 
 ### Fixed
+
+- **The traffic heatmap shows a full year,** every day drawn whether or not anything happened, and it
+  fills the card it is given at any size.
+
+- **"Orders this week" was drawing revenue,** under an orders heading.
+
+- **"Happening today" was blind to shops.** It only knew about bookings and project tasks, so a
+  business selling products saw "a quiet day so far" on a day that took four orders.
+
+- **"Recent activity" was reading an empty store,** and now says "Invoice created" rather than
+  `invoice.created`.
+
+- **Every row on Home linked to a page that does not exist.**
+
+- **Site traffic said "nothing reported yet"** while thousands of visits sat behind it.
+
+- **Charts no longer draw outside their card,** and a chart with no room to be read now steps aside
+  for the number instead.
 
 - **Cancelling an order no longer looks like confirming one.** They were identical grey buttons side
   by side; the one that kills the order now sits apart and only shows its colour when you reach it.

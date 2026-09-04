@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { BulkDelete } from "./bulk-delete";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
@@ -39,6 +40,8 @@ const _field =
 
 export function FoldersView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
@@ -126,6 +129,7 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 					submitLabel="Add folder"
 					busy={create.isPending}
 					valid={name.trim().length > 0}
+					blockedReason={"Give this folder a name"}
 					failure={failure}
 					onClose={() => setCreating(false)}
 					onSubmit={() => create.mutate()}
@@ -173,16 +177,15 @@ export function FoldersView({ workspaceId }: { workspaceId: string }) {
 							statusFilter.keep(folder.parentId ? "nested" : "top level") &&
 							(!needle || folder.name.toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							exportName="folders"
 							bulkActions={(chosen) => (
 								<BulkDelete

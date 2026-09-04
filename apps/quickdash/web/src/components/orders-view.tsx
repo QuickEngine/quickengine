@@ -8,6 +8,7 @@ import { detailCard } from "./detail-panel";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
+import { SaveLabel, useSavedFlash } from "./save-button";
 import {
 	ShipmentComposer,
 	type ShippableOrder,
@@ -289,6 +290,8 @@ function OrderPanel({
 			}),
 	});
 
+	const moved = useSavedFlash(move.isSuccess);
+
 	return (
 		<aside className={detailCard}>
 			<header className="flex items-center gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
@@ -335,11 +338,14 @@ function OrderPanel({
 											type="button"
 											disabled={move.isPending}
 											onClick={() => move.mutate(next)}
-											className="h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40"
+											className={`${move.isPending && move.variables === next ? "shimmer-busy" : ""} h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40`}
 										>
-											{move.isPending && move.variables === next
-												? "Saving…"
-												: (MOVE_LABEL[next] ?? next)}
+											<SaveLabel
+												saving={move.isPending && move.variables === next}
+												saved={moved && move.variables === next}
+											>
+												{MOVE_LABEL[next] ?? next}
+											</SaveLabel>
 										</button>
 									))}
 								</div>
@@ -582,6 +588,11 @@ export function OrdersView({ workspaceId }: { workspaceId: string }) {
 				}
 			>
 				{() => (
+					/* No bulk delete, deliberately.
+					    An order is a financial record. Selection and export stay, because
+					    "send me those twelve orders" is a real request, but there is no
+					    Delete: destroying orders by ticking boxes would take the takings
+					    with them, and no tax authority accepts "it was a misclick". */
 					<PagedTable
 						empty={
 							<EmptyState

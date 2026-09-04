@@ -132,7 +132,7 @@ export function BulkDelete<TRow extends { id: string }>({
 				type="button"
 				onClick={() => setFailure(null)}
 				title={said}
-				className="flex h-7 shrink-0 items-center rounded-md border border-[var(--signal-failure)]/30 px-2.5 text-[11.5px] text-[var(--signal-failure-text)]"
+				className="control-raised flex h-7 shrink-0 items-center rounded-md border border-[var(--signal-failure)]/30 px-2.5 text-[11.5px] text-[var(--signal-failure-text)] outline-none"
 			>
 				{said.length > 42 ? `${said.slice(0, 42)}…` : said}
 			</button>
@@ -145,10 +145,17 @@ export function BulkDelete<TRow extends { id: string }>({
 			disabled={remove.isPending}
 			onClick={() => (confirming ? remove.mutate() : setConfirming(true))}
 			onBlur={() => setConfirming(false)}
-			className={`${remove.isPending ? "shimmer-busy" : ""} flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11.5px] transition-colors disabled:opacity-40 ${
+			/* 🔴 Two classes, not one, and the difference matters.
+			   `.control-raised` paints its own face, which is right for the resting
+			   state: a key with red ink on it. `.control-lift` gives the same
+			   elevation and the same press WITHOUT touching the background, which is
+			   what the armed state needs, because a solid red fill is the whole
+			   point of it. Using `.control-raised` there would quietly paint over
+			   the red and the confirm step would stop looking dangerous. */
+			className={`${remove.isPending ? "shimmer-busy" : ""} flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11.5px] outline-none disabled:opacity-40 ${
 				confirming
-					? "border-transparent bg-[var(--signal-failure)] text-white"
-					: "border-[var(--signal-failure)]/30 text-[var(--signal-failure-text)] hover:bg-[var(--signal-failure)]/[0.08]"
+					? "control-lift border-transparent bg-[var(--signal-failure)] text-white"
+					: "control-raised border-[var(--signal-failure)]/30 text-[var(--signal-failure-text)]"
 			}`}
 		>
 			{remove.isPending

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { WriteFailure } from "./page-state";
+import { SaveLabel, useSavedFlash } from "./save-button";
 
 /**
  * Attaching or correcting a parcel's tracking after the fact.
@@ -88,6 +89,13 @@ export function TrackingForm({
 		},
 	});
 
+	// 🔴 ABOVE the early return. `useSavedFlash` is a hook, so it has to run on
+	// every render of this component or the hook order changes between the two
+	// branches, which React reads as a different component. It sat below the
+	// return that renders the collapsed state, so the order flipped the moment
+	// this opened.
+	const saved = useSavedFlash(save.isSuccess);
+
 	if (!open) {
 		return (
 			<button
@@ -135,11 +143,18 @@ export function TrackingForm({
 					type="button"
 					// Nothing changed means nothing to send: the API refuses an empty
 					// patch, and offering a save that can only fail is worse than none.
+					title={
+						Object.keys(patch).length === 0
+							? "Change something first"
+							: undefined
+					}
 					disabled={Object.keys(patch).length === 0 || save.isPending}
 					onClick={() => save.mutate()}
-					className="h-7 rounded-full bg-[rgb(var(--console-ink))] px-3 text-[11px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40"
+					className={`${save.isPending ? "shimmer-busy" : ""} h-7 rounded-full bg-[rgb(var(--console-ink))] px-3 text-[11px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 				>
-					{save.isPending ? "Saving…" : "Save tracking"}
+					<SaveLabel saving={save.isPending} saved={saved}>
+						Save tracking
+					</SaveLabel>
 				</button>
 				<button
 					type="button"

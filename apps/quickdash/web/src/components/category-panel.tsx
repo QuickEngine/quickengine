@@ -5,6 +5,7 @@ import { useOnline } from "../lib/online";
 import { detailCard } from "./detail-panel";
 import { WriteFailure } from "./page-state";
 import { Area, Choice, Section, Text, Toggle } from "./product-fields";
+import { SaveLabel, useSavedFlash } from "./save-button";
 
 /**
  * A category, opened.
@@ -181,6 +182,9 @@ export function CategoryPanel({
 
 	const valid = draft.name.trim().length > 0 && draft.slug.trim().length > 0;
 
+	// A tick on the button for a moment, so a save that worked says so.
+	const saved = useSavedFlash(save.isSuccess);
+
 	return (
 		<aside className={detailCard}>
 			<header className="flex items-start gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
@@ -290,7 +294,7 @@ export function CategoryPanel({
 							className={`${uploadImage.isPending ? "shimmer-busy" : ""} mt-1.5 flex h-24 w-full items-center justify-center rounded-xl border border-dashed text-[11.5px] transition-colors ${
 								dragging
 									? "border-[rgb(var(--console-ink)/0.4)] bg-[rgb(var(--console-ink)/0.05)] text-[var(--ink-85)]"
-									: "border-[var(--console-line-strong)] text-[var(--ink-30)] hover:text-[var(--ink-60)]"
+									: "border-[var(--empty-line)] text-[var(--ink-30)] hover:text-[var(--ink-60)]"
 							}`}
 						>
 							{uploadImage.isPending
@@ -346,15 +350,20 @@ export function CategoryPanel({
 				) : null}
 				<button
 					type="button"
+					title={
+						!draft.name.trim()
+							? "Give this category a name"
+							: !draft.slug.trim()
+								? "A web address is needed"
+								: undefined
+					}
 					disabled={save.isPending || !online || !valid}
 					onClick={() => save.mutate()}
 					className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 				>
-					{!online
-						? "Waiting for a connection…"
-						: save.isPending
-							? "Saving…"
-							: "Save"}
+					<SaveLabel saving={save.isPending} saved={saved}>
+						Save
+					</SaveLabel>
 				</button>
 				<button
 					type="button"

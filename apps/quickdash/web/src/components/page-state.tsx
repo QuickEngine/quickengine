@@ -689,7 +689,14 @@ export function EmptyState({
 	action?: ReactNode;
 }) {
 	return (
-		<div className="rounded-xl border border-[var(--console-line-soft)] px-4 py-8 text-center">
+		/* 🔑 `--console-line`, not `--console-line-soft`.
+		   The soft hairline is for dividers BETWEEN rows, where the content on
+		   either side does the work and the line only has to hint. An empty state
+		   has no content, so its border is the only thing describing the shape,
+		   and at #ededf0 on a #efeff1 panel that is eleven steps of difference:
+		   invisible in light, while the same token in dark is doing far more
+		   against near black. */
+		<div className="rounded-xl border border-[var(--empty-line)] px-4 py-8 text-center">
 			<p className="text-[12.5px] text-[var(--ink-60)]">{title}</p>
 			{detail ? (
 				<p className="mx-auto mt-1 max-w-sm text-[11.5px] text-[var(--ink-30)] leading-5">
@@ -729,6 +736,61 @@ export function rowBusy(
 		return (variables as { id?: unknown }).id === id;
 	}
 	return false;
+}
+
+/**
+ * A control that cannot be pressed yet, and the reason why.
+ *
+ * 🔴 Thirteen buttons in this console went dead because a field was empty and
+ * said NOTHING about which one. You press Save, nothing happens, and the only
+ * way to work out that it wants a name is to guess. A disabled control with no
+ * explanation is indistinguishable from a broken one, and people reasonably
+ * conclude the second.
+ *
+ * 🔑 The reason travels WITH the condition that causes it, so the two cannot
+ * drift: `{...blockedUnless(name.trim().length > 0, "Give it a name first")}`.
+ * A native `title` is deliberate — it survives on a disabled element, where a
+ * custom tooltip built on pointer events would not fire at all.
+ *
+ * ⚠️ NOT for in-flight. A button that is running is explained by its shimmer
+ * and its label; see `rowActionBusy`.
+ */
+export function blockedUnless(
+	ready: boolean,
+	reason: string,
+): { disabled: boolean; title?: string; "aria-describedby"?: undefined } {
+	return ready ? { disabled: false } : { disabled: true, title: reason };
+}
+
+/**
+ * What a row action LOOKS like while it is running.
+ *
+ * 🔴 Disabling was the entire feedback. `rowBusy` greys the buttons and nothing
+ * else happens: no motion, no change of word, and because every write here is
+ * pessimistic the row itself cannot change until the server answers and the
+ * list refetches. On anything slower than a local API that is a click with no
+ * response, and the natural reaction is to click again.
+ *
+ * 🔑 Deliberately NOT optimistic. Flipping the row first and reverting on
+ * failure would feel faster and is the wrong trade for this product: these
+ * actions move orders, payments, stock and refunds, and a state that was never
+ * true is one somebody can act on. Better to say "working" honestly than to
+ * guess right most of the time.
+ *
+ * Spread onto the button that was pressed: `{...rowActionBusy(busy)}`.
+ */
+export function rowActionBusy(busy: boolean): {
+	disabled: boolean;
+	"data-busy"?: "true";
+} {
+	/**
+	 * ⚠️ A DATA ATTRIBUTE, not a class. Spreading a `className` onto a button
+	 * that already has one silently replaces it, so every row action would have
+	 * lost its styling the moment it ran. The stylesheet keys off
+	 * `[data-busy="true"]` instead, which composes with whatever the button
+	 * already wears.
+	 */
+	return busy ? { disabled: true, "data-busy": "true" } : { disabled: false };
 }
 
 // ── Page-level walls ─────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { parseAmountCents } from "../lib/money-input";
+import { useRecordSignals } from "../lib/record-signals";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
@@ -52,6 +53,8 @@ const money = (cents: number) =>
 
 export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const api = workspaceApi(workspaceId);
@@ -155,6 +158,7 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 					submitLabel="Add partner"
 					busy={create.isPending}
 					valid={code.trim().length >= 3 && owner.length > 0}
+					blockedReason={"Give this link a code"}
 					failure={failure}
 					onClose={() => setCreating(false)}
 					onSubmit={() => create.mutate()}
@@ -232,16 +236,15 @@ export function PartnerLinksView({ workspaceId }: { workspaceId: string }) {
 								link.code.toLowerCase().includes(needle) ||
 								link.ownerName.toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Partners"

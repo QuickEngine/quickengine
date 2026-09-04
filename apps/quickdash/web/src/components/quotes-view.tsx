@@ -8,7 +8,13 @@ import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { QuotePanel } from "./module-panels";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 
 /**
  * Quotes — a price offered, before anybody has agreed to it.
@@ -172,15 +178,6 @@ export function QuotesView({ workspaceId }: { workspaceId: string }) {
 								(quote.clientName ?? "").toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
 					const awaiting = rows.filter(
 						(quote) => quote.status === "accepted",
 					).length;
@@ -194,6 +191,12 @@ export function QuotesView({ workspaceId }: { workspaceId: string }) {
 								</p>
 							) : null}
 							<PagedTable
+								empty={
+									<EmptyState
+										title="Nothing matches"
+										detail="Try a different search, or clear the status filter."
+									/>
+								}
 								exportName="quotes"
 								bulkActions={(chosen) => (
 									<BulkDelete
@@ -264,7 +267,7 @@ export function QuotesView({ workspaceId }: { workspaceId: string }) {
 													<button
 														type="button"
 														className={quiet}
-														disabled={rowBusy(act, quote.id)}
+														{...rowActionBusy(rowBusy(act, quote.id))}
 														onClick={() =>
 															act.mutate({ id: quote.id, action: "send" })
 														}
@@ -277,7 +280,7 @@ export function QuotesView({ workspaceId }: { workspaceId: string }) {
 														<button
 															type="button"
 															className={quiet}
-															disabled={rowBusy(act, quote.id)}
+															{...rowActionBusy(rowBusy(act, quote.id))}
 															onClick={() =>
 																act.mutate({ id: quote.id, action: "accept" })
 															}
@@ -287,7 +290,7 @@ export function QuotesView({ workspaceId }: { workspaceId: string }) {
 														<button
 															type="button"
 															className={quiet}
-															disabled={rowBusy(act, quote.id)}
+															{...rowActionBusy(rowBusy(act, quote.id))}
 															onClick={() =>
 																act.mutate({ id: quote.id, action: "decline" })
 															}

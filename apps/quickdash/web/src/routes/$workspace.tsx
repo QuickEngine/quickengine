@@ -3,9 +3,7 @@ import { authClient } from "@quickengine/auth/client";
 import {
 	ConsoleAssistant,
 	ConsoleBell,
-	ConsoleIntegrations,
 	ConsoleShell,
-	ConsoleTerminal,
 	ConsoleTheme,
 	ConsoleTools,
 	SidebarAccount,
@@ -16,10 +14,10 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { type MouseEventHandler, useState } from "react";
 import { AssistantPanel } from "../components/assistant-panel";
 import { ConnectionBanner } from "../components/connection-banner";
+import { ConsoleGlow } from "../components/console-glow";
 import { DevConsole } from "../components/dev-console";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { HeaderActionProvider } from "../components/header-action";
-import { IntegrationsPanel } from "../components/integrations-panel";
 import { NotificationToasts } from "../components/notification-toasts";
 import { QuickActions } from "../components/quick-actions";
 import { QuickToolsPanel } from "../components/quicktools-panel";
@@ -32,10 +30,13 @@ import {
 	SupportBubble,
 } from "../components/support-bubble";
 import { WorkspaceBreadcrumb } from "../components/workspace-breadcrumb";
+import { WorkspaceChats } from "../components/workspace-chats";
 import { WorkspaceNav } from "../components/workspace-nav";
 import { WorkspaceNotifications } from "../components/workspace-notifications";
 import { WorkspaceSearch } from "../components/workspace-search";
 import { sessionApi, workspaceApi } from "../lib/api";
+import { AssistantProvider } from "../lib/assistant";
+import { DevConsoleProvider } from "../lib/dev-console";
 import { clientEnv } from "../lib/env";
 import {
 	clearNativeToken,
@@ -196,7 +197,6 @@ function WorkspaceFrame() {
 	const [assistantOpen, setAssistantOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [toolsOpen, setToolsOpen] = useState(false);
-	const [integrationsOpen, setIntegrationsOpen] = useState(false);
 	const [consoleOpen, setConsoleOpen] = useState(false);
 	// Summoned, and remembered for the session so navigating does not close it.
 	// Becomes a chat window, and a chat that shuts on every page change is not
@@ -211,7 +211,7 @@ function WorkspaceFrame() {
 	// opening a popover over it — same pattern as Account, so the two consoles
 	// behave identically.
 	const [sidebarContext, setSidebarContext] = useState<
-		"navigation" | "notifications"
+		"navigation" | "notifications" | "chats"
 	>("navigation");
 	if (!user) throw new Error("Authenticated user missing from route context.");
 
@@ -232,34 +232,40 @@ function WorkspaceFrame() {
 			: undefined;
 
 	return (
-		<ConsoleShell
-			/**
-			 * 🔴 No page header, deliberately.
-			 *
-			 * It carried a page title, a breadcrumb and one button. The sidebar
-			 * already says which page you are on, the create button now sits with
-			 * the search and view toggle it belongs beside, and a breadcrumb two
-			 * levels deep is a line of chrome above every screen restating what the
-			 * screen is.
-			 *
-			 * ⚠️ `WorkspaceHeader` is left on disk and still takes `crumb`. The open
-			 * record's name has nowhere to go now, and putting it back somewhere
-			 * sensible is a design decision rather than a deletion — so the
-			 * component stays ready rather than needing to be rebuilt.
-			 */
-			/**
-			 * 🔴 The same three zones Account uses: the organisation on the left, the
-			 * search centred on the WINDOW, and the things that act on you or for you
-			 * on the right. It was `header={null}` — the slot existed and nothing was
-			 * ever put in it.
-			 *
-			 * ⚠️ `grid-cols-[1fr_auto_1fr]`, not a flex row. The search has to be
-			 * centred on the window rather than on whatever space the left group
-			 * leaves, or it drifts every time a workspace name changes length.
-			 */
-			header={
-				<div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3">
-					{/* 🔴 FIXED, and deliberately no longer tracking the drag.
+		/* 🔴 Wraps the WHOLE shell, not the panel. The conversation list is in the
+		   sidebar and the conversation is in the right hand column, so the state
+		   has to sit above both or the two lists start disagreeing about which
+		   chat is open. */
+		<AssistantProvider workspaceId={workspaceId}>
+			<ConsoleGlow />
+			<ConsoleShell
+				/**
+				 * 🔴 No page header, deliberately.
+				 *
+				 * It carried a page title, a breadcrumb and one button. The sidebar
+				 * already says which page you are on, the create button now sits with
+				 * the search and view toggle it belongs beside, and a breadcrumb two
+				 * levels deep is a line of chrome above every screen restating what the
+				 * screen is.
+				 *
+				 * ⚠️ `WorkspaceHeader` is left on disk and still takes `crumb`. The open
+				 * record's name has nowhere to go now, and putting it back somewhere
+				 * sensible is a design decision rather than a deletion — so the
+				 * component stays ready rather than needing to be rebuilt.
+				 */
+				/**
+				 * 🔴 The same three zones Account uses: the organisation on the left, the
+				 * search centred on the WINDOW, and the things that act on you or for you
+				 * on the right. It was `header={null}` — the slot existed and nothing was
+				 * ever put in it.
+				 *
+				 * ⚠️ `grid-cols-[1fr_auto_1fr]`, not a flex row. The search has to be
+				 * centred on the window rather than on whatever space the left group
+				 * leaves, or it drifts every time a workspace name changes length.
+				 */
+				header={
+					<div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3">
+						{/* 🔴 FIXED, and deliberately no longer tracking the drag.
 					    224px is the sidebar at its narrowest (240px) less the nav's own
 					    `px-2` on both sides, so at the default width the switcher still
 					    lines up exactly with the buttons below it.
@@ -267,265 +273,299 @@ function WorkspaceFrame() {
 					    more room in the NAVIGATION then stretched a header control that
 					    had no reason to grow — a workspace name does not get longer
 					    because you dragged a divider, so the extra width was empty. */}
-					<div
-						style={{ width: "224px" }}
-						className="flex min-w-0 items-center gap-1.5 justify-self-start"
-					>
-						<SidebarName
-							compact
-							name={context.data?.workspace.name ?? ""}
-							// 🔴 Test mode is otherwise invisible, which is how a real card
-							// gets taken in a test workspace — or a test card in the live one.
-							badge={
-								context.data?.workspace.environment === "test" ? "Test" : null
-							}
-							currentId={context.data?.workspace.id ?? ""}
-							items={(context.data?.workspaces ?? []).map((item) => ({
-								id: item.id,
-								name: item.name,
-								badge: item.environment === "test" ? "Test" : null,
-							}))}
-							onSelect={(chosen) => {
-								// Navigate by slug where there is one, so the address bar keeps
-								// reading as the business rather than as an internal id.
-								const target = (context.data?.workspaces ?? []).find(
-									(entry) => entry.id === chosen,
-								);
-								window.location.assign(`/${target?.slug ?? chosen}`);
-							}}
-							searchLabel="Find workspace"
-							createLabel="Create workspace"
-							createHref={`${clientEnv.ACCOUNT_URL}/workspaces/new`}
-							environment={context.data?.workspace.environment}
-							onEnvironment={(next) => switchEnvironment.mutate(next)}
-							busy={switchEnvironment.isPending}
-							environmentError={environmentError}
-						/>
-						<ConsoleBell
-							count={workspaceUnread}
-							active={sidebarContext === "notifications"}
-							onClick={() =>
-								setSidebarContext((current) =>
-									current === "notifications" ? "navigation" : "notifications",
-								)
-							}
-						/>
-					</div>
+						<div
+							style={{ width: "224px" }}
+							className="flex min-w-0 items-center gap-1.5 justify-self-start"
+						>
+							<SidebarName
+								compact
+								name={context.data?.workspace.name ?? ""}
+								// 🔴 Test mode is otherwise invisible, which is how a real card
+								// gets taken in a test workspace — or a test card in the live one.
+								badge={
+									context.data?.workspace.environment === "test" ? "Test" : null
+								}
+								currentId={context.data?.workspace.id ?? ""}
+								items={(context.data?.workspaces ?? []).map((item) => ({
+									id: item.id,
+									name: item.name,
+									badge: item.environment === "test" ? "Test" : null,
+								}))}
+								onSelect={(chosen) => {
+									// Navigate by slug where there is one, so the address bar keeps
+									// reading as the business rather than as an internal id.
+									const target = (context.data?.workspaces ?? []).find(
+										(entry) => entry.id === chosen,
+									);
+									window.location.assign(`/${target?.slug ?? chosen}`);
+								}}
+								searchLabel="Find workspace"
+								createLabel="Create workspace"
+								createHref={`${clientEnv.ACCOUNT_URL}/workspaces/new`}
+								environment={context.data?.workspace.environment}
+								onEnvironment={(next) => switchEnvironment.mutate(next)}
+								busy={switchEnvironment.isPending}
+								environmentError={environmentError}
+							/>
+							<ConsoleBell
+								count={workspaceUnread}
+								active={sidebarContext === "notifications"}
+								/* 🔴 Closing notifications returns to what the sidebar was
+								   SHOWING, not to navigation. With the assistant open the
+								   sidebar is the chat list, and hardcoding the way back meant
+								   the bell quietly closed the assistant's list behind it: you
+								   pressed the bell twice and your chats were gone, with no
+								   way back except closing and reopening the whole panel. The
+								   base context is whatever the shell is currently in. */
+								onClick={() =>
+									setSidebarContext((current) =>
+										current === "notifications"
+											? assistantOpen
+												? "chats"
+												: "navigation"
+											: "notifications",
+									)
+								}
+							/>
+							{/* 🔴 With the WORKSPACE, not with the actions.
+							    Your shop is a property of the workspace you are in, the
+							    same as its name and its notifications: it changes when
+							    you switch workspace, and it is the one control here that
+							    leaves QuickDash entirely. On the right it sat among
+							    things that open panels over the page, which is a
+							    different kind of verb. */}
+							<StorefrontButton
+								workspaceId={workspaceId}
+								organizationId={context.data?.workspace.organizationId}
+								published={context.data?.workspace.published ?? true}
+							/>
+						</div>
 
-					<button
-						type="button"
-						onClick={() => setSearchOpen(true)}
-						style={{}}
-						className="flex h-9 w-[min(24rem,34vw)] items-center gap-2 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[12px] text-[var(--ink-35)] transition-[box-shadow,color] duration-150 hover:text-[var(--ink-70)] active:translate-y-px"
-					>
-						<MagnifyingGlassIcon size={13} className="shrink-0" />
-						<span className="min-w-0 flex-1 truncate text-left">Search</span>
-						<span className="shrink-0 text-[10px] text-[var(--ink-25)]">
-							⌘K
-						</span>
-					</button>
+						<button
+							type="button"
+							onClick={() => setSearchOpen(true)}
+							style={{}}
+							className="control-raised flex h-9 w-[min(24rem,34vw)] items-center gap-2 rounded-md border border-[var(--console-line)] px-2.5 text-[12px] text-[var(--ink-35)] hover:text-[var(--ink-70)]"
+						>
+							<MagnifyingGlassIcon size={13} className="shrink-0" />
+							<span className="min-w-0 flex-1 truncate text-left">Search</span>
+							<span className="shrink-0 text-[10px] text-[var(--ink-25)]">
+								⌘K
+							</span>
+						</button>
 
-					<div className="flex items-center gap-1.5 justify-self-end">
-						{/* Your own shop, first: it is the only control here that leaves
-						    QuickDash, and the only one that can close a business. */}
-						<StorefrontButton
-							workspaceId={workspaceId}
-							organizationId={context.data?.workspace.organizationId}
-							published={context.data?.workspace.published ?? true}
-						/>
-						{/* Starting something new sits with the things that OPEN a
+						{/* 🔑 Three controls, and every one of them OPENS A SURFACE over
+						    the page you are on. That is the whole rule now.
+
+						    🔴 It was eight, and they were eight different kinds of thing:
+						    a link out of the product, two panel toggles, a developer
+						    tool, a cycling preference, and your account. Nothing about
+						    the group said what pressing anything would do, so it read as
+						    a row of icons to be memorised.
+
+						    Three moved to where they actually belong: the storefront to
+						    the workspace group on the left, integrations into Settings
+						    beside every other thing you configure, and the developer
+						    console onto the Developers page. None were deleted; each
+						    went to the place it was already a member of. The theme
+						    switch is the deliberate exception, for the reason on it
+						    below. */}
+						<div className="flex items-center gap-1.5 justify-self-end">
+							{/* Starting something new sits with the things that OPEN a
 						    surface, at the head of the group. */}
-						<QuickActions
-							workspace={workspace}
-							modules={context.data?.modules ?? []}
-						/>
-						{/* 🔑 Grouped by KIND: the two that summon a surface sit together,
-						    then the preference, then you. QuickTools first because it is
-						    about this workspace, the assistant is about the page. */}
-						{/* The console is a DEVELOPER surface, so it sits with the other
-						    things that summon a panel rather than beside the account. */}
-						<ConsoleTerminal
-							open={consoleOpen}
-							onClick={() => setConsoleOpen((open) => !open)}
-						/>
-						<ConsoleTools
-							open={toolsOpen}
-							onClick={() => setToolsOpen((open) => !open)}
-						/>
-						<ConsoleTheme />
-						{/* 🔑 They SHARE the right column, so opening one closes the
-						    other. Leaving both true would leave the shell to arbitrate,
-						    and a button that appears to do nothing is worse than one
-						    that swaps. */}
-						<ConsoleIntegrations
-							open={integrationsOpen}
-							onClick={() => {
-								setIntegrationsOpen((open) => !open);
-								setAssistantOpen(false);
-							}}
-						/>
-						<ConsoleAssistant
-							open={assistantOpen}
-							onClick={() => {
-								setAssistantOpen((open) => !open);
-								setIntegrationsOpen(false);
-							}}
-						/>
-						<SidebarAccount
-							compact
-							name={user.name ?? ""}
-							email={user.email ?? ""}
-							planId={plan.data?.planId ?? null}
-							accountUrl={clientEnv.ACCOUNT_URL}
-							authUrl={clientEnv.AUTH_URL}
-							// 🔴 No `settingsHref`. Settings are a DIALOG, and passing a
-							// link as well left the shell to choose between two front
-							// doors to one screen — the surest way for them to drift.
-							onSettings={() => setSettingsOpen(true)}
-							onSignOut={nativeSignOut}
-							onFeedback={() => setFeedbackOpen(true)}
-							onHelp={() => showHelp(true)}
-						/>
+							<QuickActions
+								workspace={workspace}
+								modules={context.data?.modules ?? []}
+							/>
+							{/* QuickTools is about this workspace, the assistant is about
+						    the page. */}
+							<ConsoleTools
+								open={toolsOpen}
+								onClick={() => setToolsOpen((open) => !open)}
+							/>
+							{/* Nothing to arbitrate with any more: integrations left the
+							    right column for Settings, so the assistant owns it. */}
+							{/* 🔑 Opening the assistant brings its chats into the sidebar,
+							    and closing it puts the navigation back. The two are one
+							    surface in two columns, so they arrive and leave together;
+							    leaving a list of chats beside a closed panel is a sidebar
+							    pointing at nothing. */}
+							<ConsoleAssistant
+								open={assistantOpen}
+								onClick={() =>
+									setAssistantOpen((open) => {
+										setSidebarContext(open ? "navigation" : "chats");
+										return !open;
+									})
+								}
+							/>
+							{/* 🔴 STAYS, and it is the one exception to the rule above.
+							    The repaint is a circle expanding from whatever you
+							    pressed, so the control has to be somewhere the eye is
+							    already looking and somewhere that is still on screen
+							    while it plays. Inside a menu it is neither: the panel
+							    closes, and the reveal starts from a point that was
+							    behind it. Moving this button would have cost the effect
+							    it exists to trigger. */}
+							<ConsoleTheme />
+							<SidebarAccount
+								compact
+								name={user.name ?? ""}
+								email={user.email ?? ""}
+								planId={plan.data?.planId ?? null}
+								accountUrl={clientEnv.ACCOUNT_URL}
+								authUrl={clientEnv.AUTH_URL}
+								// 🔴 No `settingsHref`. Settings are a DIALOG, and passing a
+								// link as well left the shell to choose between two front
+								// doors to one screen — the surest way for them to drift.
+								onSettings={() => setSettingsOpen(true)}
+								onSignOut={nativeSignOut}
+								onFeedback={() => setFeedbackOpen(true)}
+								onHelp={() => showHelp(true)}
+							/>
+						</div>
 					</div>
-				</div>
-			}
-			// Driven by the workspace's own environment, so it cannot disagree with
-			// what the API will actually do with a payment.
-			/**
-			 * ⚠️ The band is EMPTY now and still rendered. Its only job is height:
-			 * that height is what makes the frame round its top corners and sit
-			 * inside the window, which is the geometry that says "sandbox" before any
-			 * colour is read. The floor behind the panels carries the colour.
-			 *
-			 * 🔴 The Go live button went with the copy. Switching mode now lives in
-			 * the workspace switcher, where somebody already goes to change which
-			 * workspace they are in — one place that answers "which workspace, and
-			 * which mode", rather than a control stranded on a band.
-			 */
-			// 🔴 A theme, not a band. Sandbox re-colours every surface instead of
-			// adding a strip — entering it used to change the console's height.
-			breadcrumb={
-				<WorkspaceBreadcrumb
-					workspace={workspace}
-					modules={context.data?.modules ?? []}
-				/>
-			}
-			nav={
-				sidebarContext === "notifications" ? (
-					<WorkspaceNotifications
-						items={workspaceNotices}
-						unread={workspaceUnread}
-					/>
-				) : (
-					<WorkspaceNav
-						// The nav builds LINKS, so it takes the URL segment — the slug —
-						// while everything that runs a query takes the resolved id.
-						// Passing the id here would put uuids back in every address.
-						workspaceId={workspace}
-						modules={context.data?.modules ?? []}
-						connectPending={connectPending}
-						// 🔑 The dots come from the SAME unread notifications the bell
-						// counts, routed by each notification's own href — so a dispute
-						// lights Payments, a sale lights Orders, and a flagged shipment
-						// lights Shipping, with no per-event wiring. Unread messages are
-						// merged in from the conversation list, which knows about
-						// messages the bell was never told about.
-						childBadges={withCount(
-							navSignals(workspaceNotices, {
-								id: workspaceId,
-								slug: context.data?.workspace.slug,
-							}),
-							"client-records/messages",
-							unreadMessages,
-						)}
-					/>
-				)
-			}
-			// Between the navigation and the account row: seen, never in the way.
-			navBottom={
-				<SidebarCard
-					workspaceId={workspaceId}
-					usage={plan.data?.usage}
-					/**
-					 * 🔑 The SAME next step Home shows, derived the same way. Two
-					 * surfaces computing "what should I do next" separately is two
-					 * surfaces that will eventually disagree in front of a customer.
-					 */
-					nextStep={
-						context.data?.checklist.dismissed
-							? null
-							: (context.data?.checklist.items ?? [])
-									.flatMap((goal) => goal.steps)
-									.find((step) => step.isNext)
-					}
-				/>
-			}
-			/**
-			 * 🔑 Workspace AND environment. A sandbox and a live workspace are
-			 * different places to work even when they share an id, so the tool bar
-			 * they each want is different too — and scoping to the id alone would let
-			 * a rehearsal decide the layout of the real one.
-			 */
-			scope={`${workspaceId}:${context.data?.workspace.environment ?? "live"}`}
-			toolsOpen={toolsOpen}
-			tools={<QuickToolsPanel />}
-			assistantOpen={assistantOpen}
-			bottomOpen={consoleOpen}
-			bottom={<DevConsole workspaceId={workspaceId} />}
-			integrationsOpen={integrationsOpen}
-			integrations={
-				<IntegrationsPanel
-					workspaceId={workspaceId}
-					organizationId={context.data?.workspace.organizationId}
-					workspace={workspace}
-				/>
-			}
-			assistant={<AssistantPanel onClose={() => setAssistantOpen(false)} />}
-			overlays={
-				<>
-					{/* 🔑 In `overlays`, so it outlives every page. Connectivity is a
-					    property of the WINDOW — remounting it per route would make it
-					    vanish and reappear on navigation, which is the one moment it
-					    most needs to stay put. */}
-					<ConnectionBanner />
-					<WorkspaceSearch
-						open={searchOpen}
-						onOpenChange={setSearchOpen}
-						workspaceId={workspaceId}
+				}
+				// Driven by the workspace's own environment, so it cannot disagree with
+				// what the API will actually do with a payment.
+				/**
+				 * ⚠️ The band is EMPTY now and still rendered. Its only job is height:
+				 * that height is what makes the frame round its top corners and sit
+				 * inside the window, which is the geometry that says "sandbox" before any
+				 * colour is read. The floor behind the panels carries the colour.
+				 *
+				 * 🔴 The Go live button went with the copy. Switching mode now lives in
+				 * the workspace switcher, where somebody already goes to change which
+				 * workspace they are in — one place that answers "which workspace, and
+				 * which mode", rather than a control stranded on a band.
+				 */
+				// 🔴 A theme, not a band. Sandbox re-colours every surface instead of
+				// adding a strip — entering it used to change the console's height.
+				breadcrumb={
+					<WorkspaceBreadcrumb
 						workspace={workspace}
 						modules={context.data?.modules ?? []}
 					/>
-					<FeedbackDialog
-						open={feedbackOpen}
-						onOpenChange={setFeedbackOpen}
-						name={user.name ?? ""}
-						email={user.email ?? ""}
-						workspaceName={context.data?.workspace.name}
-					/>
-					<SupportBubble
-						open={helpOpen}
-						onClose={() => showHelp(false)}
-						workspaceName={context.data?.workspace.name}
-					/>
-					{/* Reads the same list the bell does, so a toast is only ever a
-					    preview of a row that is already durable. */}
-					<SettingsDialog
-						open={settingsOpen}
-						onOpenChange={setSettingsOpen}
+				}
+				nav={
+					/* 🔴 A third context, not a fourth column. Chats are a LIST, and
+					   the sidebar is where this console keeps lists: it already swaps
+					   between navigation and notifications, so conversations behave the
+					   way those two do rather than inventing their own place. */
+					sidebarContext === "chats" ? (
+						<WorkspaceChats />
+					) : sidebarContext === "notifications" ? (
+						<WorkspaceNotifications
+							items={workspaceNotices}
+							unread={workspaceUnread}
+						/>
+					) : (
+						<WorkspaceNav
+							// The nav builds LINKS, so it takes the URL segment — the slug —
+							// while everything that runs a query takes the resolved id.
+							// Passing the id here would put uuids back in every address.
+							workspaceId={workspace}
+							modules={context.data?.modules ?? []}
+							connectPending={connectPending}
+							// 🔑 The dots come from the SAME unread notifications the bell
+							// counts, routed by each notification's own href — so a dispute
+							// lights Payments, a sale lights Orders, and a flagged shipment
+							// lights Shipping, with no per-event wiring. Unread messages are
+							// merged in from the conversation list, which knows about
+							// messages the bell was never told about.
+							childBadges={withCount(
+								navSignals(workspaceNotices, {
+									id: workspaceId,
+									slug: context.data?.workspace.slug,
+								}),
+								"client-records/messages",
+								unreadMessages,
+							)}
+						/>
+					)
+				}
+				// Between the navigation and the account row: seen, never in the way.
+				navBottom={
+					<SidebarCard
 						workspaceId={workspaceId}
-						modules={context.data?.modules ?? []}
-						workspaceName={context.data?.workspace.name ?? ""}
-						organizationId={context.data?.workspace.organizationId}
-						accountUrl={clientEnv.ACCOUNT_URL}
-						environment={context.data?.workspace.environment ?? "live"}
-						apiUrl={clientEnv.API_URL}
+						usage={plan.data?.usage}
+						/**
+						 * 🔑 The SAME next step Home shows, derived the same way. Two
+						 * surfaces computing "what should I do next" separately is two
+						 * surfaces that will eventually disagree in front of a customer.
+						 */
+						nextStep={
+							context.data?.checklist.dismissed
+								? null
+								: (context.data?.checklist.items ?? [])
+										.flatMap((goal) => goal.steps)
+										.find((step) => step.isNext)
+						}
 					/>
-					<NotificationToasts items={notifications.data?.items} />
-				</>
-			}
-		>
-			<Outlet />
-		</ConsoleShell>
+				}
+				/**
+				 * 🔑 Workspace AND environment. A sandbox and a live workspace are
+				 * different places to work even when they share an id, so the tool bar
+				 * they each want is different too — and scoping to the id alone would let
+				 * a rehearsal decide the layout of the real one.
+				 */
+				scope={`${workspaceId}:${context.data?.workspace.environment ?? "live"}`}
+				toolsOpen={toolsOpen}
+				tools={<QuickToolsPanel />}
+				assistantOpen={assistantOpen}
+				bottomOpen={consoleOpen}
+				bottom={<DevConsole workspaceId={workspaceId} />}
+				assistant={<AssistantPanel />}
+				overlays={
+					<>
+						{/* 🔑 In `overlays`, so it outlives every page. Connectivity is a
+					    property of the WINDOW — remounting it per route would make it
+					    vanish and reappear on navigation, which is the one moment it
+					    most needs to stay put. */}
+						<ConnectionBanner />
+						<WorkspaceSearch
+							open={searchOpen}
+							onOpenChange={setSearchOpen}
+							workspaceId={workspaceId}
+							workspace={workspace}
+							modules={context.data?.modules ?? []}
+						/>
+						<FeedbackDialog
+							open={feedbackOpen}
+							onOpenChange={setFeedbackOpen}
+							name={user.name ?? ""}
+							email={user.email ?? ""}
+							workspaceName={context.data?.workspace.name}
+						/>
+						<SupportBubble
+							open={helpOpen}
+							onClose={() => showHelp(false)}
+							workspaceName={context.data?.workspace.name}
+						/>
+						{/* Reads the same list the bell does, so a toast is only ever a
+					    preview of a row that is already durable. */}
+						<SettingsDialog
+							workspace={workspace}
+							open={settingsOpen}
+							onOpenChange={setSettingsOpen}
+							workspaceId={workspaceId}
+							modules={context.data?.modules ?? []}
+							workspaceName={context.data?.workspace.name ?? ""}
+							organizationId={context.data?.workspace.organizationId}
+							accountUrl={clientEnv.ACCOUNT_URL}
+							environment={context.data?.workspace.environment ?? "live"}
+							apiUrl={clientEnv.API_URL}
+						/>
+						<NotificationToasts items={notifications.data?.items} />
+					</>
+				}
+			>
+				{/* The Developers page opens the console strip; see `useDevConsole`. */}
+				<DevConsoleProvider open={consoleOpen} setOpen={setConsoleOpen}>
+					<Outlet />
+				</DevConsoleProvider>
+			</ConsoleShell>
+		</AssistantProvider>
 	);
 }
 

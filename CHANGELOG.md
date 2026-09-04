@@ -8,6 +8,21 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The assistant is a real chat.** It keeps every conversation, lists them in the sidebar beside
+  your work, and lets you pick which model answers. It is still waiting on a model, and says so
+  rather than pretending.
+
+- **A theme change is painted on.** Switching light and dark now spreads out from the button you
+  pressed instead of every surface flickering to its new colour at once.
+
+- **Categories, Activity and Media work like every other list.** They keep their own cards, and gain
+  a table view, sorting, paging and everything else the rest of the console already had.
+
+- **Shipping rates say which countries a zone covers,** with flags on the heading over each table.
+
+- **The developer console opens from the Developers page,** where somebody wiring up a site already
+  is, instead of holding a permanent place in the header.
+
 - **A list you are reading is no longer thrown away when a refresh fails.** It stays, with a line
   saying it may be out of date and a way to try again. Only a lost session or a lost permission
   replaces the page now.
@@ -74,11 +89,37 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Changed
 
+- **The header holds four buttons instead of eight.** Your shop moved next to the workspace it
+  belongs to, integrations moved into Settings alongside everything else you configure, and the
+  developer console moved to the Developers page. Nothing was removed; each went where it belonged.
+
+- **Buttons look like buttons.** Every control in the console is now a raised key that presses when
+  you push it, in both light and dark, and empty pages stay deliberately flat so an outline around
+  nothing is never dressed up as something.
+
+- **Lists sit on the page instead of blending into it,** and the toolbar over a table keeps search,
+  filter, sort and the view switch together as one group.
+
+- **Paging moved to the right of a list,** so an explanation printed under a page has the left to
+  itself.
+
 - **Sandbox no longer repaints the console.** It became a whole warm colour scheme nobody chose,
   competing with the light and dark ones people did. Which mode a workspace is in is said where it is
   decided instead.
 
 ### Fixed
+
+- **Notifications no longer close your chats.** Opening the bell while the assistant was open, then
+  closing it again, dropped you back to plain navigation with no way back except reopening the
+  assistant.
+
+- **Three panels could crash when opened.** A save indicator was set up after the panel had already
+  decided not to draw itself, which React does not allow.
+
+- **The whole page error screen matches the rest of the product.** It only appears when the console
+  itself fails, so it had been missed by every design pass.
+
+- **Text meant for developers was printing on the Developers page.**
 
 - **Proper punctuation everywhere.** Dashes used mid sentence are gone from every screen.
 

@@ -61,7 +61,10 @@ export function SupportBubble({
 		// 🔑 BELOW the detail panels (z-30). Help is available, never the thing
 		// you are looking at; floating it over an open product covered the Save
 		// button underneath it.
-		<div className="fixed right-4 bottom-4 z-20 w-72 rounded-xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-2 shadow-2xl">
+		<div
+			style={{ boxShadow: "var(--lift-pop)" }}
+			className="fixed right-4 bottom-4 z-20 w-72 rounded-xl bg-[var(--console-pop)] p-2"
+		>
 			<div className="flex items-center gap-2 px-1.5 pt-1 pb-2">
 				<p className="min-w-0 flex-1 text-[12.5px] text-[var(--ink-85)]">
 					Help

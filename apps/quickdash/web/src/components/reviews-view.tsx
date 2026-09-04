@@ -2,9 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 
 /**
  * Reviews — deciding what a shop says about itself.
@@ -41,6 +48,8 @@ const stars = (rating: number) =>
 
 export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	/**
@@ -151,16 +160,15 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 								(review.title ?? "").toLowerCase().includes(needle) ||
 								(review.body ?? "").toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Reviews"
@@ -239,7 +247,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 												<button
 													type="button"
 													className={solid}
-													disabled={rowBusy(moderate, review.id)}
+													{...rowActionBusy(rowBusy(moderate, review.id))}
 													onClick={() =>
 														moderate.mutate({
 															id: review.id,
@@ -252,7 +260,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 												<button
 													type="button"
 													className={quiet}
-													disabled={rowBusy(moderate, review.id)}
+													{...rowActionBusy(rowBusy(moderate, review.id))}
 													onClick={() =>
 														moderate.mutate({
 															id: review.id,
@@ -269,7 +277,7 @@ export function ReviewsView({ workspaceId }: { workspaceId: string }) {
 											<button
 												type="button"
 												className={quiet}
-												disabled={rowBusy(moderate, review.id)}
+												{...rowActionBusy(rowBusy(moderate, review.id))}
 												onClick={() =>
 													moderate.mutate({
 														id: review.id,

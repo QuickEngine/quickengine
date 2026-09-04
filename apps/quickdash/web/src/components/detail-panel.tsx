@@ -24,7 +24,7 @@ import { inlineFailure } from "./page-state";
  * three different widths appeared in the first place.
  */
 export const detailCard =
-	"fixed top-3 right-3 bottom-3 z-30 flex w-[calc(50%-0.75rem)] min-w-[24rem] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-panel)] shadow-[0_24px_60px_rgb(0_0_0/0.45)]";
+	"fixed top-3 right-3 bottom-3 z-30 flex w-[calc(50%-0.75rem)] min-w-[24rem] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl border bg-[var(--console-panel)] lift-sheet";
 
 export function DetailPanel({
 	title,

@@ -508,24 +508,19 @@ export function WorkspaceNav({
 		writeOpenModules(workspaceId, empty);
 		setOpenModules(empty);
 	}, [workspaceId]);
-	// Both edges of the scrolling list, measured the same way: the header's rule
-	// appears once there is content above, the footer's once there is content
-	// below. A permanent divider claims the list is cut off even when it is not.
+	/**
+	 * 🔴 The scroll rules are gone, and with them the measuring.
+	 *
+	 * Two dividers used to appear once there was content above or below, which
+	 * was the honest way to say "there is more" with a hard edge. The list now
+	 * fades at both ends instead (`fade-ends`), and a rule drawn across a
+	 * fading edge is the one thing that breaks the illusion: a crisp line
+	 * sitting on top of pixels that are dissolving.
+	 *
+	 * The fade says the same thing without a scroll listener, a ref, two pieces
+	 * of state and a re-measure on every module change.
+	 */
 	const listRef = useRef<HTMLElement | null>(null);
-	const [scrolled, setScrolled] = useState(false);
-	const [more, setMore] = useState(false);
-
-	const measure = useCallback(() => {
-		const list = listRef.current;
-		if (!list) return;
-		setScrolled(list.scrollTop > 0);
-		setMore(list.scrollHeight - list.scrollTop - list.clientHeight > 1);
-	}, []);
-
-	// On mount and whenever the list changes length — a workspace with every
-	// module enabled overflows immediately, before anybody has scrolled.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: re-measuring when the module count changes is the point.
-	useEffect(measure, [measure, modules.length]);
 
 	const byId = new Map(
 		modules
@@ -550,9 +545,7 @@ export function WorkspaceNav({
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
 			<div className="shrink-0">
-				<nav
-					className={`flex flex-col gap-1 border-b px-2 pb-1 transition-colors ${scrolled ? "border-[var(--console-line-soft)]" : "border-transparent"}`}
-				>
+				<nav className="flex flex-col gap-1 px-2 pb-1">
 					{/*
 					 * Home and "fold everything up" on one line.
 					 *
@@ -599,8 +592,7 @@ export function WorkspaceNav({
 
 			<nav
 				ref={listRef}
-				onScroll={measure}
-				className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 py-2"
+				className="fade-ends flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 py-2"
 			>
 				{modules.length === 0 ? (
 					<p className="px-2 py-3 text-[11px] text-[var(--ink-25)] leading-4">
@@ -652,9 +644,7 @@ export function WorkspaceNav({
 				)}
 			</nav>
 
-			<div
-				className={`flex shrink-0 flex-col gap-1 border-t px-2 py-2 transition-colors ${more ? "border-[var(--console-line-soft)]" : "border-transparent"}`}
-			>
+			<div className="flex shrink-0 flex-col gap-1 px-2 py-2">
 				<Link
 					to="/$workspace/connect"
 					params={{ workspace: workspaceId }}

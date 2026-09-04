@@ -3,11 +3,19 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { isAmount, parseAmountCents } from "../lib/money-input";
+import { useRecordSignals } from "../lib/record-signals";
+import { BulkDelete } from "./bulk-delete";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
@@ -36,7 +44,63 @@ type Rate = {
 	active: boolean;
 };
 
-type Zone = { id: string; name: string; rates: Rate[] };
+type Zone = {
+	id: string;
+	name: string;
+	rates: Rate[];
+	countryCodes?: string[];
+};
+
+/**
+ * An ISO country code as its flag.
+ *
+ * 🔑 No image and no icon font: a two letter code maps onto two regional
+ * indicator characters, and the operating system draws the flag. That is why
+ * this is four lines rather than a sprite sheet of two hundred pictures.
+ *
+ * ⚠️ Returns null on anything that is not two letters. The field is free text
+ * on the zone form, so it will contain typos, and half a flag renders as two
+ * stray letters in a box.
+ */
+const flagOf = (code: string) => {
+	const clean = code.trim().toUpperCase();
+	if (!/^[A-Z]{2}$/.test(clean)) return null;
+	return String.fromCodePoint(
+		...[...clean].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65),
+	);
+};
+
+/**
+ * The heading over one zone's rates.
+ *
+ * 🔴 It was a line of grey text sitting directly on the page. Rates is the one
+ * list that splits into several tables, so those headings are what tell you
+ * where one zone ends and the next begins, and they were the least substantial
+ * thing on a screen full of raised surfaces: the tables looked like they were
+ * floating with captions loose between them. A raised chip makes the heading an
+ * object, which is what a divider between tables has to be.
+ */
+function ZoneHeading({ zone }: { zone: Zone }) {
+	const codes = zone.countryCodes ?? [];
+	const flags = codes.map(flagOf).filter(Boolean).slice(0, 4);
+	return (
+		<div className="mb-2 inline-flex h-7 items-center gap-2 rounded-md border px-2.5 control-raised">
+			{flags.length > 0 ? (
+				<span aria-hidden="true" className="text-[12px] leading-none">
+					{flags.join(" ")}
+				</span>
+			) : null}
+			<span className="text-[11.5px] text-[var(--ink-75)]">{zone.name}</span>
+			{/* Only the overflow count, never "4 of 4": a number that always agrees
+			    with what is already on screen is noise. */}
+			{codes.length > flags.length ? (
+				<span className="text-[10.5px] text-[var(--ink-30)] tabular-nums">
+					+{codes.length - flags.length}
+				</span>
+			) : null}
+		</div>
+	);
+}
 
 const _pill =
 	"inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40";
@@ -56,6 +120,8 @@ const money = (cents: number) =>
 export function RatesView({ workspaceId }: { workspaceId: string }) {
 	const statusFilter = useChipFilter();
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
 	const [search, setSearch] = useState("");
@@ -255,6 +321,7 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 					submitLabel={editingId ? "Save rate" : "Add rate"}
 					busy={create.isPending}
 					valid={Boolean(valid)}
+					blockedReason={"Give this rate a name and a price"}
 					failure={failure}
 					onClose={() => {
 						setCreating(false);
@@ -372,6 +439,16 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 			) : null}
 
 			<ListControls
+				/* Flattened across zones, because a file of rates split into
+				   several tables is not what anybody means by "export". */
+				exportRows={() =>
+					// Rates hang off their zone, so flatten and carry the zone name:
+					// a row saying "Standard, $8" is useless without saying where to.
+					(zones.data?.items ?? []).flatMap((zone) =>
+						zone.rates.map((rate) => ({ zone: zone.name, ...rate })),
+					)
+				}
+				exportName="shipping-rates"
 				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("State", ["active", "off"])}
 				filterCount={statusFilter.count}
@@ -414,6 +491,16 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 								(!needle && statusFilter.count === 0) || group.rates.length > 0,
 						);
 
+					/**
+					 * ⚠️ The one list that still swaps itself out, and it has to.
+					 *
+					 * Rates draws one table PER ZONE, so there is no single table to
+					 * hand an empty state to when no zone matches at all. Each zone's
+					 * own table keeps its frame (see `empty` below), which covers the
+					 * common case; this outer guard only fires when the search
+					 * excludes every zone, and then there is genuinely nothing to
+					 * hang a search box on.
+					 */
 					if (groups.length === 0) {
 						return (
 							<EmptyState
@@ -427,119 +514,132 @@ export function RatesView({ workspaceId }: { workspaceId: string }) {
 						<div className="space-y-5">
 							{groups.map(({ zone, rates }) => (
 								<section key={zone.id}>
-									<p className="mb-1 text-[11px] text-[var(--ink-45)]">
-										{zone.name}
-									</p>
-									{rates.length === 0 ? (
-										<p className="border-[var(--console-line-soft)] border-t py-2.5 text-[11.5px] text-[var(--signal-attention-text)]">
-											No rates here, so checkout cannot quote this zone.
-										</p>
-									) : (
-										<PagedTable
-											workspaceId={workspaceId}
-											layout={layout}
-											caption={`Rates for ${zone.name}`}
-											rows={rates}
-											columns={[
-												{
-													key: "name",
-													header: "Rate",
-													render: (rate) => rate.name,
-												},
-												{
-													key: "free",
-													header: "Free over",
-													width: "w-28",
-													align: "right",
-													tight: true,
-													render: (rate) =>
-														rate.freeOverCents !== null ? (
-															<span className="text-[11px] text-[var(--ink-30)]">
-																{money(rate.freeOverCents)}
-															</span>
-														) : null,
-												},
-												{
-													key: "days",
-													header: "Delivery",
-													width: "w-28",
-													align: "right",
-													tight: true,
-													render: (rate) =>
-														rate.estimatedDaysMin !== null ? (
-															<span className="text-[11px] text-[var(--ink-30)]">
-																{rate.estimatedDaysMin}
-																{rate.estimatedDaysMax !== null &&
-																rate.estimatedDaysMax !== rate.estimatedDaysMin
-																	? `-${rate.estimatedDaysMax}`
-																	: ""}{" "}
-																days
-															</span>
-														) : null,
-												},
-												{
-													key: "price",
-													header: "Price",
-													width: "w-24",
-													align: "right",
-													tight: true,
-													render: (rate) => money(rate.baseCents),
-												},
-												{
-													key: "actions",
-													header: "",
-													align: "right",
-													tight: true,
-													render: (rate) => (
-														<div className="flex items-center justify-end gap-1.5">
-															<button
-																type="button"
-																className={quiet}
-																onClick={() => {
-																	// Seeds the same form the create panel uses, so there is one
-																	// set of fields rather than two that can drift apart.
-																	setEditingId(rate.id);
-																	setZoneId(rate.zoneId);
-																	setName(rate.name);
-																	setPrice((rate.baseCents / 100).toFixed(2));
-																	setCreating(true);
-																}}
-															>
-																Edit
-															</button>
-															<button
-																type="button"
-																className={quiet}
-																disabled={rowBusy(setActive, rate.id)}
-																onClick={() =>
-																	setActive.mutate({
-																		id: rate.id,
-																		active: !rate.active,
-																	})
+									<ZoneHeading zone={zone} />
+									{/* 🔑 The table always mounts, even with no rates, because it
+									    owns the strip the search box is portalled into. A zone
+									    with nothing in it used to swap the whole table for a
+									    line of text, which took the search box with it. */}
+									<PagedTable
+										bulkActions={(chosen) => (
+											<BulkDelete
+												workspaceId={workspaceId}
+												rows={chosen}
+												path="/shipping/rates"
+												noun="rates"
+												invalidate={[
+													"quickdash",
+													workspaceId,
+													"shipping-zones",
+												]}
+											/>
+										)}
+										rowSignal={rowSignal}
+										empty={
+											<p className="text-[11.5px] text-[var(--signal-attention-text)]">
+												No rates here, so checkout cannot quote this zone.
+											</p>
+										}
+										workspaceId={workspaceId}
+										layout={layout}
+										caption={`Rates for ${zone.name}`}
+										rows={rates}
+										columns={[
+											{
+												key: "name",
+												header: "Rate",
+												render: (rate) => rate.name,
+											},
+											{
+												key: "free",
+												header: "Free over",
+												width: "w-28",
+												align: "right",
+												tight: true,
+												render: (rate) =>
+													rate.freeOverCents !== null ? (
+														<span className="text-[11px] text-[var(--ink-30)]">
+															{money(rate.freeOverCents)}
+														</span>
+													) : null,
+											},
+											{
+												key: "days",
+												header: "Delivery",
+												width: "w-28",
+												align: "right",
+												tight: true,
+												render: (rate) =>
+													rate.estimatedDaysMin !== null ? (
+														<span className="text-[11px] text-[var(--ink-30)]">
+															{rate.estimatedDaysMin}
+															{rate.estimatedDaysMax !== null &&
+															rate.estimatedDaysMax !== rate.estimatedDaysMin
+																? `-${rate.estimatedDaysMax}`
+																: ""}{" "}
+															days
+														</span>
+													) : null,
+											},
+											{
+												key: "price",
+												header: "Price",
+												width: "w-24",
+												align: "right",
+												tight: true,
+												render: (rate) => money(rate.baseCents),
+											},
+											{
+												key: "actions",
+												header: "",
+												align: "right",
+												tight: true,
+												render: (rate) => (
+													<div className="flex items-center justify-end gap-1.5">
+														<button
+															type="button"
+															className={quiet}
+															onClick={() => {
+																// Seeds the same form the create panel uses, so there is one
+																// set of fields rather than two that can drift apart.
+																setEditingId(rate.id);
+																setZoneId(rate.zoneId);
+																setName(rate.name);
+																setPrice((rate.baseCents / 100).toFixed(2));
+																setCreating(true);
+															}}
+														>
+															Edit
+														</button>
+														<button
+															type="button"
+															className={quiet}
+															{...rowActionBusy(rowBusy(setActive, rate.id))}
+															onClick={() =>
+																setActive.mutate({
+																	id: rate.id,
+																	active: !rate.active,
+																})
+															}
+														>
+															{rate.active ? "On" : "Off"}
+														</button>
+														<button
+															type="button"
+															className={quiet}
+															{...rowActionBusy(rowBusy(remove, rate.id))}
+															onClick={() => {
+																if (window.confirm(`Delete “${rate.name}”?`)) {
+																	remove.mutate(rate.id);
 																}
-															>
-																{rate.active ? "On" : "Off"}
-															</button>
-															<button
-																type="button"
-																className={quiet}
-																disabled={rowBusy(remove, rate.id)}
-																onClick={() => {
-																	if (
-																		window.confirm(`Delete “${rate.name}”?`)
-																	) {
-																		remove.mutate(rate.id);
-																	}
-																}}
-															>
-																Delete
-															</button>
-														</div>
-													),
-												},
-											]}
-										/>
-									)}
+															}}
+														>
+															Delete
+														</button>
+													</div>
+												),
+											},
+										]}
+									/>
 								</section>
 							))}
 						</div>

@@ -83,7 +83,8 @@ export function FeedbackDialog({
 		>
 			<DialogContent
 				showCloseButton={false}
-				className="gap-0 border-[var(--console-line)] bg-[var(--console-pop)] p-2 text-[var(--ink-90)] shadow-2xl sm:max-w-md"
+				style={{ boxShadow: "var(--lift-pop)" }}
+				className="gap-0 rounded-xl border-0 bg-[var(--console-pop)] p-2 text-[var(--ink-90)] sm:max-w-md"
 			>
 				<DialogHeader className="sr-only">
 					<DialogTitle>Send feedback</DialogTitle>
@@ -149,6 +150,13 @@ export function FeedbackDialog({
 					) : null}
 					<button
 						type="submit"
+						title={
+							!topic
+								? "Pick what this is about"
+								: message.trim().length < 10
+									? "Tell us a little more, at least ten characters"
+									: undefined
+						}
 						disabled={send.isPending || !topic || message.trim().length < 10}
 						className="flex h-9 w-full items-center justify-center rounded-md bg-[rgb(var(--console-ink))] px-4 text-[12px] text-[var(--console-pop)] transition-colors hover:bg-[rgb(var(--console-ink)/0.85)] disabled:cursor-not-allowed disabled:opacity-40"
 					>

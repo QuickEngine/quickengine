@@ -169,7 +169,13 @@ function ErrorScreen({ error, reset }: { error: Error; reset: () => void }) {
 	);
 }
 
+/**
+ * 🔴 The last old buttons in the console, and the reason they survived is that
+ * nobody sees this screen: it only renders when the whole app has thrown, so it
+ * missed every pass. Pill shaped and ink filled, on a product where a button is
+ * a rectangular raised key. Same treatment as the outlet's error card.
+ */
 const wallPrimary =
-	"inline-flex h-9 items-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85";
+	"control-raised inline-flex h-8 items-center rounded-md border border-[var(--console-line-strong)] px-3 font-medium text-[12px] text-[var(--ink-90)] no-underline outline-none";
 const wallAction =
-	"inline-flex h-9 items-center rounded-full border border-[var(--console-line-strong)] px-4 text-[12.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]";
+	"control-raised inline-flex h-8 items-center rounded-md border px-3 text-[12px] text-[var(--ink-55)] no-underline outline-none hover:text-[var(--ink-90)]";

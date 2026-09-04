@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { sessionApi, workspaceApi } from "../../lib/api";
 import { clientEnv } from "../../lib/env";
 import { quickDashQueries } from "../../lib/quickdash-api";
+import { SaveLabel, useSavedFlash } from "../save-button";
 
 type TemplateCopy = {
 	subject?: string | null;
@@ -331,6 +332,12 @@ export function SettingsSections({
 		},
 	});
 
+	const brandSaved = useSavedFlash(saveBrand.isSuccess);
+
+	const originSaved = useSavedFlash(saveOrigin.isSuccess);
+
+	const copySaved = useSavedFlash(saveCopy.isSuccess);
+
 	return (
 		/*
 		 * 🔴 The frame belongs to the PAGE, not to the sections.
@@ -540,7 +547,9 @@ export function SettingsSections({
 								onClick={() => saveBrand.mutate()}
 								className={`${quietAction} ${saveBrand.isPending ? "shimmer-busy" : ""}`}
 							>
-								{saveBrand.isPending ? "Saving…" : "Save"}
+								<SaveLabel saving={saveBrand.isPending} saved={brandSaved}>
+									Save
+								</SaveLabel>
 							</button>
 							{saved ? (
 								<span className="flex items-center gap-1.5 text-[11.5px] text-[var(--ink-45)]">
@@ -684,7 +693,12 @@ export function SettingsSections({
 										onClick={() => saveOrigin.mutate()}
 										className={`${quietAction} ${saveOrigin.isPending ? "shimmer-busy" : ""}`}
 									>
-										{saveOrigin.isPending ? "Saving…" : "Save"}
+										<SaveLabel
+											saving={saveOrigin.isPending}
+											saved={originSaved}
+										>
+											Save
+										</SaveLabel>
 									</button>
 									{origin &&
 									originIsFilled(origin) &&
@@ -832,10 +846,17 @@ export function SettingsSections({
 														disabled={saveCopy.isPending}
 														onClick={() => saveCopy.mutate(template.key)}
 													>
-														{saveCopy.isPending &&
-														saveCopy.variables === template.key
-															? "Saving…"
-															: "Save"}
+														<SaveLabel
+															saving={
+																saveCopy.isPending &&
+																saveCopy.variables === template.key
+															}
+															saved={
+																copySaved && saveCopy.variables === template.key
+															}
+														>
+															Save
+														</SaveLabel>
 													</button>
 													{/* ⚠️ Clearing is how you get ours back. Storing an empty
 											    override would mean an email with no body. */}

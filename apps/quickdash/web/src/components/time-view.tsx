@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
@@ -48,6 +49,8 @@ const duration = (seconds: number) => {
 
 export function TimeView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
@@ -182,15 +185,6 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 								(entry.description ?? "").toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
 					const running = rows.filter((entry) => entry.status === "running");
 					const rest = rows.filter((entry) => entry.status !== "running");
 					const _billable = rest
@@ -280,6 +274,13 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 										Running now
 									</p>
 									<PagedTable
+										rowSignal={rowSignal}
+										empty={
+											<EmptyState
+												title="Nothing matches"
+												detail="Try a different search, or clear the status filter."
+											/>
+										}
 										exportName="entries"
 										bulkActions={(chosen) => (
 											<BulkDelete
@@ -300,6 +301,7 @@ export function TimeView({ workspaceId }: { workspaceId: string }) {
 							) : null}
 
 							<PagedTable
+								rowSignal={rowSignal}
 								workspaceId={workspaceId}
 								layout={layout}
 								caption="Time entries"

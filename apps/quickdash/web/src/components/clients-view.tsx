@@ -114,6 +114,7 @@ export function ClientsView({ workspaceId }: { workspaceId: string }) {
 					submitLabel="Add person"
 					busy={create.isPending}
 					valid={name.trim().length > 0}
+					blockedReason={"Give this customer a name"}
 					failure={failure}
 					onClose={() => setCreating(false)}
 					onSubmit={() => create.mutate()}
@@ -168,16 +169,14 @@ export function ClientsView({ workspaceId }: { workspaceId: string }) {
 								(client.email ?? "").toLowerCase().includes(needle) ||
 								(client.company ?? "").toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							exportName="customers"
 							bulkActions={(chosen) => (
 								<BulkDelete

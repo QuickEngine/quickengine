@@ -449,6 +449,11 @@ function CredentialForm({
 				<button
 					type="submit"
 					className={`${pill} ${busy ? "shimmer-busy" : ""}`}
+					title={
+						!clientId.trim() || !clientSecret.trim()
+							? "Both keys are needed to connect"
+							: undefined
+					}
 					disabled={busy || !clientId.trim() || !clientSecret.trim()}
 				>
 					{busy ? "Checking with PayPal…" : "Connect"}

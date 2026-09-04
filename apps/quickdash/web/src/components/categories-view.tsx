@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
 import { useAcknowledgeRecord } from "../lib/record-signals";
 import { useSelectedRecord } from "../lib/selected-record";
 import { type CategoryNode, CategoryPanel } from "./category-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, WriteFailure } from "./page-state";
 
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
@@ -134,8 +136,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 		onSuccess: () => refresh(),
 	});
 
-	/** Which card is being dragged, by its index in the visible list. */
-	const [held, setHeld] = useState<number | null>(null);
+	const { layout, setLayout } = useListLayout(workspaceId);
 
 	const create = useMutation({
 		mutationFn: async () =>
@@ -189,6 +190,7 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 				filterCount={statusFilter.count}
 				exportRows={() => categories.data?.items ?? []}
 				exportName="categories"
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search categories"
@@ -221,81 +223,118 @@ export function CategoriesView({ workspaceId }: { workspaceId: string }) {
 								node.name.toLowerCase().includes(needle) ||
 								node.slug.toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
-						<>
-							{/*
-							  🔴 The SAME grid the products page uses.
-
-							  Categories were a table of names while the products they group were
-							  cards with pictures — so the one page whose whole job is merchandising
-							  browse tiles never showed you the tiles. A category is a picture and a
-							  name, exactly like a product.
-							*/}
-							<div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-3">
-								{rows.map(({ node }, index) => (
-									<button
-										type="button"
-										key={node.id}
-										draggable
-										onDragStart={() => setHeld(index)}
-										onDragOver={(event) => event.preventDefault()}
-										onDrop={() => {
-											if (held === null || held === index) return;
-											const next = rows.map(({ node: n }) => n);
-											const [moved] = next.splice(held, 1);
-											next.splice(index, 0, moved);
-											setHeld(null);
-											reorder.mutate(next);
-										}}
-										onDragEnd={() => setHeld(null)}
-										onClick={() => setSelectedId(node.id)}
-										className={`cursor-pointer rounded-xl border p-2.5 text-left transition-colors ${
-											selectedId === node.id
-												? "border-[rgb(var(--console-ink)/0.35)]"
-												: "border-[var(--console-line-soft)] hover:border-[var(--console-line-strong)]"
-										}`}
-									>
-										{/* Square tile, because that is the shape a browse page uses. */}
-										{node.imageUrl ? (
-											<img
-												src={node.imageUrl}
-												alt=""
-												className="aspect-square w-full rounded-lg border border-[var(--console-line-soft)] object-cover"
-											/>
-										) : (
-											<div className="flex aspect-square w-full items-center justify-center rounded-lg border border-[var(--console-line-soft)] border-dashed text-[11px] text-[var(--ink-25)]">
-												No picture
-											</div>
-										)}
-										<p className="mt-2.5 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
-											{node.name}
-										</p>
-										<div className="mt-1.5 flex items-center gap-1.5">
-											<span className="font-mono text-[10.5px] text-[var(--ink-30)]">
-												/{node.slug}
-											</span>
-											<span className="ml-auto text-[11px] text-[var(--ink-30)]">
-												{node.itemCount}{" "}
-												{node.itemCount === 1 ? "item" : "items"}
-											</span>
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Categories"
+							rows={rows.map(({ node }) => node)}
+							selectedId={selectedId}
+							onOpen={(node) => setSelectedId(node.id)}
+							exportName="categories"
+							/* Dragging a card is how a browse order is set, and the
+							   shared table already does it: it keeps the arrangement per
+							   workspace and refuses to drag while a column sort is
+							   applied, which the private grid could not know about. The
+							   move is still written back through `sortOrder`. */
+							onReorder={(fromId, toId) => {
+								const order = rows.map(({ node }) => node);
+								const from = order.findIndex((node) => node.id === fromId);
+								const to = order.findIndex((node) => node.id === toId);
+								if (from < 0 || to < 0 || from === to) return;
+								const [moved] = order.splice(from, 1);
+								order.splice(to, 0, moved);
+								reorder.mutate(order);
+							}}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the kind filter."
+								/>
+							}
+							/* 🔴 The SAME card body this page always had, on the shared
+							   frame. Categories drew its own grid of bordered buttons,
+							   so it kept the flat outlines of the first UI pass while
+							   every other list moved onto a raised surface, and it had
+							   no view switch, no sort and no paging because none of that
+							   lives in a hand written grid. The tiles are unchanged; the
+							   object they sit in is now the console's. */
+							renderCard={(node) => (
+								<>
+									{/* Square tile, because that is the shape a browse page
+									    uses. */}
+									{node.imageUrl ? (
+										<img
+											src={node.imageUrl}
+											alt=""
+											className="aspect-square w-full rounded-lg border border-[var(--console-line-soft)] object-cover"
+										/>
+									) : (
+										<div className="flex aspect-square w-full items-center justify-center rounded-lg border border-[var(--empty-line)] border-dashed text-[11px] text-[var(--ink-25)]">
+											No picture
 										</div>
-										{!node.visible ? (
-											<span className="mt-1.5 inline-block rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention-text)]">
+									)}
+									<p className="mt-2.5 line-clamp-2 text-[12.5px] text-[var(--ink-85)] leading-snug">
+										{node.name}
+									</p>
+									<div className="mt-1.5 flex items-center gap-1.5">
+										<span className="font-mono text-[10.5px] text-[var(--ink-30)]">
+											/{node.slug}
+										</span>
+										<span className="ml-auto text-[11px] text-[var(--ink-30)]">
+											{node.itemCount} {node.itemCount === 1 ? "item" : "items"}
+										</span>
+									</div>
+									{!node.visible ? (
+										<span className="mt-1.5 inline-block rounded-full bg-[rgb(var(--console-ink)/0.08)] px-2 py-0.5 text-[10.5px] text-[var(--signal-attention-text)]">
+											Hidden
+										</span>
+									) : null}
+								</>
+							)}
+							columns={[
+								{
+									key: "name",
+									header: "Category",
+									render: (node) => (
+										<span className="min-w-0 truncate">{node.name}</span>
+									),
+								},
+								{
+									key: "slug",
+									header: "Slug",
+									render: (node) => (
+										<span className="font-mono text-[11px] text-[var(--ink-45)]">
+											/{node.slug}
+										</span>
+									),
+								},
+								{
+									key: "kind",
+									header: "Kind",
+									render: (node) => (
+										<span className="capitalize">{node.kind}</span>
+									),
+								},
+								{
+									key: "itemCount",
+									header: "Items",
+									render: (node) => node.itemCount,
+								},
+								{
+									key: "visible",
+									header: "Visible",
+									render: (node) =>
+										node.visible ? (
+											"Visible"
+										) : (
+											<span className="text-[var(--signal-attention-text)]">
 												Hidden
 											</span>
-										) : null}
-									</button>
-								))}
-							</div>
-						</>
+										),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>

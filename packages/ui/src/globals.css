@@ -122,3 +122,187 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* ── A control that stands off the surface ───────────────────────────────────
+   The same treatment as every 3D card in the console: the card surface, the
+   card's layered shadow, and NO gradient on the face. A face gradient makes a
+   button look moulded; these are meant to look like they are simply sitting on
+   top of the header.
+
+   🔴 It moves on ACTIVE and never on hover. Hover is a pointer passing over
+   something, which is not an event worth animating and is a lie on touch, where
+   hover fires on the way to a tap. A press is a real thing the person did, so
+   that is the only thing that moves. */
+/* 🔴 SPLIT from `.control-raised`, because a filled button must keep its fill.
+   `.control-raised` sets a background, and a plain class can beat a Tailwind
+   utility depending on which lands later in the stylesheet: putting it on the
+   ink coloured Save button replaced the fill, leaving `--console-pop` text on a
+   `--surface-card` face, which in dark is the same colour. The label vanished.
+
+   So the relief and the press live here, and the surface is added on top by
+   `.control-raised`. Anything with its own colour uses this one. */
+.control-lift {
+	box-shadow: var(--lift-control);
+	transition:
+		box-shadow 120ms ease,
+		transform 120ms ease,
+		color 150ms ease;
+}
+
+.control-lift:active {
+	transform: translateY(1px);
+	box-shadow: var(--lift-pressed);
+}
+
+.control-raised {
+	/* See `--face-control`: a lit face, not a flat fill. On the outlet's near
+	   black floor this is the ONLY thing that reads as relief, because a black
+	   drop shadow there has nothing darker to fall onto. */
+	background: var(--face-control);
+	box-shadow: var(--lift-control);
+	border-color: var(--control-edge);
+	transition:
+		box-shadow 120ms ease,
+		transform 120ms ease,
+		color 150ms ease;
+}
+
+.control-raised:active {
+	transform: translateY(1px);
+	/* The face turns over with the shadow. Moving one without the other gives a
+	   key that sinks while still lit from above, which reads as the button
+	   glitching rather than being pushed. */
+	background: var(--face-control-pressed);
+	box-shadow: var(--lift-pressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.control-raised,
+	.control-lift {
+		transition: none;
+	}
+	.control-raised:active,
+	.control-lift:active {
+		transform: none;
+	}
+}
+
+/* ── Switching theme ─────────────────────────────────────────────────────────
+   The default view transition cross fades the two snapshots, which would put
+   the old theme's text on the new theme's ground for the length of the
+   animation: the exact unreadable frame the transition exists to remove. The
+   old screen holds still and the new one is clipped over it instead. See
+   `paint()` in `theme-provider.tsx`. */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+	z-index: 0;
+}
+
+::view-transition-new(root) {
+	z-index: 1;
+}
+
+/* ── The view switch, flattened ──────────────────────────────────────────────
+   🔴 An empty list gets NO relief, and that has to include what sits on it.
+   The frame already drops its lift when there are no rows, on the reasoning
+   that an empty list is an outline around an absence; leaving a groove cut into
+   it with a raised key riding in it made the console insist on machinery for
+   rows that are not there. Outline in, outline out: the track becomes a hairline
+   and the thumb becomes one, so the switch still says which view is chosen
+   without pretending anything has depth. */
+[data-flat="true"] {
+	/* No groove on an empty list. Set on the STRIP so it inherits down to the
+	   track, whatever classes the track happens to carry. */
+	--view-face: transparent;
+}
+
+/* Every raised control on an empty strip: Filter, Sort, Export, Clear. A lit
+   key next to a flattened one is worse than either. */
+[data-flat="true"] .control-raised {
+	background: transparent;
+	box-shadow: none;
+	border: 1px solid var(--empty-line);
+}
+
+/* 🔴 The view switch on an empty list has NO depth of any kind: no groove, no
+   raised thumb, no gradient, no shadow. Two icons, an outline round the track
+   and an outline round the thumb. Nothing else.
+   ⚠️ `outline`, not `border`. A border is part of the box, so adding one to the
+   track shrank its inner height by 2px and the 20px thumb inside it stopped
+   sitting centred. An outline is drawn outside the layout and costs nothing,
+   which is why the same trick is used on the thumb. Listed AFTER the
+   `.control-raised` rule above because the thumb matches both. */
+[data-flat="true"] .view-switch,
+[data-flat="true"] .view-thumb {
+	background: none;
+	background-color: transparent;
+	box-shadow: none;
+	border: 0;
+	outline: 1px solid var(--empty-line);
+	outline-offset: -1px;
+}
+
+/* A detail sheet: the console's largest floating surface.
+   🔴 A CLASS, not a Tailwind arbitrary shadow, for the reason every other
+   elevation here is a token: the panel carried a hand written
+   `0 24px 60px rgb(0 0 0 / 0.45)` that answered to nothing, so it stayed dark
+   and flat while the popovers and dialogs around it moved onto `--lift-modal`.
+   The border goes for the same reason it went on the popovers: a hairline
+   around a floating card reads as a sticker, not as something with thickness. */
+.lift-sheet {
+	box-shadow: var(--lift-modal);
+	border-color: var(--control-edge);
+}
+
+/* 🔴 The same raised face, WITHOUT the press.
+   `.control-raised` is a button: it sinks a pixel and swaps to `--lift-pressed`
+   on `:active`. That is right for a key and wrong for anything you click INTO
+   rather than ON, and the assistant's composer proved it: clicking to place the
+   cursor shoved the whole box down like a pressed button, every time somebody
+   started typing. Raised because it is the control you reach for; static
+   because pressing it is not the gesture. */
+.control-static {
+	background: var(--face-control);
+	box-shadow: var(--lift-control);
+	border-color: var(--control-edge);
+}
+
+/* The recess those controls sit in. See `--surface-tray`. */
+.control-tray {
+	background: var(--surface-tray);
+	box-shadow: var(--lift-recess);
+}
+
+/* A raised surface whose own children cover its inset lighting. See
+   `--edge-lit`: the highlight and the shade become real borders, which paint on
+   the border box and so survive a full bleed child with `p-0`. */
+.lit-edges {
+	border-top: 1px solid var(--edge-lit);
+	border-bottom: 1px solid var(--edge-shade);
+}
+
+/* ── A scrolling list that fades at its ends ─────────────────────────────────
+   🔑 A MASK, not a gradient overlay painted on top.
+   An overlay has to know the colour behind it, so it breaks the moment the
+   surface changes or the theme flips, and it sits above the content it is
+   fading, which means it also dims anything hovered underneath. `mask-image`
+   removes the pixels instead, so it works on any ground and in both themes
+   with one rule.
+
+   ⚠️ The fade is only 16px. Long enough to read as "there is more", short
+   enough that a row is never half invisible while somebody is trying to click
+   it. */
+.fade-ends {
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		#000 16px,
+		#000 calc(100% - 16px),
+		transparent 100%
+	);
+}

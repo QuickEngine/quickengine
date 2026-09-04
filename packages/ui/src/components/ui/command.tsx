@@ -33,12 +33,22 @@ function CommandDialog({
 	description = "Search for a command to run...",
 	children,
 	className,
+	contentStyle,
 	showCloseButton = true,
 	...props
 }: React.ComponentProps<typeof Dialog> & {
 	title?: string;
 	description?: string;
 	className?: string;
+	/**
+	 * Inline styles for the dialog's own surface.
+	 *
+	 * 🔑 The console paints elevation with `style={{ boxShadow }}` rather than a
+	 * utility class, so a caller needs a way through to the content element.
+	 * Without it the search palette was the one floating surface that could not
+	 * be given the same lighting as every other.
+	 */
+	contentStyle?: React.CSSProperties;
 	showCloseButton?: boolean;
 }) {
 	return (
@@ -48,6 +58,7 @@ function CommandDialog({
 				<DialogDescription>{description}</DialogDescription>
 			</DialogHeader>
 			<DialogContent
+				style={contentStyle}
 				className={cn("overflow-hidden p-0", className)}
 				showCloseButton={showCloseButton}
 			>

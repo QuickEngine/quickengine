@@ -6,6 +6,7 @@ import {
 	useEffect,
 	useState,
 } from "react";
+import { flushSync } from "react-dom";
 
 /**
  * Theme: light / dark / system, persisted, with the class toggled on `<html>`.
@@ -67,10 +68,66 @@ const writeCookie = (theme: Theme) => {
 	}`;
 };
 
+/** Where on screen the switch was pressed, so the repaint starts from it. */
+export type ThemeOrigin = { x: number; y: number };
+
 const ThemeContext = createContext<{
 	theme: Theme;
-	setTheme: (theme: Theme) => void;
+	setTheme: (theme: Theme, origin?: ThemeOrigin) => void;
 }>({ theme: "dark", setTheme: () => {} });
+
+/**
+ * The repaint.
+ *
+ * 🔴 Switching theme used to be a hard cut: every surface, every shadow and
+ * every piece of text changed colour in one frame, and because they do not all
+ * repaint together it read as the console flickering rather than as a setting
+ * being applied. A view transition captures the screen before and after and
+ * lets the new one be revealed, so what you see is the theme being PAINTED on,
+ * from wherever you pressed.
+ *
+ * ⚠️ Only the reveal is animated. Cross fading the two snapshots as well would
+ * put the old theme's text on the new theme's ground for a few hundred
+ * milliseconds, which is the exact unreadable frame this is meant to remove.
+ * The old snapshot holds still underneath and the new one is clipped over it;
+ * `globals.css` turns the default cross fade off.
+ */
+const paint = (commit: () => void, origin?: ThemeOrigin) => {
+	const start = (
+		document as Document & {
+			startViewTransition?: (run: () => void) => { ready: Promise<void> };
+		}
+	).startViewTransition;
+	// No support (Safari before 18, Firefox), or somebody has asked for less
+	// motion: apply it instantly. The setting must never depend on the animation.
+	if (!start || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		commit();
+		return;
+	}
+	const transition = start.call(document, commit);
+	const x = origin?.x ?? window.innerWidth / 2;
+	const y = origin?.y ?? window.innerHeight / 2;
+	// Reach the furthest corner, or the circle stops short of part of the page.
+	const radius = Math.hypot(
+		Math.max(x, window.innerWidth - x),
+		Math.max(y, window.innerHeight - y),
+	);
+	void transition.ready.then(() => {
+		document.documentElement.animate(
+			{
+				clipPath: [
+					`circle(0px at ${x}px ${y}px)`,
+					`circle(${radius}px at ${x}px ${y}px)`,
+				],
+			},
+			{
+				duration: 520,
+				easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+				pseudoElement: "::view-transition-new(root)",
+			},
+		);
+	});
+};
 
 const systemPrefersDark = () =>
 	window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -104,10 +161,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 		return () => media.removeEventListener("change", onChange);
 	}, [theme]);
 
-	const setTheme = useCallback((next: Theme) => {
-		writeCookie(next);
-		localStorage.setItem(STORAGE_KEY, next);
-		setThemeState(next);
+	const setTheme = useCallback((next: Theme, origin?: ThemeOrigin) => {
+		paint(() => {
+			writeCookie(next);
+			localStorage.setItem(STORAGE_KEY, next);
+			/**
+			 * 🔴 `flushSync` and an eager `applyTheme`, both inside the callback.
+			 *
+			 * A view transition snapshots the page the moment this function
+			 * returns. React would batch the state update to a later frame and the
+			 * class flip happens in an effect after that, so the "after" snapshot
+			 * would be captured with the OLD theme still on `<html>` and the
+			 * animation would reveal a copy of what was already there.
+			 */
+			flushSync(() => setThemeState(next));
+			applyTheme(next);
+		}, origin);
 	}, []);
 
 	return (

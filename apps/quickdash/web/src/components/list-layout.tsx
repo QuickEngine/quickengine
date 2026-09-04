@@ -18,8 +18,12 @@ import { type Column, DataTable } from "./data-table";
  * difference nobody can name but everybody feels.
  */
 
+/* 20px slots in a 24px track: 2 + 20 + 20 + 2 across, and the same 2px above
+   and below. Deliberately SMALLER than Sort and Filter beside it: those are
+   buttons standing on the strip, this is a groove cut into it, and a groove
+   that matches its neighbours' height reads as a third button. */
 const glyph =
-	"relative z-10 flex size-6 items-center justify-center transition-colors";
+	"relative z-10 flex size-5 items-center justify-center transition-colors";
 
 /** Cards or table, remembered per workspace. */
 export function LayoutToggle({
@@ -51,29 +55,43 @@ export function LayoutToggle({
 			   same 3px above and below. Every number here is derived from the 24px
 			   glyph slot, so the thumb sits in an even margin on all four sides
 			   instead of touching the border. */
-			className="relative flex h-8 w-14 shrink-0 items-center rounded-md border border-[var(--console-line-strong)] bg-[rgb(var(--console-ink)/0.04)] p-[3px] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.08)] focus-visible:bg-[rgb(var(--console-ink)/0.08)]"
+			/* 🔴 The SAME switch as test/live in the workspace popover: a track cut
+			   into the surface with `--lift-inset`, and a real raised thumb riding
+			   in it. This one was a hairline box with an ink tint at 4%, which on a
+			   near black page is a rectangle you have to look for, and the thumb was
+			   a flat puck with a hand written drop shadow. Two switches in one
+			   console should be the same object. */
+			style={{ boxShadow: "var(--lift-inset)" }}
+			className="view-switch relative flex h-6 w-11 shrink-0 items-center rounded-[5px] bg-[var(--view-face)] p-0.5 outline-none"
 		>
 			{/* The thumb slides rather than the icons swapping colour alone, so the
 			    control reads as a switch at a glance. */}
 			<span
 				aria-hidden="true"
-				/* The SAME thumb as the live/sandbox switch in Account: a raised
-				   `--console-pop` puck with a real drop shadow. Ink at 14% read as a
-				   smudge on the track rather than an object sitting on it, so the
-				   control did not look like something you could push. */
-				className={`absolute top-[3px] left-[3px] size-6 rounded-[3px] bg-[var(--console-pop)] shadow-[0_1px_3px_rgb(0_0_0/0.28)] transition-transform duration-200 ease-out ${
-					layout === "cards" ? "translate-x-6" : "translate-x-0"
-				}`}
+				/* `.control-raised`, which is what every other pushable thing in the
+				   console is made of, rather than a puck with its own shadow value
+				   that drifts from the rest the first time the tokens move. */
+				/* 🔴 An inline `transform`, not `translate-x-6`.
+				   Tailwind v4 writes that as the `translate` PROPERTY, and
+				   `.control-raised` sets a `transition` shorthand listing
+				   `transform` and not `translate` — so the shorthand replaced
+				   `transition-transform` and the thumb teleported instead of
+				   sliding. The environment switch was right by accident: it
+				   animates a real transform inline. Both do now. */
+				style={{
+					transform: layout === "cards" ? "translateX(100%)" : "translateX(0)",
+				}}
+				className="view-thumb control-raised absolute top-0.5 left-0.5 size-5 rounded-[3px] border-0 transition-transform duration-200 ease-out"
 			/>
 			<span
 				className={`${glyph} ${layout === "table" ? "text-[var(--ink-90)]" : "text-[var(--ink-30)]"}`}
 			>
-				<RowsIcon size={15} />
+				<RowsIcon size={13} />
 			</span>
 			<span
 				className={`${glyph} ${layout === "cards" ? "text-[var(--ink-90)]" : "text-[var(--ink-30)]"}`}
 			>
-				<SquaresFourIcon size={15} />
+				<SquaresFourIcon size={13} />
 			</span>
 		</button>
 	);
@@ -98,10 +116,17 @@ export function Pager({
 }) {
 	if (pageCount <= 1) return null;
 	const step =
-		"flex size-7 items-center justify-center rounded-md text-[var(--ink-45)] transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-85)] disabled:opacity-30 disabled:hover:bg-transparent";
+		"control-raised flex size-7 items-center justify-center rounded-md border text-[var(--ink-45)] outline-none hover:text-[var(--ink-85)] disabled:opacity-30";
 	return (
-		<div className="mt-3 flex items-center gap-2">
-			<p className="min-w-0 flex-1 text-[11px] text-[var(--ink-30)]">
+		/* 🔴 RIGHT aligned, and the count travels with the arrows.
+		   Centring it read well on its own and then collided with the sentence
+		   several pages print under a list ("historical payments keep the provider
+		   that took them…"): two things competing for the middle, with the
+		   explanation pushed off to one side of its own page. A note explains the
+		   page and stays left where reading starts; paging is a control and sits
+		   with the other controls on the right. */
+		<div className="mt-3 flex items-center justify-end gap-2">
+			<p className="min-w-0 text-[11px] text-[var(--ink-30)]">
 				Page {page} of {pageCount} · {total}{" "}
 				{total === 1 ? "record" : "records"}
 			</p>
@@ -230,7 +255,7 @@ export function PagedTable<TRow extends { id: string }>({
 				onReorder={sort ? undefined : arrangement.move}
 				rows={ordered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)}
 			/>
-			<div className="flex items-center gap-3">
+			<div className="flex items-center justify-end gap-3">
 				<Pager
 					page={current}
 					pageCount={pageCount}

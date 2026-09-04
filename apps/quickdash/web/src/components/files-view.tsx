@@ -4,11 +4,18 @@ import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { useRecordSignals } from "../lib/record-signals";
 import { useSelectedRecord } from "../lib/selected-record";
+import { BulkDelete } from "./bulk-delete";
 import { useHeaderAction } from "./header-action";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { DocumentPanel } from "./module-panels";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 
 /**
  * Files — documents a business keeps, not pictures it publishes.
@@ -207,17 +214,23 @@ export function FilesView({ workspaceId }: { workspaceId: string }) {
 								!needle || document.title.toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
 					return (
 						<PagedTable
+							bulkActions={(chosen) => (
+								<BulkDelete
+									workspaceId={workspaceId}
+									rows={chosen}
+									path="/documents"
+									noun="files"
+									invalidate={["quickdash", workspaceId, "documents"]}
+								/>
+							)}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the status filter."
+								/>
+							}
 							rowSignal={rowSignal}
 							workspaceId={workspaceId}
 							layout={layout}
@@ -288,7 +301,7 @@ export function FilesView({ workspaceId }: { workspaceId: string }) {
 											<button
 												type="button"
 												className={quiet}
-												disabled={rowBusy(setStatus, document.id)}
+												{...rowActionBusy(rowBusy(setStatus, document.id))}
 												onClick={() =>
 													setStatus.mutate({
 														id: document.id,
@@ -302,7 +315,7 @@ export function FilesView({ workspaceId }: { workspaceId: string }) {
 											<button
 												type="button"
 												className={quiet}
-												disabled={rowBusy(setStatus, document.id)}
+												{...rowActionBusy(rowBusy(setStatus, document.id))}
 												onClick={() =>
 													setStatus.mutate({
 														id: document.id,

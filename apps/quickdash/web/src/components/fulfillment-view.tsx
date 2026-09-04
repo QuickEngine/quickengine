@@ -2,9 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 
 /**
  * Fulfillment — the work of actually delivering what was bought.
@@ -59,6 +66,8 @@ const isOverdue = (fulfillment: Fulfillment) =>
 
 export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
@@ -169,17 +178,18 @@ export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 								(item.clientName ?? "").toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
+					/* No bulk delete, deliberately.
+						    The same: this is the ORDER's state shown as a list, not a free
+						    standing record that can be removed. */
 					return (
 						<PagedTable
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the status filter."
+								/>
+							}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Work to fulfil"
@@ -238,7 +248,7 @@ export function FulfillmentView({ workspaceId }: { workspaceId: string }) {
 											<button
 												type="button"
 												className={quiet}
-												disabled={rowBusy(advance, item.id)}
+												{...rowActionBusy(rowBusy(advance, item.id))}
 												onClick={() =>
 													advance.mutate({ id: item.id, status: next.status })
 												}

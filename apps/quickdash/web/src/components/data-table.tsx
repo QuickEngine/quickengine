@@ -14,7 +14,7 @@ import {
 } from "@quickengine/ui/components/ui/popover";
 import { type ReactNode, useState } from "react";
 import { downloadCsv } from "../lib/csv";
-import { useTableRail } from "./header-action";
+import { useTableRail, useViewRail } from "./header-action";
 import { useToast } from "./toast";
 
 /**
@@ -202,6 +202,7 @@ export function DataTable<TRow extends { id: string }>({
 }) {
 	const toast = useToast();
 	const { setTableRail } = useTableRail();
+	const { setViewRail } = useViewRail();
 
 	/**
 	 * 🔑 A column is sortable when its `key` names a field the rows actually
@@ -281,7 +282,9 @@ export function DataTable<TRow extends { id: string }>({
 						title: `${chosen.length} ${chosen.length === 1 ? "row" : "rows"} exported`,
 					});
 				}}
-				className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[11.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+				/* Raised, like every other button that does something. See the note
+				   on the breadcrumb Export in `ListControls`. */
+				className="control-raised flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[11.5px] text-[var(--ink-60)] hover:text-[var(--ink-90)]"
 			>
 				<DownloadSimpleIcon size={13} />
 				Export
@@ -290,7 +293,9 @@ export function DataTable<TRow extends { id: string }>({
 			<button
 				type="button"
 				onClick={() => setPicked(new Set())}
-				className="flex h-7 shrink-0 items-center rounded-md px-2 text-[11.5px] text-[var(--ink-45)] transition-colors hover:text-[var(--ink-85)]"
+				/* A key like the rest of the bar. It was the last bare text button
+				   in a row of raised ones. */
+				className="control-raised flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11.5px] text-[var(--ink-45)] outline-none hover:text-[var(--ink-85)]"
 			>
 				Clear
 			</button>
@@ -306,6 +311,19 @@ export function DataTable<TRow extends { id: string }>({
 				ref={setTableRail}
 				className="flex min-w-0 flex-1 items-center gap-2"
 			/>
+			{/* The view switch, portalled in from `ListControls`. It sits beside
+			    Sort because the two ask the same question: how do you want to
+			    look at these rows. See `viewRail`. */}
+			<div
+				ref={setViewRail}
+				/* 🔑 The switch reads the list's state through the rail it lands in.
+				   Same rule the frame follows: an empty list is an outline around an
+				   absence, so nothing inside it should be raised or cut in. It also
+				   cannot be a prop, because the pages pass the switch in and the
+				   emptiness is only known here. */
+				data-flat={rows.length === 0 ? "true" : undefined}
+				className="flex shrink-0 items-center"
+			/>
 			{/*
 			 * Sort lives HERE, not in `ListControls`, because this is where the
 			 * columns are. `ListControls` has no idea what a page's columns are
@@ -316,7 +334,17 @@ export function DataTable<TRow extends { id: string }>({
 					<PopoverTrigger
 						aria-label="Sort"
 						title={sorted ? `Sorted by ${sorted.header}` : "Sort"}
-						className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-[11.5px] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] data-[state=open]:bg-[rgb(var(--console-ink)/0.06)] ${
+						/* 🔴 A real key, like every other button in the console.
+						   Sort and Filter were the last two ghost buttons on the
+						   strip: no surface at all until you hovered, at which point
+						   an ink tint appeared. Next to a switch cut into the strip
+						   that reads as two controls from two different products.
+
+						   ⚠️ No open-state fill. `.control-raised` owns the face, and
+						   a background tint on top of it would flatten the gradient
+						   that makes it a key. Open and sorted are both said by the
+						   ink, the same rule the Done button follows. */
+						className={`control-raised flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11.5px] outline-none data-[state=open]:text-[var(--ink-90)] ${
 							sorted ? "text-[var(--ink-80)]" : "text-[var(--ink-45)]"
 						}`}
 					>
@@ -380,8 +408,11 @@ export function DataTable<TRow extends { id: string }>({
 				{/* Cards have no frame of their own, so the strip takes one — the
 				    controls must not vanish just because the view changed. */}
 				<div
-					style={{ boxShadow: "var(--card-lift)" }}
-					className="mb-3 overflow-hidden rounded-xl border border-[var(--console-line)] bg-[var(--console-card)]"
+					/* The same material as the cards under it: see the note on the
+					   table frame. A strip on the old 2px drop sat visibly flatter
+					   than the grid it was labelling. */
+					style={{ boxShadow: "var(--lift-card)" }}
+					className="mb-3 overflow-hidden rounded-xl border border-[var(--console-line)] bg-[var(--surface-tile)]"
 				>
 					{strip}
 				</div>
@@ -417,11 +448,18 @@ export function DataTable<TRow extends { id: string }>({
 			   is what separates the data from the floor. Same rule the workspace
 			   picker follows, and the reason the two screenshots looked like two
 			   different products before. */
+			/* 🔴 `--lift-card` and `--surface-tile`, the console's real relief, not
+			   the original 2px `--card-lift` drop on the header's face. A table is
+			   the single largest object on most of these pages, and it was the
+			   flattest thing on screen: it sat one step off a near black floor
+			   with a hairline doing all the work, while the dashboard beside it
+			   had cards rising out of the same ground. Whatever a list is called,
+			   it is made of the same material as everything else now. */
 			style={{
-				boxShadow: rows.length === 0 ? undefined : "var(--card-lift)",
+				boxShadow: rows.length === 0 ? undefined : "var(--lift-card)",
 			}}
 			className={`overflow-hidden rounded-xl border border-[var(--console-line)] ${
-				rows.length === 0 ? "" : "bg-[var(--console-card)]"
+				rows.length === 0 ? "" : "bg-[var(--surface-tile)]"
 			}`}
 		>
 			{chosen.length > 0 ? bar : strip}
@@ -702,11 +740,14 @@ function CardList<TRow extends { id: string }>({
 					   a page, invisible on something 240px wide that is supposed to
 					   look picked up. And `--console-card` is one step off the
 					   floor, so the shadow had almost nothing to fall onto. The
-					   same surface and elevation the workspace picker uses:
-					   `--surface-card` on the page ground, `--lift-card` under it,
-					   and a pixel of rise on hover so it answers the pointer. */
+					   same elevation the workspace picker uses, on the outlet's own
+					   face: `--surface-tile` rising out of the near black ground,
+					   `--lift-card` under it, and a pixel of rise on hover so it
+					   answers the pointer. The picker uses `--surface-card` because
+					   it sits on a different, lighter ground; borrowing that here
+					   put the header's face on the outlet's floor. */
 					style={{ boxShadow: "var(--lift-card)" }}
-					className={`relative rounded-xl border bg-[var(--surface-card)] p-3 outline-none transition-[transform,border-color] duration-150 ${
+					className={`relative rounded-xl border bg-[var(--surface-tile)] p-3 outline-none transition-[transform,border-color] duration-150 ${
 						onOpen ? "cursor-pointer hover:-translate-y-px" : ""
 					} ${
 						selectedId === row.id

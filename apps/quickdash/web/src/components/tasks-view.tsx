@@ -2,10 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 
 /**
  * Tasks — the individual pieces of work.
@@ -56,6 +63,8 @@ const priorityTone = (priority: string) =>
 
 export function TasksView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [statuses, setStatuses] = useState<string[]>([]);
@@ -165,15 +174,6 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 							(task) => !needle || task.title.toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
 					const projectIds = [...new Set(rows.map((task) => task.projectId))];
 
 					return (
@@ -184,6 +184,13 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 										{data.projects.get(projectId) ?? "Unknown project"}
 									</p>
 									<PagedTable
+										rowSignal={rowSignal}
+										empty={
+											<EmptyState
+												title="Nothing matches"
+												detail="Try a different search, or clear the status filter."
+											/>
+										}
 										exportName="tasks"
 										bulkActions={(chosen) => (
 											<BulkDelete
@@ -254,7 +261,7 @@ export function TasksView({ workspaceId }: { workspaceId: string }) {
 														<button
 															type="button"
 															className={quiet}
-															disabled={rowBusy(advance, task.id)}
+															{...rowActionBusy(rowBusy(advance, task.id))}
 															onClick={() =>
 																advance.mutate({
 																	id: task.id,

@@ -53,11 +53,28 @@ type Slot = {
 	 *
 	 * 🔑 Separate from `rail` because these two belong to the DATA, not to the
 	 * page. Narrowing a list is something you do to the rows in front of you, so
-	 * the controls that do it sit on the table; Export, the view toggle and
-	 * "add one" act on the page as a whole and stay up on the trail.
+	 * the controls that do it sit on the table; Export and "add one" act on the
+	 * page as a whole and stay up on the trail.
 	 */
 	tableRail: HTMLElement | null;
 	setTableRail: (element: HTMLElement | null) => void;
+	/**
+	 * The right end of that same strip, immediately left of Sort.
+	 *
+	 * 🔴 The view toggle used to sit up on the breadcrumb row beside Export, and
+	 * it never looked right there: a 56px switch standing next to a button is
+	 * two different kinds of object on one line, and no amount of matching their
+	 * heights fixes that. It belongs with Sort. Both answer the same question,
+	 * which is how you want to look at these rows, and on the strip it is a
+	 * small control among small controls instead of a lozenge pretending to be
+	 * a button.
+	 *
+	 * ⚠️ Its own slot rather than the end of `tableRail`: that rail is
+	 * `flex-1` and holds the search box, so anything appended to it gets pushed
+	 * around as the box grows.
+	 */
+	viewRail: HTMLElement | null;
+	setViewRail: (element: HTMLElement | null) => void;
 };
 
 const HeaderSlotContext = createContext<Slot | null>(null);
@@ -68,6 +85,7 @@ export function HeaderActionProvider({ children }: { children: ReactNode }) {
 	const [takeovers, setTakeovers] = useState(0);
 	const [rail, setRail] = useState<HTMLElement | null>(null);
 	const [tableRail, setTableRail] = useState<HTMLElement | null>(null);
+	const [viewRail, setViewRail] = useState<HTMLElement | null>(null);
 	const declareTakeover = useCallback(
 		(active: boolean) => setTakeovers((count) => count + (active ? 1 : -1)),
 		[],
@@ -84,8 +102,10 @@ export function HeaderActionProvider({ children }: { children: ReactNode }) {
 			setRail,
 			tableRail,
 			setTableRail,
+			viewRail,
+			setViewRail,
 		}),
-		[action, crumb, takeovers, declareTakeover, rail, tableRail],
+		[action, crumb, takeovers, declareTakeover, rail, tableRail, viewRail],
 	);
 	return (
 		<HeaderSlotContext.Provider value={value}>
@@ -127,6 +147,12 @@ export function useTableRail() {
 		tableRail: slot?.tableRail ?? null,
 		setTableRail: slot?.setTableRail,
 	};
+}
+
+/** The right end of the table strip, beside Sort. See `viewRail`. */
+export function useViewRail() {
+	const slot = useContext(HeaderSlotContext);
+	return { viewRail: slot?.viewRail ?? null, setViewRail: slot?.setViewRail };
 }
 
 /** True while a page-level takeover is showing, so page chrome can stand down. */
@@ -219,7 +245,13 @@ function HeaderAction({
 			 * Same height and radius as every other button on the row, so it reads
 			 * as one of the set; the ink fill is what marks it as the primary.
 			 */
-			className={`${busy ? "shimmer-busy" : ""} flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] outline-none transition-[box-shadow,opacity] duration-150 hover:opacity-90 active:translate-y-px disabled:opacity-60`}
+			/* 🔴 The console's page action, and the fourth ink filled primary to
+			   go. `--console-ink` is off white in dark, so every one of these was a
+			   bright slab sitting on a surface of dark raised controls: the single
+			   element on the page that did not belong to the material everything
+			   else is made of. It is a raised control like the rest, with its
+			   emphasis carried by ink and a stronger edge. */
+			className={`control-raised ${busy ? "shimmer-busy" : ""} flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-[var(--console-line-strong)] px-3 font-medium text-[12px] text-[var(--ink-90)] outline-none disabled:opacity-60`}
 		>
 			{label}
 		</button>

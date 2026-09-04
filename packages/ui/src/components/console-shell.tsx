@@ -4,6 +4,7 @@ import {
 	CaretDownIcon,
 	CaretUpDownIcon,
 	ChatCircleIcon,
+	ChatTeardropDotsIcon,
 	DesktopIcon,
 	GearSixIcon,
 	HeadsetIcon,
@@ -13,7 +14,6 @@ import {
 	PlugsConnectedIcon,
 	PlusCircleIcon,
 	SignOutIcon,
-	SparkleIcon,
 	SquaresFourIcon,
 	SunIcon,
 	TerminalWindowIcon,
@@ -186,10 +186,21 @@ export function SidebarName({
 								style={compact ? {} : undefined}
 								className={`flex min-w-0 items-center gap-1.5 rounded-md ${
 									compact
-										? "h-9 min-w-0 flex-1 border border-[var(--console-line)] bg-[var(--console-panel)] px-3 transition-[box-shadow] duration-150 group-group-active:translate-y-px"
+										? "control-raised h-9 min-w-0 flex-1 border border-[var(--console-line)] pr-3 pl-1"
 										: "h-9 w-full bg-transparent px-2.5 transition-colors group-hover:bg-[rgb(var(--console-ink)/0.06)] group-focus-visible:bg-[rgb(var(--console-ink)/0.06)] group-data-[state=open]:bg-[rgb(var(--console-ink)/0.06)]"
 								}`}
 							>
+								{/* 🔑 The workspace's mark, matching the account button at the
+								    other end of the header. Two controls that both name a
+								    thing you can switch should look like the same kind of
+								    control. */}
+								{compact ? (
+									<InitialsAvatar
+										label={name}
+										shape="squircle"
+										className="size-7 shrink-0 text-[10px]!"
+									/>
+								) : null}
 								<span
 									className={`min-w-0 truncate text-[var(--ink-90)] ${
 										compact ? "text-[12.5px]" : "text-[15px]"
@@ -197,6 +208,13 @@ export function SidebarName({
 								>
 									{name}
 								</span>
+								{/* 🔴 The badge NEVER gets squeezed out.
+								    `shrink-0` on the badge and `min-w-0 truncate` on the name
+								    means a long workspace name gives up its own characters
+								    rather than pushing "Sandbox" off the end. Forgetting you
+								    are in test mode is how somebody takes a real order they
+								    cannot fulfil, or ships against a card that never charged;
+								    the name is the part that can afford to be shortened. */}
 								{badge ? <SidebarBadge label={badge} /> : null}
 								<CaretDownIcon
 									size={compact ? 14 : 15}
@@ -280,13 +298,57 @@ export function SidebarName({
 					 * and it gives the menu a subject, which is what made the earlier
 					 * version feel like a strip of links rather than a card.
 					 */
-					className="w-[17rem] rounded-xl border-[var(--console-line)] bg-[var(--console-pop)] p-1.5 shadow-2xl"
+					/* 🔴 A raised OBJECT, not a sheet of paper.
+					   `shadow-2xl` is a generic blur with no highlight, so the panel
+					   had a dark smudge under it and a hard edge everywhere else. A
+					   switch that protrudes then reads as sticking out of paper,
+					   which is the thing that gave it away.
+
+					   `--lift-panel` is the console's own elevation: a lit top edge,
+					   a contact shadow, and two wider falloffs. The same light that
+					   raises the thumb inside now raises the panel holding it.
+
+					   ⚠️ `border` as well as `border-[…]`. The colour was set without
+					   ever declaring a width, so no border was drawn at all. */
+					/* 🔴 INLINE, not `shadow-[var(--lift-pop)]`.
+					   Three rounds of tuning the value changed nothing on screen
+					   because the class was never emitting the shadow: every working
+					   3D surface in this codebase sets `style={{ boxShadow }}`, and
+					   the popovers were the one place that tried a utility class.
+					   The value was right the whole time; it was not being applied. */
+					style={{ boxShadow: "var(--lift-pop)" }}
+					className="w-[17rem] rounded-xl border-0 bg-[var(--console-pop)] p-1.5"
 				>
 					{/* 🔑 The quick switch. Moving between rehearsal and real money is
 					    the one thing done repeatedly here, and it was otherwise buried
 					    in workspace settings behind two navigations. */}
 					{environment ? (
-						<div className="mb-1 flex items-center gap-1 rounded-lg border border-[var(--console-line)] bg-[var(--console-bg)] p-0.5">
+						/**
+						 * 🔑 A real switch: a channel cut into the panel with a raised
+						 * thumb sliding along it.
+						 *
+						 * It was two buttons where the selected one grew a border and a
+						 * fill. That reads as "one of these is highlighted" rather than
+						 * as a position, and nothing moved, so changing mode felt like
+						 * repainting rather than throwing a switch. Test and live is
+						 * the most consequential toggle in the product; it should feel
+						 * like moving something.
+						 *
+						 * ⚠️ The thumb is one element that TRANSLATES, not two elements
+						 * swapping styles. That is what makes the motion possible at
+						 * all, and it means the label sitting on top never reflows.
+						 */
+						<div className="relative mb-1 flex items-center rounded-lg bg-[var(--console-bg)] p-0.5 shadow-[var(--lift-inset)]">
+							<span
+								aria-hidden="true"
+								style={{
+									transform:
+										environment === "live"
+											? "translateX(0)"
+											: "translateX(100%)",
+								}}
+								className="control-raised pointer-events-none absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-md transition-transform duration-200 ease-out"
+							/>
 							{(["live", "test"] as const).map((mode) => {
 								const on = environment === mode;
 								return (
@@ -294,15 +356,23 @@ export function SidebarName({
 										key={mode}
 										type="button"
 										disabled={!onEnvironment || busy}
+										/* 🔑 The popover STAYS OPEN.
+										   Closing it swallowed the one thing the switch is
+										   for: you pressed Sandbox, the panel vanished, and
+										   the thumb travelled where you could not see it. So
+										   the most consequential toggle in the product gave no
+										   feedback at all at the moment it mattered.
+
+										   It now behaves like a switch and not like a menu
+										   choice: the thumb slides, the badge above updates,
+										   and you close it yourself when you are satisfied. */
 										onClick={() => {
 											if (!onEnvironment) return;
 											onEnvironment(mode);
-											setOpen(false);
 										}}
-										style={on ? {} : undefined}
-										className={`h-7 flex-1 rounded-md text-[11.5px] transition-colors disabled:cursor-not-allowed ${
+										className={`relative z-10 h-7 flex-1 rounded-md text-[11.5px] transition-colors disabled:cursor-not-allowed ${
 											on
-												? "border border-[var(--console-line)] bg-[var(--console-panel)] text-[var(--ink-90)]"
+												? "text-[var(--ink-90)]"
 												: "text-[var(--ink-40)] enabled:hover:text-[var(--ink-75)] disabled:text-[var(--ink-20)]"
 										}`}
 									>
@@ -313,7 +383,10 @@ export function SidebarName({
 						</div>
 					) : null}
 					{current ? (
-						<div className="mb-1 flex items-center gap-2.5 rounded-lg bg-[rgb(var(--console-ink)/0.06)] px-2 py-2">
+						/* No permanent fill, for the same reason as the account menu:
+						   a filled block inside a padded panel is a box in a box. The
+						   avatar and the two lines already say which workspace this is. */
+						<div className="mb-1 flex items-center gap-2.5 rounded-lg px-2 py-2">
 							<InitialsAvatar
 								label={current.name}
 								shape="squircle"
@@ -446,7 +519,8 @@ export function SidebarSwitcher({
 				align="start"
 				sideOffset={8}
 				aria-label={`${label} switcher`}
-				className="h-16 w-[16.5rem] border-[var(--console-line)] bg-[var(--console-pop)] p-0 shadow-2xl"
+				style={{ boxShadow: "var(--lift-pop)" }}
+				className="h-16 w-[16.5rem] rounded-xl border-0 bg-[var(--console-pop)] p-0"
 			/>
 		</Popover>
 	);
@@ -475,7 +549,7 @@ export function ConsoleBell({
 			aria-label={`Notifications${count > 0 ? " (new)" : ""}`}
 			onClick={onClick}
 			style={{}}
-			className={`flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] transition-[box-shadow,color] duration-150 hover:text-[var(--ink-90)] active:translate-y-px ${
+			className={`control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] hover:text-[var(--ink-90)] ${
 				active ? "text-[var(--ink-85)]" : "text-[var(--ink-40)]"
 			}`}
 		>
@@ -530,11 +604,18 @@ export function ConsoleAssistant({
 			aria-pressed={open}
 			onClick={onClick}
 			style={{}}
-			className={`flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] transition-[box-shadow,color] duration-150 active:translate-y-px ${
-				open ? "text-[var(--ink-85)]" : "text-[var(--ink-40)]"
+			/* 🔴 INK, not a fill. A solid glyph is a different drawing of the same
+			   icon, so an open panel changed the shape of its own button and the two
+			   states read as two controls. The plus beside it has always said "on"
+			   by going brighter, and now these do too: one language for every
+			   toggle in the bar. */
+			className={`control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] transition-colors ${
+				open
+					? "text-[var(--ink-90)]"
+					: "text-[var(--ink-40)] hover:text-[var(--ink-90)]"
 			}`}
 		>
-			<SparkleIcon size={17} weight={open ? "fill" : "regular"} />
+			<ChatTeardropDotsIcon size={17} />
 		</button>
 	);
 }
@@ -570,7 +651,7 @@ export function ConsoleIntegrations({
 			aria-pressed={open}
 			title="Integrations"
 			onClick={onClick}
-			className={`relative flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] transition-colors duration-150 hover:text-[var(--ink-90)] active:translate-y-px ${
+			className={`relative control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] hover:text-[var(--ink-90)] ${
 				open ? "text-[var(--ink-90)]" : "text-[var(--ink-40)]"
 			}`}
 		>
@@ -602,7 +683,7 @@ export function ConsoleTerminal({
 			aria-pressed={open}
 			title="Developer console"
 			onClick={onClick}
-			className={`flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] transition-colors duration-150 hover:text-[var(--ink-90)] active:translate-y-px ${
+			className={`control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] hover:text-[var(--ink-90)] ${
 				open ? "text-[var(--ink-90)]" : "text-[var(--ink-40)]"
 			}`}
 		>
@@ -625,11 +706,14 @@ export function ConsoleTools({
 			aria-pressed={open}
 			onClick={onClick}
 			style={{}}
-			className={`flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] transition-[box-shadow,color] duration-150 active:translate-y-px ${
-				open ? "text-[var(--ink-85)]" : "text-[var(--ink-40)]"
+			/* Ink, not a fill. See the note on the assistant button. */
+			className={`control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] transition-colors ${
+				open
+					? "text-[var(--ink-90)]"
+					: "text-[var(--ink-40)] hover:text-[var(--ink-90)]"
 			}`}
 		>
-			<SquaresFourIcon size={17} weight={open ? "fill" : "regular"} />
+			<SquaresFourIcon size={17} />
 		</button>
 	);
 }
@@ -653,9 +737,16 @@ export function ConsoleTheme() {
 		<button
 			type="button"
 			aria-label={`Theme: ${current}. Switch to ${next}.`}
-			onClick={() => setTheme(next)}
-			style={{}}
-			className="flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] text-[var(--ink-40)] transition-[box-shadow,color] duration-150 hover:text-[var(--ink-90)] active:translate-y-px"
+			/* The reveal starts at the button, so the theme reads as spreading out
+			   from the thing you pressed rather than arriving from nowhere. */
+			onClick={(event) => {
+				const box = event.currentTarget.getBoundingClientRect();
+				setTheme(next, {
+					x: box.left + box.width / 2,
+					y: box.top + box.height / 2,
+				});
+			}}
+			className="control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] text-[var(--ink-40)] hover:text-[var(--ink-90)]"
 		>
 			<Icon size={16} />
 		</button>
@@ -741,18 +832,18 @@ export function SidebarAccount({
 				style={compact ? {} : undefined}
 				className={
 					compact
-						? "group flex h-9 shrink-0 items-center gap-2 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] pr-3 pl-1.5 outline-none transition-[box-shadow] duration-150 active:translate-y-px"
+						? "control-raised group flex h-9 shrink-0 items-center gap-2 rounded-md border border-[var(--console-line)] pr-3 pl-1 outline-none"
 						: "group flex w-full min-w-0 items-center gap-2.5 px-3 py-2.5 text-left outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] focus-visible:bg-[rgb(var(--console-ink)/0.055)]"
 				}
 			>
 				<InitialsAvatar
 					label={name || "Account"}
 					shape={compact ? "squircle" : "circle"}
-					className={
-						compact
-							? "size-7 shrink-0 text-[10px]!"
-							: "size-7 shrink-0 text-[10px]!"
-					}
+					/* 28px in a 36px button with 4px of left padding, so the gap is
+					   4px on the left, the top and the bottom. Identical to the
+					   workspace switcher at the other end of the header: they are the
+					   same kind of control and must not be two sizes. */
+					className="size-7 shrink-0 text-[10px]!"
 				/>
 				{/* 🔑 The NAME, not just the mark. An avatar alone is a puzzle on a
 				    product somebody may share a machine for — it says "an account",
@@ -801,13 +892,26 @@ export function SidebarAccount({
 				aria-label="Account menu"
 				// The same card as the switcher's, at the same width: two menus opened
 				// from the same bar that are different widths read as two components.
-				className="flex w-[21rem] flex-col gap-0.5 rounded-xl border-[var(--console-line)] bg-[var(--console-pop)] p-1.5 shadow-2xl"
+				style={{ boxShadow: "var(--lift-pop)" }}
+				className="flex w-[17rem] flex-col gap-0.5 rounded-xl border-0 bg-[var(--console-pop)] p-1.5"
 			>
 				<Link
 					href={accountHref("/settings/profile")}
-					// The same filled block the switcher uses for its current entry:
-					// this menu's subject is you, so you are the thing it opens with.
-					className="mb-1 flex w-full items-center gap-2.5 rounded-lg bg-[rgb(var(--console-ink)/0.06)] px-2 py-2 text-[var(--ink-85)] no-underline outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.09)]"
+					/* 🔴 No permanent fill.
+					   It used to be a filled block, and with the panel's own 6px of
+					   padding that left a grey rectangle running almost edge to edge
+					   with a sliver of panel around it: a box inside a box. Every
+					   other popover in the console puts its content straight on the
+					   panel and separates sections with a rule, which is why they
+					   read as one object and this read as two.
+
+					   ⚠️ It still fills on HOVER, like every other row here. A
+					   permanent fill says "selected", and you are not a menu choice.
+
+					   And no rule under it either: the block is already set apart by
+					   being two lines of a different size, so a line as well is the
+					   panel saying the same thing twice. */
+					className="mb-1 flex w-full items-center gap-2.5 rounded-lg px-2 pt-1 pb-2 text-[var(--ink-85)] no-underline outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)]"
 				>
 					<InitialsAvatar
 						label={name || "Account"}
@@ -948,8 +1052,18 @@ const RAIL_KEY = "quickengine-console-rail";
  * Navigation is a list of short labels; this holds prose, and prose at 240px is
  * a column of two-word lines.
  */
-const AIDE_DEFAULT = 360;
-const AIDE_MIN = 300;
+/**
+ * 🔴 The MINIMUM went up, and it is the number that matters here.
+ *
+ * 300px was set when this column held a paragraph and a one line input. It now
+ * holds a conversation and a composer carrying an integrations button, a model
+ * name and Send on one row, and at 300 that row runs out of space before the
+ * model name is readable. A panel somebody can drag into uselessness is a panel
+ * that will be dragged into uselessness, so the floor moves rather than the
+ * controls getting smaller.
+ */
+const AIDE_DEFAULT = 400;
+const AIDE_MIN = 360;
 const AIDE_MAX = 620;
 const AIDE_KEY = "quickengine-console-aide";
 
@@ -1643,7 +1757,12 @@ export function ConsoleShell({
 			style={{ gap: "6px" }}
 			// ⚠️ Always `h-svh`. It used to be `flex-1` whenever a banner was showing,
 			// which is what made entering sandbox move everything.
-			className="relative flex h-svh min-h-0 flex-col overflow-hidden bg-[var(--console-floor)] p-1.5"
+			/* 🔑 `--console-ground` rather than `--console-floor`. An app that
+			   wants a plain floor sets the two to the same value and nothing
+			   changes; one that wants something behind its panels sets the ground
+			   transparent and paints its own. The shell does not need to know
+			   which, and no app has to fork the frame to find out. */
+			className="relative z-10 flex h-svh min-h-0 flex-col overflow-hidden bg-[var(--console-ground)] p-1.5"
 		>
 			{header && !focused ? (
 				/**
@@ -1660,7 +1779,7 @@ export function ConsoleShell({
 				 */
 				<div
 					style={{ boxShadow: "var(--console-lift)" }}
-					className="flex h-14 shrink-0 items-center overflow-hidden rounded-2xl border border-[var(--console-line)] bg-[var(--console-bg)] px-2"
+					className="control-tray flex h-14 shrink-0 items-center overflow-hidden rounded-2xl border border-[var(--console-line)] px-2"
 				>
 					{header}
 				</div>

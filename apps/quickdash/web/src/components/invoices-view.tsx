@@ -8,7 +8,13 @@ import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { InvoicePanel } from "./module-panels";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 
 /**
  * Invoices — money asked for but not yet in hand.
@@ -169,19 +175,16 @@ export function InvoicesView({ workspaceId }: { workspaceId: string }) {
 								(invoice.clientName ?? "").toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
 					const _overdue = rows.filter(isOverdue).length;
 
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the status filter."
+								/>
+							}
 							exportName="invoices"
 							bulkActions={(chosen) => (
 								<BulkDelete
@@ -268,7 +271,7 @@ export function InvoicesView({ workspaceId }: { workspaceId: string }) {
 													key={status}
 													type="button"
 													className={quiet}
-													disabled={rowBusy(setStatus, invoice.id)}
+													{...rowActionBusy(rowBusy(setStatus, invoice.id))}
 													onClick={() =>
 														setStatus.mutate({ id: invoice.id, status })
 													}

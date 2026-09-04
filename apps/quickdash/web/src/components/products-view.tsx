@@ -4,7 +4,9 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { type CatalogItem, compareAt, imagesOf, money } from "../lib/catalog";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { useSelectedRecord } from "../lib/selected-record";
+import { BulkDelete } from "./bulk-delete";
 import { useHeaderAction, useHeaderCrumb } from "./header-action";
 import { ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
@@ -72,6 +74,8 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 	const [statuses, setStatuses] = useState<string[]>([]);
 	const [selectedId, setSelectedId] = useSelectedRecord();
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 
 	const queryClient = useQueryClient();
 
@@ -208,6 +212,16 @@ export function ProductsView({ workspaceId }: { workspaceId: string }) {
 			>
 				{() => (
 					<PagedTable
+						bulkActions={(chosen) => (
+							<BulkDelete
+								workspaceId={workspaceId}
+								rows={chosen}
+								path="/catalog"
+								noun="products"
+								invalidate={["quickdash", workspaceId, "catalog"]}
+							/>
+						)}
+						rowSignal={rowSignal}
 						workspaceId={workspaceId}
 						layout={layout}
 						caption="Products"

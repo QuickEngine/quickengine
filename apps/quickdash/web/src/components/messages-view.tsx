@@ -190,6 +190,7 @@ function Thread({
 				<button
 					type="submit"
 					className={solid}
+					title={body.trim() ? undefined : "Write a reply first"}
 					disabled={reply.isPending || !body.trim()}
 				>
 					{reply.isPending ? "Sending…" : "Send"}
@@ -219,6 +220,11 @@ export function MessagesView({ workspaceId }: { workspaceId: string }) {
 	return (
 		<main className="min-h-full bg-[var(--console-bg)] px-5 py-5">
 			<ListControls
+				/* Parity: every other list exports what you can see. A conversation
+				   list is exactly the thing somebody wants out of the console when
+				   they are asked "what did we tell that customer". */
+				exportRows={() => conversations.data?.items ?? []}
+				exportName="conversations"
 				onClearFilter={() => statusFilter.clear()}
 				filter={statusFilter.chips("Status", ["open", "closed"])}
 				filterCount={statusFilter.count}
@@ -250,16 +256,14 @@ export function MessagesView({ workspaceId }: { workspaceId: string }) {
 									.includes(needle) ||
 								(conversation.subject ?? "").toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							rowSignal={rowSignal}
 							workspaceId={workspaceId}
 							layout={layout}

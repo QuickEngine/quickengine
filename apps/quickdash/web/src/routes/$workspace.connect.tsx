@@ -1,4 +1,10 @@
-import { ArrowUpRightIcon, CheckIcon, CopyIcon } from "@phosphor-icons/react";
+import {
+	ArrowUpRightIcon,
+	CheckIcon,
+	CopyIcon,
+	MagnifyingGlassIcon,
+	TerminalWindowIcon,
+} from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -13,6 +19,7 @@ import { Card } from "../components/dash-card";
 import { SkeletonRows } from "../components/skeletons";
 import { WorkingSpinner } from "../components/working-spinner";
 import { sessionApi, workspaceApi } from "../lib/api";
+import { useDevConsole } from "../lib/dev-console";
 import { clientEnv } from "../lib/env";
 import { quickDashQueries } from "../lib/quickdash-api";
 import { webhookQueries } from "../lib/webhooks-api";
@@ -52,32 +59,48 @@ const TARGETS: ReadonlyArray<{
 	},
 ];
 
+/**
+ * Every small action on this page.
+ *
+ * 🔴 A rectangle with a raised face, like the rest of the console. These were
+ * pill shaped outlines with a hover tint: the shape said "tag" and the surface
+ * said nothing, on the one page a developer reads carefully.
+ *
+ * ⚠️ `self-start` is not cosmetic. `Card` is a flex column, so a child with no
+ * width of its own is stretched the full width of the card, and "Issue a key"
+ * was rendering as a button the width of the panel. `inline-flex` does not save
+ * you: the stretch comes from the PARENT's `align-items`, not from the child.
+ */
 const quietAction =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)]";
+	"control-raised inline-flex h-7 shrink-0 self-start items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]";
 
 function Snippet({ label, value }: { label: string; value: string }) {
 	const [copied, setCopied] = useState(false);
 	return (
 		<div className="mt-3">
-			<div className="mb-1.5 flex items-center gap-2">
-				<p className="min-w-0 flex-1 text-[11px] text-[var(--ink-30)]">
-					{label}
-				</p>
+			<p className="mb-1.5 text-[11px] text-[var(--ink-30)]">{label}</p>
+			{/* 🔴 The one control on this page that is NOT a raised key, on purpose.
+			    Copy belongs to the block it copies, so it sits inside it: a button
+			    floating above the code is a thing you have to aim at, and three of
+			    them stacked down the card turned into a column of buttons with the
+			    snippets as an afterthought. Quiet until you go near it. */}
+			<div className="group relative">
+				<pre className="overflow-x-auto rounded-lg border border-[var(--console-line-strong)] bg-[rgb(var(--console-ink)/0.03)] p-3.5 pr-10 font-mono text-[11.5px] text-[var(--ink-80)] leading-5">
+					{value}
+				</pre>
 				<button
 					type="button"
 					onClick={() => {
 						void navigator.clipboard.writeText(value);
 						setCopied(true);
 					}}
-					className={quietAction}
+					aria-label={copied ? "Copied" : "Copy"}
+					title={copied ? "Copied" : "Copy"}
+					className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-md text-[var(--ink-30)] opacity-0 transition-opacity hover:text-[var(--ink-85)] focus-visible:opacity-100 group-hover:opacity-100"
 				>
-					<CopyIcon size={11} className="mr-1.5" />
-					{copied ? "Copied" : "Copy"}
+					{copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
 				</button>
 			</div>
-			<pre className="overflow-x-auto rounded-lg border border-[var(--console-line-strong)] bg-[rgb(var(--console-ink)/0.03)] p-3.5 font-mono text-[11.5px] text-[var(--ink-80)] leading-5">
-				{value}
-			</pre>
 		</div>
 	);
 }
@@ -220,6 +243,12 @@ function ConnectPage() {
 								type="button"
 								aria-pressed={target === entry.id}
 								onClick={() => setTarget(entry.id)}
+								/* ⚠️ Deliberately NOT raised. These are the biggest objects on
+								   the page, and three raised slabs here would sit higher than
+								   anything else in the console. Elevation is a scale: spend
+								   the top of it on a radio group and every surface that
+								   earned its height is worth less. A tint and an edge say
+								   which one is chosen perfectly well. */
 								className={`rounded-lg border p-3 text-left transition-colors ${
 									target === entry.id
 										? "border-[rgb(var(--console-ink)/0.25)] bg-[rgb(var(--console-ink)/0.04)]"
@@ -371,18 +400,34 @@ function ConnectPage() {
 						Every response carries a request ID. Paste one here to see what the
 						API actually did, the mutation it committed and the audit it wrote.
 					</p>
+					{/* The console's search, not a form field. Every other place you
+					    type to find something in QuickDash looks like this: a raised
+					    control with the glass in it, and the action beside it. */}
 					<div className="mt-3 flex flex-wrap items-center gap-2">
-						<input
-							value={requestId}
-							onChange={(event) => setRequestId(event.target.value)}
-							placeholder="0b6f2c1e-…"
-							aria-label="Request ID"
-							className="h-9 w-72 max-w-full rounded-full border border-[var(--console-line-strong)] bg-transparent px-3.5 font-mono text-[11.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-25)] focus:border-[rgb(var(--console-ink)/0.18)]"
-						/>
+						<label className="control-raised flex h-8 w-72 max-w-full items-center gap-2 rounded-md border px-2.5">
+							<MagnifyingGlassIcon
+								size={13}
+								aria-hidden="true"
+								className="shrink-0 text-[var(--ink-35)]"
+							/>
+							<input
+								value={requestId}
+								onChange={(event) => setRequestId(event.target.value)}
+								onKeyDown={(event) => {
+									// Typing an id and pressing enter is the whole gesture; making
+									// somebody reach for the button afterwards is a step for
+									// nothing.
+									if (event.key === "Enter") void runLookup();
+								}}
+								placeholder="0b6f2c1e-…"
+								aria-label="Request ID"
+								className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-25)]"
+							/>
+						</label>
 						<button
 							type="button"
 							onClick={() => void runLookup()}
-							className={quietAction}
+							className="control-raised flex h-8 shrink-0 items-center rounded-md border px-2.5 text-[11.5px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 						>
 							Look up
 						</button>
@@ -550,9 +595,42 @@ function ConnectPage() {
 						))}
 					</div>
 				</Card>
+
+				{/* 🔴 The developer console's new way in. The strip itself still docks
+				    across the bottom of the window, because a log is watched out of
+				    the corner of the eye while you work on something else. What it
+				    lost is a permanent icon in the console header, beside controls
+				    every operator presses daily, for a tool most workspaces will
+				    never open once. It belongs at the end of the page somebody
+				    already goes to when they are wiring something up. */}
+				<DevConsoleCard />
 			</div>
-			errorComponent: OutletError, notFoundComponent: OutletNotFound,
 		</main>
+	);
+}
+
+/** Opens the docked console strip. Absent outside the workspace shell. */
+function DevConsoleCard() {
+	const devConsole = useDevConsole();
+	if (!devConsole) return null;
+	return (
+		<Card title="Live console" className="lg:col-span-2">
+			<p className="text-[12px] text-[var(--ink-45)] leading-5">
+				Every request this workspace handled and every webhook it sent, as they
+				happen. It opens across the bottom of the window so you can watch it
+				while you work.
+			</p>
+			<button
+				type="button"
+				onClick={() => devConsole.setOpen(!devConsole.open)}
+				/* `self-start`: `Card` is a flex column, so without it this stretched
+				   the whole width of the panel. Same reason as `quietAction`. */
+				className="control-raised mt-3 flex h-8 shrink-0 self-start items-center gap-1.5 rounded-md border px-2.5 text-[12px] text-[var(--ink-70)] outline-none hover:text-[var(--ink-90)]"
+			>
+				<TerminalWindowIcon size={14} />
+				{devConsole.open ? "Hide the console" : "Open the console"}
+			</button>
+		</Card>
 	);
 }
 

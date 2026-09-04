@@ -31,8 +31,24 @@ export function Card({
 			/* `h-full`: in a bento the tile fills the cells it was given, so a
 			   two-row card is genuinely twice the height rather than a short card
 			   floating in a tall hole. */
-			style={{ boxShadow: "var(--card-lift)" }}
-			className={`flex h-full min-w-0 flex-col rounded-xl border border-[var(--console-line)] bg-[var(--console-card)] p-4 ${className}`}
+			/* 🔴 `--lift-card`, not `--card-lift`.
+			   Two tokens one letter apart: `--card-lift` is the original 2px drop
+			   and `--lift-card` is the console's real relief, the lit top edge and
+			   shaded underside every raised surface now shares. The dashboard was
+			   still on the old one, which is why its cards read flat next to the
+			   header.
+
+			   ⚠️ NOT `--lift-pop`. That adds the long casts a floating panel needs;
+			   a tile is resting on the page, and giving it the same drop would put
+			   eight hovering rectangles on one screen.
+
+			   🔴 `--surface-tile`, NOT the header's `--surface-card`.
+			   The header is a light tray carrying lighter buttons. The outlet is a
+			   near black plane and its cards rise out of THAT, so borrowing the
+			   header's face put a bright slab on a dark floor. Four steps off the
+			   ground: the relief does the work, not the brightness. */
+			style={{ boxShadow: "var(--lift-card)" }}
+			className={`flex h-full min-w-0 flex-col rounded-xl border border-[var(--console-line)] bg-[var(--surface-tile)] p-4 ${className}`}
 		>
 			{title || action ? (
 				<div className="mb-3 flex min-w-0 items-center justify-between gap-3">

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { money } from "../lib/catalog";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState, ReadOnlyNote } from "./page-state";
@@ -81,6 +82,8 @@ const STATUS_TONE: Record<string, string> = {
  */
 export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const statusFilter = useChipFilter();
 	const [search, setSearch] = useState("");
 
@@ -147,16 +150,18 @@ export function PurchaseOrdersView({ workspaceId }: { workspaceId: string }) {
 									.toLowerCase()
 									.includes(needle),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
+					/* No bulk delete, deliberately.
+						    Raised automatically by a paid order and read only throughout. See
+						    the note at the top of this file. */
 					return (
 						<PagedTable
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Purchase orders"

@@ -166,7 +166,8 @@ export function WorkspaceSearch({
 			/* 🔑 The same surface as the settings dialog: one flat `--console-pop` with a
 			   single hairline, no inner panel and no second background behind the
 			   input. Two tones inside one small dialog read as a box in a box. */
-			className="top-[18%] translate-y-0 gap-0 rounded-xl border-[var(--console-line)] bg-[var(--console-pop)] p-0 text-[var(--ink-90)] shadow-2xl sm:max-w-xl [&_[data-slot=command-input-wrapper]]:h-11 [&_[data-slot=command-input-wrapper]]:border-[var(--console-line-soft)] [&_[data-slot=command-input-wrapper]]:px-3 [&_[data-slot=command]]:bg-transparent"
+			contentStyle={{ boxShadow: "var(--lift-pop)" }}
+			className="top-[18%] translate-y-0 gap-0 rounded-xl border-0 bg-[var(--console-pop)] p-0 text-[var(--ink-90)] sm:max-w-xl [&_[data-slot=command-input-wrapper]]:h-11 [&_[data-slot=command-input-wrapper]]:border-[var(--console-line-soft)] [&_[data-slot=command-input-wrapper]]:px-3 [&_[data-slot=command]]:bg-transparent"
 		>
 			<CommandInput
 				value={query}

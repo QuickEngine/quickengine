@@ -4,6 +4,7 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useRef,
 	useState,
 } from "react";
 import { flushSync } from "react-dom";
@@ -34,7 +35,79 @@ import { flushSync } from "react-dom";
  * runs after the browser has already painted. That script reads the same cookie,
  * so it must stay in step with this file.
  */
+/**
+ * ⚠️ `slate` is a DARK theme, not a third kind of thing. Everywhere this type is
+ * checked, ask "is it dark?" rather than "is it `dark`?" — the one place that
+ * matters is `applyTheme`, which is why the check lives there and nowhere else.
+ */
+/** Light, dark, or follow the machine. Nothing else belongs on this axis. */
 export type Theme = "light" | "dark" | "system";
+
+/**
+ * The colour families. `neutral` is the base every other one layers on, so it
+ * has no class of its own.
+ *
+ * 🔑 Independent of light and dark. Somebody who prefers Sepia keeps Sepia when
+ * their machine switches to light in the evening, which is the whole reason
+ * these are two axes and not one list of "ocean" and "ocean light".
+ */
+export const PALETTES = [
+	"neutral",
+	"obsidian",
+	"abyss",
+	"void",
+	"sandstone",
+	"linen",
+	"concrete",
+	"gloaming",
+	"harvest",
+	"lagoon",
+	"tundra",
+	"aubergine",
+	"driftwood",
+	"pewter",
+	"sage",
+	"ultraviolet",
+	"inferno",
+	"acid",
+	"flamingo",
+	"cyber",
+	"fog",
+	"dune",
+	"juniper",
+	"plumsmoke",
+	"cinder",
+	"emerald",
+	"sapphire",
+	"ruby",
+	"topaz",
+	"amethyst",
+	"crt",
+	"polaroid",
+	"typewriter",
+	"oxide",
+	"glacier",
+	"monsoon",
+	"savanna",
+	"canyon",
+	"reef",
+	"meadow",
+	"thunder",
+	"aurora",
+	"espresso",
+	"matcha",
+	"honey",
+	"mulberry",
+	"outrun",
+	"arcade",
+	"blueprint",
+	"peacock",
+	"parchment",
+] as const;
+
+export type Palette = (typeof PALETTES)[number];
+
+const PALETTE_KEY = "quickengine-palette";
 
 const STORAGE_KEY = "quickengine-theme";
 
@@ -74,7 +147,14 @@ export type ThemeOrigin = { x: number; y: number };
 const ThemeContext = createContext<{
 	theme: Theme;
 	setTheme: (theme: Theme, origin?: ThemeOrigin) => void;
-}>({ theme: "dark", setTheme: () => {} });
+	palette: Palette;
+	setPalette: (palette: Palette, origin?: ThemeOrigin) => void;
+}>({
+	theme: "dark",
+	setTheme: () => {},
+	palette: "neutral",
+	setPalette: () => {},
+});
 
 /**
  * The repaint.
@@ -132,10 +212,28 @@ const paint = (commit: () => void, origin?: ThemeOrigin) => {
 const systemPrefersDark = () =>
 	window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-const applyTheme = (theme: Theme) => {
+const applyTheme = (theme: Theme, palette: Palette) => {
 	const dark = theme === "dark" || (theme === "system" && systemPrefersDark());
 	document.documentElement.classList.toggle("dark", dark);
 	document.documentElement.classList.toggle("light", !dark);
+	/**
+	 * 🔴 `slate` sits ON TOP of `dark`, both classes at once. It restates only
+	 * the grounds and surfaces; everything derived from them comes from the dark
+	 * theme underneath, so the two can never drift apart the way two independent
+	 * palettes would.
+	 */
+	/**
+	 * 🔴 The family sits ON TOP of the mode, both classes at once. Each palette
+	 * restates only the grounds and surfaces; everything derived from them comes
+	 * from light or dark underneath, so a family can never drift out of step
+	 * with the theme it is layered on.
+	 */
+	for (const family of PALETTES) {
+		document.documentElement.classList.toggle(
+			family,
+			family !== "neutral" && family === palette,
+		);
+	}
 };
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -147,19 +245,40 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 			(localStorage.getItem(STORAGE_KEY) as Theme | null) ??
 			"system",
 	);
+	const [palette, setPaletteState] = useState<Palette>(() => {
+		// Storage throws outright in a few real cases; a colour preference is
+		// never worth failing to render over.
+		try {
+			const saved = localStorage.getItem(PALETTE_KEY) as Palette | null;
+			return saved && PALETTES.includes(saved) ? saved : "neutral";
+		} catch {
+			return "neutral";
+		}
+	});
+
+	/**
+	 * ⚠️ A ref beside the state. `setTheme` is created once, so it would close
+	 * over the palette as it was on first render and repaint into the wrong
+	 * family. The ref is the live value.
+	 */
+	const paletteRef = useRef(palette);
+	paletteRef.current = palette;
+
+	const themeRef = useRef(theme);
+	themeRef.current = theme;
 
 	useEffect(() => {
-		applyTheme(theme);
+		applyTheme(theme, palette);
 		// Also on mount, which migrates a browser that only has the old
 		// `localStorage` value onto the cookie the other apps can read.
 		writeCookie(theme);
 		if (theme !== "system") return;
 		// Only while following the OS: react to the user changing it mid-session.
 		const media = window.matchMedia("(prefers-color-scheme: dark)");
-		const onChange = () => applyTheme("system");
+		const onChange = () => applyTheme("system", palette);
 		media.addEventListener("change", onChange);
 		return () => media.removeEventListener("change", onChange);
-	}, [theme]);
+	}, [theme, palette]);
 
 	const setTheme = useCallback((next: Theme, origin?: ThemeOrigin) => {
 		paint(() => {
@@ -175,12 +294,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 			 * animation would reveal a copy of what was already there.
 			 */
 			flushSync(() => setThemeState(next));
-			applyTheme(next);
+			applyTheme(next, paletteRef.current);
+		}, origin);
+	}, []);
+
+	const setPalette = useCallback((next: Palette, origin?: ThemeOrigin) => {
+		paint(() => {
+			try {
+				localStorage.setItem(PALETTE_KEY, next);
+			} catch {
+				// It applies for this session and simply is not remembered.
+			}
+			flushSync(() => setPaletteState(next));
+			applyTheme(themeRef.current, next);
 		}, origin);
 	}, []);
 
 	return (
-		<ThemeContext.Provider value={{ theme, setTheme }}>
+		<ThemeContext.Provider value={{ theme, setTheme, palette, setPalette }}>
 			{children}
 		</ThemeContext.Provider>
 	);

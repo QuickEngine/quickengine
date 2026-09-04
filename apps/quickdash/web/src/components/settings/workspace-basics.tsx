@@ -1,5 +1,4 @@
-import { DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
-import { useTheme } from "@quickengine/ui";
+import { ConsoleTheme } from "@quickengine/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { sessionApi } from "../../lib/api";
@@ -37,7 +36,6 @@ export function WorkspaceGeneral({
 	apiUrl: string;
 }) {
 	const queryClient = useQueryClient();
-	const { theme, setTheme } = useTheme();
 	const org = encodeURIComponent(organizationId ?? "");
 	const [draft, setDraft] = useState(name);
 	/**
@@ -132,7 +130,7 @@ export function WorkspaceGeneral({
 							setDraft(event.target.value);
 							setSaved(false);
 						}}
-						className="h-8 w-[15rem] max-w-full rounded-md border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[12px] text-[var(--ink-85)] outline-none transition-colors focus:border-[rgb(var(--console-ink)/0.25)]"
+						className="h-8 w-[15rem] max-w-full field rounded-md px-2.5 text-[12px] text-[var(--ink-85)] outline-none transition-colors"
 					/>
 				</Row>
 				<Row
@@ -154,16 +152,9 @@ export function WorkspaceGeneral({
 					label="Appearance"
 					description="Applies to you everywhere, QuickDash, Account and the sign-in screens."
 				>
-					<Segments
-						label="Appearance"
-						value={theme ?? "system"}
-						onChange={(next) => setTheme(next as "light" | "dark" | "system")}
-						options={[
-							{ value: "system", label: "System", Icon: DesktopIcon },
-							{ value: "light", label: "Light", Icon: SunIcon },
-							{ value: "dark", label: "Dark", Icon: MoonIcon },
-						]}
-					/>
+					{/* 🔴 The console's own control, not a copy. Two lists of themes are two
+					    chances to disagree about what exists. */}
+					<ConsoleTheme />
 				</Row>
 				<Row
 					label="Mode"
@@ -247,10 +238,7 @@ export function WorkspaceUsage({
 							 * answers "by how much", so the bar takes the slack in the
 							 * middle rather than being squeezed into a control column.
 							 */
-							<div
-								key={meter.meter}
-								className="flex items-center gap-6 border-[var(--console-line-soft)] border-b py-4 last:border-b-0"
-							>
+							<div key={meter.meter} className="flex items-center gap-6 py-4">
 								<div className="w-[11rem] shrink-0">
 									<p className="text-[12.5px] text-[var(--ink-85)]">
 										{METER_LABELS[meter.meter] ?? meter.meter}

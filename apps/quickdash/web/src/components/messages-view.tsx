@@ -39,7 +39,7 @@ type Message = {
 };
 
 const quiet =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
+	"control-raised inline-flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)] disabled:opacity-40";
 
 const solid =
 	"inline-flex h-8 shrink-0 items-center rounded-full bg-[rgb(var(--console-ink))] px-3.5 text-[12px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40";
@@ -122,7 +122,7 @@ function Thread({
 
 	return (
 		<aside className={detailCard}>
-			<header className="flex items-center gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
+			<header className="flex items-center gap-3 px-4 py-3">
 				<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
 					{thread.data?.customerName ?? "Conversation"}
 				</p>
@@ -167,14 +167,14 @@ function Thread({
 			{replyFailure ? (
 				<p
 					role="alert"
-					className="border-[var(--console-line-soft)] border-t px-4 pt-3 text-[11.5px] text-[var(--signal-attention-text)]"
+					className="px-4 pt-3 text-[11.5px] text-[var(--signal-attention-text)]"
 				>
 					{replyFailure}
 				</p>
 			) : null}
 
 			<form
-				className="flex items-end gap-2 border-[var(--console-line-soft)] border-t px-4 py-3"
+				className="flex items-end gap-2 px-4 py-3"
 				onSubmit={(event) => {
 					event.preventDefault();
 					if (body.trim()) reply.mutate();
@@ -185,12 +185,12 @@ function Thread({
 					onChange={(event) => setBody(event.target.value)}
 					placeholder="Write a reply"
 					rows={2}
-					className="min-h-0 flex-1 resize-none rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 py-2 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]"
+					className="min-h-0 flex-1 resize-none field rounded-md px-3 py-2 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)]"
 				/>
 				<button
 					type="submit"
 					className={solid}
-					title={body.trim() ? undefined : "Write a reply first"}
+					data-hint={body.trim() ? undefined : "Write a reply first"}
 					disabled={reply.isPending || !body.trim()}
 				>
 					{reply.isPending ? "Sending…" : "Send"}

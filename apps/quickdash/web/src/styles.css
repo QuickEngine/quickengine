@@ -261,17 +261,21 @@ body,
 /* ICE along the very bottom edge, the highlight on the crest. */
 		radial-gradient(
 			70% 26% at 26% 104%,
-			#cfe3f21f 0%,
-			#cfe3f20a 40%,
+			color-mix(in srgb, var(--glow-crest) 12%, transparent) 0%,
+			color-mix(in srgb, var(--glow-crest) 4%, transparent) 40%,
 			transparent 72%
 		),
 		/* The crest, palest and smallest, furthest up the diagonal. */
-		radial-gradient(58% 42% at 40% 108%, #7fa8c92b 0%, transparent 68%),
+		radial-gradient(
+			58% 42% at 40% 108%,
+			color-mix(in srgb, var(--glow-crest) 17%, transparent) 0%,
+			transparent 68%
+		),
 		/* The body of the wave. */
 		radial-gradient(
 			74% 58% at 22% 108%,
-			#3e6c8f52 0%,
-			#3e6c8f1f 40%,
+			color-mix(in srgb, var(--glow-body) 32%, transparent) 0%,
+			color-mix(in srgb, var(--glow-body) 12%, transparent) 40%,
 			transparent 72%
 		),
 		/* The deep water it rises out of, anchored in the corner. */
@@ -289,7 +293,12 @@ body,
 			transparent 70%
 		),
 		/* A flat lift so the bottom edge never ends on a hard line. */
-		linear-gradient(to top, #3e6c8f17 0%, #3e6c8f08 24%, transparent 52%),
+		linear-gradient(
+			to top,
+			color-mix(in srgb, var(--glow-body) 9%, transparent) 0%,
+			color-mix(in srgb, var(--glow-body) 3%, transparent) 24%,
+			transparent 52%
+		),
 		/* TOP ONLY. A centred vignette would sit straight on the wave. */
 		linear-gradient(
 			to bottom,
@@ -305,27 +314,40 @@ body,
    at the top, which on a light console is not depth but dirt. */
 :root.light .console-glow {
 	background-image:
-		radial-gradient(70% 26% at 26% 104%, #2f5f8014 0%, transparent 72%),
-		radial-gradient(58% 42% at 40% 108%, #3e6c8f1a 0%, transparent 68%),
+		radial-gradient(
+			70% 26% at 26% 104%,
+			color-mix(in srgb, var(--glow-body) 8%, transparent) 0%,
+			transparent 72%
+		),
+		radial-gradient(
+			58% 42% at 40% 108%,
+			color-mix(in srgb, var(--glow-body) 10%, transparent) 0%,
+			transparent 68%
+		),
 		radial-gradient(
 			74% 58% at 22% 108%,
-			#2f5f8024 0%,
-			#2f5f800f 40%,
+			color-mix(in srgb, var(--glow-body) 14%, transparent) 0%,
+			color-mix(in srgb, var(--glow-body) 6%, transparent) 40%,
 			transparent 72%
 		),
 		radial-gradient(
 			96% 76% at 4% 116%,
-			#2f5f8038 0%,
-			#2f5f8014 34%,
+			color-mix(in srgb, var(--glow-body) 22%, transparent) 0%,
+			color-mix(in srgb, var(--glow-body) 8%, transparent) 34%,
 			transparent 74%
 		),
 		radial-gradient(
 			66% 48% at 94% 112%,
-			#2f5f8021 0%,
-			#2f5f800a 38%,
+			color-mix(in srgb, var(--glow-body) 13%, transparent) 0%,
+			color-mix(in srgb, var(--glow-body) 4%, transparent) 38%,
 			transparent 70%
 		),
-		linear-gradient(to top, #2f5f800f 0%, #2f5f8005 24%, transparent 52%);
+		linear-gradient(
+			to top,
+			color-mix(in srgb, var(--glow-body) 6%, transparent) 0%,
+			color-mix(in srgb, var(--glow-body) 2%, transparent) 24%,
+			transparent 52%
+		);
 }
 
 /* ── The ground behind the console ───────────────────────────────────────────
@@ -346,64 +368,162 @@ body,
 .console-cloud {
 	position: absolute;
 	border-radius: 50%;
-	filter: blur(70px);
-	will-change: transform;
+	/* 🔴 54px, not 70. Under a heavier blur a mass this size has no discernible
+	   edge, so sliding it changes almost no pixel and the motion is real but
+	   invisible. Enough blur to stay soft, little enough to have a front. */
+	filter: blur(54px);
+	will-change: transform, opacity;
 }
 
+/**
+ * 🔴 The motion has to TRAVEL, and it has to happen at every edge.
+ *
+ * The first version drifted three masses in the bottom-left corner by about
+ * 10% along one axis. That reads as static, and the reason is the console
+ * frame: it is opaque, so this ground is only ever glimpsed in the 6px gutter
+ * around and between the panels. Movement confined to one corner is movement in
+ * almost none of the visible area, and a single axis at a fixed period is a
+ * breath rather than a drift.
+ *
+ * So: four masses, one near each edge, on paths that wander through several
+ * stops instead of sliding between two. Periods are deliberately not multiples
+ * of each other, so the arrangement never repeats itself in any watchable
+ * amount of time.
+ *
+ * ⚠️ Opacity moves as well as position. A cloud that only slides looks like a
+ * shape being dragged; one that also thickens and thins looks like weather.
+ */
 .console-cloud:nth-child(1) {
-	bottom: -34vh;
-	left: -12%;
-	width: 74vw;
-	height: 62vh;
-	background: radial-gradient(closest-side, #1d3a4fcc, transparent 76%);
-	animation: console-cloud-a 37s ease-in-out infinite;
+	bottom: -14vh;
+	left: -8%;
+	width: 46vw;
+	height: 38vh;
+	background: radial-gradient(
+		closest-side,
+		color-mix(in srgb, var(--glow-deep) 53%, transparent),
+		transparent 74%
+	);
+	animation: console-drift-a 24s ease-in-out infinite;
 }
 
 .console-cloud:nth-child(2) {
-	bottom: -30vh;
-	left: 28%;
-	width: 58vw;
-	height: 50vh;
-	background: radial-gradient(closest-side, #3e6c8f8f, transparent 74%);
-	animation: console-cloud-b 53s ease-in-out infinite;
+	bottom: -12vh;
+	left: 22%;
+	width: 40vw;
+	height: 34vh;
+	background: radial-gradient(
+		closest-side,
+		color-mix(in srgb, var(--glow-body) 44%, transparent),
+		transparent 72%
+	);
+	animation: console-drift-b 19s ease-in-out infinite;
 }
 
 .console-cloud:nth-child(3) {
-	bottom: -26vh;
-	right: -10%;
-	width: 52vw;
-	height: 44vh;
-	background: radial-gradient(closest-side, #7fa8c959, transparent 72%);
-	animation: console-cloud-c 43s ease-in-out infinite;
+	bottom: -13vh;
+	right: -6%;
+	width: 38vw;
+	height: 32vh;
+	background: radial-gradient(
+		closest-side,
+		color-mix(in srgb, var(--glow-crest) 32%, transparent),
+		transparent 70%
+	);
+	animation: console-drift-c 29s ease-in-out infinite;
 }
 
-@keyframes console-cloud-a {
+/* 🔑 The fourth sits HIGH and to the right, which is the half of the gutter the
+   others never reach. Without it the top of the screen is a dead band. */
+.console-cloud:nth-child(4) {
+	top: -16vh;
+	right: 8%;
+	width: 34vw;
+	height: 30vh;
+	background: radial-gradient(
+		closest-side,
+		color-mix(in srgb, var(--glow-body) 27%, transparent),
+		transparent 72%
+	);
+	animation: console-drift-d 26s ease-in-out infinite;
+}
+
+@keyframes console-drift-a {
 	0%,
 	100% {
 		transform: translate3d(0, 0, 0) scale(1);
+		opacity: 0.9;
+	}
+	25% {
+		transform: translate3d(56%, -4%, 0) scale(1.1);
+		opacity: 1;
 	}
 	50% {
-		transform: translate3d(9%, -4%, 0) scale(1.12);
+		transform: translate3d(108%, 2%, 0) scale(1.02);
+		opacity: 0.78;
+	}
+	75% {
+		transform: translate3d(52%, -6%, 0) scale(1.14);
+		opacity: 0.95;
 	}
 }
 
-@keyframes console-cloud-b {
+@keyframes console-drift-b {
 	0%,
 	100% {
 		transform: translate3d(0, 0, 0) scale(1.06);
+		opacity: 0.85;
 	}
-	50% {
-		transform: translate3d(-11%, -6%, 0) scale(0.94);
+	30% {
+		transform: translate3d(-66%, -4%, 0) scale(0.94);
+		opacity: 1;
+	}
+	60% {
+		transform: translate3d(-116%, 3%, 0) scale(1.08);
+		opacity: 0.72;
+	}
+	80% {
+		transform: translate3d(-48%, -7%, 0) scale(1.02);
+		opacity: 0.92;
 	}
 }
 
-@keyframes console-cloud-c {
+@keyframes console-drift-c {
 	0%,
 	100% {
 		transform: translate3d(0, 0, 0) scale(0.96);
+		opacity: 0.8;
 	}
-	50% {
-		transform: translate3d(-7%, -3%, 0) scale(1.14);
+	20% {
+		transform: translate3d(-60%, -4%, 0) scale(1.12);
+		opacity: 1;
+	}
+	55% {
+		transform: translate3d(-112%, 3%, 0) scale(1.04);
+		opacity: 0.68;
+	}
+	78% {
+		transform: translate3d(-46%, -6%, 0) scale(1.14);
+		opacity: 0.9;
+	}
+}
+
+@keyframes console-drift-d {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1);
+		opacity: 0.7;
+	}
+	35% {
+		transform: translate3d(-70%, 5%, 0) scale(1.12);
+		opacity: 0.95;
+	}
+	65% {
+		transform: translate3d(-120%, 3%, 0) scale(0.96);
+		opacity: 0.6;
+	}
+	85% {
+		transform: translate3d(-54%, 7%, 0) scale(1.06);
+		opacity: 0.85;
 	}
 }
 
@@ -428,13 +548,25 @@ body,
 /* Glacier clouds: the same masses, paler and a touch more present, because a
    tint on a light ground disappears far faster than a glow on a dark one. */
 :root.light .console-cloud:nth-child(1) {
-	background: radial-gradient(closest-side, #2f5f8073, transparent 76%);
+	background: radial-gradient(
+		closest-side,
+		color-mix(in srgb, var(--glow-body) 45%, transparent),
+		transparent 76%
+	);
 }
 
 :root.light .console-cloud:nth-child(2) {
-	background: radial-gradient(closest-side, #3e6c8f59, transparent 74%);
+	background: radial-gradient(
+		closest-side,
+		color-mix(in srgb, var(--glow-body) 35%, transparent),
+		transparent 74%
+	);
 }
 
 :root.light .console-cloud:nth-child(3) {
-	background: radial-gradient(closest-side, #7fa8c966, transparent 72%);
+	background: radial-gradient(
+		closest-side,
+		color-mix(in srgb, var(--glow-crest) 40%, transparent),
+		transparent 72%
+	);
 }

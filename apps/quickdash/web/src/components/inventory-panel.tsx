@@ -192,7 +192,7 @@ export function InventoryPanel({
 						type="button"
 						disabled={save.isPending || !online || !data}
 						onClick={() => save.mutate()}
-						className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
+						className={`${save.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 w-full items-center justify-center rounded-md border border-[var(--console-line-strong)] font-medium text-[12.5px] text-[var(--ink-90)] outline-none disabled:opacity-40`}
 					>
 						<SaveLabel
 							saving={save.isPending}
@@ -250,10 +250,10 @@ export function InventoryPanel({
 						/>
 						<button
 							type="button"
-							title={quantity.trim() ? undefined : "Enter a quantity first"}
+							data-hint={quantity.trim() ? undefined : "Enter a quantity first"}
 							disabled={record.isPending || !quantity.trim()}
 							onClick={() => record.mutate()}
-							className={`${record.isPending ? "shimmer-busy" : ""} mt-2 inline-flex h-8 w-full items-center justify-center rounded-full border border-[var(--console-line)] text-[12px] text-[var(--ink-85)] transition-opacity hover:opacity-75 disabled:opacity-40`}
+							className={`${record.isPending ? "shimmer-busy" : ""} control-raised mt-2 inline-flex h-8 w-full items-center justify-center rounded-md border text-[12px] text-[var(--ink-85)] outline-none disabled:opacity-40`}
 						>
 							{record.isPending ? "Recording…" : "Record movement"}
 						</button>
@@ -286,7 +286,7 @@ export function InventoryPanel({
 						) : (adjustments.data?.items.length ?? 0) === 0 ? (
 							<BlockEmpty>Nothing has moved yet.</BlockEmpty>
 						) : (
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+							<div className="">
 								{(adjustments.data?.items ?? []).map((entry) => (
 									<div key={entry.id} className="flex items-center gap-3 py-2">
 										<span className="w-24 shrink-0 text-[11px] text-[var(--ink-60)] capitalize">

@@ -55,10 +55,10 @@ export type ProductDraft = {
 };
 
 const field =
-	"h-9 w-full rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
+	"h-9 w-full field rounded-md px-3 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)]";
 
 const area =
-	"w-full rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 py-2 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
+	"w-full field rounded-md px-3 py-2 text-[12.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-20)]";
 
 export function Label({ children, hint }: { children: string; hint?: string }) {
 	return (
@@ -221,7 +221,7 @@ export function Section({
 }) {
 	const [open, setOpen] = useState(initiallyOpen);
 	return (
-		<section className="border-[var(--console-line-soft)] border-t py-3">
+		<section className="py-3">
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}

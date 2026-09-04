@@ -262,7 +262,7 @@ export function AssistantPanel() {
 						<Popover>
 							<PopoverTrigger
 								aria-label="Integrations"
-								title="What this chat can reach"
+								data-hint="What this chat can reach"
 								className="control-raised flex size-7 shrink-0 items-center justify-center rounded-md border text-[var(--ink-40)] outline-none hover:text-[var(--ink-90)]"
 							>
 								<PlusIcon size={14} />
@@ -333,7 +333,7 @@ export function AssistantPanel() {
 						    picked. */}
 						<Popover>
 							<PopoverTrigger
-								title={chosen.detail}
+								data-hint={chosen.detail}
 								className="control-raised flex h-7 shrink-0 items-center rounded-md border px-2 text-[10.5px] text-[var(--ink-50)] outline-none hover:text-[var(--ink-90)]"
 							>
 								{chosen.name}

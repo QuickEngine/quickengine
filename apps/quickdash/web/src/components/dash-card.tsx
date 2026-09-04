@@ -181,7 +181,7 @@ export function Bars({
 			{points.map((value, index) => (
 				<div
 					key={labels?.[index] ?? index}
-					title={labels?.[index]}
+					data-hint={labels?.[index]}
 					className="min-w-0 flex-1 rounded-sm bg-[rgb(var(--console-ink)/0.14)]"
 					style={{
 						// ⚠️ A floor of 2%, so a zero day is still a visible tick rather

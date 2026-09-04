@@ -37,11 +37,7 @@ export function SkeletonRows({ rows = 6 }: { rows?: number }) {
 	// inventing an id for something that has no identity.
 	const shown = widths.slice(0, Math.max(1, Math.min(rows, widths.length)));
 	return (
-		<div
-			role="status"
-			aria-label="Loading"
-			className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t"
-		>
+		<div role="status" aria-label="Loading" className="">
 			{shown.map((width) => (
 				<div key={width} className="flex items-center gap-3 py-3">
 					<Bar className={`h-3 ${width}`} />

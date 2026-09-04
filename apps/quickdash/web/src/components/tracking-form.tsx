@@ -101,7 +101,7 @@ export function TrackingForm({
 			<button
 				type="button"
 				onClick={() => setOpen(true)}
-				className="h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+				className="control-raised h-7 rounded-md border px-3 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 			>
 				{trackingNumber ? "Edit tracking" : "Add tracking"}
 			</button>
@@ -109,7 +109,7 @@ export function TrackingForm({
 	}
 
 	const field =
-		"h-8 w-full rounded-lg border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[12px] text-[var(--ink-85)] outline-none focus:border-[rgb(var(--console-ink)/0.25)]";
+		"h-8 w-full field rounded-md px-2.5 text-[12px] text-[var(--ink-85)] outline-none";
 
 	return (
 		<div className="grid gap-2 rounded-lg border border-[var(--console-line-soft)] p-3">
@@ -143,7 +143,7 @@ export function TrackingForm({
 					type="button"
 					// Nothing changed means nothing to send: the API refuses an empty
 					// patch, and offering a save that can only fail is worse than none.
-					title={
+					data-hint={
 						Object.keys(patch).length === 0
 							? "Change something first"
 							: undefined
@@ -159,7 +159,7 @@ export function TrackingForm({
 				<button
 					type="button"
 					onClick={() => setOpen(false)}
-					className="h-7 rounded-full border border-[var(--console-line-strong)] px-3 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+					className="control-raised h-7 rounded-md border px-3 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 				>
 					Cancel
 				</button>

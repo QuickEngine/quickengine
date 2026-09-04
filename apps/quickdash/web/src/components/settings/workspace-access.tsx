@@ -16,7 +16,7 @@ import { Choice, Group, Row } from "./controls";
  */
 
 const input =
-	"h-9 w-full rounded-md border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors focus:border-[rgb(var(--console-ink)/0.25)]";
+	"h-9 w-full field rounded-md px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors";
 const primary =
 	"flex h-8 shrink-0 items-center rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] transition-opacity hover:opacity-90 disabled:opacity-40";
 const quiet =
@@ -166,7 +166,7 @@ export function WorkspaceWebhooks({ workspaceId }: { workspaceId: string }) {
 				<div className="pt-3">
 					<button
 						type="button"
-						title={
+						data-hint={
 							url.trim() ? undefined : "Enter the address to send events to"
 						}
 						disabled={!url.trim() || create.isPending}
@@ -364,7 +364,7 @@ export function WorkspaceApiKeys({
 				<div className="pt-3">
 					<button
 						type="button"
-						title={
+						data-hint={
 							name.trim()
 								? undefined
 								: "Name this key so you can recognise it later"
@@ -522,7 +522,7 @@ export function WorkspaceRoles({
 					No custom roles. Everybody has their organisation role.
 				</p>
 			) : (
-				<div className="flex flex-col divide-y divide-[var(--console-line-soft)]">
+				<div className="flex flex-col ">
 					{items.map((role) => (
 						<div key={role.id} className="py-3">
 							<p className="text-[12.5px] text-[var(--ink-85)]">{role.name}</p>

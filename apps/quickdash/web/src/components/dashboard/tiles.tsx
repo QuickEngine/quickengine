@@ -224,7 +224,7 @@ function EntryRow({
 		<Link
 			to="/$workspace/$module"
 			params={{ workspace: workspaceId, module: entry.id.split(":")[0] }}
-			className="flex items-center justify-between gap-3 border-[var(--console-line-soft)] border-b py-2 no-underline last:border-b-0"
+			className="flex items-center justify-between gap-3 py-2 no-underline"
 		>
 			<span className="min-w-0 flex-1 truncate text-[12px] text-[var(--ink-80)]">
 				{entry.samples[0]?.label ?? entry.id}
@@ -326,7 +326,7 @@ function ActivityTile({ workspaceId }: { workspaceId: string }) {
 					{events.map((row) => (
 						<div
 							key={row.id}
-							className="flex items-center justify-between gap-3 border-[var(--console-line-soft)] border-b py-2 last:border-b-0"
+							className="flex items-center justify-between gap-3 py-2"
 						>
 							<span className="min-w-0 flex-1 truncate text-[12px] text-[var(--ink-75)]">
 								{row.name}

@@ -120,7 +120,7 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 						<button
 							type="button"
 							aria-label={copied === url ? "Copied" : "Copy the address"}
-							title={copied === url ? "Copied" : "Copy the address"}
+							data-hint={copied === url ? "Copied" : "Copy the address"}
 							onClick={(event) => {
 								// The tile itself is not a link, but it will be one day; a
 								// copy must never also open something.
@@ -172,9 +172,9 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 											src={use.url}
 											alt=""
 											loading="lazy"
-											className="aspect-square w-full rounded-lg border border-[var(--console-line-soft)] bg-[rgb(var(--console-ink)/0.03)] object-cover"
+											className="aspect-square w-full rounded-md bg-[rgb(var(--console-ink)/0.03)] object-cover"
 										/>
-										<div className="mt-2.5 flex items-center gap-1.5">
+										<div className="mt-2 flex items-center gap-1.5">
 											<span className="min-w-0 flex-1 truncate text-[12px] text-[var(--ink-85)]">
 												{use.itemName}
 											</span>

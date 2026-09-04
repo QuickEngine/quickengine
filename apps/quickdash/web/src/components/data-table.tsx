@@ -125,9 +125,19 @@ export function DataTable<TRow extends { id: string }>({
 	empty,
 	renderCard,
 	exportName,
+	resetOrder,
 }: {
 	columns: Array<Column<TRow>>;
 	rows: TRow[];
+	/**
+	 * The control that puts a dragged list back in its natural order.
+	 *
+	 * 🔴 Passed IN rather than owned here, because the arrangement lives in
+	 * `PagedTable`: this component is given rows and does not know one order from
+	 * another. It renders in the strip beside Sort all the same, because that is
+	 * where it belongs to the person using it.
+	 */
+	resetOrder?: ReactNode;
 	/** Makes each row open its detail. Omit for lists with nothing behind them. */
 	onOpen?: (row: TRow) => void;
 	selectedId?: string | null;
@@ -314,6 +324,12 @@ export function DataTable<TRow extends { id: string }>({
 			{/* The view switch, portalled in from `ListControls`. It sits beside
 			    Sort because the two ask the same question: how do you want to
 			    look at these rows. See `viewRail`. */}
+			{/* 🔴 Beside Sort, not under the table. It undoes a manual arrangement,
+			    which is the same question Sort answers, and below the rows it sat
+			    nowhere near the thing you dragged nor the control that governs
+			    order. It was also the last piece of bare text in the console
+			    pretending to be a button. */}
+			{resetOrder}
 			<div
 				ref={setViewRail}
 				/* 🔑 The switch reads the list's state through the rail it lands in.
@@ -333,7 +349,7 @@ export function DataTable<TRow extends { id: string }>({
 				<Popover>
 					<PopoverTrigger
 						aria-label="Sort"
-						title={sorted ? `Sorted by ${sorted.header}` : "Sort"}
+						data-hint={sorted ? `Sorted by ${sorted.header}` : "Sort"}
 						/* 🔴 A real key, like every other button in the console.
 						   Sort and Filter were the last two ghost buttons on the
 						   strip: no surface at all until you hovered, at which point
@@ -747,7 +763,13 @@ function CardList<TRow extends { id: string }>({
 					   it sits on a different, lighter ground; borrowing that here
 					   put the header's face on the outlet's floor. */
 					style={{ boxShadow: "var(--lift-card)" }}
-					className={`relative rounded-xl border bg-[var(--surface-tile)] p-3 outline-none transition-[transform,border-color] duration-150 ${
+					/* 🔴 `p-2`, not `p-3`. The card stays exactly the size it was; the
+					   frame around the picture gets thinner, so the picture itself
+					   grows into the space the padding was wasting. A browse grid is
+					   scanned by image, and a fat even margin on all four sides made
+					   every tile read as a form field with a photograph in it rather
+					   than as a photograph. Tighter edges, more polaroid. */
+					className={`relative rounded-xl border bg-[var(--surface-tile)] p-2 outline-none transition-[transform,border-color] duration-150 ${
 						onOpen ? "cursor-pointer hover:-translate-y-px" : ""
 					} ${
 						selectedId === row.id

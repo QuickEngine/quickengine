@@ -396,7 +396,7 @@ export function DashboardBoard({
 									    the tile, and the tile already carries its own name. */}
 									<span
 										aria-hidden="true"
-										title={`Move ${tile.name}`}
+										data-hint={`Move ${tile.name}`}
 										className="pointer-events-auto absolute top-2 left-2 flex size-6 cursor-grab items-center justify-center rounded-md bg-[var(--console-pop)] text-[var(--ink-45)] shadow-sm active:cursor-grabbing"
 									>
 										<ArrowsOutCardinalIcon size={12} />
@@ -404,6 +404,7 @@ export function DashboardBoard({
 									<button
 										type="button"
 										aria-label={`Remove ${tile.name}`}
+										data-hint="Remove this card"
 										onClick={() =>
 											layout.save(shown.filter((row) => row.id !== entry.id))
 										}

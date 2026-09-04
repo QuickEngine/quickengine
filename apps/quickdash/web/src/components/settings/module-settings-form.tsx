@@ -57,7 +57,7 @@ export function write(
 
 /** The control column. Fixed so every row's right edge lines up. */
 const INPUT =
-	"h-8 w-[15rem] max-w-full rounded-md border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[12px] text-[var(--ink-85)] outline-none transition-colors focus:border-[rgb(var(--console-ink)/0.25)]";
+	"h-8 w-[15rem] max-w-full field rounded-md px-2.5 text-[12px] text-[var(--ink-85)] outline-none transition-colors";
 
 export function ModuleSettingsForm({
 	workspaceId,
@@ -296,7 +296,7 @@ export function FieldRow({
 	})();
 
 	return (
-		<div className="flex items-center justify-between gap-6 border-[var(--console-line-soft)] border-b py-3.5 last:border-b-0">
+		<div className="flex items-center justify-between gap-6 py-3.5">
 			<div className="min-w-0">
 				<p className="text-[12.5px] text-[var(--ink-85)]">{field.label}</p>
 				{field.hint ? (

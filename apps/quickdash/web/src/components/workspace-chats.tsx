@@ -40,7 +40,7 @@ export function WorkspaceChats() {
 
 			{conversations.length === 0 ? (
 				<p className="px-3 py-1 text-[11.5px] text-[var(--ink-30)] leading-[1.5]">
-					Nothing saved yet. Ask the assistant something and the conversation is
+					Nothing saved yet. Ask QuickAssist something and the conversation is
 					kept here.
 				</p>
 			) : (
@@ -71,7 +71,7 @@ export function WorkspaceChats() {
 								<button
 									type="button"
 									aria-label={`Delete ${entry.title}`}
-									title="Delete this chat"
+									data-hint="Delete this chat"
 									onClick={() => remove(entry.id)}
 									className="absolute top-2 right-1.5 flex size-5 items-center justify-center rounded-md text-[var(--ink-25)] opacity-0 transition-opacity hover:text-[var(--ink-85)] focus-visible:opacity-100 group-hover/chat:opacity-100"
 								>

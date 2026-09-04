@@ -280,7 +280,9 @@ const GROUPS: Array<{ group: string; items: Section[] }> = [
 function SectionHeader({ label }: { label: string }) {
 	const { setRail } = useSaveRail();
 	return (
-		<div className="sticky top-0 z-10 flex min-h-[3.5rem] items-center justify-between gap-4 border-[var(--console-line-soft)] border-b bg-[var(--console-pop)] px-6 py-3">
+		/* See the detail panel: spacing already separates a pinned title from the
+		   content under it, and the rule only chops the panel up. */
+		<div className="sticky top-0 z-10 flex min-h-[3.5rem] items-center justify-between gap-4 bg-[var(--console-pop)] px-6 py-3">
 			<h2 className="min-w-0 truncate font-medium text-[13px] text-[var(--ink-90)]">
 				{label}
 			</h2>

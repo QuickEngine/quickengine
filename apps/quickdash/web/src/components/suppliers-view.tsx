@@ -72,7 +72,7 @@ const METHODS = [
 ] as const;
 
 const quiet =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--console-line-strong)] px-2.5 text-[11px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)] disabled:opacity-40";
+	"control-raised inline-flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)] disabled:opacity-40";
 
 const money = (cents: number | null, currency: string) =>
 	cents === null
@@ -576,7 +576,7 @@ function SupplierPanel({
 
 	return (
 		<aside className="fixed top-3 right-3 bottom-3 z-30 flex w-[calc(50%-0.75rem)] min-w-[24rem] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl border border-[var(--console-line)] bg-[var(--console-panel)] shadow-[0_24px_60px_rgb(0_0_0/0.45)]">
-			<header className="flex items-center gap-3 border-[var(--console-line-soft)] border-b px-4 py-3">
+			<header className="flex items-center gap-3 px-4 py-3">
 				<p className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
 					{supplier.name}
 				</p>
@@ -623,10 +623,7 @@ function SupplierPanel({
 					) : (
 						<div className="overflow-hidden rounded-xl border border-[var(--console-line)]">
 							{mappings.map((row) => (
-								<div
-									key={row.id}
-									className="flex h-10 items-center gap-3 border-[var(--console-line-soft)] border-b px-3 last:border-b-0"
-								>
+								<div key={row.id} className="flex h-10 items-center gap-3 px-3">
 									<span className="min-w-0 flex-1 truncate text-[11.5px] text-[var(--ink-85)]">
 										{row.catalogItemName}
 									</span>
@@ -689,7 +686,7 @@ function SupplierPanel({
 							) : null}
 							<button
 								type="button"
-								title={
+								data-hint={
 									!itemId
 										? "Choose which product this is"
 										: !sku.trim()

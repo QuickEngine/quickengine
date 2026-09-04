@@ -950,6 +950,15 @@ body {
 	   and the element does not care where the value came from. */
 	--view-face: var(--surface-recess);
 
+	/* 🔴 The face of anything you TYPE into.
+	   A field was a transparent box with a hairline round it, so taking the
+	   hairlines out left almost nothing on screen. Giving it a raised face
+	   instead would be worse: a column of raised bars in a form reads as a stack
+	   of buttons, and the whole point is that you press ON a button and type
+	   INTO a field. One step below the surface it sits in, which is visible on
+	   its own and says which of the two it is without a word. */
+	--face-field: #151515;
+
 	/* ── Something FLOATING above the page ───────────────────────────────
 	   🔴 A popover is not a card. `--lift-card` and `--lift-panel` describe
 	   objects resting ON the page, so their falloff is short and their contact
@@ -1019,7 +1028,20 @@ body {
 	   difference. The tray sits one short step under the buttons and is lit from
 	   the same direction, so the header reads as a raised bar with the controls
 	   standing on it. */
+	/* ⚠️ LIGHTER than the page, and it stays that way. Tried matching it to
+	   `--console-bg` on the reasoning that controls no longer need a lighter
+	   tray to read, which is true but beside the point: with one ground the
+	   header stops being a distinct region and the console loses the line
+	   between its chrome and its content. The difference is doing work that has
+	   nothing to do with shadows. */
 	--surface-tray: #181818;
+
+	/* The ground behind the console. Named here so a palette can restate it:
+	   the wave belongs to the theme, and a blue sea under an Ember console read
+	   as somebody else's background showing through. */
+	--glow-deep: #1d3a4f;
+	--glow-body: #3e6c8f;
+	--glow-crest: #7fa8c9;
 	/* ── A tile, rising out of the OUTLET ────────────────────────────────
 	   🔴 Not the header's face. The header is a light tray with lighter buttons
 	   on it; the outlet is a near black plane and its cards come up out of THAT.
@@ -1101,10 +1123,24 @@ body {
 	   white inset above it made the base read as a glow rather than an object
 	   ending. It now stays clearly above the ground the whole way down, and the
 	   hairline does the rest. */
+	/* 🔴 OVER `--surface-card`, not over `#ffffff`.
+	   These were three literal near white stops on a white base, and no palette
+	   overrides them, so every button in every light theme came out pure white:
+	   a Bubblegum console with a stark white search bar and a white Save button
+	   scattered through it. The dark theme had it right all along, layering
+	   translucent light and shade over whatever surface it is on. Now light does
+	   the same and a button belongs to its palette. */
 	--face-control:
-		linear-gradient(180deg, #ffffff 0%, #fdfdfe 55%, #f8f8fa 100%), #ffffff;
+		linear-gradient(
+			180deg,
+			rgb(255 255 255 / 0.85) 0%,
+			rgb(255 255 255 / 0.4) 55%,
+			rgb(0 0 0 / 0.035) 100%
+		),
+		var(--surface-card);
 	--face-control-pressed:
-		linear-gradient(180deg, #eeeef2 0%, #fafafb 100%), #ffffff;
+		linear-gradient(180deg, rgb(0 0 0 / 0.06) 0%, rgb(255 255 255 / 0.5) 100%),
+		var(--surface-card);
 
 	--lift-pressed:
 		0 1px 3px 0 rgb(24 24 27 / 0.16) inset,
@@ -1120,6 +1156,9 @@ body {
 	/* See the dark value. */
 	--view-face: var(--surface-recess);
 
+	/* See the dark value: one step below the panel, never above it. */
+	--face-field: #eeeef2;
+
 	--lift-pop:
 		var(--lift-card), 0 14px 30px -16px rgb(24 24 27 / 0.08),
 		0 30px 60px -34px rgb(24 24 27 / 0.1);
@@ -1134,7 +1173,13 @@ body {
 		0 48px 96px -48px rgb(24 24 27 / 0.14);
 
 	/* Near white, a whisper under the buttons rather than a grey they sit on. */
+	/* See the dark value: chrome stays a step off the content. */
 	--surface-tray: #f7f7f9;
+
+	/* Paler water for a light ground. See the dark values. */
+	--glow-deep: #6d94ad;
+	--glow-body: #93b6cd;
+	--glow-crest: #bcd3e2;
 	/* Light rises the other way: the ground is the tinted one, so a tile steps
 	   toward white rather than away from it, and only just. */
 	--surface-tile: #f5f5f8;
@@ -1152,4 +1197,2270 @@ body {
 	   this hairline all along, which is the other half of why the two themes
 	   never looked like the same control. */
 	--control-edge: var(--console-line);
+}
+
+/* ── Palettes ────────────────────────────────────────────────────────────────
+   🔴 Two axes, not one list. A palette is a FAMILY of colour; light and dark are
+   MODES of it. Baking them together would mean writing "slate" and "slate
+   light" as separate themes and having somebody who prefers Slate lose it every
+   time their machine switches to light.
+
+   🔑 Families differ in more than hue. Rotating one ladder gives you eleven
+   versions of the same theme, which is what the first attempt did. These vary
+   saturation AND the spacing of the steps: Graphite is colourless and further
+   apart, Sepia is warm and closer together, Ocean is the most saturated. That
+   is what makes them feel like different products rather than the same product
+   tinted.
+
+   ⚠️ Whatever the spacing, the ORDER never changes. Floor under outlet under
+   tile under card under popover. Break that and cards read as holes. */
+
+/* Obsidian: Black glass. The longest climb from floor to card. */
+:root.obsidian {
+	--console-floor: #07060a;
+	--console-panel: #0b0910;
+	--console-bg: #0b0910;
+	--console-card: #1c1826;
+	--console-pop: #2a2438;
+	--pop-rail: #17141f;
+	--console-line: #352e46;
+	--console-line-soft: #262133;
+	--console-line-strong: #352e46;
+	--empty-line: #62538c;
+	--surface-panel: #1c1826;
+	--surface-card: #2a2438;
+	--surface-tray: #231e2f;
+	--surface-tile: #17141f;
+	--surface-recess: #09080d;
+	--face-field: #14111c;
+	--glow-deep: #463a69;
+	--glow-body: #6c5aa1;
+	--glow-crest: #bea9fb;
+}
+
+:root.light.obsidian {
+	--console-floor: #dedaea;
+	--console-panel: #eae7f2;
+	--console-bg: #eae7f2;
+	--console-card: #f7f5fb;
+	--console-pop: #fdfcff;
+	--pop-rail: #f3f1f8;
+	--console-line: #d0cadf;
+	--console-line-soft: #e7e4f0;
+	--console-line-strong: #d0cadf;
+	--empty-line: #a594d2;
+	--surface-panel: #f7f5fb;
+	--surface-card: #fdfcff;
+	--surface-tray: #faf8fd;
+	--surface-tile: #f3f1f8;
+	--surface-recess: #e5e2ef;
+	--face-field: #f1eff7;
+	--glow-deep: #8b70d4;
+	--glow-body: #7a5ace;
+	--glow-crest: #aa96e0;
+}
+
+/* Abyss: Deep water. Cold and very dark. */
+:root.abyss {
+	--console-floor: #030508;
+	--console-panel: #04080d;
+	--console-bg: #04080d;
+	--console-card: #0e1a26;
+	--console-pop: #16283a;
+	--pop-rail: #0b151e;
+	--console-line: #1b344a;
+	--console-line-soft: #132434;
+	--console-line-strong: #1b344a;
+	--empty-line: #28698f;
+	--surface-panel: #0e1a26;
+	--surface-card: #16283a;
+	--surface-tray: #122130;
+	--surface-tile: #0b151e;
+	--surface-recess: #03070b;
+	--face-field: #0a121b;
+	--glow-deep: #184d66;
+	--glow-body: #24789f;
+	--glow-crest: #6ccefa;
+}
+
+:root.light.abyss {
+	--console-floor: #d2e2ed;
+	--console-panel: #e2edf5;
+	--console-bg: #e2edf5;
+	--console-card: #f2f8fc;
+	--console-pop: #fbfdff;
+	--pop-rail: #edf5fa;
+	--console-line: #bed3e2;
+	--console-line-soft: #dde9f2;
+	--console-line-strong: #bed3e2;
+	--empty-line: #72a6c6;
+	--surface-panel: #f2f8fc;
+	--surface-card: #fbfdff;
+	--surface-tray: #f6fafe;
+	--surface-tile: #edf5fa;
+	--surface-recess: #dce8f2;
+	--face-field: #ebf3f9;
+	--glow-deep: #3989b5;
+	--glow-body: #1976a9;
+	--glow-crest: #6da8c8;
+}
+
+/* Void: Almost nothing, then a flash of orchid. */
+:root.void {
+	--console-floor: #050506;
+	--console-panel: #08070a;
+	--console-bg: #08070a;
+	--console-card: #151318;
+	--console-pop: #211d26;
+	--pop-rail: #110f14;
+	--console-line: #2c2632;
+	--console-line-soft: #1e1a22;
+	--console-line-strong: #2c2632;
+	--empty-line: #72477e;
+	--surface-panel: #151318;
+	--surface-card: #211d26;
+	--surface-tray: #1b181f;
+	--surface-tile: #110f14;
+	--surface-recess: #070608;
+	--face-field: #0f0e12;
+	--glow-deep: #5d3265;
+	--glow-body: #934e9e;
+	--glow-crest: #ee9cfb;
+}
+
+:root.light.void {
+	--console-floor: #e5d6e8;
+	--console-panel: #efe4f2;
+	--console-bg: #efe4f2;
+	--console-card: #f7edf8;
+	--console-pop: #fcf5fd;
+	--pop-rail: #f5eaf6;
+	--console-line: #d8c4dc;
+	--console-line-soft: #eadced;
+	--console-line-strong: #d8c4dc;
+	--empty-line: #be80c6;
+	--surface-panel: #f7edf8;
+	--surface-card: #fcf5fd;
+	--surface-tray: #faf1fa;
+	--surface-tile: #f5eaf6;
+	--surface-recess: #ebdeee;
+	--face-field: #f3e9f5;
+	--glow-deep: #b44cbf;
+	--glow-body: #aa30b6;
+	--glow-crest: #c97bd1;
+}
+
+/* Sandstone: Almost flat. The hairlines carry it. */
+:root.sandstone {
+	--console-floor: #1b1710;
+	--console-panel: #2a2419;
+	--console-bg: #2a2419;
+	--console-card: #302a1f;
+	--console-pop: #373025;
+	--pop-rail: #2e281d;
+	--console-line: #463e2b;
+	--console-line-soft: #393224;
+	--console-line-strong: #463e2b;
+	--empty-line: #7d6d4c;
+	--surface-panel: #302a1f;
+	--surface-card: #373025;
+	--surface-tray: #342d22;
+	--surface-tile: #2e281d;
+	--surface-recess: #231e15;
+	--face-field: #2d271c;
+	--glow-deep: #6b5d41;
+	--glow-body: #958059;
+	--glow-crest: #e1cba2;
+}
+
+:root.light.sandstone {
+	--console-floor: #dfd4be;
+	--console-panel: #e8dfcc;
+	--console-bg: #e8dfcc;
+	--console-card: #efe8d8;
+	--console-pop: #f5efe2;
+	--pop-rail: #ede5d4;
+	--console-line: #d4c6ab;
+	--console-line-soft: #e4dac6;
+	--console-line-strong: #d4c6ab;
+	--empty-line: #b4a07a;
+	--surface-panel: #efe8d8;
+	--surface-card: #f5efe2;
+	--surface-tray: #f2ecdd;
+	--surface-tile: #ede5d4;
+	--surface-recess: #e5dbc6;
+	--face-field: #ece4d3;
+	--glow-deep: #a18a5f;
+	--glow-body: #937a4a;
+	--glow-crest: #bbab8e;
+}
+
+/* Linen: Paper and thread. Quiet and close. */
+:root.linen {
+	--console-floor: #161512;
+	--console-panel: #22201c;
+	--console-bg: #22201c;
+	--console-card: #282621;
+	--console-pop: #2e2c26;
+	--pop-rail: #262420;
+	--console-line: #3a362e;
+	--console-line-soft: #2f2d26;
+	--console-line-strong: #3a362e;
+	--empty-line: #706a5c;
+	--surface-panel: #282621;
+	--surface-card: #2e2c26;
+	--surface-tray: #2b2924;
+	--surface-tile: #262420;
+	--surface-recess: #1d1b18;
+	--face-field: #25231f;
+	--glow-deep: #615c51;
+	--glow-body: #8a8373;
+	--glow-crest: #d7d0bf;
+}
+
+:root.light.linen {
+	--console-floor: #e3dcd1;
+	--console-panel: #ece7de;
+	--console-bg: #ece7de;
+	--console-card: #f3efe8;
+	--console-pop: #f8f5f0;
+	--pop-rail: #f1ede5;
+	--console-line: #d6cfc1;
+	--console-line-soft: #e8e2d8;
+	--console-line-strong: #d6cfc1;
+	--empty-line: #b0a797;
+	--surface-panel: #f3efe8;
+	--surface-card: #f8f5f0;
+	--surface-tray: #f6f2ec;
+	--surface-tile: #f1ede5;
+	--surface-recess: #e8e3d9;
+	--face-field: #f0ebe4;
+	--glow-deep: #958d7e;
+	--glow-body: #857c6d;
+	--glow-crest: #b2aca3;
+}
+
+/* Concrete: Poured grey. Nothing shouts. */
+:root.concrete {
+	--console-floor: #141414;
+	--console-panel: #1e1e1f;
+	--console-bg: #1e1e1f;
+	--console-card: #242426;
+	--console-pop: #2a2a2c;
+	--pop-rail: #222224;
+	--console-line: #343437;
+	--console-line-soft: #2b2b2d;
+	--console-line-strong: #343437;
+	--empty-line: #5d5f62;
+	--surface-panel: #242426;
+	--surface-card: #2a2a2c;
+	--surface-tray: #272729;
+	--surface-tile: #222224;
+	--surface-recess: #19191a;
+	--face-field: #212123;
+	--glow-deep: #4f5153;
+	--glow-body: #6e7074;
+	--glow-crest: #b8bbbf;
+}
+
+:root.light.concrete {
+	--console-floor: #d9d9db;
+	--console-panel: #e3e3e4;
+	--console-bg: #e3e3e4;
+	--console-card: #ebebec;
+	--console-pop: #f2f2f3;
+	--pop-rail: #e9e9ea;
+	--console-line: #cdcdd0;
+	--console-line-soft: #dfdfe1;
+	--console-line-strong: #cdcdd0;
+	--empty-line: #9fa0a4;
+	--surface-panel: #ebebec;
+	--surface-card: #f2f2f3;
+	--surface-tray: #eeeef0;
+	--surface-tile: #e9e9ea;
+	--surface-recess: #dfdfe0;
+	--face-field: #e7e7e8;
+	--glow-deep: #7c7f84;
+	--glow-body: #6a6d73;
+	--glow-crest: #a0a3a6;
+}
+
+/* Gloaming: Violet dusk with a warm lamp in it. */
+:root.gloaming {
+	--console-floor: #110d15;
+	--console-panel: #1a1420;
+	--console-bg: #1a1420;
+	--console-card: #241d2e;
+	--console-pop: #2d2740;
+	--pop-rail: #211a2a;
+	--console-line: #382f4d;
+	--console-line-soft: #2c243a;
+	--console-line-strong: #382f4d;
+	--empty-line: #7d5d5d;
+	--surface-panel: #241d2e;
+	--surface-card: #2d2740;
+	--surface-tray: #282237;
+	--surface-tile: #211a2a;
+	--surface-recess: #16111b;
+	--face-field: #201928;
+	--glow-deep: #6b4c3b;
+	--glow-body: #9f704d;
+	--glow-crest: #f4bf8f;
+}
+
+:root.light.gloaming {
+	--console-floor: #e3dae6;
+	--console-panel: #ece5ef;
+	--console-bg: #ece5ef;
+	--console-card: #f6f1f7;
+	--console-pop: #fbf8fb;
+	--pop-rail: #f3edf5;
+	--console-line: #d9ccdb;
+	--console-line-soft: #eae2ec;
+	--console-line-strong: #d9ccdb;
+	--empty-line: #c6a093;
+	--surface-panel: #f6f1f7;
+	--surface-card: #fbf8fb;
+	--surface-tray: #f8f4f9;
+	--surface-tile: #f3edf5;
+	--surface-recess: #e9e1ec;
+	--face-field: #f2ecf3;
+	--glow-deep: #c2844f;
+	--glow-body: #ba7232;
+	--glow-crest: #d4a67c;
+}
+
+/* Harvest: Warm earth, cool green growing out of it. */
+:root.harvest {
+	--console-floor: #17120d;
+	--console-panel: #241c14;
+	--console-bg: #241c14;
+	--console-card: #2b251b;
+	--console-pop: #333024;
+	--pop-rail: #292219;
+	--console-line: #423c28;
+	--console-line-soft: #342e20;
+	--console-line-strong: #423c28;
+	--empty-line: #626f42;
+	--surface-panel: #2b251b;
+	--surface-card: #333024;
+	--surface-tray: #2f2a20;
+	--surface-tile: #292219;
+	--surface-recess: #1e1811;
+	--face-field: #282118;
+	--glow-deep: #4d5a35;
+	--glow-body: #668149;
+	--glow-crest: #acd091;
+}
+
+:root.light.harvest {
+	--console-floor: #e0d7c4;
+	--console-panel: #eae2d2;
+	--console-bg: #eae2d2;
+	--console-card: #f3eee2;
+	--console-pop: #f9f6ee;
+	--pop-rail: #f0eadd;
+	--console-line: #d3c9b2;
+	--console-line-soft: #e6dfcf;
+	--console-line-strong: #d3c9b2;
+	--empty-line: #9da679;
+	--surface-panel: #f3eee2;
+	--surface-card: #f9f6ee;
+	--surface-tray: #f6f2e8;
+	--surface-tile: #f0eadd;
+	--surface-recess: #e6decc;
+	--face-field: #efe9db;
+	--glow-deep: #739355;
+	--glow-body: #5d843e;
+	--glow-crest: #98b286;
+}
+
+/* Lagoon: Cold water, warm coral under it. */
+:root.lagoon {
+	--console-floor: #0a1517;
+	--console-panel: #0f2024;
+	--console-bg: #0f2024;
+	--console-card: #16303a;
+	--console-pop: #1d3f4d;
+	--pop-rail: #142b33;
+	--console-line: #244f5f;
+	--console-line-soft: #1b3c49;
+	--console-line-strong: #244f5f;
+	--empty-line: #6f737f;
+	--surface-panel: #16303a;
+	--surface-card: #1d3f4d;
+	--surface-tray: #1a3844;
+	--surface-tile: #142b33;
+	--surface-recess: #0d1b1e;
+	--face-field: #132930;
+	--glow-deep: #665255;
+	--glow-body: #9d7273;
+	--glow-crest: #f7bcbc;
+}
+
+:root.light.lagoon {
+	--console-floor: #cce2e4;
+	--console-panel: #dcecee;
+	--console-bg: #dcecee;
+	--console-card: #eaf5f6;
+	--console-pop: #f4fafb;
+	--pop-rail: #e6f2f4;
+	--console-line: #b8d4d7;
+	--console-line-soft: #d6e8ea;
+	--console-line-strong: #b8d4d7;
+	--empty-line: #b0a2a5;
+	--surface-panel: #eaf5f6;
+	--surface-card: #f4fafb;
+	--surface-tray: #eff8f8;
+	--surface-tile: #e6f2f4;
+	--surface-recess: #d6e8ea;
+	--face-field: #e4f1f2;
+	--glow-deep: #c77d7e;
+	--glow-body: #c36969;
+	--glow-crest: #da9f9f;
+}
+
+/* Tundra: Grey green ice, low sun. */
+:root.tundra {
+	--console-floor: #0f1211;
+	--console-panel: #171b1a;
+	--console-bg: #171b1a;
+	--console-card: #1f2725;
+	--console-pop: #273330;
+	--pop-rail: #1d2322;
+	--console-line: #2e3c39;
+	--console-line-soft: #252f2d;
+	--console-line-strong: #2e3c39;
+	--empty-line: #70705c;
+	--surface-panel: #1f2725;
+	--surface-card: #273330;
+	--surface-tray: #232d2a;
+	--surface-tile: #1d2322;
+	--surface-recess: #131716;
+	--face-field: #1b2220;
+	--glow-deep: #645b47;
+	--glow-body: #958364;
+	--glow-crest: #ead3ae;
+}
+
+:root.light.tundra {
+	--console-floor: #d5ddd9;
+	--console-panel: #e0e6e3;
+	--console-bg: #e0e6e3;
+	--console-card: #eef2f0;
+	--console-pop: #f7faf9;
+	--pop-rail: #eaeeec;
+	--console-line: #c8d2ce;
+	--console-line-soft: #dfe5e2;
+	--console-line-strong: #c8d2ce;
+	--empty-line: #aaa691;
+	--surface-panel: #eef2f0;
+	--surface-card: #f7faf9;
+	--surface-tray: #f2f6f4;
+	--surface-tile: #eaeeec;
+	--surface-recess: #dce2df;
+	--face-field: #e8edea;
+	--glow-deep: #9f885e;
+	--glow-body: #937646;
+	--glow-crest: #bba989;
+}
+
+/* Aubergine: Deep purple, sharp green. */
+:root.aubergine {
+	--console-floor: #120a10;
+	--console-panel: #1b1018;
+	--console-bg: #1b1018;
+	--console-card: #261722;
+	--console-pop: #31202d;
+	--pop-rail: #23151f;
+	--console-line: #3d2838;
+	--console-line-soft: #2f1e2b;
+	--console-line-strong: #3d2838;
+	--empty-line: #636763;
+	--surface-panel: #261722;
+	--surface-card: #31202d;
+	--surface-tray: #2c1c28;
+	--surface-tile: #23151f;
+	--surface-recess: #170d14;
+	--face-field: #21141e;
+	--glow-deep: #4b594d;
+	--glow-body: #6a886f;
+	--glow-crest: #b4ddbc;
+}
+
+:root.light.aubergine {
+	--console-floor: #e7d7e2;
+	--console-panel: #efe3ec;
+	--console-bg: #efe3ec;
+	--console-card: #f7eff5;
+	--console-pop: #fcf7fa;
+	--pop-rail: #f5ebf2;
+	--console-line: #dcc9d6;
+	--console-line-soft: #ece0e8;
+	--console-line-strong: #dcc9d6;
+	--empty-line: #9aa69c;
+	--surface-panel: #f7eff5;
+	--surface-card: #fcf7fa;
+	--surface-tray: #faf3f8;
+	--surface-tile: #f5ebf2;
+	--surface-recess: #ecdee8;
+	--face-field: #f3eaf1;
+	--glow-deep: #5d956d;
+	--glow-body: #428756;
+	--glow-crest: #86b493;
+}
+
+/* Driftwood: A lighter dark. Gentle and dusty. */
+:root.driftwood {
+	--console-floor: #1f1c1a;
+	--console-panel: #2f2b28;
+	--console-bg: #2f2b28;
+	--console-card: #383431;
+	--console-pop: #413c39;
+	--pop-rail: #35312e;
+	--console-line: #4d4742;
+	--console-line-soft: #403c38;
+	--console-line-strong: #4d4742;
+	--empty-line: #7d7268;
+	--surface-panel: #383431;
+	--surface-card: #413c39;
+	--surface-tray: #3c3835;
+	--surface-tile: #35312e;
+	--surface-recess: #272422;
+	--face-field: #34302d;
+	--glow-deep: #6a6156;
+	--glow-body: #8e8274;
+	--glow-crest: #d7caba;
+}
+
+:root.light.driftwood {
+	--console-floor: #dfd8cd;
+	--console-panel: #e8e2da;
+	--console-bg: #e8e2da;
+	--console-card: #f2eee8;
+	--console-pop: #f9f6f2;
+	--pop-rail: #efeae4;
+	--console-line: #d4cbbc;
+	--console-line-soft: #e6e0d7;
+	--console-line-strong: #d4cbbc;
+	--empty-line: #aa9d8b;
+	--surface-panel: #f2eee8;
+	--surface-card: #f9f6f2;
+	--surface-tray: #f6f2ed;
+	--surface-tile: #efeae4;
+	--surface-recess: #e4ded5;
+	--face-field: #eee9e2;
+	--glow-deep: #8c7e6d;
+	--glow-body: #7b6c58;
+	--glow-crest: #aba296;
+}
+
+/* Pewter: Soft metal. Blue in the shadows. */
+:root.pewter {
+	--console-floor: #1d1f21;
+	--console-panel: #2c3033;
+	--console-bg: #2c3033;
+	--console-card: #353a3e;
+	--console-pop: #3e444a;
+	--pop-rail: #32373b;
+	--console-line: #484f56;
+	--console-line-soft: #3c4248;
+	--console-line-strong: #484f56;
+	--empty-line: #6e7b86;
+	--surface-panel: #353a3e;
+	--surface-card: #3e444a;
+	--surface-tray: #3a3f44;
+	--surface-tile: #32373b;
+	--surface-recess: #25282b;
+	--face-field: #313639;
+	--glow-deep: #5c676f;
+	--glow-body: #7a8994;
+	--glow-crest: #bfd0dc;
+}
+
+:root.light.pewter {
+	--console-floor: #d2dae0;
+	--console-panel: #dee4e8;
+	--console-bg: #dee4e8;
+	--console-card: #edf1f4;
+	--console-pop: #f6f9fb;
+	--pop-rail: #e8edf0;
+	--console-line: #c4ced7;
+	--console-line-soft: #dce3e8;
+	--console-line-strong: #c4ced7;
+	--empty-line: #8fa4b2;
+	--surface-panel: #edf1f4;
+	--surface-card: #f6f9fb;
+	--surface-tray: #f2f5f8;
+	--surface-tile: #e8edf0;
+	--surface-recess: #d9e0e5;
+	--face-field: #e6ebef;
+	--glow-deep: #6b8799;
+	--glow-body: #56768a;
+	--glow-crest: #94a9b5;
+}
+
+/* Sage: A lit room with plants in it. */
+:root.sage {
+	--console-floor: #1b1f1c;
+	--console-panel: #2a302b;
+	--console-bg: #2a302b;
+	--console-card: #333a34;
+	--console-pop: #3c443d;
+	--pop-rail: #303731;
+	--console-line: #454f46;
+	--console-line-soft: #3a423b;
+	--console-line-strong: #454f46;
+	--empty-line: #75836e;
+	--surface-panel: #333a34;
+	--surface-card: #3c443d;
+	--surface-tray: #383f38;
+	--surface-tile: #303731;
+	--surface-recess: #232824;
+	--face-field: #2f3630;
+	--glow-deep: #646f5d;
+	--glow-body: #88977c;
+	--glow-crest: #d2e1c3;
+}
+
+:root.light.sage {
+	--console-floor: #d7ded0;
+	--console-panel: #e2e8dd;
+	--console-bg: #e2e8dd;
+	--console-card: #eff3ea;
+	--console-pop: #f8faf5;
+	--pop-rail: #ebf0e6;
+	--console-line: #cad2c1;
+	--console-line-soft: #e0e6da;
+	--console-line-strong: #cad2c1;
+	--empty-line: #99a98a;
+	--surface-panel: #eff3ea;
+	--surface-card: #f8faf5;
+	--surface-tray: #f4f6f0;
+	--surface-tile: #ebf0e6;
+	--surface-recess: #dee4d8;
+	--face-field: #e9eee4;
+	--glow-deep: #778d65;
+	--glow-body: #637c4f;
+	--glow-crest: #9cac90;
+}
+
+/* Ultraviolet: Saturated purple, electric cyan. */
+:root.ultraviolet {
+	--console-floor: #0e071e;
+	--console-panel: #150b2e;
+	--console-bg: #150b2e;
+	--console-card: #1f1140;
+	--console-pop: #2a1856;
+	--pop-rail: #1c0f3b;
+	--console-line: #361e6b;
+	--console-line-soft: #281651;
+	--console-line-strong: #361e6b;
+	--empty-line: #3461a2;
+	--surface-panel: #1f1140;
+	--surface-card: #2a1856;
+	--surface-tray: #24144b;
+	--surface-tile: #1c0f3b;
+	--surface-recess: #120927;
+	--face-field: #1a0e38;
+	--glow-deep: #1a5777;
+	--glow-body: #1d87a5;
+	--glow-crest: #5bdef2;
+}
+
+:root.light.ultraviolet {
+	--console-floor: #dbd2f1;
+	--console-panel: #e6e0f7;
+	--console-bg: #e6e0f7;
+	--console-card: #f2ecfd;
+	--console-pop: #faf7ff;
+	--pop-rail: #eee8fb;
+	--console-line: #cdc1e9;
+	--console-line-soft: #e3dbf5;
+	--console-line-strong: #cdc1e9;
+	--empty-line: #829dc5;
+	--surface-panel: #f2ecfd;
+	--surface-card: #faf7ff;
+	--surface-tray: #f6f2fe;
+	--surface-tile: #eee8fb;
+	--surface-recess: #e2dbf4;
+	--face-field: #ede7fa;
+	--glow-deep: #428ea9;
+	--glow-body: #247f9a;
+	--glow-crest: #73aebf;
+}
+
+/* Inferno: Hot and red. Not subtle. */
+:root.inferno {
+	--console-floor: #130606;
+	--console-panel: #1d0a0a;
+	--console-bg: #1d0a0a;
+	--console-card: #2b0f0e;
+	--console-pop: #3a1513;
+	--pop-rail: #270e0d;
+	--console-line: #4a1c18;
+	--console-line-soft: #371412;
+	--console-line-strong: #4a1c18;
+	--empty-line: #8e4827;
+	--surface-panel: #2b0f0e;
+	--surface-card: #3a1513;
+	--surface-tray: #321210;
+	--surface-tile: #270e0d;
+	--surface-recess: #180808;
+	--face-field: #250d0c;
+	--glow-deep: #713e1d;
+	--glow-body: #a75e29;
+	--glow-crest: #fcae6f;
+}
+
+:root.light.inferno {
+	--console-floor: #efd1cd;
+	--console-panel: #f6dedb;
+	--console-bg: #f6dedb;
+	--console-card: #fdeeeb;
+	--console-pop: #fff8f6;
+	--pop-rail: #fbe9e6;
+	--console-line: #e6c2bc;
+	--console-line-soft: #f4ddd8;
+	--console-line-strong: #e6c2bc;
+	--empty-line: #d58c75;
+	--surface-panel: #fdeeeb;
+	--surface-card: #fff8f6;
+	--surface-tray: #fef3f0;
+	--surface-tile: #fbe9e6;
+	--surface-recess: #f3d9d5;
+	--face-field: #fae7e4;
+	--glow-deep: #ce673e;
+	--glow-body: #c75121;
+	--glow-crest: #dc9172;
+}
+
+/* Acid: Toxic green. Awake at 3am. */
+:root.acid {
+	--console-floor: #0b1104;
+	--console-panel: #111a06;
+	--console-bg: #111a06;
+	--console-card: #19260a;
+	--console-pop: #22330e;
+	--pop-rail: #172209;
+	--console-line: #2c4313;
+	--console-line-soft: #21320e;
+	--console-line-strong: #2c4313;
+	--empty-line: #648731;
+	--surface-panel: #19260a;
+	--surface-card: #22330e;
+	--surface-tray: #1e2c0c;
+	--surface-tile: #172209;
+	--surface-recess: #0e1605;
+	--face-field: #152108;
+	--glow-deep: #536c2a;
+	--glow-body: #7ca040;
+	--glow-crest: #cff58c;
+}
+
+:root.light.acid {
+	--console-floor: #dbe8c3;
+	--console-panel: #e6f0d2;
+	--console-bg: #e6f0d2;
+	--console-card: #f1f8e4;
+	--console-pop: #f9fcf2;
+	--pop-rail: #eef6df;
+	--console-line: #ceddb1;
+	--console-line-soft: #e3edd0;
+	--console-line-strong: #ceddb1;
+	--empty-line: #99b56d;
+	--surface-panel: #f1f8e4;
+	--surface-card: #f9fcf2;
+	--surface-tray: #f5faeb;
+	--surface-tile: #eef6df;
+	--surface-recess: #e2edcc;
+	--face-field: #ecf4dc;
+	--glow-deep: #72983e;
+	--glow-body: #5c8822;
+	--glow-crest: #98b374;
+}
+
+/* Flamingo: Pink on pink, and proud. */
+:root.flamingo {
+	--console-floor: #1c0a16;
+	--console-panel: #2b0f22;
+	--console-bg: #2b0f22;
+	--console-card: #3a142e;
+	--console-pop: #4a1a3b;
+	--pop-rail: #36122a;
+	--console-line: #5a214a;
+	--console-line-soft: #471939;
+	--console-line-strong: #5a214a;
+	--empty-line: #9a5173;
+	--surface-panel: #3a142e;
+	--surface-card: #4a1a3b;
+	--surface-tray: #421734;
+	--surface-tile: #36122a;
+	--surface-recess: #240d1d;
+	--face-field: #331229;
+	--glow-deep: #7b4858;
+	--glow-body: #ad6b79;
+	--glow-crest: #febcc4;
+}
+
+:root.light.flamingo {
+	--console-floor: #f4d3de;
+	--console-panel: #fadfe9;
+	--console-bg: #fadfe9;
+	--console-card: #fdeef3;
+	--console-pop: #fff8fa;
+	--pop-rail: #fceaf0;
+	--console-line: #ecc5d1;
+	--console-line-soft: #f6dee6;
+	--console-line-strong: #ecc5d1;
+	--empty-line: #d87fa1;
+	--surface-panel: #fdeef3;
+	--surface-card: #fff8fa;
+	--surface-tray: #fef3f6;
+	--surface-tile: #fceaf0;
+	--surface-recess: #f8dae5;
+	--face-field: #fce7ee;
+	--glow-deep: #cc487f;
+	--glow-body: #c42c6b;
+	--glow-crest: #d979a1;
+}
+
+/* Cyber: Blue city, magenta signage. */
+:root.cyber {
+	--console-floor: #060911;
+	--console-panel: #0a0e1a;
+	--console-bg: #0a0e1a;
+	--console-card: #101828;
+	--console-pop: #182338;
+	--pop-rail: #0e1524;
+	--console-line: #1f2c48;
+	--console-line-soft: #162035;
+	--console-line-strong: #1f2c48;
+	--empty-line: #6b5d8e;
+	--surface-panel: #101828;
+	--surface-card: #182338;
+	--surface-tray: #141e30;
+	--surface-tile: #0e1524;
+	--surface-recess: #080c16;
+	--face-field: #0d1422;
+	--glow-deep: #614a70;
+	--glow-body: #996fa6;
+	--glow-crest: #f4c1fd;
+}
+
+:root.light.cyber {
+	--console-floor: #d7dbe9;
+	--console-panel: #e4e7f2;
+	--console-bg: #e4e7f2;
+	--console-card: #f0f2f8;
+	--console-pop: #f9fafd;
+	--pop-rail: #eceff6;
+	--console-line: #c6ccdd;
+	--console-line-soft: #dfe3ed;
+	--console-line-strong: #c6ccdd;
+	--empty-line: #b086c7;
+	--surface-panel: #f0f2f8;
+	--surface-card: #f9fafd;
+	--surface-tray: #f4f6fa;
+	--surface-tile: #eceff6;
+	--surface-recess: #dfe2ee;
+	--face-field: #ebedf5;
+	--glow-deep: #b24dbf;
+	--glow-body: #a930b6;
+	--glow-crest: #c97bd1;
+}
+
+/* Fog: Grey and damp. Almost no colour. */
+:root.fog {
+	--console-floor: #121516;
+	--console-panel: #1c2022;
+	--console-bg: #1c2022;
+	--console-card: #232829;
+	--console-pop: #2a3032;
+	--pop-rail: #212627;
+	--console-line: #323a3c;
+	--console-line-soft: #292f30;
+	--console-line-strong: #323a3c;
+	--empty-line: #586467;
+	--surface-panel: #232829;
+	--surface-card: #2a3032;
+	--surface-tray: #262c2e;
+	--surface-tile: #212627;
+	--surface-recess: #181b1d;
+	--face-field: #202426;
+	--glow-deep: #4a5457;
+	--glow-body: #667478;
+	--glow-crest: #b0bfc2;
+}
+
+:root.light.fog {
+	--console-floor: #d5dcdd;
+	--console-panel: #e0e5e6;
+	--console-bg: #e0e5e6;
+	--console-card: #eef1f2;
+	--console-pop: #f7f9f9;
+	--pop-rail: #eaedee;
+	--console-line: #c8d1d2;
+	--console-line-soft: #dfe4e5;
+	--console-line-strong: #c8d1d2;
+	--empty-line: #94a3a5;
+	--surface-panel: #eef1f2;
+	--surface-card: #f7f9f9;
+	--surface-tray: #f2f5f6;
+	--surface-tile: #eaedee;
+	--surface-recess: #dce1e2;
+	--face-field: #e8eced;
+	--glow-deep: #6e8184;
+	--glow-body: #596e72;
+	--glow-crest: #96a3a6;
+}
+
+/* Dune: Sand at dusk. Warm and low. */
+:root.dune {
+	--console-floor: #161411;
+	--console-panel: #221f1a;
+	--console-bg: #221f1a;
+	--console-card: #2a2620;
+	--console-pop: #322d26;
+	--pop-rail: #28241e;
+	--console-line: #3e372d;
+	--console-line-soft: #322d25;
+	--console-line-strong: #3e372d;
+	--empty-line: #76674e;
+	--surface-panel: #2a2620;
+	--surface-card: #322d26;
+	--surface-tray: #2e2a23;
+	--surface-tile: #28241e;
+	--surface-recess: #1d1a16;
+	--face-field: #26231d;
+	--glow-deep: #665842;
+	--glow-body: #907b5b;
+	--glow-crest: #dfc8a3;
+}
+
+:root.light.dune {
+	--console-floor: #e0d8c9;
+	--console-panel: #e9e2d5;
+	--console-bg: #e9e2d5;
+	--console-card: #f3efe6;
+	--console-pop: #faf7f1;
+	--pop-rail: #f0ebe1;
+	--console-line: #d5ccba;
+	--console-line-soft: #e7e1d5;
+	--console-line-strong: #d5ccba;
+	--empty-line: #b4a285;
+	--surface-panel: #f3efe6;
+	--surface-card: #faf7f1;
+	--surface-tray: #f6f3ec;
+	--surface-tile: #f0ebe1;
+	--surface-recess: #e5ded0;
+	--face-field: #eee9de;
+	--glow-deep: #a18861;
+	--glow-body: #94774c;
+	--glow-crest: #bba98e;
+}
+
+/* Juniper: Still water in a forest. */
+:root.juniper {
+	--console-floor: #0e1312;
+	--console-panel: #161d1b;
+	--console-bg: #161d1b;
+	--console-card: #1d2624;
+	--console-pop: #242f2c;
+	--pop-rail: #1b2321;
+	--console-line: #2a3734;
+	--console-line-soft: #222d2b;
+	--console-line-strong: #2a3734;
+	--empty-line: #4b685f;
+	--surface-panel: #1d2624;
+	--surface-card: #242f2c;
+	--surface-tray: #202a28;
+	--surface-tile: #1b2321;
+	--surface-recess: #121817;
+	--face-field: #1a2220;
+	--glow-deep: #3e584f;
+	--glow-body: #577d71;
+	--glow-crest: #a0cabc;
+}
+
+:root.light.juniper {
+	--console-floor: #d1dcd9;
+	--console-panel: #dee7e4;
+	--console-bg: #dee7e4;
+	--console-card: #ecf2f0;
+	--console-pop: #f6faf9;
+	--pop-rail: #e8efec;
+	--console-line: #c1d0cb;
+	--console-line-soft: #dbe4e1;
+	--console-line-strong: #c1d0cb;
+	--empty-line: #86a79d;
+	--surface-panel: #ecf2f0;
+	--surface-card: #f6faf9;
+	--surface-tray: #f1f6f4;
+	--surface-tile: #e8efec;
+	--surface-recess: #d9e3e0;
+	--face-field: #e6edeb;
+	--glow-deep: #5c8d7f;
+	--glow-body: #447c6c;
+	--glow-crest: #89aca2;
+}
+
+/* Plumsmoke: Smoke with a purple cast. */
+:root.plumsmoke {
+	--console-floor: #110f14;
+	--console-panel: #1a171f;
+	--console-bg: #1a171f;
+	--console-card: #221e28;
+	--console-pop: #2a2532;
+	--pop-rail: #201c25;
+	--console-line: #342e3d;
+	--console-line-soft: #292430;
+	--console-line-strong: #342e3d;
+	--empty-line: #665b73;
+	--surface-panel: #221e28;
+	--surface-card: #2a2532;
+	--surface-tray: #26222d;
+	--surface-tile: #201c25;
+	--surface-recess: #16131a;
+	--face-field: #1e1b24;
+	--glow-deep: #564d60;
+	--glow-body: #7c7088;
+	--glow-crest: #cabdd7;
+}
+
+:root.light.plumsmoke {
+	--console-floor: #ddd8e4;
+	--console-panel: #e7e3ec;
+	--console-bg: #e7e3ec;
+	--console-card: #f2eff5;
+	--console-pop: #faf8fc;
+	--pop-rail: #efebf2;
+	--console-line: #d1cad9;
+	--console-line-soft: #e5e0ea;
+	--console-line-strong: #d1cad9;
+	--empty-line: #a398b2;
+	--surface-panel: #f2eff5;
+	--surface-card: #faf8fc;
+	--surface-tray: #f6f4f8;
+	--surface-tile: #efebf2;
+	--surface-recess: #e3dee9;
+	--face-field: #edeaf1;
+	--glow-deep: #837595;
+	--glow-body: #706085;
+	--glow-crest: #a59bb2;
+}
+
+/* Cinder: Cooling ash. Warm grey. */
+:root.cinder {
+	--console-floor: #11100f;
+	--console-panel: #1a1817;
+	--console-bg: #1a1817;
+	--console-card: #221f1e;
+	--console-pop: #2a2725;
+	--pop-rail: #201d1c;
+	--console-line: #34302d;
+	--console-line-soft: #292624;
+	--console-line-strong: #34302d;
+	--empty-line: #6a5e56;
+	--surface-panel: #221f1e;
+	--surface-card: #2a2725;
+	--surface-tray: #262322;
+	--surface-tile: #201d1c;
+	--surface-recess: #161413;
+	--face-field: #1e1c1b;
+	--glow-deep: #5b4f49;
+	--glow-body: #837268;
+	--glow-crest: #d3bfb4;
+}
+
+:root.light.cinder {
+	--console-floor: #ddd7d3;
+	--console-panel: #e6e1de;
+	--console-bg: #e6e1de;
+	--console-card: #f1eeec;
+	--console-pop: #f9f7f6;
+	--pop-rail: #eeeae8;
+	--console-line: #d2cbc6;
+	--console-line-soft: #e5e0dd;
+	--console-line-strong: #d2cbc6;
+	--empty-line: #ab9e94;
+	--surface-panel: #f1eeec;
+	--surface-card: #f9f7f6;
+	--surface-tray: #f5f2f1;
+	--surface-tile: #eeeae8;
+	--surface-recess: #e2ddda;
+	--face-field: #ece8e6;
+	--glow-deep: #907f71;
+	--glow-body: #806d5d;
+	--glow-crest: #afa399;
+}
+
+/* Emerald: One green stone, cut deep. */
+:root.emerald {
+	--console-floor: #040d0a;
+	--console-panel: #06140f;
+	--console-bg: #06140f;
+	--console-card: #0d2419;
+	--console-pop: #123324;
+	--pop-rail: #0b1f16;
+	--console-line: #16402d;
+	--console-line-soft: #112f21;
+	--console-line-strong: #16402d;
+	--empty-line: #227a57;
+	--surface-panel: #0d2419;
+	--surface-card: #123324;
+	--surface-tray: #102c1e;
+	--surface-tile: #0b1f16;
+	--surface-recess: #05110d;
+	--face-field: #0a1d14;
+	--glow-deep: #175d43;
+	--glow-body: #238a65;
+	--glow-crest: #69deb4;
+}
+
+:root.light.emerald {
+	--console-floor: #cde5d9;
+	--console-panel: #dcefe5;
+	--console-bg: #dcefe5;
+	--console-card: #f0faf5;
+	--console-pop: #fafffc;
+	--pop-rail: #eaf7f0;
+	--console-line: #bbd8ca;
+	--console-line-soft: #dbece4;
+	--console-line-strong: #bbd8ca;
+	--empty-line: #6faf99;
+	--surface-panel: #f0faf5;
+	--surface-card: #fafffc;
+	--surface-tray: #f5fcf8;
+	--surface-tile: #eaf7f0;
+	--surface-recess: #d6ebe0;
+	--face-field: #e7f5ee;
+	--glow-deep: #389579;
+	--glow-body: #1a8465;
+	--glow-crest: #6db19e;
+}
+
+/* Sapphire: Blue with weight behind it. */
+:root.sapphire {
+	--console-floor: #050a16;
+	--console-panel: #070f22;
+	--console-bg: #070f22;
+	--console-card: #0d1936;
+	--console-pop: #12224a;
+	--pop-rail: #0b1630;
+	--console-line: #182c5c;
+	--console-line-soft: #112045;
+	--console-line-strong: #182c5c;
+	--empty-line: #335a9c;
+	--surface-panel: #0d1936;
+	--surface-card: #12224a;
+	--surface-tray: #101e40;
+	--surface-tile: #0b1630;
+	--surface-recess: #060d1d;
+	--face-field: #0a142d;
+	--glow-deep: #294874;
+	--glow-body: #3e6ca8;
+	--glow-crest: #89bcfb;
+}
+
+:root.light.sapphire {
+	--console-floor: #cedaee;
+	--console-panel: #dee7f7;
+	--console-bg: #dee7f7;
+	--console-card: #eff4fd;
+	--console-pop: #fafcff;
+	--pop-rail: #eaf0fb;
+	--console-line: #bbcbe3;
+	--console-line-soft: #dae4f2;
+	--console-line-strong: #bbcbe3;
+	--empty-line: #7996d9;
+	--surface-panel: #eff4fd;
+	--surface-card: #fafcff;
+	--surface-tray: #f4f8fe;
+	--surface-tile: #eaf0fb;
+	--surface-recess: #d8e2f4;
+	--face-field: #e7eefa;
+	--glow-deep: #4b73df;
+	--glow-body: #305ddb;
+	--glow-crest: #7c98e8;
+}
+
+/* Ruby: Red, and expensive about it. */
+:root.ruby {
+	--console-floor: #0f0406;
+	--console-panel: #170609;
+	--console-bg: #170609;
+	--console-card: #260a11;
+	--console-pop: #360e18;
+	--pop-rail: #22090f;
+	--console-line: #43121f;
+	--console-line-soft: #320d17;
+	--console-line-strong: #43121f;
+	--empty-line: #8a3546;
+	--surface-panel: #260a11;
+	--surface-card: #360e18;
+	--surface-tray: #2e0c14;
+	--surface-tile: #22090f;
+	--surface-recess: #130508;
+	--face-field: #1f080d;
+	--glow-deep: #6e2f38;
+	--glow-body: #a44856;
+	--glow-crest: #fc96a5;
+}
+
+:root.light.ruby {
+	--console-floor: #f0cfd5;
+	--console-panel: #f7dde2;
+	--console-bg: #f7dde2;
+	--console-card: #fdeef1;
+	--console-pop: #fff9fa;
+	--pop-rail: #fbe9ec;
+	--console-line: #e6bec5;
+	--console-line-soft: #f4dbdf;
+	--console-line-strong: #e6bec5;
+	--empty-line: #d3778b;
+	--surface-panel: #fdeef1;
+	--surface-card: #fff9fa;
+	--surface-tray: #fef4f6;
+	--surface-tile: #fbe9ec;
+	--surface-recess: #f4d7dd;
+	--face-field: #fae6ea;
+	--glow-deep: #cc4364;
+	--glow-body: #c4264d;
+	--glow-crest: #d9768e;
+}
+
+/* Topaz: Warm yellow, lit from inside. */
+:root.topaz {
+	--console-floor: #0f0a04;
+	--console-panel: #171006;
+	--console-bg: #171006;
+	--console-card: #26190a;
+	--console-pop: #35230d;
+	--pop-rail: #221609;
+	--console-line: #422c10;
+	--console-line-soft: #31200c;
+	--console-line-strong: #422c10;
+	--empty-line: #896318;
+	--surface-panel: #26190a;
+	--surface-card: #35230d;
+	--surface-tray: #2e1e0c;
+	--surface-tile: #221609;
+	--surface-recess: #130d05;
+	--face-field: #1f1508;
+	--glow-deep: #6e5211;
+	--glow-body: #a47c19;
+	--glow-crest: #fcd05d;
+}
+
+:root.light.topaz {
+	--console-floor: #eedfbf;
+	--console-panel: #f6e9cf;
+	--console-bg: #f6e9cf;
+	--console-card: #fdf6e6;
+	--console-pop: #fffcf5;
+	--pop-rail: #fbf2df;
+	--console-line: #e4d3ae;
+	--console-line-soft: #f3e8d0;
+	--console-line-strong: #e4d3ae;
+	--empty-line: #ce9e68;
+	--surface-panel: #fdf6e6;
+	--surface-card: #fffcf5;
+	--surface-tray: #fef9ee;
+	--surface-tile: #fbf2df;
+	--surface-recess: #f3e5c9;
+	--face-field: #faf0dc;
+	--glow-deep: #c47739;
+	--glow-body: #bb621d;
+	--glow-crest: #d49b70;
+}
+
+/* Amethyst: Purple crystal, cool not sweet. */
+:root.amethyst {
+	--console-floor: #0c0612;
+	--console-panel: #120a1c;
+	--console-bg: #120a1c;
+	--console-card: #1d1030;
+	--console-pop: #281745;
+	--pop-rail: #1a0e2a;
+	--console-line: #331d58;
+	--console-line-soft: #261540;
+	--console-line-strong: #331d58;
+	--empty-line: #69449a;
+	--surface-panel: #1d1030;
+	--surface-card: #281745;
+	--surface-tray: #22143a;
+	--surface-tile: #1a0e2a;
+	--surface-recess: #0f0818;
+	--face-field: #180d27;
+	--glow-deep: #543871;
+	--glow-body: #7e56a7;
+	--glow-crest: #d0a4fd;
+}
+
+:root.light.amethyst {
+	--console-floor: #e1d5ef;
+	--console-panel: #ece2f7;
+	--console-bg: #ece2f7;
+	--console-card: #f7f1fd;
+	--console-pop: #fdfaff;
+	--pop-rail: #f4ecfb;
+	--console-line: #d4c5e5;
+	--console-line-soft: #e9dff3;
+	--console-line-strong: #d4c5e5;
+	--empty-line: #ae82d8;
+	--surface-panel: #f7f1fd;
+	--surface-card: #fdfaff;
+	--surface-tray: #faf6fe;
+	--surface-tile: #f4ecfb;
+	--surface-recess: #e8ddf4;
+	--face-field: #f2eafa;
+	--glow-deep: #9850d8;
+	--glow-body: #8935d2;
+	--glow-crest: #b47fe3;
+}
+
+/* Crt: An old monitor with the brightness up. */
+:root.crt {
+	--console-floor: #080b05;
+	--console-panel: #0d1108;
+	--console-bg: #0d1108;
+	--console-card: #141a0c;
+	--console-pop: #1c2411;
+	--pop-rail: #12170b;
+	--console-line: #242f14;
+	--console-line-soft: #1a220f;
+	--console-line-strong: #242f14;
+	--empty-line: #5b7229;
+	--surface-panel: #141a0c;
+	--surface-card: #1c2411;
+	--surface-tray: #181f0e;
+	--surface-tile: #12170b;
+	--surface-recess: #0b0e07;
+	--face-field: #11160a;
+	--glow-deep: #4e6021;
+	--glow-body: #779131;
+	--glow-crest: #cae879;
+}
+
+:root.light.crt {
+	--console-floor: #dae1c5;
+	--console-panel: #e4ead2;
+	--console-bg: #e4ead2;
+	--console-card: #f2f6e6;
+	--console-pop: #fafcf3;
+	--pop-rail: #eef2e0;
+	--console-line: #cfd7b6;
+	--console-line-soft: #e4ead3;
+	--console-line-strong: #cfd7b6;
+	--empty-line: #9fae73;
+	--surface-panel: #f2f6e6;
+	--surface-card: #fafcf3;
+	--surface-tray: #f6f9ec;
+	--surface-tile: #eef2e0;
+	--surface-recess: #e0e7cd;
+	--face-field: #ecf1dd;
+	--glow-deep: #7c9042;
+	--glow-body: #697f28;
+	--glow-crest: #a0ae77;
+}
+
+/* Polaroid: A photograph left in the sun. */
+:root.polaroid {
+	--console-floor: #161412;
+	--console-panel: #221f1b;
+	--console-bg: #221f1b;
+	--console-card: #2b2721;
+	--console-pop: #332f28;
+	--pop-rail: #28251f;
+	--console-line: #3e392f;
+	--console-line-soft: #322e27;
+	--console-line-strong: #3e392f;
+	--empty-line: #7d6d58;
+	--surface-panel: #2b2721;
+	--surface-card: #332f28;
+	--surface-tray: #2f2b24;
+	--surface-tile: #28251f;
+	--surface-recess: #1d1a17;
+	--face-field: #27231e;
+	--glow-deep: #6d5d4b;
+	--glow-body: #9d856a;
+	--glow-crest: #eed3b4;
+}
+
+:root.light.polaroid {
+	--console-floor: #e5ddce;
+	--console-panel: #efe8dc;
+	--console-bg: #efe8dc;
+	--console-card: #f8f4ec;
+	--console-pop: #fdfbf7;
+	--pop-rail: #f5f0e7;
+	--console-line: #d9d0be;
+	--console-line-soft: #ece6d9;
+	--console-line-strong: #d9d0be;
+	--empty-line: #bca585;
+	--surface-panel: #f8f4ec;
+	--surface-card: #fdfbf7;
+	--surface-tray: #faf8f2;
+	--surface-tile: #f5f0e7;
+	--surface-recess: #ebe4d6;
+	--face-field: #f4efe5;
+	--glow-deep: #ae8961;
+	--glow-body: #a2784a;
+	--glow-crest: #c4a98d;
+}
+
+/* Typewriter: Ribbon ink on cheap paper. */
+:root.typewriter {
+	--console-floor: #11100f;
+	--console-panel: #1a1917;
+	--console-bg: #1a1917;
+	--console-card: #232220;
+	--console-pop: #2b2a27;
+	--pop-rail: #201f1d;
+	--console-line: #35332f;
+	--console-line-soft: #2a2926;
+	--console-line-strong: #35332f;
+	--empty-line: #726f66;
+	--surface-panel: #232220;
+	--surface-card: #2b2a27;
+	--surface-tray: #272624;
+	--surface-tile: #201f1d;
+	--surface-recess: #161513;
+	--face-field: #1f1e1c;
+	--glow-deep: #635f58;
+	--glow-body: #908c81;
+	--glow-crest: #e3ded2;
+}
+
+:root.light.typewriter {
+	--console-floor: #e0dcd4;
+	--console-panel: #e9e6df;
+	--console-bg: #e9e6df;
+	--console-card: #f4f2ed;
+	--console-pop: #fbfaf7;
+	--pop-rail: #f1eee9;
+	--console-line: #d5d1c6;
+	--console-line-soft: #e8e5dd;
+	--console-line-strong: #d5d1c6;
+	--empty-line: #a5a093;
+	--surface-panel: #f4f2ed;
+	--surface-card: #fbfaf7;
+	--surface-tray: #f8f6f2;
+	--surface-tile: #f1eee9;
+	--surface-recess: #e5e2da;
+	--face-field: #efede7;
+	--glow-deep: #807b6f;
+	--glow-body: #6d675b;
+	--glow-crest: #a29f97;
+}
+
+/* Oxide: Iron left out in the rain. */
+:root.oxide {
+	--console-floor: #120c0a;
+	--console-panel: #1c1210;
+	--console-bg: #1c1210;
+	--console-card: #2a1a16;
+	--console-pop: #38221d;
+	--pop-rail: #261814;
+	--console-line: #452a24;
+	--console-line-soft: #35211b;
+	--console-line-strong: #452a24;
+	--empty-line: #81503b;
+	--surface-panel: #2a1a16;
+	--surface-card: #38221d;
+	--surface-tray: #311e1a;
+	--surface-tile: #261814;
+	--surface-recess: #180f0d;
+	--face-field: #241613;
+	--glow-deep: #66402e;
+	--glow-body: #965c41;
+	--glow-crest: #e8a889;
+}
+
+:root.light.oxide {
+	--console-floor: #ead5ca;
+	--console-panel: #f2e2d9;
+	--console-bg: #f2e2d9;
+	--console-card: #fbf1eb;
+	--console-pop: #fffaf7;
+	--pop-rail: #f8ece6;
+	--console-line: #e1c6b8;
+	--console-line-soft: #f0e0d7;
+	--console-line-strong: #e1c6b8;
+	--empty-line: #c7957b;
+	--surface-panel: #fbf1eb;
+	--surface-card: #fffaf7;
+	--surface-tray: #fdf6f1;
+	--surface-tile: #f8ece6;
+	--surface-recess: #efddd3;
+	--face-field: #f7eae3;
+	--glow-deep: #ba7654;
+	--glow-body: #af623c;
+	--glow-crest: #cd9c83;
+}
+
+/* Glacier: Blue ice, very cold light. */
+:root.glacier {
+	--console-floor: #091115;
+	--console-panel: #0e1a20;
+	--console-bg: #0e1a20;
+	--console-card: #16272f;
+	--console-pop: #1e343f;
+	--pop-rail: #14232a;
+	--console-line: #243f4d;
+	--console-line-soft: #1b313b;
+	--console-line-strong: #243f4d;
+	--empty-line: #467891;
+	--surface-panel: #16272f;
+	--surface-card: #1e343f;
+	--surface-tray: #1a2e37;
+	--surface-tile: #14232a;
+	--surface-recess: #0c161b;
+	--face-field: #122128;
+	--glow-deep: #386074;
+	--glow-body: #538da8;
+	--glow-crest: #9fdefd;
+}
+
+:root.light.glacier {
+	--console-floor: #cddfe7;
+	--console-panel: #dceaf0;
+	--console-bg: #dceaf0;
+	--console-card: #eef6fa;
+	--console-pop: #f9fdff;
+	--pop-rail: #e9f2f7;
+	--console-line: #bbd2dd;
+	--console-line-soft: #dae8ee;
+	--console-line-strong: #bbd2dd;
+	--empty-line: #70a5c2;
+	--surface-panel: #eef6fa;
+	--surface-card: #f9fdff;
+	--surface-tray: #f4fafc;
+	--surface-tile: #e9f2f7;
+	--surface-recess: #d6e6ed;
+	--face-field: #e6f1f6;
+	--glow-deep: #3788b4;
+	--glow-body: #1976a9;
+	--glow-crest: #6da8c8;
+}
+
+/* Monsoon: Warm rain on grey stone. */
+:root.monsoon {
+	--console-floor: #0c1112;
+	--console-panel: #131a1c;
+	--console-bg: #131a1c;
+	--console-card: #1b2528;
+	--console-pop: #233135;
+	--pop-rail: #192224;
+	--console-line: #2a3b3f;
+	--console-line-soft: #212e31;
+	--console-line-strong: #2a3b3f;
+	--empty-line: #527470;
+	--surface-panel: #1b2528;
+	--surface-card: #233135;
+	--surface-tray: #1f2b2e;
+	--surface-tile: #192224;
+	--surface-recess: #101618;
+	--face-field: #172023;
+	--glow-deep: #446059;
+	--glow-body: #638c80;
+	--glow-crest: #b0dece;
+}
+
+:root.light.monsoon {
+	--console-floor: #d2dede;
+	--console-panel: #dfe8e8;
+	--console-bg: #dfe8e8;
+	--console-card: #eef4f4;
+	--console-pop: #f9fcfc;
+	--pop-rail: #eaf0f0;
+	--console-line: #c2d1d1;
+	--console-line-soft: #dce6e6;
+	--console-line-strong: #c2d1d1;
+	--empty-line: #86a8a4;
+	--surface-panel: #eef4f4;
+	--surface-card: #f9fcfc;
+	--surface-tray: #f4f8f8;
+	--surface-tile: #eaf0f0;
+	--surface-recess: #dae4e4;
+	--face-field: #e7efef;
+	--glow-deep: #5b8e87;
+	--glow-body: #427e75;
+	--glow-crest: #88ada7;
+}
+
+/* Savanna: Dry grass, long light. */
+:root.savanna {
+	--console-floor: #14110b;
+	--console-panel: #1e1a11;
+	--console-bg: #1e1a11;
+	--console-card: #2a2417;
+	--console-pop: #362e1e;
+	--pop-rail: #262115;
+	--console-line: #423924;
+	--console-line-soft: #342c1c;
+	--console-line-strong: #423924;
+	--empty-line: #806830;
+	--surface-panel: #2a2417;
+	--surface-card: #362e1e;
+	--surface-tray: #30291a;
+	--surface-tile: #262115;
+	--surface-recess: #19160e;
+	--face-field: #252014;
+	--glow-deep: #695421;
+	--glow-body: #98782c;
+	--glow-crest: #eac66f;
+}
+
+:root.light.savanna {
+	--console-floor: #e5dbbf;
+	--console-panel: #efe6cf;
+	--console-bg: #efe6cf;
+	--console-card: #f9f3e2;
+	--console-pop: #fefcf4;
+	--pop-rail: #f6efdc;
+	--console-line: #dacdac;
+	--console-line-soft: #ece4cc;
+	--console-line-strong: #dacdac;
+	--empty-line: #bba46d;
+	--surface-panel: #f9f3e2;
+	--surface-card: #fefcf4;
+	--surface-tray: #fcf8eb;
+	--surface-tile: #f6efdc;
+	--surface-recess: #ebe1c9;
+	--face-field: #f4edd9;
+	--glow-deep: #ab8c45;
+	--glow-body: #9f7c2c;
+	--glow-crest: #c2ac7a;
+}
+
+/* Canyon: Layered rock, late sun. */
+:root.canyon {
+	--console-floor: #130c09;
+	--console-panel: #1d120e;
+	--console-bg: #1d120e;
+	--console-card: #2b1a14;
+	--console-pop: #39231a;
+	--pop-rail: #271812;
+	--console-line: #472c22;
+	--console-line-soft: #362119;
+	--console-line-strong: #472c22;
+	--empty-line: #834b33;
+	--surface-panel: #2b1a14;
+	--surface-card: #39231a;
+	--surface-tray: #321e17;
+	--surface-tile: #271812;
+	--surface-recess: #180f0c;
+	--face-field: #251611;
+	--glow-deep: #683925;
+	--glow-body: #975233;
+	--glow-crest: #ea9c79;
+}
+
+:root.light.canyon {
+	--console-floor: #ebd3c5;
+	--console-panel: #f3e0d5;
+	--console-bg: #f3e0d5;
+	--console-card: #fcefe7;
+	--console-pop: #fffaf6;
+	--pop-rail: #f9eae2;
+	--console-line: #e2c3b1;
+	--console-line-soft: #f2ddd1;
+	--console-line-strong: #e2c3b1;
+	--empty-line: #c88f71;
+	--surface-panel: #fcefe7;
+	--surface-card: #fffaf6;
+	--surface-tray: #fef4ee;
+	--surface-tile: #f9eae2;
+	--surface-recess: #f0dbcf;
+	--face-field: #f8e8df;
+	--glow-deep: #ba6f48;
+	--glow-body: #b05a2e;
+	--glow-crest: #cd977b;
+}
+
+/* Reef: Teal water, pink coral. */
+:root.reef {
+	--console-floor: #051014;
+	--console-panel: #08181e;
+	--console-bg: #08181e;
+	--console-card: #0e2830;
+	--console-pop: #133844;
+	--pop-rail: #0c232b;
+	--console-line: #184553;
+	--console-line-soft: #12343e;
+	--console-line-strong: #184553;
+	--empty-line: #696e88;
+	--surface-panel: #0e2830;
+	--surface-card: #133844;
+	--surface-tray: #10303a;
+	--surface-tile: #0c232b;
+	--surface-recess: #071419;
+	--face-field: #0b2128;
+	--glow-deep: #644f63;
+	--glow-body: #9d718f;
+	--glow-crest: #fbbfdf;
+}
+
+:root.light.reef {
+	--console-floor: #cce3e7;
+	--console-panel: #dceef1;
+	--console-bg: #dceef1;
+	--console-card: #eff8fa;
+	--console-pop: #fafeff;
+	--pop-rail: #e9f5f7;
+	--console-line: #bad5da;
+	--console-line-soft: #daeaed;
+	--console-line-strong: #bad5da;
+	--empty-line: #b0a2b8;
+	--surface-panel: #eff8fa;
+	--surface-card: #fafeff;
+	--surface-tray: #f4fbfc;
+	--surface-tile: #e9f5f7;
+	--surface-recess: #d6eaed;
+	--face-field: #e6f4f6;
+	--glow-deep: #c57ea6;
+	--glow-body: #c16998;
+	--glow-crest: #d99fbd;
+}
+
+/* Meadow: Grass in full sun. */
+:root.meadow {
+	--console-floor: #0d120a;
+	--console-panel: #141c10;
+	--console-bg: #141c10;
+	--console-card: #1d2718;
+	--console-pop: #26331f;
+	--pop-rail: #1a2416;
+	--console-line: #2e3e26;
+	--console-line-soft: #24301d;
+	--console-line-strong: #2e3e26;
+	--empty-line: #5a7d2e;
+	--surface-panel: #1d2718;
+	--surface-card: #26331f;
+	--surface-tray: #222d1c;
+	--surface-tile: #1a2416;
+	--surface-recess: #11180d;
+	--face-field: #192214;
+	--glow-deep: #4a691e;
+	--glow-body: #6d9927;
+	--glow-crest: #bbec6a;
+}
+
+:root.light.meadow {
+	--console-floor: #d7e2ca;
+	--console-panel: #e2ebd6;
+	--console-bg: #e2ebd6;
+	--console-card: #f1f7e9;
+	--console-pop: #fbfdf7;
+	--pop-rail: #ecf3e3;
+	--console-line: #c9d8bd;
+	--console-line-soft: #e1ead7;
+	--console-line-strong: #c9d8bd;
+	--empty-line: #95b176;
+	--surface-panel: #f1f7e9;
+	--surface-card: #fbfdf7;
+	--surface-tray: #f6faf0;
+	--surface-tile: #ecf3e3;
+	--surface-recess: #dde7d1;
+	--face-field: #eaf2e0;
+	--glow-deep: #71973f;
+	--glow-body: #5c8723;
+	--glow-crest: #98b374;
+}
+
+/* Thunder: Slate sky, lightning yellow. */
+:root.thunder {
+	--console-floor: #0b0c10;
+	--console-panel: #111318;
+	--console-bg: #111318;
+	--console-card: #191d24;
+	--console-pop: #212630;
+	--pop-rail: #171a20;
+	--console-line: #282f3a;
+	--console-line-soft: #1f242d;
+	--console-line-strong: #282f3a;
+	--empty-line: #756c46;
+	--surface-panel: #191d24;
+	--surface-card: #212630;
+	--surface-tray: #1d222a;
+	--surface-tile: #171a20;
+	--surface-recess: #0e1014;
+	--face-field: #15181f;
+	--glow-deep: #6a5c2c;
+	--glow-body: #a38a39;
+	--glow-crest: #fdde7b;
+}
+
+:root.light.thunder {
+	--console-floor: #d4d7df;
+	--console-panel: #e0e3e9;
+	--console-bg: #e0e3e9;
+	--console-card: #eff1f5;
+	--console-pop: #fafbfd;
+	--pop-rail: #eaedf1;
+	--console-line: #c5c9d2;
+	--console-line-soft: #dee1e7;
+	--console-line-strong: #c5c9d2;
+	--empty-line: #af9c84;
+	--surface-panel: #eff1f5;
+	--surface-card: #fafbfd;
+	--surface-tray: #f4f6f9;
+	--surface-tile: #eaedf1;
+	--surface-recess: #dbdee5;
+	--face-field: #e8ebf0;
+	--glow-deep: #b0813d;
+	--glow-body: #a76f1e;
+	--glow-crest: #c8a46f;
+}
+
+/* Aurora: Night sky with green in it. */
+:root.aurora {
+	--console-floor: #060d10;
+	--console-panel: #0a1418;
+	--console-bg: #0a1418;
+	--console-card: #102028;
+	--console-pop: #162d38;
+	--pop-rail: #0e1c23;
+	--console-line: #1a3845;
+	--console-line-soft: #142a34;
+	--console-line-strong: #1a3845;
+	--empty-line: #4e7f7c;
+	--surface-panel: #102028;
+	--surface-card: #162d38;
+	--surface-tray: #132630;
+	--surface-tile: #0e1c23;
+	--surface-recess: #081114;
+	--face-field: #0d1b21;
+	--glow-deep: #46695e;
+	--glow-body: #6b9e8a;
+	--glow-crest: #bef6dc;
+}
+
+:root.light.aurora {
+	--console-floor: #d0e3de;
+	--console-panel: #dfeeea;
+	--console-bg: #dfeeea;
+	--console-card: #f0f8f5;
+	--console-pop: #fbfefd;
+	--pop-rail: #ebf5f2;
+	--console-line: #bed5cf;
+	--console-line-soft: #dceae6;
+	--console-line-strong: #bed5cf;
+	--empty-line: #76aca5;
+	--surface-panel: #f0f8f5;
+	--surface-card: #fbfefd;
+	--surface-tray: #f6fbf9;
+	--surface-tile: #ebf5f2;
+	--surface-recess: #d9eae5;
+	--face-field: #e8f4f0;
+	--glow-deep: #41938c;
+	--glow-body: #24827a;
+	--glow-crest: #74b0ab;
+}
+
+/* Espresso: Very dark, very warm. */
+:root.espresso {
+	--console-floor: #0f0b0a;
+	--console-panel: #171110;
+	--console-bg: #171110;
+	--console-card: #221917;
+	--console-pop: #2d211d;
+	--pop-rail: #1f1715;
+	--console-line: #362823;
+	--console-line-soft: #2a1f1c;
+	--console-line-strong: #362823;
+	--empty-line: #6e5544;
+	--surface-panel: #221917;
+	--surface-card: #2d211d;
+	--surface-tray: #281d1a;
+	--surface-tile: #1f1715;
+	--surface-recess: #130e0d;
+	--face-field: #1d1514;
+	--glow-deep: #5a4738;
+	--glow-body: #856952;
+	--glow-crest: #d6b89d;
+}
+
+:root.light.espresso {
+	--console-floor: #e0d4c9;
+	--console-panel: #eae0d7;
+	--console-bg: #eae0d7;
+	--console-card: #f6efe9;
+	--console-pop: #fdfaf7;
+	--pop-rail: #f2eae4;
+	--console-line: #d4c6b8;
+	--console-line-soft: #e8ded6;
+	--console-line-strong: #d4c6b8;
+	--empty-line: #ad9480;
+	--surface-panel: #f6efe9;
+	--surface-card: #fdfaf7;
+	--surface-tray: #faf4f0;
+	--surface-tile: #f2eae4;
+	--surface-recess: #e6dbd1;
+	--face-field: #f1e8e1;
+	--glow-deep: #95745d;
+	--glow-body: #856046;
+	--glow-crest: #b29b8a;
+}
+
+/* Matcha: Powdered green, milky light. */
+:root.matcha {
+	--console-floor: #0e120d;
+	--console-panel: #161c14;
+	--console-bg: #161c14;
+	--console-card: #1f271c;
+	--console-pop: #283225;
+	--pop-rail: #1c241a;
+	--console-line: #303d2b;
+	--console-line-soft: #263022;
+	--console-line-strong: #303d2b;
+	--empty-line: #597443;
+	--surface-panel: #1f271c;
+	--surface-card: #283225;
+	--surface-tray: #242c20;
+	--surface-tile: #1c241a;
+	--surface-recess: #121811;
+	--face-field: #1b2218;
+	--glow-deep: #495f33;
+	--glow-body: #698946;
+	--glow-crest: #b6d98d;
+}
+
+:root.light.matcha {
+	--console-floor: #d9e1cc;
+	--console-panel: #e4ebd9;
+	--console-bg: #e4ebd9;
+	--console-card: #f2f7ea;
+	--console-pop: #fbfdf6;
+	--pop-rail: #eef3e5;
+	--console-line: #ccd6be;
+	--console-line-soft: #e3ead8;
+	--console-line-strong: #ccd6be;
+	--empty-line: #9caf80;
+	--surface-panel: #f2f7ea;
+	--surface-card: #fbfdf6;
+	--surface-tray: #f6faf0;
+	--surface-tile: #eef3e5;
+	--surface-recess: #e0e7d4;
+	--face-field: #ecf2e2;
+	--glow-deep: #7b9754;
+	--glow-body: #68873c;
+	--glow-crest: #9fb383;
+}
+
+/* Honey: Thick, golden, slow. */
+:root.honey {
+	--console-floor: #120e05;
+	--console-panel: #1c1508;
+	--console-bg: #1c1508;
+	--console-card: #2a200c;
+	--console-pop: #382b11;
+	--pop-rail: #261d0b;
+	--console-line: #453615;
+	--console-line-soft: #352910;
+	--console-line-strong: #453615;
+	--empty-line: #876b2a;
+	--surface-panel: #2a200c;
+	--surface-card: #382b11;
+	--surface-tray: #31260e;
+	--surface-tile: #261d0b;
+	--surface-recess: #181207;
+	--face-field: #241b0a;
+	--glow-deep: #6d5621;
+	--glow-body: #9f8032;
+	--glow-crest: #f4d17a;
+}
+
+:root.light.honey {
+	--console-floor: #e9ddbe;
+	--console-panel: #f2e7cc;
+	--console-bg: #f2e7cc;
+	--console-card: #fbf5e4;
+	--console-pop: #fffdf6;
+	--pop-rail: #f8f1dd;
+	--console-line: #ded2b0;
+	--console-line-soft: #f0e7cf;
+	--console-line-strong: #ded2b0;
+	--empty-line: #c0a86d;
+	--surface-panel: #fbf5e4;
+	--surface-card: #fffdf6;
+	--surface-tray: #fdf9ed;
+	--surface-tile: #f8f1dd;
+	--surface-recess: #efe3c7;
+	--face-field: #f7efd9;
+	--glow-deep: #af8c3d;
+	--glow-body: #a37b23;
+	--glow-crest: #c4ab74;
+}
+
+/* Mulberry: Dark fruit, stained fingers. */
+:root.mulberry {
+	--console-floor: #0f080d;
+	--console-panel: #170d14;
+	--console-bg: #170d14;
+	--console-card: #241420;
+	--console-pop: #301b2b;
+	--pop-rail: #20121c;
+	--console-line: #3b2238;
+	--console-line-soft: #2d1a2a;
+	--console-line-strong: #3b2238;
+	--empty-line: #7c4a6c;
+	--surface-panel: #241420;
+	--surface-card: #301b2b;
+	--surface-tray: #2a1826;
+	--surface-tile: #20121c;
+	--surface-recess: #130b11;
+	--face-field: #1e111b;
+	--glow-deep: #653d54;
+	--glow-body: #975b7d;
+	--glow-crest: #eca9ce;
+}
+
+:root.light.mulberry {
+	--console-floor: #e8d2de;
+	--console-panel: #f0dfe9;
+	--console-bg: #f0dfe9;
+	--console-card: #faeef4;
+	--console-pop: #fff9fc;
+	--pop-rail: #f7eaf1;
+	--console-line: #dec2d2;
+	--console-line-soft: #efdce6;
+	--console-line-strong: #dec2d2;
+	--empty-line: #c58aaa;
+	--surface-panel: #faeef4;
+	--surface-card: #fff9fc;
+	--surface-tray: #fcf4f8;
+	--surface-tile: #f7eaf1;
+	--surface-recess: #eddae5;
+	--face-field: #f6e7ef;
+	--glow-deep: #b86492;
+	--glow-body: #ad4d82;
+	--glow-crest: #cb8eb0;
+}
+
+/* Outrun: Sunset over a grid. Chrome and pink. */
+:root.outrun {
+	--console-floor: #0c051b;
+	--console-panel: #12082a;
+	--console-bg: #12082a;
+	--console-card: #1c0e40;
+	--console-pop: #261356;
+	--pop-rail: #190c39;
+	--console-line: #30196c;
+	--console-line-soft: #241251;
+	--console-line-strong: #30196c;
+	--empty-line: #7d3995;
+	--surface-panel: #1c0e40;
+	--surface-card: #261356;
+	--surface-tray: #21104b;
+	--surface-tile: #190c39;
+	--surface-recess: #0f0723;
+	--face-field: #180b36;
+	--glow-deep: #6c2f66;
+	--glow-body: #a5478b;
+	--glow-crest: #ff94d6;
+}
+
+:root.light.outrun {
+	--console-floor: #decff1;
+	--console-panel: #e9dcf8;
+	--console-bg: #e9dcf8;
+	--console-card: #f5ecfd;
+	--console-pop: #fdf9ff;
+	--pop-rail: #f1e7fc;
+	--console-line: #d0bfe7;
+	--console-line-soft: #e6daf4;
+	--console-line-strong: #d0bfe7;
+	--empty-line: #bd81c0;
+	--surface-panel: #f5ecfd;
+	--surface-card: #fdf9ff;
+	--surface-tray: #f9f2fe;
+	--surface-tile: #f1e7fc;
+	--surface-recess: #e5d7f5;
+	--face-field: #f0e5fb;
+	--glow-deep: #be55a1;
+	--glow-body: #b63c91;
+	--glow-crest: #d183b9;
+}
+
+/* Arcade: Dark cabinet, bright buttons. */
+:root.arcade {
+	--console-floor: #080a12;
+	--console-panel: #0d0f1c;
+	--console-bg: #0d0f1c;
+	--console-card: #141829;
+	--console-pop: #1c2238;
+	--pop-rail: #121525;
+	--console-line: #232a46;
+	--console-line-soft: #1a1f34;
+	--console-line-strong: #232a46;
+	--empty-line: #736e4c;
+	--surface-panel: #141829;
+	--surface-card: #1c2238;
+	--surface-tray: #181d30;
+	--surface-tile: #121525;
+	--surface-recess: #0b0d18;
+	--face-field: #111423;
+	--glow-deep: #685e2c;
+	--glow-body: #a29137;
+	--glow-crest: #fee877;
+}
+
+:root.light.arcade {
+	--console-floor: #d4d7e5;
+	--console-panel: #e1e3ef;
+	--console-bg: #e1e3ef;
+	--console-card: #f0f2f9;
+	--console-pop: #fafbfe;
+	--pop-rail: #eceef6;
+	--console-line: #c4c8da;
+	--console-line-soft: #dfe1ec;
+	--console-line-strong: #c4c8da;
+	--empty-line: #af9b89;
+	--surface-panel: #f0f2f9;
+	--surface-card: #fafbfe;
+	--surface-tray: #f5f6fc;
+	--surface-tile: #eceef6;
+	--surface-recess: #dcdeeb;
+	--face-field: #e9ebf4;
+	--glow-deep: #b0813f;
+	--glow-body: #a76f1e;
+	--glow-crest: #c8a46f;
+}
+
+/* Blueprint: Drafting paper, reversed. */
+:root.blueprint {
+	--console-floor: #060d17;
+	--console-panel: #0a1424;
+	--console-bg: #0a1424;
+	--console-card: #102038;
+	--console-pop: #162c4c;
+	--pop-rail: #0e1c32;
+	--console-line: #1b365e;
+	--console-line-soft: #142947;
+	--console-line-strong: #1b365e;
+	--empty-line: #617a9e;
+	--surface-panel: #102038;
+	--surface-card: #162c4c;
+	--surface-tray: #132642;
+	--surface-tile: #0e1c32;
+	--surface-recess: #08111e;
+	--face-field: #0d1b2f;
+	--glow-deep: #596577;
+	--glow-body: #8c99ab;
+	--glow-crest: #e4effe;
+}
+
+:root.light.blueprint {
+	--console-floor: #ccdaec;
+	--console-panel: #dbe6f5;
+	--console-bg: #dbe6f5;
+	--console-card: #edf3fb;
+	--console-pop: #f9fbfe;
+	--pop-rail: #e8eff9;
+	--console-line: #bacae1;
+	--console-line-soft: #d9e3f0;
+	--console-line-strong: #bacae1;
+	--empty-line: #7891ca;
+	--surface-panel: #edf3fb;
+	--surface-card: #f9fbfe;
+	--surface-tray: #f3f7fc;
+	--surface-tile: #e8eff9;
+	--surface-recess: #d5e1f2;
+	--face-field: #e5edf8;
+	--glow-deep: #4b68c0;
+	--glow-body: #3151b6;
+	--glow-crest: #7c90d1;
+}
+
+/* Peacock: Deep teal with a gold thread through it. The richest of them. */
+:root.peacock {
+	--console-floor: #051514;
+	--console-panel: #07201f;
+	--console-bg: #07201f;
+	--console-card: #0c2f2d;
+	--console-pop: #113e3b;
+	--pop-rail: #0a2a29;
+	--console-line: #144c4a;
+	--console-line-soft: #0f3a38;
+	--console-line-strong: #144c4a;
+	--empty-line: #60784c;
+	--surface-panel: #0c2f2d;
+	--surface-card: #113e3b;
+	--surface-tray: #0e3634;
+	--surface-tile: #0a2a29;
+	--surface-recess: #061b1a;
+	--face-field: #0a2827;
+	--glow-deep: #5c5a2b;
+	--glow-body: #927f33;
+	--glow-crest: #eecb71;
+}
+
+:root.light.peacock {
+	--console-floor: #cbdfdc;
+	--console-panel: #dbeae7;
+	--console-bg: #dbeae7;
+	--console-card: #eaf5f3;
+	--console-pop: #f6fcfb;
+	--pop-rail: #e6f2ef;
+	--console-line: #b6d2ce;
+	--console-line-soft: #d5e7e4;
+	--console-line-strong: #b6d2ce;
+	--empty-line: #9ca683;
+	--surface-panel: #eaf5f3;
+	--surface-card: #f6fcfb;
+	--surface-tray: #f0f8f7;
+	--surface-tile: #e6f2ef;
+	--surface-recess: #d5e6e2;
+	--face-field: #e3f0ee;
+	--glow-deep: #9d8944;
+	--glow-body: #927726;
+	--glow-crest: #bba974;
+}
+
+/* Parchment: Aged paper and brown ink. Made for reading. */
+:root.parchment {
+	--console-floor: #100e0c;
+	--console-panel: #191512;
+	--console-bg: #191512;
+	--console-card: #221d18;
+	--console-pop: #2b241d;
+	--pop-rail: #1f1b16;
+	--console-line: #352c24;
+	--console-line-soft: #2a231d;
+	--console-line-strong: #352c24;
+	--empty-line: #786d5d;
+	--surface-panel: #221d18;
+	--surface-card: #2b241d;
+	--surface-tray: #26201a;
+	--surface-tile: #1f1b16;
+	--surface-recess: #15120f;
+	--face-field: #1e1915;
+	--glow-deep: #686154;
+	--glow-body: #99907e;
+	--glow-crest: #eee5d0;
+}
+
+:root.light.parchment {
+	--console-floor: #ded3b8;
+	--console-panel: #e8dfc8;
+	--console-bg: #e8dfc8;
+	--console-card: #f2ecdb;
+	--console-pop: #faf6ec;
+	--pop-rail: #efe8d5;
+	--console-line: #d1c5a6;
+	--console-line-soft: #e5dcc6;
+	--console-line-strong: #d1c5a6;
+	--empty-line: #a2926f;
+	--surface-panel: #f2ecdb;
+	--surface-card: #faf6ec;
+	--surface-tray: #f6f1e4;
+	--surface-tile: #efe8d5;
+	--surface-recess: #e4dac2;
+	--face-field: #eee6d2;
+	--glow-deep: #806e50;
+	--glow-body: #6d593a;
+	--glow-crest: #a29683;
 }

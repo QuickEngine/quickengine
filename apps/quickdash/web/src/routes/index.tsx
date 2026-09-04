@@ -133,11 +133,11 @@ function WorkspacePicker() {
 					style={{ boxShadow: "var(--lift-panel)" }}
 					className="overflow-hidden rounded-xl border border-[var(--console-line)] bg-[var(--surface-panel)]"
 				>
-					<div className="flex h-11 items-center gap-2 border-[var(--console-line-soft)] border-b px-2.5">
+					<div className="flex h-11 items-center gap-2 px-2.5">
 						<Popover>
 							<PopoverTrigger
 								aria-label="Filter"
-								title="Filter"
+								data-hint="Filter"
 								className="flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--ink-45)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)] data-[state=open]:bg-[rgb(var(--console-ink)/0.06)] data-[state=open]:text-[var(--ink-85)]"
 							>
 								<FunnelIcon
@@ -191,7 +191,7 @@ function WorkspacePicker() {
 						<Popover>
 							<PopoverTrigger
 								aria-label="Sort"
-								title="Sort"
+								data-hint="Sort"
 								className="flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--ink-45)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)] data-[state=open]:bg-[rgb(var(--console-ink)/0.06)] data-[state=open]:text-[var(--ink-85)]"
 							>
 								<SortAscendingIcon size={15} />

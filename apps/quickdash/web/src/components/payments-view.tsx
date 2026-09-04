@@ -321,7 +321,7 @@ type ConnectStatus = {
 };
 
 const field =
-	"h-9 w-full rounded-lg border border-[var(--console-line-strong)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-20)] focus:border-[rgb(var(--console-ink)/0.25)]";
+	"h-9 w-full field rounded-md px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors placeholder:text-[var(--ink-20)]";
 
 /**
  * Connecting a provider the business owns.
@@ -449,7 +449,7 @@ function CredentialForm({
 				<button
 					type="submit"
 					className={`${pill} ${busy ? "shimmer-busy" : ""}`}
-					title={
+					data-hint={
 						!clientId.trim() || !clientSecret.trim()
 							? "Both keys are needed to connect"
 							: undefined

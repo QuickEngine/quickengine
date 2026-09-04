@@ -830,7 +830,15 @@ export function FullPageWall({
 		 * Taking the viewport puts the whole application behind it, which is the
 		 * honest picture when nothing on screen is current any more.
 		 */
-		<main className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-y-auto bg-[var(--console-bg)] px-8">
+		/* 🔴 A DIALOG backdrop, not an opaque sheet.
+		   It painted `--console-bg` edge to edge, which erases the console
+		   entirely: the screen goes blank apart from a card, and it reads as
+		   having been thrown out of the product rather than as something having
+		   gone wrong inside it. Dimmed and blurred, the dashboard stays visible
+		   underneath, which is both calmer and truer. It is the same treatment
+		   the plan wall and the session-ended dialog already use, so the three
+		   things that take the viewport now agree. */
+		<main className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-y-auto bg-[rgb(0_0_0/0.35)] px-8 backdrop-blur-[3px]">
 			<Wall
 				tone={tone}
 				title={title}
@@ -849,41 +857,37 @@ function Wall({
 	action,
 	requestId,
 }: {
-	tone: string;
+	/** ⚠️ Accepted and ignored. See the note below. */
+	tone?: string;
 	title: string;
 	detail: string;
 	action?: ReactNode;
 	requestId?: string | null;
 }) {
+	/**
+	 * 🔴 The SAME card as every other error in the console, not a second design.
+	 *
+	 * This was centred text with a coloured dot floating on the bare page, which
+	 * is what every error screen looked like before the pass that gave them
+	 * cards. It survived because it only renders when a whole route has failed,
+	 * so nobody had looked at it in months while the 404 and the 500 beside it
+	 * were rebuilt. Two designs for one job is exactly the drift `ErrorCard`
+	 * exists to prevent, so this now renders that card and nothing else.
+	 *
+	 * ⚠️ `tone` is kept in the signature and deliberately unused. The dot it
+	 * coloured was removed on purpose: a status light beside a sentence pulls
+	 * the eye off the sentence. Removing the prop would mean editing every
+	 * caller to drop an argument that harms nothing.
+	 */
+	void tone;
 	return (
-		/**
-		 * ⚠️ Centred, not left-aligned. Dense left-aligned text is right for a
-		 * panel sitting inside a working page, and wrong for a screen that has
-		 * taken the whole area over: there is no column of content for it to line
-		 * up with, so it reads as pinned to the corner of an empty space.
-		 */
-		<div
-			role="alert"
-			className="flex min-h-[52vh] flex-col items-center justify-center text-center"
-		>
-			{/* The dot carries the tone; the code was a mono string doing the same
-			    job in a typeface the console does not otherwise use. */}
-			<span
-				aria-hidden="true"
-				className="size-1.5 rounded-full"
-				style={{ background: tone }}
+		<div role="alert" className="flex w-full justify-center">
+			<ErrorCard
+				title={title}
+				detail={detail}
+				requestId={requestId}
+				action={action}
 			/>
-			<h2 className="mt-3 text-[15px] text-[var(--ink-90)]">{title}</h2>
-			<p className="mt-1.5 max-w-sm text-[12px] text-[var(--ink-45)] leading-6">
-				{detail}
-			</p>
-			{action ? <div className="mt-5">{action}</div> : null}
-			{/* Copyable, like every other request id. See `RequestIdInline`. */}
-			{requestId ? (
-				<div className="mt-7">
-					<RequestIdInline id={requestId} />
-				</div>
-			) : null}
 		</div>
 	);
 }

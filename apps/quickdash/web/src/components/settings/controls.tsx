@@ -36,7 +36,7 @@ import { SaveLabel } from "../save-button";
  */
 
 const TRIGGER =
-	"flex h-8 w-[15rem] max-w-full items-center justify-between gap-2 rounded-md border border-[var(--console-line-strong)] bg-transparent px-2.5 text-[12px] text-[var(--ink-85)] outline-none transition-colors hover:border-[rgb(var(--console-ink)/0.25)] data-[state=open]:border-[rgb(var(--console-ink)/0.25)]";
+	"flex h-8 w-[15rem] max-w-full items-center justify-between gap-2 field rounded-md px-2.5 text-[12px] text-[var(--ink-85)] outline-none transition-colors hover:border-[rgb(var(--console-ink)/0.25)] data-[state=open]:border-[rgb(var(--console-ink)/0.25)]";
 
 export function Choice({
 	value,
@@ -100,7 +100,7 @@ export function Choice({
 						value={find}
 						onChange={(event) => setFind(event.target.value)}
 						placeholder="Search"
-						className="mb-1 h-8 w-full rounded-md border border-[var(--console-line)] bg-transparent px-2.5 text-[12px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-30)]"
+						className="mb-1 h-8 w-full field rounded-md px-2.5 text-[12px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-30)]"
 					/>
 				) : null}
 				<div className="max-h-64 overflow-y-auto">
@@ -261,7 +261,7 @@ export function Row({
 	children: ReactNode;
 }) {
 	return (
-		<div className="flex items-center justify-between gap-6 border-[var(--console-line-soft)] border-b py-3.5 last:border-b-0">
+		<div className="flex items-center justify-between gap-6 py-3.5">
 			<div className="min-w-0">
 				<p className="text-[12.5px] text-[var(--ink-85)]">{label}</p>
 				{description ? (
@@ -292,7 +292,7 @@ export function ReadOnly({ value }: { value: string }) {
 				setCopied(true);
 				window.setTimeout(() => setCopied(false), 1500);
 			}}
-			title="Copy"
+			data-hint="Copy"
 			className="flex h-8 w-[15rem] max-w-full items-center gap-2 rounded-md border border-[var(--console-line)] px-2.5 text-left font-mono text-[11.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
 		>
 			<span className="min-w-0 flex-1 truncate">{value}</span>

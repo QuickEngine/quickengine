@@ -231,6 +231,7 @@ function Card({
 					<button
 						type="button"
 						aria-label={`Dismiss ${title}`}
+						data-hint="Dismiss"
 						onClick={onDismiss}
 						className="-mr-0.5 shrink-0 text-[var(--ink-30)] transition-colors hover:text-[var(--ink-85)]"
 					>

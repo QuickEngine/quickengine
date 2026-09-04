@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHeaderCrumb } from "../components/header-action";
+import { OutletError, OutletNotFound } from "../components/outlet-error";
 
 /**
  * The index of error states, so there is one address to remember.
@@ -55,5 +56,12 @@ function ErrorIndex() {
 }
 
 export const Route = createFileRoute("/$workspace/errors/")({
+	/* 🔴 Without these, a fault here escapes to the ROOT boundary, which
+	   replaces the entire application: the sidebar, the header and the page
+	   you were on all vanish behind a wall. Registered here, the console
+	   survives and the card appears in the outlet where the page would have
+	   been, which is what every other route already does. */
+	errorComponent: OutletError,
+	notFoundComponent: OutletNotFound,
 	component: ErrorIndex,
 });

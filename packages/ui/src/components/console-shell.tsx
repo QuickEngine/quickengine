@@ -5,12 +5,14 @@ import {
 	CaretUpDownIcon,
 	ChatCircleIcon,
 	ChatTeardropDotsIcon,
+	CheckIcon,
 	DesktopIcon,
 	GearSixIcon,
 	HeadsetIcon,
 	ListIcon,
 	MagnifyingGlassIcon,
 	MoonIcon,
+	PaletteIcon,
 	PlugsConnectedIcon,
 	PlusCircleIcon,
 	SignOutIcon,
@@ -30,7 +32,7 @@ import {
 	useState,
 } from "react";
 import { InitialsAvatar } from "./initials-avatar";
-import { useTheme } from "./theme-provider";
+import { PALETTES, type Palette, type Theme, useTheme } from "./theme-provider";
 import {
 	Popover,
 	PopoverAnchor,
@@ -547,6 +549,7 @@ export function ConsoleBell({
 		<button
 			type="button"
 			aria-label={`Notifications${count > 0 ? " (new)" : ""}`}
+			data-hint={count > 0 ? `Notifications, ${count} new` : "Notifications"}
 			onClick={onClick}
 			style={{}}
 			className={`control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] hover:text-[var(--ink-90)] ${
@@ -599,8 +602,9 @@ export function ConsoleAssistant({
 }) {
 	return (
 		<button
+			data-hint={open ? "Close QuickAssist" : "QuickAssist"}
 			type="button"
-			aria-label="Assistant"
+			aria-label="QuickAssist"
 			aria-pressed={open}
 			onClick={onClick}
 			style={{}}
@@ -649,7 +653,7 @@ export function ConsoleIntegrations({
 			type="button"
 			aria-label="Integrations"
 			aria-pressed={open}
-			title="Integrations"
+			data-hint="Integrations"
 			onClick={onClick}
 			className={`relative control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] hover:text-[var(--ink-90)] ${
 				open ? "text-[var(--ink-90)]" : "text-[var(--ink-40)]"
@@ -681,7 +685,7 @@ export function ConsoleTerminal({
 			type="button"
 			aria-label="Developer console"
 			aria-pressed={open}
-			title="Developer console"
+			data-hint="Developer console"
 			onClick={onClick}
 			className={`control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] hover:text-[var(--ink-90)] ${
 				open ? "text-[var(--ink-90)]" : "text-[var(--ink-40)]"
@@ -701,6 +705,7 @@ export function ConsoleTools({
 }) {
 	return (
 		<button
+			data-hint={open ? "Close QuickTools" : "QuickTools"}
 			type="button"
 			aria-label="QuickTools"
 			aria-pressed={open}
@@ -718,38 +723,261 @@ export function ConsoleTools({
 	);
 }
 
+/**
+ * Mode and palette, in one popover.
+ *
+ * 🔴 A PICKER, not a cycling button, and TWO axes rather than one list.
+ * Cycling worked at three options and became hostile past six: reaching the one
+ * you want means pressing until it appears, and going back means going all the
+ * way round. And light and dark are not siblings of Sepia and Ocean, they are
+ * modes OF them. Flattening the two into one list is how somebody ends up
+ * losing their colour every time their machine switches to light in the
+ * evening.
+ *
+ * 🔑 The swatch is the palette's own popover colour in the CURRENT mode, so it
+ * is a real sample rather than a guess, and the names are shown because "Rust"
+ * means nothing on its own while eight dark squares are impossible to tell
+ * apart at 16px.
+ */
+const MODES: ReadonlyArray<{ id: Theme; label: string; Icon: typeof SunIcon }> =
+	[
+		{ id: "light", label: "Light", Icon: SunIcon },
+		{ id: "dark", label: "Dark", Icon: MoonIcon },
+		{ id: "system", label: "System", Icon: DesktopIcon },
+	];
+
+const SWATCHES: Record<Palette, { dark: string; light: string }> = {
+	neutral: { dark: "#1d1d1d", light: "#ffffff" },
+	obsidian: { dark: "#2a2438", light: "#fdfcff" },
+	abyss: { dark: "#16283a", light: "#fbfdff" },
+	void: { dark: "#211d26", light: "#fcf5fd" },
+	sandstone: { dark: "#373025", light: "#f5efe2" },
+	linen: { dark: "#2e2c26", light: "#f8f5f0" },
+	concrete: { dark: "#2a2a2c", light: "#f2f2f3" },
+	gloaming: { dark: "#2d2740", light: "#fbf8fb" },
+	harvest: { dark: "#333024", light: "#f9f6ee" },
+	lagoon: { dark: "#1d3f4d", light: "#f4fafb" },
+	tundra: { dark: "#273330", light: "#f7faf9" },
+	aubergine: { dark: "#31202d", light: "#fcf7fa" },
+	driftwood: { dark: "#413c39", light: "#f9f6f2" },
+	pewter: { dark: "#3e444a", light: "#f6f9fb" },
+	sage: { dark: "#3c443d", light: "#f8faf5" },
+	ultraviolet: { dark: "#2a1856", light: "#faf7ff" },
+	inferno: { dark: "#3a1513", light: "#fff8f6" },
+	acid: { dark: "#22330e", light: "#f9fcf2" },
+	flamingo: { dark: "#4a1a3b", light: "#fff8fa" },
+	cyber: { dark: "#182338", light: "#f9fafd" },
+	fog: { dark: "#2a3032", light: "#f7f9f9" },
+	dune: { dark: "#322d26", light: "#faf7f1" },
+	juniper: { dark: "#242f2c", light: "#f6faf9" },
+	plumsmoke: { dark: "#2a2532", light: "#faf8fc" },
+	cinder: { dark: "#2a2725", light: "#f9f7f6" },
+	emerald: { dark: "#123324", light: "#fafffc" },
+	sapphire: { dark: "#12224a", light: "#fafcff" },
+	ruby: { dark: "#360e18", light: "#fff9fa" },
+	topaz: { dark: "#35230d", light: "#fffcf5" },
+	amethyst: { dark: "#281745", light: "#fdfaff" },
+	crt: { dark: "#1c2411", light: "#fafcf3" },
+	polaroid: { dark: "#332f28", light: "#fdfbf7" },
+	typewriter: { dark: "#2b2a27", light: "#fbfaf7" },
+	oxide: { dark: "#38221d", light: "#fffaf7" },
+	glacier: { dark: "#1e343f", light: "#f9fdff" },
+	monsoon: { dark: "#233135", light: "#f9fcfc" },
+	savanna: { dark: "#362e1e", light: "#fefcf4" },
+	canyon: { dark: "#39231a", light: "#fffaf6" },
+	reef: { dark: "#133844", light: "#fafeff" },
+	meadow: { dark: "#26331f", light: "#fbfdf7" },
+	thunder: { dark: "#212630", light: "#fafbfd" },
+	aurora: { dark: "#162d38", light: "#fbfefd" },
+	espresso: { dark: "#2d211d", light: "#fdfaf7" },
+	matcha: { dark: "#283225", light: "#fbfdf6" },
+	honey: { dark: "#382b11", light: "#fffdf6" },
+	mulberry: { dark: "#301b2b", light: "#fff9fc" },
+	outrun: { dark: "#261356", light: "#fdf9ff" },
+	arcade: { dark: "#1c2238", light: "#fafbfe" },
+	blueprint: { dark: "#162c4c", light: "#f9fbfe" },
+	peacock: { dark: "#113e3b", light: "#f6fcfb" },
+	parchment: { dark: "#2b241d", light: "#faf6ec" },
+};
+
+const PALETTE_LABEL: Record<Palette, string> = {
+	neutral: "Neutral",
+	obsidian: "Obsidian",
+	abyss: "Abyss",
+	void: "Void",
+	sandstone: "Sandstone",
+	linen: "Linen",
+	concrete: "Concrete",
+	gloaming: "Gloaming",
+	harvest: "Harvest",
+	lagoon: "Lagoon",
+	tundra: "Tundra",
+	aubergine: "Aubergine",
+	driftwood: "Driftwood",
+	pewter: "Pewter",
+	sage: "Sage",
+	ultraviolet: "Ultraviolet",
+	inferno: "Inferno",
+	acid: "Acid",
+	flamingo: "Flamingo",
+	cyber: "Cyber",
+	fog: "Fog",
+	dune: "Dune",
+	juniper: "Juniper",
+	plumsmoke: "Plumsmoke",
+	cinder: "Cinder",
+	emerald: "Emerald",
+	sapphire: "Sapphire",
+	ruby: "Ruby",
+	topaz: "Topaz",
+	amethyst: "Amethyst",
+	crt: "Crt",
+	polaroid: "Polaroid",
+	typewriter: "Typewriter",
+	oxide: "Oxide",
+	glacier: "Glacier",
+	monsoon: "Monsoon",
+	savanna: "Savanna",
+	canyon: "Canyon",
+	reef: "Reef",
+	meadow: "Meadow",
+	thunder: "Thunder",
+	aurora: "Aurora",
+	espresso: "Espresso",
+	matcha: "Matcha",
+	honey: "Honey",
+	mulberry: "Mulberry",
+	outrun: "Outrun",
+	arcade: "Arcade",
+	blueprint: "Blueprint",
+	peacock: "Peacock",
+	parchment: "Parchment",
+};
+
 export function ConsoleTheme() {
-	const { theme, setTheme } = useTheme();
+	const { theme, setTheme, palette, setPalette } = useTheme();
 	const [mounted, setMounted] = useState(false);
+	const [open, setOpen] = useState(false);
 
 	// The resolved theme depends on a cookie and `matchMedia`, neither of which
-	// exists on the first render pass. Showing the wrong icon for a frame is
+	// exists on the first render pass. Showing the wrong state for a frame is
 	// worse than showing a stable one.
 	useEffect(() => setMounted(true), []);
-	const current = mounted ? theme : "dark";
+	const mode = mounted ? theme : "dark";
+	const family = mounted ? palette : "neutral";
+	const showLight =
+		mode === "light" ||
+		(mode === "system" &&
+			mounted &&
+			!window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-	const next =
-		current === "light" ? "dark" : current === "dark" ? "system" : "light";
-	const Icon =
-		current === "light" ? SunIcon : current === "dark" ? MoonIcon : DesktopIcon;
+	const from = (event: { currentTarget: HTMLElement }) => {
+		const box = event.currentTarget.getBoundingClientRect();
+		return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+	};
 
 	return (
-		<button
-			type="button"
-			aria-label={`Theme: ${current}. Switch to ${next}.`}
-			/* The reveal starts at the button, so the theme reads as spreading out
-			   from the thing you pressed rather than arriving from nowhere. */
-			onClick={(event) => {
-				const box = event.currentTarget.getBoundingClientRect();
-				setTheme(next, {
-					x: box.left + box.width / 2,
-					y: box.top + box.height / 2,
-				});
-			}}
-			className="control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] text-[var(--ink-40)] hover:text-[var(--ink-90)]"
-		>
-			<Icon size={16} />
-		</button>
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger
+				data-hint={`Theme: ${PALETTE_LABEL[family]}`}
+				aria-label={`Theme: ${PALETTE_LABEL[family]}. Choose another.`}
+				className="control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] text-[var(--ink-40)] outline-none hover:text-[var(--ink-90)]"
+			>
+				<PaletteIcon size={16} />
+			</PopoverTrigger>
+			<PopoverContent
+				align="end"
+				sideOffset={6}
+				collisionPadding={8}
+				style={{ boxShadow: "var(--lift-pop)" }}
+				className="flex w-[15rem] flex-col gap-1 rounded-xl border-0 bg-[var(--console-pop)] p-1.5"
+			>
+				{/* The switch every console has, in the console's own shape. */}
+				<div
+					className="flex items-center gap-0.5 rounded-[7px] bg-[var(--view-face)] p-0.5"
+					style={{ boxShadow: "var(--lift-inset)" }}
+				>
+					{MODES.map(({ id, label, Icon }) => (
+						<button
+							key={id}
+							type="button"
+							aria-pressed={mode === id}
+							data-hint={label}
+							onClick={(event) => setTheme(id, from(event))}
+							className={
+								mode === id
+									? "control-raised flex h-6 flex-1 items-center justify-center gap-1.5 rounded-[5px] border-0 text-[10.5px] text-[var(--ink-90)]"
+									: "flex h-6 flex-1 items-center justify-center gap-1.5 rounded-[5px] text-[10.5px] text-[var(--ink-35)] transition-colors hover:text-[var(--ink-70)]"
+							}
+						>
+							<Icon size={11} />
+							{label}
+						</button>
+					))}
+				</div>
+
+				<p className="px-2 pt-1 pb-0.5 text-[10px] text-[var(--ink-25)] uppercase tracking-[0.08em]">
+					Palette
+				</p>
+				{/* 🔑 Scrollable, and steppable with the arrow keys, which is the
+				    point: a theme cannot be judged from a 16px square, so moving
+				    through the list APPLIES each one as you pass it. Hold an arrow
+				    and the console repaints under you until something looks right.
+
+				    ⚠️ Hover does not preview. The pointer crosses this list on its
+				    way to the row somebody wants, and repainting the whole console
+				    on the way past is a strobe, not a preview. */}
+				<div className="fade-ends -mr-1 flex max-h-[15rem] flex-col gap-0.5 overflow-y-auto pr-1">
+					{PALETTES.map((entry) => (
+						<button
+							key={entry}
+							type="button"
+							aria-pressed={family === entry}
+							onClick={(event) => setPalette(entry, from(event))}
+							/* 🔴 On the BUTTON, not on the scroll container. The handler
+							   only ever ran by bubbling from whichever row had focus, and
+							   a bare div with a key listener is a control with no role:
+							   nothing announces it and nothing can reach it by keyboard.
+							   A button is already interactive, so the behaviour is
+							   identical and the element is honest about what it is. */
+							onKeyDown={(event) => {
+								const step =
+									event.key === "ArrowDown"
+										? 1
+										: event.key === "ArrowUp"
+											? -1
+											: 0;
+								if (!step) return;
+								event.preventDefault();
+								const at = PALETTES.indexOf(family);
+								const to =
+									PALETTES[(at + step + PALETTES.length) % PALETTES.length];
+								setPalette(to, from(event));
+							}}
+							className={`flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-[12px] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] ${
+								family === entry
+									? "text-[var(--ink-90)]"
+									: "text-[var(--ink-55)]"
+							}`}
+						>
+							<span
+								aria-hidden="true"
+								style={{
+									background: showLight
+										? SWATCHES[entry].light
+										: SWATCHES[entry].dark,
+								}}
+								className="size-4 shrink-0 rounded-[4px] border border-[var(--console-line-strong)]"
+							/>
+							<span className="min-w-0 flex-1 text-left">
+								{PALETTE_LABEL[entry]}
+							</span>
+							{family === entry ? <CheckIcon size={12} /> : null}
+						</button>
+					))}
+				</div>
+			</PopoverContent>
+		</Popover>
 	);
 }
 

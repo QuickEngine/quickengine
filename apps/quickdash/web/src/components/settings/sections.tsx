@@ -396,7 +396,7 @@ export function SettingsSections({
 					 * QuickDash to change the colour of QuickDash.
 					 */}
 					<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Appearance</p>
-					<div className="mb-8 max-w-2xl border-[var(--console-line-soft)] border-t py-4">
+					<div className="mb-8 max-w-2xl py-4">
 						<div className="flex flex-wrap items-center gap-4">
 							<div className="min-w-0 flex-1">
 								<p className="text-[12.5px] text-[var(--ink-85)]">Theme</p>
@@ -414,7 +414,7 @@ export function SettingsSections({
 			{show("environment") ? (
 				<>
 					<p className="mb-1 text-[12.5px] text-[var(--ink-45)]">Environment</p>
-					<div className="max-w-2xl border-[var(--console-line-soft)] border-t py-4">
+					<div className="max-w-2xl py-4">
 						<div className="flex flex-wrap items-center gap-4">
 							<div className="min-w-0 flex-1">
 								<p className="text-[12.5px] text-[var(--ink-85)]">
@@ -473,7 +473,7 @@ export function SettingsSections({
 					<p className="mt-9 mb-1 text-[12.5px] text-[var(--ink-45)]">
 						How your customers see you
 					</p>
-					<div className="max-w-2xl space-y-4 border-[var(--console-line-soft)] border-t py-4">
+					<div className="max-w-2xl space-y-4 py-4">
 						<p className="text-[11.5px] text-[var(--ink-35)] leading-5">
 							Used on every email your customers receive, and on your portal. A
 							shopper has no relationship with QuickEngine and should never see
@@ -579,7 +579,7 @@ export function SettingsSections({
 							<p className="mt-9 mb-1 text-[12.5px] text-[var(--ink-45)]">
 								Where you ship from
 							</p>
-							<div className="max-w-2xl space-y-4 border-[var(--console-line-soft)] border-t py-4">
+							<div className="max-w-2xl space-y-4 py-4">
 								<p className="text-[11.5px] text-[var(--ink-35)] leading-5">
 									The return address on your labels, and where a carrier
 									measures delivery from. Leave it empty if you price delivery
@@ -719,7 +719,7 @@ export function SettingsSections({
 					<p className="mt-9 mb-1 text-[12.5px] text-[var(--ink-45)]">
 						Emails your customers receive
 					</p>
-					<div className="max-w-2xl border-[var(--console-line-soft)] border-t">
+					<div className="max-w-2xl ">
 						<p className="py-4 text-[11.5px] text-[var(--ink-35)] leading-5">
 							{templates.data?.sender ? (
 								<>
@@ -737,7 +737,7 @@ export function SettingsSections({
 							)}
 						</p>
 
-						<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+						<div className="">
 							{(templates.data?.items ?? []).map((template) => (
 								<div key={template.key} className="py-3">
 									<div className="flex items-center gap-4">
@@ -835,7 +835,7 @@ export function SettingsSections({
 																},
 															}))
 														}
-														className="h-72 w-full rounded-lg border border-[var(--console-line)] bg-transparent p-3 font-mono text-[11.5px] text-[var(--ink-85)] leading-5 outline-none transition-colors focus:border-[rgb(var(--console-ink)/0.25)]"
+														className="h-72 w-full field rounded-md p-3 font-mono text-[11.5px] text-[var(--ink-85)] leading-5 outline-none transition-colors"
 													/>
 												</div>
 
@@ -910,7 +910,7 @@ export function SettingsSections({
 					<p className="mt-9 mb-1 text-[12.5px] text-[var(--ink-45)]">
 						Managed in Account
 					</p>
-					<div className="max-w-2xl divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+					<div className="max-w-2xl ">
 						{[
 							[
 								"Name and modules",
@@ -1023,7 +1023,7 @@ function BrandField({
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 				placeholder={placeholder}
-				className="mt-1.5 h-9 w-full rounded-lg border border-[var(--console-line)] bg-transparent px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors focus:border-[rgb(var(--console-ink)/0.25)]"
+				className="mt-1.5 h-9 w-full field rounded-md px-3 text-[12.5px] text-[var(--ink-85)] outline-none transition-colors"
 			/>
 		</label>
 	);

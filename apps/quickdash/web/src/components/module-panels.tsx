@@ -40,7 +40,7 @@ function Lines({
 }) {
 	if (lines.length === 0) return <BlockEmpty>No lines.</BlockEmpty>;
 	return (
-		<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+		<div className="">
 			{lines.map((line) => (
 				<div key={line.id} className="flex items-center gap-3 py-2">
 					<span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--ink-85)]">
@@ -262,7 +262,7 @@ export function PaymentPanel({ workspaceId, id, onClose }: PanelProps) {
 						{(payment.refunds ?? []).length === 0 ? (
 							<BlockEmpty>Nothing refunded.</BlockEmpty>
 						) : (
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+							<div className="">
 								{(payment.refunds ?? []).map((refund) => (
 									<div key={refund.id} className="flex items-center gap-3 py-2">
 										<span className="min-w-0 flex-1 truncate text-[11.5px] text-[var(--ink-60)]">
@@ -582,7 +582,7 @@ export function ContractPanel({ workspaceId, id, onClose }: PanelProps) {
 						{(contract.signers ?? []).length === 0 ? (
 							<BlockEmpty>Nobody has been asked to sign yet.</BlockEmpty>
 						) : (
-							<div className="divide-y divide-[var(--console-line-soft)] border-[var(--console-line-soft)] border-t">
+							<div className="">
 								{(contract.signers ?? []).map((signer) => (
 									<div key={signer.id} className="flex items-center gap-3 py-2">
 										<div className="min-w-0 flex-1">

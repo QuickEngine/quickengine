@@ -207,6 +207,7 @@ export function ShipmentComposer({
 			submitLabel="Create shipment"
 			busy={create.isPending}
 			valid={weightValid && lines.length > 0 && !overShipped}
+			blockedReason={"Add at least one line to ship"}
 			failure={failure}
 			onClose={onClose}
 			onSubmit={() => create.mutate()}

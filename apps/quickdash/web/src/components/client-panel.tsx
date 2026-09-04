@@ -12,6 +12,7 @@ import {
 } from "./detail-panel";
 import { WriteFailure } from "./page-state";
 import { Area, Text } from "./product-fields";
+import { SaveLabel, useSavedFlash } from "./save-button";
 
 /**
  * One customer, and everything this business knows about them.
@@ -166,6 +167,9 @@ export function ClientPanel({
 	const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
 		setDraft((current) => ({ ...current, [key]: value }));
 
+	// A tick on the button for a moment, so a save that worked says so.
+	const saved = useSavedFlash(save.isSuccess);
+
 	return (
 		<DetailPanel
 			title={client.name}
@@ -183,15 +187,20 @@ export function ClientPanel({
 			footer={
 				<button
 					type="button"
+					title={
+						draft.name.trim() ? undefined : "Give this customer a name first"
+					}
 					disabled={save.isPending || !online || draft.name.trim().length === 0}
 					onClick={() => save.mutate()}
 					className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 				>
-					{!online
-						? "Waiting for a connection…"
-						: save.isPending
-							? "Saving…"
-							: "Save"}
+					<SaveLabel
+						saving={save.isPending}
+						saved={saved}
+						savingLabel={!online ? "Waiting…" : "Saving…"}
+					>
+						Save
+					</SaveLabel>
 				</button>
 			}
 		>

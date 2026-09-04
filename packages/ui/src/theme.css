@@ -183,7 +183,17 @@
 	   them or the gap between reads as a seam rather than as space.
 	   Pure black in dark: at `#0a0a0a` panels there is nowhere else to go, and a
 	   two-value difference is invisible. */
-	--console-floor: #000000;
+	/* 🔴 NOT #000000, and this is the fix several other problems were waiting
+	   on. A console built on absolute black cannot cast a shadow: there is
+	   nothing darker to fall onto, so every raised control out here read as a
+	   flat rectangle with a hairline no matter what its elevation said, and a
+	   recessed track was invisible for the same reason in reverse. The whole
+	   dark ramp moved up by roughly 3%, which is under the threshold where
+	   anybody would call it "grey", and is enough for the relief to exist. */
+	--console-floor: #040404;
+	/* What sits behind the panels. Same as the floor unless an app paints
+	   its own ground, in which case it sets this transparent. */
+	--console-ground: var(--console-floor);
 	/* What a floating panel casts. ⚠️ On a black floor a dark shadow is invisible,
 	   so what does the work is the 1px inset highlight along the top edge — the
 	   panel is read by its lit edge, not by its shade. */
@@ -225,8 +235,8 @@
 	   two stacked ones — the thing that made the full-width header card wrong. */
 	--tray-face: rgb(255 255 255 / 0.022);
 	--tray-line: rgb(255 255 255 / 0.05);
-	--console-panel: #0a0a0a;
-	--console-bg: #0a0a0a;
+	--console-panel: #0c0c0c;
+	--console-bg: #0c0c0c;
 	/* ── The card ────────────────────────────────────────────────────────
 	   🔴 A THIRD surface, and the reason both themes read as flat without it.
 	   `--console-panel` and `--console-bg` are deliberately the same value —
@@ -237,12 +247,12 @@
 	   ⚠️ Kept CLOSE. A card is one step off the well, not a different room; the
 	   moment the step is big enough to name a colour, a page of eight tiles
 	   reads as eight windows. */
-	--console-card: #121212;
+	--console-card: #151515;
 	/* What a card casts. Small and tight — a tile sits ON the page, it does not
 	   hover above it like a popover. */
 	--card-lift:
 		0 1px 0 0 rgb(255 255 255 / 0.035) inset, 0 1px 2px -1px rgb(0 0 0 / 0.6);
-	--console-pop: #1a1a1a; /* popovers and dialogs, the only raised surface */
+	--console-pop: #1d1d1d; /* popovers and dialogs, the only raised surface */
 	/* ── The rail inside a dialog ────────────────────────────────────────
 	   🔑 A dialog with a list down one side is two things, not one: the list is
 	   chrome and the pane beside it is the work. One flat colour makes a
@@ -259,6 +269,17 @@
 	   the cards, the tone does the separating and a heavier outline just draws
 	   boxes around everything. */
 	--console-line-strong: #202020;
+	/* ── The outline of an ABSENCE ───────────────────────────────────────
+	   🔴 Its own token, because an empty state's border is doing a different
+	   job from every other line in the console. A divider between rows only has
+	   to hint, since the content either side does the work. An empty state has
+	   no content: the border IS the shape, and if it cannot be seen the panel
+	   simply is not there.
+
+	   ⚠️ Deliberately NOT `--console-line`. Cards and tables are tuned already
+	   and are about to be worked on; raising the shared line to fix empty states
+	   would move every one of them. */
+	--empty-line: #2b2b2b;
 	/* The strip behind the console's rounded top corners.
 	   ⚠️ ICE and its ink, copied from `colors.ts` — CSS cannot import the
 	   constants, so these two values must stay in step with `ICE` (#DCE7ED) and
@@ -353,9 +374,15 @@
 	--console-line: #e4e4e7;
 	--console-line-soft: #ededf0;
 	--console-line-strong: #d8d8dd;
+	/* Light needs far more than dark here: #e4e4e7 on a #efeff1 panel is eleven
+	   steps of difference, which is nothing. */
+	--empty-line: #cdcdd5;
 	/* Light works the other way round: the floor is the TINTED surface and the
 	   panels are the near-white cards sitting on it. */
 	--console-floor: #e2e2e5;
+	/* What sits behind the panels. Same as the floor unless an app paints
+	   its own ground, in which case it sets this transparent. */
+	--console-ground: var(--console-floor);
 	--control-raise:
 		0 1px 0 0 rgb(255 255 255 / 1) inset, 0 1px 1px 0 rgb(24 24 27 / 0.1),
 		0 2px 5px -2px rgb(24 24 27 / 0.16);
@@ -473,6 +500,34 @@
 	--ink-30: rgb(var(--console-ink) / 0.3);
 	--ink-25: rgb(var(--console-ink) / 0.25);
 	--ink-20: rgb(var(--console-ink) / 0.2);
+}
+
+/* ── The same scale, corrected for paper ─────────────────────────────────────
+   🔴 One alpha does NOT give one legibility in both directions.
+
+   The two grounds are not equally far from their ink: light is #efeff1 at about
+   94% luminance and dark is #0a0a0a at about 4%. Mixing toward a very bright
+   ground washes text out far faster than mixing toward a nearly black one, so
+   the 42% that reads comfortably as light-on-dark lands near 2.6:1 as
+   dark-on-light. The sidebar was the place it showed worst, because its labels
+   and icons live entirely in that middle range.
+
+   ⚠️ Only the MUTED steps move. Anything at 70% or above is already dark enough
+   on white, and lifting those would flatten the hierarchy the scale exists to
+   create. */
+:root.light {
+	--ink-60: rgb(var(--console-ink) / 0.7);
+	--ink-55: rgb(var(--console-ink) / 0.66);
+	--ink-50: rgb(var(--console-ink) / 0.62);
+	--ink-45: rgb(var(--console-ink) / 0.58);
+	--ink-42: rgb(var(--console-ink) / 0.55);
+	--ink-40: rgb(var(--console-ink) / 0.53);
+	--ink-38: rgb(var(--console-ink) / 0.5);
+	--ink-35: rgb(var(--console-ink) / 0.48);
+	--ink-32: rgb(var(--console-ink) / 0.45);
+	--ink-30: rgb(var(--console-ink) / 0.42);
+	--ink-25: rgb(var(--console-ink) / 0.37);
+	--ink-20: rgb(var(--console-ink) / 0.31);
 }
 
 /* ── shadcn remap ─────────────────────────────────────────────────────────
@@ -816,14 +871,169 @@ body {
 	   surface of its own colour, which is exactly the trap the picker fell
 	   into: dark had a ramp, light had `--console-card` and `--console-pop`
 	   both at #ffffff and no step at all. */
-	--surface-panel: #121212;
-	--surface-card: #1a1a1a;
+	--surface-panel: #151515;
+	--surface-card: #1d1d1d;
 	--lift-panel:
 		0 1px 0 0 rgb(255 255 255 / 0.045) inset,
 		0 16px 36px -14px rgb(0 0 0 / 0.8), 0 4px 12px -6px rgb(0 0 0 / 0.55);
 	--lift-card:
-		0 1px 0 0 rgb(255 255 255 / 0.06) inset, 0 8px 18px -8px rgb(0 0 0 / 0.65),
-		0 2px 6px -3px rgb(0 0 0 / 0.5);
+		0 1px 0 0 rgb(255 255 255 / 0.09) inset,
+		0 -1px 0 0 rgb(0 0 0 / 0.4) inset, 0 1px 1px 0 rgb(0 0 0 / 0.5),
+		0 3px 6px -2px rgb(0 0 0 / 0.55), 0 10px 20px -8px rgb(0 0 0 / 0.7);
+
+	/* A CONTROL, not a card. Same material, different size, and size is the
+	   whole reason this is its own token: `--lift-card` spends its separation
+	   on wide, far throwing shadows, which work under something the size of a
+	   panel and fall away to nothing under something 32px tall. On a dark
+	   ground that costs nothing, because the card face is lighter than what is
+	   behind it and the edge reads on its own. In light mode the face is white
+	   on near white with a transparent border, so the bottom of a button had
+	   no edge at all: it faded into the page and only the top of it looked
+	   like an object. See the light value. */
+	--lift-control:
+		0 1px 0 0 rgb(255 255 255 / 0.16) inset,
+		0 -1px 0 0 rgb(0 0 0 / 0.5) inset, 0 1px 1px 0 rgb(0 0 0 / 0.55),
+		0 2px 5px -2px rgb(0 0 0 / 0.6), 0 6px 14px -6px rgb(0 0 0 / 0.55);
+
+	/* 🔴 The FACE is what carries relief in dark mode, not the shadow.
+	   This is the thing that took four attempts. A button in the header reads
+	   as a key because the tray under it is `#141414` and a black drop shadow
+	   has somewhere to fall. The same button on the outlet sits on `#0a0a0a`,
+	   where a black shadow is invisible: there is no darker left. So every
+	   raised control out there was a flat rounded rectangle with a hairline
+	   round it, and no amount of tuning the shadow could have fixed it.
+
+	   A physical key is lit from above, so its own face is brighter at the top
+	   than at the bottom. That gradient is visible on ANY ground, which is why
+	   it works where a shadow cannot. */
+	--face-control:
+		linear-gradient(
+			180deg,
+			rgb(255 255 255 / 0.055) 0%,
+			rgb(255 255 255 / 0.012) 45%,
+			rgb(0 0 0 / 0.05) 100%
+		),
+		var(--surface-card);
+	/* Pressed, the light falls INTO it: the gradient turns over. */
+	--face-control-pressed:
+		linear-gradient(180deg, rgb(0 0 0 / 0.14) 0%, rgb(255 255 255 / 0.02) 100%),
+		var(--surface-card);
+
+	/* 🔑 The same object, pushed IN. Not a dimmer copy of the raised state: the
+	   highlight leaves the top edge and the drop shadow becomes an inset one, so
+	   light that was falling ON a raised face now falls INTO a recess. That is
+	   what makes a press read as a press rather than the button going briefly
+	   grey. */
+	--lift-pressed:
+		0 1px 2px 0 rgb(0 0 0 / 0.45) inset, 0 1px 1px 0 rgb(0 0 0 / 0.35) inset;
+
+	/* ── A channel cut INTO a surface ────────────────────────────────────
+	   The opposite of `--lift-card`: the shadow falls along the top and the
+	   highlight along the bottom, because light entering a groove lands on the
+	   far wall. Used for a track that something raised slides along. */
+	--lift-inset:
+		0 1px 3px 0 rgb(0 0 0 / 0.55) inset, 0 2px 6px -2px rgb(0 0 0 / 0.4) inset,
+		0 -1px 0 0 rgb(255 255 255 / 0.07) inset;
+
+	/* 🔴 A groove needs a FACE darker than what it is cut into, not just a
+	   shadow, and it needs to be darker by ONE step, not seven. First attempt
+	   was `#060606`, which was correct for a track cut into the outlet and quite
+	   wrong once the switch moved onto the table strip: against a surface around
+	   `#171717` it stopped reading as a recess and became a black block sitting
+	   on top of one. This is the strip's own colour taken down a step, which is
+	   what a groove in it actually looks like. */
+	--surface-recess: #0e0e0e;
+	/* 🔴 The view switch's track colour, as a VARIABLE rather than a fixed
+	   class. An empty list has to lose the groove entirely, and overriding a
+	   Tailwind `bg-[…]` from a stylesheet is a cascade argument that has already
+	   been lost once. A variable has no such fight: the empty strip redefines it
+	   and the element does not care where the value came from. */
+	--view-face: var(--surface-recess);
+
+	/* ── Something FLOATING above the page ───────────────────────────────
+	   🔴 A popover is not a card. `--lift-card` and `--lift-panel` describe
+	   objects resting ON the page, so their falloff is short and their contact
+	   shadow is tight. A menu hovering 20px above everything needs the opposite:
+	   a brighter lit edge, a hard containing ring so it never bleeds into what
+	   is behind it, and a long soft cast far below.
+
+	   🔴 NO ring and NO border. A drawn line is the opposite of thickness: it
+	   flattens the panel into a shape with an outline.
+
+	   🔑 It REUSES `--lift-card` rather than restating it. Describing the same
+	   lighting a second time is how two things that should match drift apart,
+	   and mine drifted immediately: I wrote a fainter highlight and a softer
+	   contact shadow, so the panel read as flat next to the buttons it sits
+	   above. Composing the button's own value guarantees the lit top edge, the
+	   shaded underside and the contact shadow are IDENTICAL, and the only
+	   difference is the two long casts added after it, because this one is
+	   hovering rather than resting.
+
+	   ⚠️ Those casts are DEEPER than the buttons' but far fainter, and they are
+	   the part to keep reaching for the dimmer switch on. On a near black page a
+	   heavy drop does not read as distance, it reads as a hole punched behind
+	   the panel. The LIGHTING is what sells the object; the cast only has to
+	   say "not touching". Distance comes from how far a shadow spreads, never
+	   from how dark it gets. */
+	--lift-pop:
+		var(--lift-card), 0 14px 30px -16px rgb(0 0 0 / 0.24),
+		0 30px 60px -34px rgb(0 0 0 / 0.28);
+
+	/* ── A MODAL, which is a popover's problem at four times the size ────
+	   🔴 The same value that lifts a 17rem menu does nothing on a 56rem dialog.
+	   SIZE is the whole variable: a 1px highlight reads as a lit edge on a small
+	   panel and as a hairline on a large one, and a cast tuned to a menu is lost
+	   under something four times the area.
+
+	   ⚠️ NOT the dimmed backdrop, which was my first guess and wrong: the
+	   feedback dialog sits over the same overlay at 28rem and reads correctly on
+	   `--lift-pop`. Only settings, at 56rem by 38rem, needs this.
+
+	   So the LIGHTING is scaled, not the darkness: a brighter top edge and a
+	   heavier shaded underside, which is what says "thick" at this size, and a
+	   cast no darker than the popover's. */
+	/* 🔴 The lit edge as a BORDER, for a surface whose children cover it.
+	   An inset shadow paints UNDER child backgrounds, so a dialog with full
+	   bleed panes and no padding hides its own lighting: the settings dialog
+	   had the same value as the feedback one and looked flat, because its rail
+	   and its content pane painted straight over the highlight. A border sits
+	   on the border box, outside the padding box, so nothing inside can cover
+	   it. */
+	--edge-lit: rgb(255 255 255 / 0.1);
+	--edge-shade: rgb(0 0 0 / 0.6);
+
+	--lift-modal:
+		0 1px 0 0 rgb(255 255 255 / 0.14) inset,
+		0 -1px 0 0 rgb(0 0 0 / 0.6) inset, 0 2px 3px 0 rgb(0 0 0 / 0.4),
+		0 24px 48px -24px rgb(0 0 0 / 0.3),
+		0 48px 96px -48px rgb(0 0 0 / 0.34);
+
+	/* ── The tray the controls stand on ──────────────────────────────────
+	   🔴 CLOSE to the buttons in value, and RAISED like them. Two earlier tries
+	   got this wrong in opposite directions: flat and the same value as the page
+	   (so the buttons' shadows fell on nothing and only their borders separated
+	   them), then darker and recessed (which just made the gap between a bright
+	   button and its ground worse).
+
+	   Relief comes from a shadow across a small difference, not from a large
+	   difference. The tray sits one short step under the buttons and is lit from
+	   the same direction, so the header reads as a raised bar with the controls
+	   standing on it. */
+	--surface-tray: #181818;
+	/* ── A tile, rising out of the OUTLET ────────────────────────────────
+	   🔴 Not the header's face. The header is a light tray with lighter buttons
+	   on it; the outlet is a near black plane and its cards come up out of THAT.
+	   Same idea, different altitude: a card here is four steps off #0a0a0a, so
+	   the relief is what you see rather than the brightness.
+
+	   ⚠️ Its own token because `--surface-panel` is the header's tray. Sharing
+	   it means darkening the cards drags the header down with them. */
+	--surface-tile: #131313;
+	--lift-recess: var(--lift-panel);
+
+	/* The edge of a raised control. In dark the hairline still helps, because a
+	   shadow on near black has almost nothing to darken. */
+	--control-edge: var(--console-line);
 }
 
 :root.light {
@@ -865,7 +1075,81 @@ body {
 		0 6px 12px -4px rgb(24 24 27 / 0.08),
 		0 20px 36px -12px rgb(24 24 27 / 0.12);
 	--lift-card:
-		0 1px 0 0 rgb(255 255 255 / 1) inset, 0 1px 2px 0 rgb(24 24 27 / 0.07),
-		0 4px 10px -3px rgb(24 24 27 / 0.09),
-		0 12px 24px -8px rgb(24 24 27 / 0.13);
+		0 1px 0 0 rgb(255 255 255 / 1) inset,
+		0 -1px 0 0 rgb(24 24 27 / 0.05) inset, 0 1px 1px 0 rgb(24 24 27 / 0.1),
+		0 3px 6px -2px rgb(24 24 27 / 0.12),
+		0 10px 20px -8px rgb(24 24 27 / 0.16);
+
+	/* A RING, not a bottom lip, and not a card's wide throw.
+	   White on near white needs the whole edge defined, not one side of it: a
+	   card's far shadows fall away to nothing under something 32px tall and left
+	   the underside of a button dissolving into the page, and answering that
+	   with a dark inset line along the bottom only traded it for what read as an
+	   underline drawn beneath the button. A 1px ring at 7% closes the edge
+	   evenly the whole way round, and a short soft drop underneath is what says
+	   which way is up. */
+	--lift-control:
+		0 1px 0 0 rgb(255 255 255 / 0.9) inset, 0 1px 2px 0 rgb(24 24 27 / 0.07),
+		0 3px 6px -3px rgb(24 24 27 / 0.09);
+
+	/* The same domed face, the other way up. A flat white button on an almost
+	   white page has nothing to read except its ring; falling from white at the
+	   top to a faint grey at the bottom is what makes it look like an object
+	   catching the light rather than a shape cut out of the page. */
+	/* 🔴 The bottom stop was `#f1f1f4`, which is the page. A button whose lower
+	   edge is painted the colour of what it sits on has no lower edge, and the
+	   white inset above it made the base read as a glow rather than an object
+	   ending. It now stays clearly above the ground the whole way down, and the
+	   hairline does the rest. */
+	--face-control:
+		linear-gradient(180deg, #ffffff 0%, #fdfdfe 55%, #f8f8fa 100%), #ffffff;
+	--face-control-pressed:
+		linear-gradient(180deg, #eeeef2 0%, #fafafb 100%), #ffffff;
+
+	--lift-pressed:
+		0 1px 3px 0 rgb(24 24 27 / 0.16) inset,
+		0 1px 2px 0 rgb(24 24 27 / 0.1) inset;
+
+	--lift-inset:
+		0 1px 3px 0 rgb(24 24 27 / 0.14) inset,
+		0 2px 6px -2px rgb(24 24 27 / 0.12) inset,
+		0 -1px 0 0 rgb(255 255 255 / 0.9) inset;
+
+	/* See the dark value: one step under the strip, not a hole in it. */
+	--surface-recess: #e7e7ed;
+	/* See the dark value. */
+	--view-face: var(--surface-recess);
+
+	--lift-pop:
+		var(--lift-card), 0 14px 30px -16px rgb(24 24 27 / 0.08),
+		0 30px 60px -34px rgb(24 24 27 / 0.1);
+
+	--edge-lit: rgb(255 255 255 / 1);
+	--edge-shade: rgb(24 24 27 / 0.1);
+
+	--lift-modal:
+		0 1px 0 0 rgb(255 255 255 / 1) inset,
+		0 -1px 0 0 rgb(24 24 27 / 0.08) inset, 0 2px 3px 0 rgb(24 24 27 / 0.08),
+		0 24px 48px -24px rgb(24 24 27 / 0.12),
+		0 48px 96px -48px rgb(24 24 27 / 0.14);
+
+	/* Near white, a whisper under the buttons rather than a grey they sit on. */
+	--surface-tray: #f7f7f9;
+	/* Light rises the other way: the ground is the tinted one, so a tile steps
+	   toward white rather than away from it, and only just. */
+	--surface-tile: #f5f5f8;
+	--lift-recess: var(--lift-panel);
+
+	/* 🔴 NO hairline in light. On white, `--console-line` is darker than the
+	   shadow that is meant to be lifting the button, so the border did the
+	   separating and the lift did nothing: every control looked stamped out of
+	   the header rather than sitting on it. Take the line away and the shadow
+	   is finally the thing you see. */
+	/* 🔴 A real hairline, not `transparent`.
+	   Light mode tried to define a white key on a near white page with shadow
+	   alone, and there is not enough contrast in that range to do it: the ring
+	   read as a smudge and the bottom edge disappeared entirely. Dark has drawn
+	   this hairline all along, which is the other half of why the two themes
+	   never looked like the same control. */
+	--control-edge: var(--console-line);
 }

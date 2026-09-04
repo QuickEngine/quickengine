@@ -11,6 +11,7 @@ import {
 } from "./detail-panel";
 import { WriteFailure } from "./page-state";
 import { Choice, Text } from "./product-fields";
+import { SaveLabel, useSavedFlash } from "./save-button";
 
 /**
  * One stocked item: how much there is, and everything that changed it.
@@ -173,6 +174,8 @@ export function InventoryPanel({
 	// What can actually be sold: reserved stock is spoken for by open orders.
 	const available = data ? data.onHand - data.reserved : 0;
 
+	const saved = useSavedFlash(save.isSuccess);
+
 	return (
 		<DetailPanel
 			title={name}
@@ -191,11 +194,13 @@ export function InventoryPanel({
 						onClick={() => save.mutate()}
 						className={`${save.isPending ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 					>
-						{!online
-							? "Waiting for a connection…"
-							: save.isPending
-								? "Saving…"
-								: "Save"}
+						<SaveLabel
+							saving={save.isPending}
+							saved={saved}
+							savingLabel={!online ? "Waiting…" : "Saving…"}
+						>
+							Save
+						</SaveLabel>
 					</button>
 				</>
 			}
@@ -245,6 +250,7 @@ export function InventoryPanel({
 						/>
 						<button
 							type="button"
+							title={quantity.trim() ? undefined : "Enter a quantity first"}
 							disabled={record.isPending || !quantity.trim()}
 							onClick={() => record.mutate()}
 							className={`${record.isPending ? "shimmer-busy" : ""} mt-2 inline-flex h-8 w-full items-center justify-center rounded-full border border-[var(--console-line)] text-[12px] text-[var(--ink-85)] transition-opacity hover:opacity-75 disabled:opacity-40`}

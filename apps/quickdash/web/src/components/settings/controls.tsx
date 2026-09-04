@@ -19,6 +19,7 @@ import {
 	useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { SaveLabel } from "../save-button";
 
 /**
  * The console's own dropdown and number field.
@@ -407,16 +408,24 @@ export function SaveButton({
 	const { rail } = useSaveRail();
 	const button = (
 		<div className="flex items-center gap-2.5">
-			{saved && !busy ? (
-				<span className="text-[11.5px] text-[var(--ink-40)]">Saved</span>
-			) : null}
+			{/* The word "Saved" used to sit BESIDE the button, which meant the row
+			    changed width the moment anything saved and pushed the button
+			    sideways. The tick lives on the button now, in the same cell as the
+			    label, so nothing moves. */}
 			<button
 				type="button"
 				disabled={disabled || busy}
 				onClick={onSave}
-				className="flex h-7 shrink-0 items-center rounded-md bg-[rgb(var(--console-ink))] px-2.5 font-medium text-[11.5px] text-[var(--console-pop)] transition-opacity hover:opacity-90 disabled:opacity-30"
+				/* 🔑 A HEADER BUTTON, not an ink filled primary.
+				   `--console-ink` is off white in dark, so the filled version read as
+				   a bright slab that matched nothing else on the surface it sits on.
+				   The console's raised control is the shared language here: the card
+				   face, the lit edge, the same press. */
+				className={`control-raised ${busy ? "shimmer-busy" : ""} flex h-7 shrink-0 items-center rounded-md border border-[var(--console-line)] px-2.5 font-medium text-[11.5px] text-[var(--ink-90)] disabled:opacity-30`}
 			>
-				{busy ? "Saving…" : "Save"}
+				<SaveLabel saving={busy} saved={saved}>
+					Save
+				</SaveLabel>
 			</button>
 		</div>
 	);

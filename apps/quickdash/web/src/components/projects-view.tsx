@@ -152,6 +152,7 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 					submitLabel="Create project"
 					busy={create.isPending}
 					valid={name.trim().length > 0}
+					blockedReason={"Give this project a name"}
 					failure={failure}
 					onClose={() => setCreating(false)}
 					onSubmit={() => create.mutate()}
@@ -222,16 +223,14 @@ export function ProjectsView({ workspaceId }: { workspaceId: string }) {
 							(project) =>
 								!needle || project.name.toLowerCase().includes(needle),
 						);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the status filter."
+								/>
+							}
 							exportName="projects"
 							bulkActions={(chosen) => (
 								<BulkDelete

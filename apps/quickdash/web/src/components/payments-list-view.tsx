@@ -196,17 +196,18 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 								payment.provider.toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
+					/* No bulk delete, deliberately.
+						    Money that moved, and it cannot be un-moved. Refunds are the reverse
+						    operation and they live on the payment itself, where the amount can
+						    be read before anything happens. */
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the status filter."
+								/>
+							}
 							rowSignal={rowSignal}
 							workspaceId={workspaceId}
 							layout={layout}
@@ -334,6 +335,11 @@ export function PaymentsListView({ workspaceId }: { workspaceId: string }) {
 														<button
 															type="button"
 															className={`${solid} ${refund.isPending ? "shimmer-busy" : ""}`}
+															title={
+																validAmount
+																	? undefined
+																	: "Enter an amount to refund"
+															}
 															disabled={!validAmount || refund.isPending}
 															onClick={() =>
 																refund.mutate({

@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
+import { BulkDelete } from "./bulk-delete";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
@@ -53,6 +55,8 @@ const _field =
 
 export function ZonesView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
@@ -264,16 +268,24 @@ export function ZonesView({ workspaceId }: { workspaceId: string }) {
 							statusFilter.keep(zone.active === false ? "off" : "active") &&
 							(!needle || zone.name.toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							bulkActions={(chosen) => (
+								<BulkDelete
+									workspaceId={workspaceId}
+									rows={chosen}
+									path="/shipping/zones"
+									noun="zones"
+									invalidate={["quickdash", workspaceId, "shipping-zones"]}
+								/>
+							)}
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Shipping zones"

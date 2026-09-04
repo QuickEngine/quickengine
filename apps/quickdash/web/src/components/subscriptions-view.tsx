@@ -193,6 +193,7 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 					 * customer zero forever.
 					 */
 					valid={name.trim().length > 0 && isAmount(price) && !!product}
+					blockedReason={"Choose a plan and a customer"}
 					failure={failure}
 					onClose={() => setCreating(false)}
 					onSubmit={() => createPlan.mutate()}
@@ -287,16 +288,14 @@ export function SubscriptionsView({ workspaceId }: { workspaceId: string }) {
 								row.planName.toLowerCase().includes(needle) ||
 								row.status.includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							exportName="plans"
 							bulkActions={(chosen) => (
 								<BulkDelete

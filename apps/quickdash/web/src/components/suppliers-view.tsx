@@ -3,6 +3,7 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { parseAmountCents } from "../lib/money-input";
+import { useRecordSignals } from "../lib/record-signals";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
@@ -12,6 +13,7 @@ import { EmptyState, PageState, WriteFailure } from "./page-state";
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
 import { Choice, Text as TextField } from "./product-fields";
+import { SaveLabel, useSavedFlash } from "./save-button";
 
 /**
  * Suppliers — who makes and ships what this business sells.
@@ -82,6 +84,8 @@ const money = (cents: number | null, currency: string) =>
 
 export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const api = workspaceApi(workspaceId);
@@ -198,6 +202,7 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 					submitLabel="Add supplier"
 					busy={create.isPending}
 					valid={name.trim().length > 0}
+					blockedReason={"Give this supplier a name"}
 					failure={failure}
 					onClose={() => setCreating(false)}
 					onSubmit={() => create.mutate()}
@@ -283,16 +288,15 @@ export function SuppliersView({ workspaceId }: { workspaceId: string }) {
 							statusFilter.keep(supplier.handoffMethod) &&
 							(!needle || supplier.name.toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Suppliers"
@@ -685,6 +689,13 @@ function SupplierPanel({
 							) : null}
 							<button
 								type="button"
+								title={
+									!itemId
+										? "Choose which product this is"
+										: !sku.trim()
+											? "Enter the code the supplier uses"
+											: undefined
+								}
 								disabled={!itemId || !sku.trim() || map.isPending}
 								onClick={() => map.mutate()}
 								className="inline-flex h-9 items-center rounded-full bg-[rgb(var(--console-ink))] px-4 text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40"
@@ -859,6 +870,13 @@ function ConnectionSection({
 		},
 	});
 
+	// 🔴 ABOVE the early return. `useSavedFlash` is a hook, so it has to run on
+	// every render of this component or the hook order changes between the two
+	// branches, which React reads as a different component. It sat below the
+	// return that renders the collapsed state, so the order flipped the moment
+	// this opened.
+	const connected = useSavedFlash(connect.isSuccess);
+
 	if (!connectable) return null;
 
 	/** The supplier's code translated back to the name on the shelf. */
@@ -939,7 +957,7 @@ function ConnectionSection({
 				{!state?.present || replacing ? (
 					<button
 						type="button"
-						className={quiet}
+						className={`${connect.isPending ? "shimmer-busy" : ""} ${quiet}`}
 						disabled={
 							connect.isPending ||
 							shopDomain.trim() === "" ||
@@ -949,11 +967,9 @@ function ConnectionSection({
 						}
 						onClick={() => connect.mutate()}
 					>
-						{connect.isPending
-							? "Saving…"
-							: state?.present
-								? "Save connection"
-								: "Connect"}
+						<SaveLabel saving={connect.isPending} saved={connected}>
+							{state?.present ? "Save connection" : "Connect"}
+						</SaveLabel>
 					</button>
 				) : null}
 				{state?.present ? (

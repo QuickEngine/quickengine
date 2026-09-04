@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
+import { useListLayout } from "../lib/list-view";
 import { ListControls, useChipFilter } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
+import { RequestIdInline } from "./outlet-error";
 import { EmptyState, PageState } from "./page-state";
 
 type AuditEntry = {
@@ -171,6 +174,7 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 	 * page then answers a different question: what else happened in that action.
 	 */
 	const [requestId, setRequestId] = useState<string | null>(null);
+	const { layout, setLayout } = useListLayout(workspaceId);
 
 	const audit = useQuery({
 		queryKey: ["quickdash", workspaceId, "audit", requestId],
@@ -202,23 +206,31 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 				filterCount={statusFilter.count}
 				exportRows={() => audit.data?.items ?? []}
 				exportName="activity"
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search by person, action or record"
 			/>
 
 			{requestId ? (
-				<div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-[var(--console-line)] px-3.5 py-2.5">
+				<div
+					/* The same material as the list under it. This notice sits on the
+					   page while a mode is on, so it has to be an object on the page
+					   rather than a rule drawn on the floor. */
+					style={{ boxShadow: "var(--lift-card)" }}
+					className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--console-line)] bg-[var(--surface-tile)] px-3.5 py-2.5"
+				>
 					<p className="min-w-0 flex-1 text-[11.5px] text-[var(--ink-50)] leading-5">
-						Showing everything that happened in one action.{" "}
-						<span className="font-mono text-[10.5px] text-[var(--ink-35)]">
-							{requestId}
-						</span>
+						Showing everything that happened in one action.
 					</p>
+					{/* Mandatory on any id shown to a person: it exists to be pasted
+					    into a support thread, and retyping a uuid by eye is how the
+					    wrong one gets pasted. */}
+					<RequestIdInline id={requestId} />
 					<button
 						type="button"
 						onClick={() => setRequestId(null)}
-						className="shrink-0 rounded-full border border-[var(--console-line-strong)] px-2.5 py-1 text-[11px] text-[var(--ink-60)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-90)]"
+						className="control-raised flex h-7 shrink-0 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 					>
 						Show everything
 					</button>
@@ -254,58 +266,114 @@ export function AuditView({ workspaceId }: { workspaceId: string }) {
 										.toLowerCase()
 										.includes(needle),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
-						<ol className="flex flex-col">
-							{rows.map((row) => (
-								<li
-									key={row.id}
-									className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-[var(--console-line-soft)] border-b py-3 last:border-b-0"
-								>
-									<span className="text-[12.5px] text-[var(--ink-85)]">
-										{actorLabel(row)}
-									</span>
-									<span className="text-[12.5px] text-[var(--ink-55)]">
-										{describe(row.action)}
-									</span>
-									{/* ⚠️ The id only. `resourceType` used to be printed here
-									    too, which said the same noun twice — "added a product
-									    catalog_item/3f2a1b9c". The action already names what
-									    it is; this is the handle somebody copies. */}
-									<span className="font-mono text-[11px] text-[var(--ink-35)]">
-										{row.resourceId.slice(0, 8)}
-									</span>
-									<span className="text-[11.5px] text-[var(--ink-30)]">
-										{SOURCE_LABELS[row.source] ?? row.source}
-									</span>
-									<span className="min-w-0 flex-1" />
-									{/* 🔑 The reason the request id is on screen at all: one
-									    customer action writes several rows, and this is what
-									    puts them together. */}
-									<button
-										type="button"
-										onClick={() => setRequestId(row.requestId)}
-										title="Show everything that happened in this action"
-										className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[10.5px] text-[var(--ink-25)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-70)]"
-									>
-										{row.requestId.slice(0, 8)}
-									</button>
-									<span
-										className="shrink-0 text-[11px] text-[var(--ink-30)]"
-										title={new Date(row.occurredAt).toLocaleString()}
-									>
-										{when(row.occurredAt)}
-									</span>
-								</li>
-							))}
-						</ol>
+						<PagedTable
+							workspaceId={workspaceId}
+							layout={layout}
+							caption="Activity"
+							rows={rows}
+							exportName="activity"
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the area filter."
+								/>
+							}
+							/* 🔴 The sentence LIVES ON, as the card.
+							   This page was the last one drawing its own rows straight
+							   onto the outlet: no frame, no lift, no columns, no sort and
+							   no paging, because a hand written `<ol>` has none of those.
+							   Moving it onto the shared table is what gives it all of
+							   them, and it costs the one genuinely good thing the page
+							   had, which is that a row reads as a sentence. So the
+							   sentence becomes the card view. Table when you are looking
+							   for a pattern down a column, cards when you are reading
+							   what happened. */
+							renderCard={(row) => (
+								<>
+									<p className="text-[12.5px] text-[var(--ink-85)] leading-snug">
+										{actorLabel(row)}{" "}
+										<span className="text-[var(--ink-55)]">
+											{describe(row.action)}
+										</span>{" "}
+										<span className="font-mono text-[11px] text-[var(--ink-35)]">
+											{row.resourceId.slice(0, 8)}
+										</span>
+									</p>
+									<div className="mt-1.5 flex items-center gap-1.5">
+										<span className="text-[11px] text-[var(--ink-30)]">
+											{SOURCE_LABELS[row.source] ?? row.source}
+										</span>
+										<span
+											className="ml-auto text-[11px] text-[var(--ink-30)]"
+											title={new Date(row.occurredAt).toLocaleString()}
+										>
+											{when(row.occurredAt)}
+										</span>
+									</div>
+								</>
+							)}
+							/* ⚠️ The keys are REAL fields on the row, not display names.
+							   The shared table sorts by reading `row[key]`, so a column
+							   keyed "who" would sort by undefined and quietly do nothing
+							   while the header claimed otherwise. */
+							columns={[
+								{
+									key: "actorName",
+									header: "Who",
+									render: (row) => (
+										<span className="text-[var(--ink-85)]">
+											{actorLabel(row)}
+										</span>
+									),
+								},
+								{
+									key: "action",
+									header: "What",
+									render: (row) => describe(row.action),
+								},
+								{
+									key: "resourceId",
+									header: "Record",
+									render: (row) => (
+										<span className="font-mono text-[11px] text-[var(--ink-45)]">
+											{row.resourceId.slice(0, 8)}
+										</span>
+									),
+								},
+								{
+									key: "source",
+									header: "Where",
+									render: (row) => SOURCE_LABELS[row.source] ?? row.source,
+								},
+								{
+									key: "requestId",
+									header: "Action",
+									/* 🔑 The reason the request id is on screen at all: one
+									   customer action writes several rows, and this is what
+									   puts them together. */
+									render: (row) => (
+										<button
+											type="button"
+											onClick={() => setRequestId(row.requestId)}
+											title="Show everything that happened in this action"
+											className="rounded-md px-1.5 py-0.5 font-mono text-[10.5px] text-[var(--ink-30)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-70)]"
+										>
+											{row.requestId.slice(0, 8)}
+										</button>
+									),
+								},
+								{
+									key: "occurredAt",
+									header: "When",
+									render: (row) => (
+										<span title={new Date(row.occurredAt).toLocaleString()}>
+											{when(row.occurredAt)}
+										</span>
+									),
+								},
+							]}
+						/>
 					);
 				}}
 			</PageState>

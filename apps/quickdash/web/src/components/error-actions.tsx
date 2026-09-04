@@ -37,7 +37,7 @@ export function GoBack({ label = "Go back" }: { label?: string }) {
 						: { to: "/" },
 				);
 			}}
-			className="inline-flex h-8 items-center rounded-md border border-[var(--console-line-strong)] px-3 text-[12px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
+			className="control-raised inline-flex h-8 items-center rounded-md border px-3 text-[12px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
 		>
 			{label}
 		</button>
@@ -55,7 +55,7 @@ export function ContactSupport({ requestId }: { requestId: string }) {
 	return (
 		<a
 			href={`${clientEnv.ACCOUNT_URL}/support?requestId=${encodeURIComponent(requestId)}`}
-			className="inline-flex h-8 items-center rounded-md px-3 text-[12px] text-[var(--ink-45)] no-underline transition-colors hover:bg-[rgb(var(--console-ink)/0.05)] hover:text-[var(--ink-85)]"
+			className="control-raised inline-flex h-8 items-center rounded-md border px-3 text-[12px] text-[var(--ink-45)] no-underline outline-none hover:text-[var(--ink-85)]"
 		>
 			Contact support
 		</a>

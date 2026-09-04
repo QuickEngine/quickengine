@@ -31,10 +31,19 @@ import { ContactSupport } from "./error-actions";
  * fault stops being a mystery.
  */
 
+/**
+ * 🔴 Both are KEYS, and the primary is not a fill.
+ *
+ * An error card is the one screen somebody reads carefully, and it was the last
+ * one still wearing the first pass: an off white slab for "Try again" and a
+ * flat bordered rectangle beside it, on a console where every other button is a
+ * raised face. Weight separates them now, the same way it separates a chosen
+ * tab from an unchosen one, and neither has to invert to be found.
+ */
 const primary =
-	"inline-flex h-8 items-center rounded-md bg-[rgb(var(--console-ink))] px-3 font-medium text-[12px] text-[var(--console-pop)] transition-opacity hover:opacity-90";
+	"control-raised inline-flex h-8 items-center rounded-md border border-[var(--console-line-strong)] px-3 font-medium text-[12px] text-[var(--ink-90)] outline-none";
 const quiet =
-	"inline-flex h-8 items-center rounded-md border border-[var(--console-line-strong)] px-3 text-[12px] text-[var(--ink-60)] no-underline transition-colors hover:text-[var(--ink-90)]";
+	"control-raised inline-flex h-8 items-center rounded-md border px-3 text-[12px] text-[var(--ink-55)] no-underline outline-none hover:text-[var(--ink-90)]";
 
 /**
  * The request id, and a one-press way to hand it to somebody.

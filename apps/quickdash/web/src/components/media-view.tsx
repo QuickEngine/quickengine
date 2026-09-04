@@ -1,8 +1,11 @@
+import { CheckIcon, CopyIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { type CatalogItem, imagesOf } from "../lib/catalog";
+import { useListLayout } from "../lib/list-view";
 import { ListControls, useChipFilter } from "./list-controls";
+import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
 
 /**
@@ -39,16 +42,21 @@ import { EmptyState, PageState } from "./page-state";
  */
 
 type MediaUse = {
+	/** `PagedTable` keys, selects and reorders by this. */
+	id: string;
 	url: string;
 	itemId: string;
 	itemName: string;
 	first: boolean;
+	/** The last path segment, which is the only part anybody reads. */
+	filename: string;
 };
 
 export function MediaView({ workspaceId }: { workspaceId: string }) {
 	const statusFilter = useChipFilter();
 	const [search, setSearch] = useState("");
 	const [copied, setCopied] = useState<string | null>(null);
+	const { layout, setLayout } = useListLayout(workspaceId);
 
 	const catalog = useQuery({
 		queryKey: ["quickdash", workspaceId, "catalog"],
@@ -64,6 +72,7 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 				filterCount={statusFilter.count}
 				exportRows={() => catalog.data?.items ?? []}
 				exportName="media"
+				action={<LayoutToggle layout={layout} onChange={setLayout} />}
 				query={search}
 				onQueryChange={setSearch}
 				placeholder="Search by product"
@@ -88,10 +97,12 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 					const uses: MediaUse[] = (data.items as CatalogItem[]).flatMap(
 						(item) =>
 							imagesOf(item.metadata).map((url, index) => ({
+								id: `${item.id}-${index}`,
 								url,
 								itemId: item.id,
 								itemName: item.name,
 								first: index === 0,
+								filename: url.split("/").pop() || url,
 							})),
 					);
 					const needle = search.trim().toLowerCase();
@@ -101,14 +112,32 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 							(!needle || use.itemName.toLowerCase().includes(needle)),
 					);
 
-					if (shown.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
+					/* Copy is a HOVER CLIPBOARD in the corner, not a button under every
+					   tile. A page of forty pictures had forty pill buttons on it, which
+					   is a wall of chrome over the thing you came to look at. Same
+					   treatment the code blocks on the Developers page got. */
+					const copyButton = (url: string) => (
+						<button
+							type="button"
+							aria-label={copied === url ? "Copied" : "Copy the address"}
+							title={copied === url ? "Copied" : "Copy the address"}
+							onClick={(event) => {
+								// The tile itself is not a link, but it will be one day; a
+								// copy must never also open something.
+								event.stopPropagation();
+								void navigator.clipboard.writeText(url);
+								setCopied(url);
+								setTimeout(() => setCopied(null), 1500);
+							}}
+							className="flex size-6 items-center justify-center rounded-md text-[var(--ink-30)] transition-colors hover:text-[var(--ink-90)]"
+						>
+							{copied === url ? (
+								<CheckIcon size={12} />
+							) : (
+								<CopyIcon size={12} />
+							)}
+						</button>
+					);
 
 					return (
 						<>
@@ -120,45 +149,84 @@ export function MediaView({ workspaceId }: { workspaceId: string }) {
 								</span>
 							</p>
 
-							<div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3">
-								{shown.map((use) => (
-									<figure
-										key={`${use.itemId}-${use.url}`}
-										className="overflow-hidden rounded-xl border border-[var(--console-line-soft)]"
-									>
+							<PagedTable
+								workspaceId={workspaceId}
+								layout={layout}
+								caption="Media"
+								rows={shown}
+								exportName="media"
+								empty={
+									<EmptyState
+										title="Nothing matches"
+										detail="Try a different search, or clear the use filter."
+									/>
+								}
+								/* 🔴 The last page still drawing its own grid. It had flat
+								   hairline tiles on the outlet, no view switch, no sort and no
+								   paging, because a hand written `<figure>` grid has none of
+								   those. The picture is unchanged; the object it sits in is
+								   now the console's, exactly like Products. */
+								renderCard={(use) => (
+									<>
 										<img
 											src={use.url}
 											alt=""
 											loading="lazy"
-											className="aspect-square w-full bg-[rgb(var(--console-ink)/0.03)] object-cover"
+											className="aspect-square w-full rounded-lg border border-[var(--console-line-soft)] bg-[rgb(var(--console-ink)/0.03)] object-cover"
 										/>
-										<figcaption className="flex items-center gap-2 px-2.5 py-2">
-											<span className="min-w-0 flex-1 truncate text-[11px] text-[var(--ink-60)]">
+										<div className="mt-2.5 flex items-center gap-1.5">
+											<span className="min-w-0 flex-1 truncate text-[12px] text-[var(--ink-85)]">
 												{use.itemName}
-												{use.first ? (
-													<span className="text-[var(--ink-25)]">
-														{" "}
-														· shown first
-													</span>
-												) : null}
 											</span>
-											{/* Copying the address is the one thing a person comes
-											    here to do that nowhere else offers. */}
-											<button
-												type="button"
-												onClick={() => {
-													void navigator.clipboard.writeText(use.url);
-													setCopied(use.url);
-													setTimeout(() => setCopied(null), 1500);
-												}}
-												className="shrink-0 rounded-full border border-[var(--console-line-strong)] px-2 py-0.5 text-[10.5px] text-[var(--ink-60)] transition-colors hover:text-[var(--ink-90)]"
-											>
-												{copied === use.url ? "Copied" : "Copy"}
-											</button>
-										</figcaption>
-									</figure>
-								))}
-							</div>
+											{copyButton(use.url)}
+										</div>
+										{use.first ? (
+											<p className="mt-0.5 text-[10.5px] text-[var(--ink-25)]">
+												Shown first
+											</p>
+										) : null}
+									</>
+								)}
+								columns={[
+									{
+										key: "itemName",
+										header: "Picture",
+										render: (use) => (
+											<span className="flex min-w-0 items-center gap-2.5">
+												<img
+													src={use.url}
+													alt=""
+													loading="lazy"
+													className="size-8 shrink-0 rounded-md border border-[var(--console-line-soft)] object-cover"
+												/>
+												<span className="min-w-0 truncate">{use.itemName}</span>
+											</span>
+										),
+									},
+									{
+										key: "first",
+										header: "Use",
+										render: (use) =>
+											use.first ? (
+												"Shown first"
+											) : (
+												<span className="text-[var(--ink-35)]">Additional</span>
+											),
+									},
+									{
+										key: "filename",
+										header: "Address",
+										render: (use) => (
+											<span className="flex min-w-0 items-center gap-1.5">
+												<span className="min-w-0 truncate font-mono text-[11px] text-[var(--ink-45)]">
+													{use.filename}
+												</span>
+												{copyButton(use.url)}
+											</span>
+										),
+									},
+								]}
+							/>
 						</>
 					);
 				}}

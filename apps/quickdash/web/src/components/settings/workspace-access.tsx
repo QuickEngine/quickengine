@@ -166,6 +166,9 @@ export function WorkspaceWebhooks({ workspaceId }: { workspaceId: string }) {
 				<div className="pt-3">
 					<button
 						type="button"
+						title={
+							url.trim() ? undefined : "Enter the address to send events to"
+						}
 						disabled={!url.trim() || create.isPending}
 						onClick={() => create.mutate()}
 						className={primary}
@@ -361,6 +364,11 @@ export function WorkspaceApiKeys({
 				<div className="pt-3">
 					<button
 						type="button"
+						title={
+							name.trim()
+								? undefined
+								: "Name this key so you can recognise it later"
+						}
 						disabled={!name.trim() || create.isPending}
 						onClick={() => create.mutate()}
 						className={primary}

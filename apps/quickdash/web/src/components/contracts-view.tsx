@@ -171,15 +171,6 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 								contract.clientName.toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
 					const _awaiting = rows.filter(
 						(contract) =>
 							contract.status === "sent" ||
@@ -188,6 +179,12 @@ export function ContractsView({ workspaceId }: { workspaceId: string }) {
 
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the status filter."
+								/>
+							}
 							exportName="contracts"
 							bulkActions={(chosen) => (
 								<BulkDelete

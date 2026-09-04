@@ -3,12 +3,19 @@ import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
 import { parseAmount } from "../lib/money-input";
+import { useRecordSignals } from "../lib/record-signals";
 import { BulkDelete } from "./bulk-delete";
 import { CreatePanel } from "./create-panel";
 import { useHeaderAction } from "./header-action";
 import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 // ⚠️ Aliased: an unaliased `Text` silently resolves to the DOM's global `Text`
 // if the import is ever dropped, and the error that produces names React
 // internals rather than the missing import.
@@ -104,6 +111,8 @@ function discountState(discount: {
 
 export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const statusFilter = useChipFilter();
 	const queryClient = useQueryClient();
 	const [creating, setCreating] = useState(false);
@@ -205,6 +214,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 					submitLabel="Create code"
 					busy={create.isPending}
 					valid={Boolean(valid)}
+					blockedReason={"A code and an amount are needed"}
 					failure={failure}
 					onClose={() => setCreating(false)}
 					onSubmit={() => create.mutate()}
@@ -274,16 +284,15 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 								discount.code.toLowerCase().includes(needle) ||
 								discount.name.toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
 					return (
 						<PagedTable
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							exportName="discounts"
 							bulkActions={(chosen) => (
 								<BulkDelete
@@ -369,7 +378,7 @@ export function DiscountsView({ workspaceId }: { workspaceId: string }) {
 										<button
 											type="button"
 											className={quiet}
-											disabled={rowBusy(setActive, discount.id)}
+											{...rowActionBusy(rowBusy(setActive, discount.id))}
 											onClick={() =>
 												setActive.mutate({
 													id: discount.id,

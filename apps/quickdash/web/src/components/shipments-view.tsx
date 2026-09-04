@@ -7,7 +7,13 @@ import { useSelectedRecord } from "../lib/selected-record";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { ShipmentPanel } from "./module-panels";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 
 /**
  * Shipments — what has actually left the building.
@@ -168,17 +174,17 @@ export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
 								(shipment.carrier ?? "").toLowerCase().includes(needle),
 						);
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
+					/* No bulk delete, deliberately.
+						    A shipment belongs to its order rather than standing alone. Deleting
+						    one from a list would leave the order claiming goods went out. */
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search, or clear the status filter."
+								/>
+							}
 							rowSignal={rowSignal}
 							workspaceId={workspaceId}
 							layout={layout}
@@ -258,7 +264,7 @@ export function ShipmentsView({ workspaceId }: { workspaceId: string }) {
 											<button
 												type="button"
 												className={quiet}
-												disabled={rowBusy(advance, shipment.id)}
+												{...rowActionBusy(rowBusy(advance, shipment.id))}
 												onClick={() =>
 													advance.mutate({
 														id: shipment.id,

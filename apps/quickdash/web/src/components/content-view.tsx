@@ -6,7 +6,14 @@ import { workspaceApi } from "../lib/api";
 import { useOnline } from "../lib/online";
 import { ContentPreview } from "./content-preview";
 import { FilterChip, ListControls } from "./list-controls";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
+import { SaveLabel, useSavedFlash } from "./save-button";
 
 /**
  * Content — the words on a business's own website.
@@ -867,7 +874,9 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 																<button
 																	type="button"
 																	className={quiet}
-																	disabled={rowBusy(clearSlot, entry.key)}
+																	{...rowActionBusy(
+																		rowBusy(clearSlot, entry.key),
+																	)}
 																	title={
 																		entry.type === "image"
 																			? "Take this off the site"
@@ -881,7 +890,9 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 															<button
 																type="button"
 																className={quiet}
-																disabled={rowBusy(setPublished, entry.key)}
+																{...rowActionBusy(
+																	rowBusy(setPublished, entry.key),
+																)}
 																onClick={() =>
 																	setPublished.mutate({
 																		keys: [entry.key],
@@ -917,11 +928,15 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 																			save.mutate({ entry, text: draft })
 																		}
 																	>
-																		{!online
-																			? "Waiting for a connection…"
-																			: save.isPending
-																				? "Saving…"
-																				: "Save"}
+																		<SaveLabel
+																			saving={save.isPending}
+																			saved={saved}
+																			savingLabel={
+																				!online ? "Waiting…" : "Saving…"
+																			}
+																		>
+																			Save
+																		</SaveLabel>
 																	</button>
 																	<p className="text-[11px] text-[var(--ink-30)]">
 																		{entry.published
@@ -943,6 +958,15 @@ export function ContentView({ workspaceId }: { workspaceId: string }) {
 			</PageState>
 		</>
 	);
+
+	// The tick on the slot save button. Declared here, not in the row callback
+	// below, because a hook cannot live inside a render function.
+	// 🔴 ABOVE the early return. `useSavedFlash` is a hook, so it has to run on
+	// every render of this component or the hook order changes between the two
+	// branches, which React reads as a different component. It sat below the
+	// return that renders the collapsed state, so the order flipped the moment
+	// this opened.
+	const saved = useSavedFlash(save.isSuccess);
 
 	// Preview off: an ordinary page, exactly as every other list in the console.
 	if (!previewOpen) {

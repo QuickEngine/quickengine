@@ -9,6 +9,7 @@ import {
 	PaletteIcon,
 	PercentIcon,
 	PlugsConnectedIcon,
+	PlugsIcon,
 	ShoppingCartIcon,
 	SquaresFourIcon,
 	StarIcon,
@@ -23,6 +24,7 @@ import {
 	DialogTitle,
 } from "@quickengine/ui/components/ui/dialog";
 import { useState } from "react";
+import { IntegrationsPanel } from "./integrations-panel";
 import { ModuleIcon } from "./module-icon";
 import { SaveRailProvider, useSaveRail } from "./settings/controls";
 import { MODULE_SETTINGS } from "./settings/module-fields";
@@ -90,6 +92,7 @@ const ICONS: Readonly<Record<string, Icon>> = {
 	branding: PaletteIcon,
 	usage: ChartBarIcon,
 	modules: SquaresFourIcon,
+	integrations: PlugsIcon,
 	checkout: ShoppingCartIcon,
 	shipping: TruckIcon,
 	returns: ArrowUUpLeftIcon,
@@ -166,6 +169,19 @@ const GROUPS: Array<{ group: string; items: Section[] }> = [
 				label: "Modules",
 				blurb: "What this workspace can do. Turn capabilities on and off.",
 				keywords: "features capabilities enable disable",
+			},
+			{
+				id: "integrations",
+				label: "Integrations",
+				/* 🔴 It had an icon in the console header, permanently, beside
+				   controls that act on the page you are looking at. Connecting a
+				   service is not something you do while working; it is something you
+				   set up once and then forget, which is the definition of a setting.
+				   Modules is the page right above it and answers the neighbouring
+				   question, what this workspace can do on its own. */
+				blurb: "What this workspace is connected to, and what it can reach.",
+				keywords:
+					"connect service provider stripe shopify resend oauth app install",
 			},
 		],
 	},
@@ -296,6 +312,7 @@ export function SettingsDialog({
 	accountUrl,
 	environment = "live",
 	apiUrl,
+	workspace,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -311,6 +328,8 @@ export function SettingsDialog({
 	accountUrl: string;
 	environment?: "test" | "live";
 	apiUrl: string;
+	/** The URL slug. Integrations links back into this console with it. */
+	workspace: string;
 }) {
 	const [active, setActive] = useState("general");
 	const [find, setFind] = useState("");
@@ -387,7 +406,8 @@ export function SettingsDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
 				showCloseButton
-				className="h-[38rem] max-h-[85vh] gap-0 overflow-hidden rounded-xl border-[var(--console-line)] bg-[var(--console-pop)] p-0 text-[var(--ink-90)] shadow-2xl sm:max-w-4xl"
+				style={{ boxShadow: "var(--lift-modal)" }}
+				className="lit-edges h-[38rem] max-h-[85vh] gap-0 overflow-hidden rounded-xl border-x-0 bg-[var(--console-pop)] p-0 text-[var(--ink-90)] sm:max-w-4xl"
 			>
 				<DialogHeader className="sr-only">
 					<DialogTitle>Workspace settings</DialogTitle>
@@ -401,7 +421,7 @@ export function SettingsDialog({
 					    independently, because the list is long by design and the content
 					    beside it will be longer still. */}
 					<div className="flex w-52 shrink-0 flex-col border-[var(--console-line-soft)] border-r bg-[var(--pop-rail)]">
-						<label className="m-2 flex h-8 shrink-0 items-center gap-2 rounded-md border border-[var(--console-line)] bg-[var(--console-pop)] px-2">
+						<label className="control-raised m-2 flex h-8 shrink-0 items-center gap-2 rounded-md border border-[var(--console-line)] px-2">
 							<MagnifyingGlassIcon
 								size={13}
 								aria-hidden="true"
@@ -415,7 +435,7 @@ export function SettingsDialog({
 								className="min-w-0 flex-1 bg-transparent text-[12px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-30)]"
 							/>
 						</label>
-						<nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+						<nav className="fade-ends min-h-0 flex-1 overflow-y-auto px-2 pb-2">
 							{found.map(({ group, items }) => (
 								<div key={group} className="mb-2 flex flex-col gap-1">
 									<p className="px-2 pt-2 pb-1 text-[9px] text-[var(--ink-25)] uppercase tracking-[0.14em]">
@@ -564,6 +584,16 @@ export function SettingsDialog({
 								) : section.id === "usage" ? (
 									<div className={CARD}>
 										<WorkspaceUsage organizationId={organizationId} />
+									</div>
+								) : section.id === "integrations" ? (
+									/* The same panel the header used to open, in the place it
+									   belonged all along. */
+									<div className={CARD}>
+										<IntegrationsPanel
+											workspaceId={workspaceId}
+											organizationId={organizationId}
+											workspace={workspace}
+										/>
 									</div>
 								) : section.renders ? (
 									/* 🔑 The real implementation, not a copy of it. One branding

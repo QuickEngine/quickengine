@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
 import { useListLayout } from "../lib/list-view";
+import { useRecordSignals } from "../lib/record-signals";
 import { ListControls, useChipFilter } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { EmptyState, PageState } from "./page-state";
@@ -45,6 +46,8 @@ const KIND_LABELS: Record<string, string> = {
 
 export function AdjustmentsView({ workspaceId }: { workspaceId: string }) {
 	const { layout, setLayout } = useListLayout(workspaceId);
+	// The dots come from the bell, so marking a notification read clears the row.
+	const rowSignal = useRecordSignals(workspaceId);
 	const statusFilter = useChipFilter();
 	const [search, setSearch] = useState("");
 
@@ -130,16 +133,19 @@ export function AdjustmentsView({ workspaceId }: { workspaceId: string }) {
 							statusFilter.keep(row.adjustment.kind) &&
 							(!needle || row.name.toLowerCase().includes(needle)),
 					);
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search."
-							/>
-						);
-					}
+					/* No bulk delete, deliberately.
+						    A stock movement records something that HAPPENED. You do not
+						    un-happen it, you post the opposite adjustment. That is what a
+						    ledger is. */
 					return (
 						<PagedTable
+							rowSignal={rowSignal}
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail="Try a different search."
+								/>
+							}
 							workspaceId={workspaceId}
 							layout={layout}
 							caption="Stock movements"

@@ -165,6 +165,43 @@ body,
    filled button flash to grey mid-action, which reads as the button breaking.
    The label carries the meaning ("Saving…"), so the motion only has to say
    "still going" — which is why this needs no spinner beside it. */
+/* A row action that is running. Same treatment as `.shimmer-busy`, reached by
+   attribute so it can be spread onto a button without touching its class. */
+[data-busy="true"] {
+	position: relative;
+	overflow: hidden;
+}
+
+[data-busy="true"]::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background-image: linear-gradient(
+		90deg,
+		transparent 0%,
+		transparent 35%,
+		rgb(255 255 255 / 0.22) 50%,
+		transparent 65%,
+		transparent 100%
+	);
+	/* 🔴 A FIXED sweep width, not 200% of the element.
+	   A percentage makes the gradient scale with whatever it is on, so a
+	   four-column card and a one-column card travel different distances in the
+	   same 1.2s. Every animation is in phase and they still look unrelated,
+	   because the light is moving at a different speed on each one. A fixed
+	   width means one speed across the whole board, which is what "one light
+	   source" has meant everywhere else in this theme. */
+	background-size: 900px 100%;
+	animation: quickdash-shimmer 1.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-busy="true"]::after {
+		animation: none;
+	}
+}
+
 .shimmer-busy {
 	position: relative;
 	overflow: hidden;
@@ -183,7 +220,11 @@ body,
 		transparent 65%,
 		transparent 100%
 	);
-	background-size: 200% 100%;
+	/* One sweep speed for every element, whatever its width. See the note on
+	   `[data-busy]`: a percentage scales the gradient to the element, so a wide
+	   card and a narrow one travel different distances in the same 1.2s and the
+	   board looks like several unrelated lights. */
+	background-size: 900px 100%;
 	animation: quickdash-shimmer 1.2s linear infinite;
 }
 
@@ -202,3 +243,198 @@ body,
    Same hues, darker and more saturated, so the meaning survives the ground.
    Anything that sets one of these must take it from the token; a literal hex
    would be right in one theme and wrong in the other. */
+
+/* ── The wave itself ─────────────────────────────────────────────────────────
+   Rising out of the BOTTOM-LEFT corner and running diagonally up and across,
+   deepest at the corner and thinning as it goes, with a weaker echo bottom
+   right so the screen is not lopsided.
+
+   ⚠️ Every radial is centred BELOW the viewport, so only the flat top of each
+   falloff is on screen. That is what keeps it a wave rather than a spotlight:
+   a visible dome under the console would read as a stage. */
+.console-glow {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	background-image:
+/* ICE along the very bottom edge, the highlight on the crest. */
+		radial-gradient(
+			70% 26% at 26% 104%,
+			#cfe3f21f 0%,
+			#cfe3f20a 40%,
+			transparent 72%
+		),
+		/* The crest, palest and smallest, furthest up the diagonal. */
+		radial-gradient(58% 42% at 40% 108%, #7fa8c92b 0%, transparent 68%),
+		/* The body of the wave. */
+		radial-gradient(
+			74% 58% at 22% 108%,
+			#3e6c8f52 0%,
+			#3e6c8f1f 40%,
+			transparent 72%
+		),
+		/* The deep water it rises out of, anchored in the corner. */
+		radial-gradient(
+			96% 76% at 4% 116%,
+			#1d3a4fa6 0%,
+			#1d3a4f52 34%,
+			transparent 74%
+		),
+		/* The echo, so the screen is not lopsided. */
+		radial-gradient(
+			66% 48% at 94% 112%,
+			#1d3a4f5c 0%,
+			#1d3a4f1f 38%,
+			transparent 70%
+		),
+		/* A flat lift so the bottom edge never ends on a hard line. */
+		linear-gradient(to top, #3e6c8f17 0%, #3e6c8f08 24%, transparent 52%),
+		/* TOP ONLY. A centred vignette would sit straight on the wave. */
+		linear-gradient(
+			to bottom,
+			rgb(0 0 0 / 0.5) 0%,
+			rgb(0 0 0 / 0.2) 26%,
+			transparent 46%
+		);
+}
+
+/* Glacier. The same wave on a light ground, which needs three changes:
+   paler water, because a tint on white disappears far faster than a glow on
+   black; a warmer floor so the gutter is not a grey stripe; and NO black veil
+   at the top, which on a light console is not depth but dirt. */
+:root.light .console-glow {
+	background-image:
+		radial-gradient(70% 26% at 26% 104%, #2f5f8014 0%, transparent 72%),
+		radial-gradient(58% 42% at 40% 108%, #3e6c8f1a 0%, transparent 68%),
+		radial-gradient(
+			74% 58% at 22% 108%,
+			#2f5f8024 0%,
+			#2f5f800f 40%,
+			transparent 72%
+		),
+		radial-gradient(
+			96% 76% at 4% 116%,
+			#2f5f8038 0%,
+			#2f5f8014 34%,
+			transparent 74%
+		),
+		radial-gradient(
+			66% 48% at 94% 112%,
+			#2f5f8021 0%,
+			#2f5f800a 38%,
+			transparent 70%
+		),
+		linear-gradient(to top, #2f5f800f 0%, #2f5f8005 24%, transparent 52%);
+}
+
+/* ── The ground behind the console ───────────────────────────────────────────
+   Three soft masses low on the screen, drifting on unrelated periods so the
+   light at the bottom is never quite the same twice. Ported from onboarding.
+
+   ⚠️ They paint OVER the wave's gradients, not under them, because a child
+   always paints above its parent's background. That is wanted: the clouds are
+   low and the wave's veil is high, so they never meet, and the crest reads as
+   the fixed edge of moving water. */
+.console-clouds {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.console-cloud {
+	position: absolute;
+	border-radius: 50%;
+	filter: blur(70px);
+	will-change: transform;
+}
+
+.console-cloud:nth-child(1) {
+	bottom: -34vh;
+	left: -12%;
+	width: 74vw;
+	height: 62vh;
+	background: radial-gradient(closest-side, #1d3a4fcc, transparent 76%);
+	animation: console-cloud-a 37s ease-in-out infinite;
+}
+
+.console-cloud:nth-child(2) {
+	bottom: -30vh;
+	left: 28%;
+	width: 58vw;
+	height: 50vh;
+	background: radial-gradient(closest-side, #3e6c8f8f, transparent 74%);
+	animation: console-cloud-b 53s ease-in-out infinite;
+}
+
+.console-cloud:nth-child(3) {
+	bottom: -26vh;
+	right: -10%;
+	width: 52vw;
+	height: 44vh;
+	background: radial-gradient(closest-side, #7fa8c959, transparent 72%);
+	animation: console-cloud-c 43s ease-in-out infinite;
+}
+
+@keyframes console-cloud-a {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+	50% {
+		transform: translate3d(9%, -4%, 0) scale(1.12);
+	}
+}
+
+@keyframes console-cloud-b {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1.06);
+	}
+	50% {
+		transform: translate3d(-11%, -6%, 0) scale(0.94);
+	}
+}
+
+@keyframes console-cloud-c {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(0.96);
+	}
+	50% {
+		transform: translate3d(-7%, -3%, 0) scale(1.14);
+	}
+}
+
+/* A drifting background is decoration, so it stops when asked. */
+@media (prefers-reduced-motion: reduce) {
+	.console-cloud {
+		animation: none;
+	}
+}
+
+/* ── This console paints its own ground ──────────────────────────────────────
+   🔑 The shell fills its frame with `--console-ground`, which defaults to the
+   flat `--console-floor`. QuickDash sets it transparent so `ConsoleGlow` shows
+   through the 6px gutter around and between every panel.
+
+   ⚠️ Only QuickDash. The account app keeps its flat floor, which is why this
+   lives here and not in the shared theme. */
+:root {
+	--console-ground: transparent;
+}
+
+/* Glacier clouds: the same masses, paler and a touch more present, because a
+   tint on a light ground disappears far faster than a glow on a dark one. */
+:root.light .console-cloud:nth-child(1) {
+	background: radial-gradient(closest-side, #2f5f8073, transparent 76%);
+}
+
+:root.light .console-cloud:nth-child(2) {
+	background: radial-gradient(closest-side, #3e6c8f59, transparent 74%);
+}
+
+:root.light .console-cloud:nth-child(3) {
+	background: radial-gradient(closest-side, #7fa8c966, transparent 72%);
+}

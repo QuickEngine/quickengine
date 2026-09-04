@@ -180,6 +180,7 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 					submitLabel="Track it"
 					busy={track.isPending}
 					valid={!!product}
+					blockedReason={"Choose a product and a quantity"}
 					failure={failure}
 					onClose={() => setTracking(false)}
 					onSubmit={() => track.mutate()}
@@ -266,21 +267,18 @@ export function InventoryView({ workspaceId }: { workspaceId: string }) {
 							return name.toLowerCase().includes(needle);
 						});
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail={
-									lowOnly
-										? "Nothing is low on stock. Clear the filter to see everything."
-										: "Try a different search."
-								}
-							/>
-						);
-					}
-
 					return (
 						<PagedTable
+							empty={
+								<EmptyState
+									title="Nothing matches"
+									detail={
+										lowOnly
+											? "Nothing is low on stock. Clear the filter to see everything."
+											: "Try a different search."
+									}
+								/>
+							}
 							rowSignal={rowSignal}
 							workspaceId={workspaceId}
 							layout={layout}

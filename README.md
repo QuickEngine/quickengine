@@ -249,16 +249,18 @@ that bell, so a test order and a real customer paying are never the same news, w
 notices such as an invitation appear in both.
 The console itself is a set of panels rather than one welded surface: the navigation, the working
 area and the assistant sit as separate cards and any divider between them can be dragged, with the
-widths remembered per person. A full-width header carries the workspace switcher, notifications,
-one search that reaches the whole workspace, QuickTools, the assistant, the theme switch and your
-account — and a create button that only ever offers what this workspace has switched on. Every page
+widths remembered per person. A full-width header carries the workspace switcher, notifications and a link to
+your own shop on the left, one search that reaches the whole workspace in the middle, and on the
+right a create button that only ever offers what this workspace has switched on, QuickTools, the
+assistant, the theme switch and your account. The assistant keeps its conversations, and while it
+is open the sidebar lists them beside the work you are doing. Every page
 says where you are on a trail at the top, with the page's own controls on the same line. Every list
 can be filtered, searched from a strip on the table itself, selected by row, dragged into order and
 exported as a spreadsheet of exactly what is on screen. Home is a grid of tiles rather than a
-report. Settings opens as a dialog over whatever you were doing. A workspace in sandbox mode
-recolours the entire console rather than wearing a banner, so there is no mistaking it for the real
-one.
-Settings is a dialog with twenty-two sections plus one per module, and everything in it works: the
+report. Settings opens as a dialog over whatever you were doing. Which mode a workspace is in is said where it is
+decided rather than by recolouring the whole console, so a sandbox never competes with the light and
+dark themes somebody actually chose.
+Settings is a dialog with twenty-three sections plus one per module, and everything in it works: the
 workspace's name and mode, branding and policy links, usage against the plan, which modules are on,
 what checkout asks for, how returns and discounts behave, what you keep about a customer and for how
 long, which emails go out, the keys your own site uses and the endpoints events are posted to. A

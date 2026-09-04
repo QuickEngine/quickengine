@@ -93,14 +93,15 @@ export function QuickActions({
 			<PopoverTrigger
 				aria-label="Create"
 				title="Create"
-				className="flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] text-[var(--ink-40)] transition-colors duration-150 hover:text-[var(--ink-90)] active:translate-y-px data-[state=open]:text-[var(--ink-90)]"
+				className="control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] text-[var(--ink-40)] hover:text-[var(--ink-90)] data-[state=open]:text-[var(--ink-90)]"
 			>
 				<PlusIcon size={15} weight="bold" />
 			</PopoverTrigger>
 			<PopoverContent
 				align="start"
 				sideOffset={8}
-				className="w-56 rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-1.5"
+				style={{ boxShadow: "var(--lift-pop)" }}
+				className="w-56 rounded-2xl border-0 bg-[var(--console-pop)] p-1.5"
 			>
 				<p className="px-2 pt-1 pb-1.5 text-[10.5px] text-[var(--ink-30)] uppercase tracking-[0.08em]">
 					Create

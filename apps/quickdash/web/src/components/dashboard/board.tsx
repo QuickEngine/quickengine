@@ -180,10 +180,20 @@ export function DashboardBoard({
 						<button
 							type="button"
 							onClick={() => setEditing((open) => !open)}
-							className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] transition-colors ${
+							/* 🔑 The same control as the header's, because it is the same
+							   kind of thing: a button you press on the console's chrome.
+							   `control-lift` while editing so the ink fill survives, see
+							   the note on `.control-raised`. */
+							className={`flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] ${
+								/* 🔴 No ink fill for the active state.
+								   `--console-ink` is off white in dark, so "Done" became a
+								   bright slab in a header of dark raised controls: the one
+								   element that broke the surface it sat on. The button is
+								   the same object either way, and being ON is said by the
+								   ink of its label, not by inverting it. */
 								editing
-									? "border-transparent bg-[rgb(var(--console-ink))] text-[var(--console-pop)]"
-									: "border-[var(--console-line)] bg-[var(--console-panel)] text-[var(--ink-50)] hover:text-[var(--ink-85)]"
+									? "control-raised border-[var(--console-line-strong)] text-[var(--ink-90)]"
+									: "control-raised border-[var(--console-line)] text-[var(--ink-50)] hover:text-[var(--ink-85)]"
 							}`}
 						>
 							{editing ? (
@@ -219,21 +229,44 @@ export function DashboardBoard({
 				   geometry. A skeleton that guesses at the finished arrangement
 				   is a second layout to maintain, and it is wrong the moment
 				   somebody rearranges their board. */
+				/* 🔑 The BENTO, not eight identical squares.
+				   A uniform grid is a different layout from the one that arrives,
+				   so the page visibly rearranges the moment it loads. These are the
+				   real proportions from `defaultLayout`: a wide revenue block, two
+				   tall columns, a row of small counters and a full width strip. The
+				   skeleton is a picture of what is coming rather than a placeholder
+				   shaped like nothing. */
 				<div
 					aria-busy="true"
 					className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:auto-rows-[104px] lg:grid-cols-4"
 				>
 					<span className="sr-only">Loading your board…</span>
-					{Array.from({ length: 8 }, (_, index) => (
+					{[
+						"lg:col-span-2 lg:row-span-2",
+						"lg:col-span-1 lg:row-span-2",
+						"lg:col-span-1 lg:row-span-2",
+						"lg:col-span-1 lg:row-span-1",
+						"lg:col-span-1 lg:row-span-1",
+						"lg:col-span-2 lg:row-span-1",
+						"lg:col-span-4 lg:row-span-2",
+					].map((span, index) => (
 						<div
 							// biome-ignore lint/suspicious/noArrayIndexKey: fixed length placeholder
 							key={index}
-							style={{ boxShadow: "var(--card-lift)" }}
-							className="shimmer lg:row-span-2 flex h-full min-h-[104px] flex-col gap-2 rounded-xl border border-[var(--console-line)] bg-[var(--console-card)] p-4"
+							style={{ boxShadow: "var(--lift-card)" }}
+							/* 🔴 `shimmer-busy`, not `shimmer`.
+							   `.shimmer` sets a background IMAGE, which paints over the
+							   background colour, so on a card sized element the gradient
+							   becomes the surface and the tile is never seen: the skeleton
+							   glowed at 7 to 16 percent ink while the real card sits at
+							   four steps off black. `.shimmer-busy` sweeps over the top
+							   instead, so the card keeps its own face and the glint passes
+							   across it. */
+							className={`shimmer-busy ${span} flex h-full min-h-[104px] flex-col gap-2 rounded-xl border border-[var(--console-line)] bg-[var(--surface-tile)] p-4`}
 						>
-							<div className="h-2.5 w-24 rounded bg-[rgb(var(--console-ink)/0.07)]" />
-							<div className="mt-1 h-6 w-16 rounded bg-[rgb(var(--console-ink)/0.06)]" />
-							<div className="mt-auto h-2 w-full rounded bg-[rgb(var(--console-ink)/0.05)]" />
+							<div className="h-2.5 w-24 rounded bg-[rgb(var(--console-ink)/0.05)]" />
+							<div className="mt-1 h-6 w-16 rounded bg-[rgb(var(--console-ink)/0.04)]" />
+							<div className="mt-auto h-2 w-full rounded bg-[rgb(var(--console-ink)/0.035)]" />
 						</div>
 					))}
 				</div>
@@ -243,7 +276,7 @@ export function DashboardBoard({
 				   and no first-run message it was allowed to show, so it rendered
 				   an empty page: identical to a workspace with nothing in it, and
 				   identical to a board somebody had cleared. Say which. */
-				<div className="flex flex-col items-center rounded-xl border border-[var(--console-line)] px-6 py-16 text-center">
+				<div className="flex flex-col items-center rounded-xl border border-[var(--empty-line)] px-6 py-16 text-center">
 					<p className="text-[13px] text-[var(--ink-80)]">
 						This board could not load
 					</p>
@@ -259,7 +292,7 @@ export function DashboardBoard({
 					</button>
 				</div>
 			) : firstRun ? (
-				<div className="flex flex-col items-center rounded-xl border border-[var(--console-line)] px-6 py-16 text-center">
+				<div className="flex flex-col items-center rounded-xl border border-[var(--empty-line)] px-6 py-16 text-center">
 					<p className="text-[13px] text-[var(--ink-80)]">
 						This workspace is empty
 					</p>
@@ -280,7 +313,7 @@ export function DashboardBoard({
 				/* 🔑 Removing every tile is a legitimate thing to do, and a board
 				   that answered it with a blank page would read as broken. It says
 				   what happened and offers the way back. */
-				<div className="flex flex-col items-center rounded-xl border border-[var(--console-line)] border-dashed px-6 py-16 text-center">
+				<div className="flex flex-col items-center rounded-xl border border-[var(--empty-line)] border-dashed px-6 py-16 text-center">
 					<p className="text-[13px] text-[var(--ink-80)]">
 						Your board is empty
 					</p>
@@ -354,9 +387,19 @@ export function DashboardBoard({
 								   edited, and giving every one an edit prop would mean ten
 								   components caring about a mode that belongs to the board. */
 								<div className="pointer-events-none absolute inset-0 rounded-xl bg-[rgb(var(--console-ink)/0.04)] ring-1 ring-[rgb(var(--console-ink)/0.10)] ring-inset">
-									<span className="pointer-events-auto absolute top-2 left-2 flex cursor-grab items-center gap-1.5 rounded-md bg-[var(--console-pop)] px-2 py-1 text-[10.5px] text-[var(--ink-45)] shadow-sm active:cursor-grabbing">
+									{/* 🔑 The handle alone. The tile's name was in the badge as
+									    well, which made the grip a different width on every card
+									    and repeated a label already printed inside the tile. */}
+									{/* ⚠️ `aria-hidden`, not `aria-label`. A bare span has no role,
+									    so a label on it is not exposed to anything and Biome is
+									    right to refuse it. The grip is decoration: the drag is on
+									    the tile, and the tile already carries its own name. */}
+									<span
+										aria-hidden="true"
+										title={`Move ${tile.name}`}
+										className="pointer-events-auto absolute top-2 left-2 flex size-6 cursor-grab items-center justify-center rounded-md bg-[var(--console-pop)] text-[var(--ink-45)] shadow-sm active:cursor-grabbing"
+									>
 										<ArrowsOutCardinalIcon size={12} />
-										{tile.name}
 									</span>
 									<button
 										type="button"
@@ -364,7 +407,11 @@ export function DashboardBoard({
 										onClick={() =>
 											layout.save(shown.filter((row) => row.id !== entry.id))
 										}
-										className="pointer-events-auto absolute top-2 right-2 flex size-6 items-center justify-center rounded-md bg-[var(--console-pop)] text-[var(--ink-45)] shadow-sm transition-colors hover:text-[var(--signal-failure-text)]"
+										/* Brightens rather than turning red. Red is reserved for a fault
+										   or a loss of money, and removing a tile from your own
+										   board is neither: the layout is yours and putting it
+										   back is one press. */
+										className="pointer-events-auto absolute top-2 right-2 flex size-6 items-center justify-center rounded-md bg-[var(--console-pop)] text-[var(--ink-45)] shadow-sm transition-colors hover:text-[var(--ink-90)]"
 									>
 										<XIcon size={12} weight="bold" />
 									</button>

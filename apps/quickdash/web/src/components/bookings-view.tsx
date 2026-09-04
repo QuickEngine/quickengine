@@ -8,7 +8,13 @@ import { BulkDelete } from "./bulk-delete";
 import { FilterChip, ListControls } from "./list-controls";
 import { LayoutToggle, PagedTable } from "./list-layout";
 import { BookingPanel } from "./module-panels";
-import { EmptyState, PageState, rowBusy, WriteFailure } from "./page-state";
+import {
+	EmptyState,
+	PageState,
+	rowActionBusy,
+	rowBusy,
+	WriteFailure,
+} from "./page-state";
 
 /**
  * Bookings — appointments, grouped by the day they happen.
@@ -188,15 +194,6 @@ export function BookingsView({ workspaceId }: { workspaceId: string }) {
 						)
 						.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
-					if (rows.length === 0) {
-						return (
-							<EmptyState
-								title="Nothing matches"
-								detail="Try a different search, or clear the status filter."
-							/>
-						);
-					}
-
 					const days = [...new Set(rows.map((row) => dayKey(row.startsAt)))];
 
 					return (
@@ -212,6 +209,12 @@ export function BookingsView({ workspaceId }: { workspaceId: string }) {
 									{/* One table per day, so a day heading stays attached to the
 									    bookings under it rather than floating above one long list. */}
 									<PagedTable
+										empty={
+											<EmptyState
+												title="Nothing matches"
+												detail="Try a different search, or clear the status filter."
+											/>
+										}
 										exportName="bookings"
 										bulkActions={(chosen) => (
 											<BulkDelete
@@ -280,7 +283,7 @@ export function BookingsView({ workspaceId }: { workspaceId: string }) {
 														<button
 															type="button"
 															className={quiet}
-															disabled={rowBusy(advance, booking.id)}
+															{...rowActionBusy(rowBusy(advance, booking.id))}
 															onClick={() =>
 																advance.mutate({
 																	id: booking.id,

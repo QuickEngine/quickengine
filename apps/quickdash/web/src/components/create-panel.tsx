@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useOnline } from "../lib/online";
 import { DetailPanel } from "./detail-panel";
 import { WriteFailure } from "./page-state";
+import { SaveLabel, useSavedFlash } from "./save-button";
 
 /**
  * Making a new record, in the same panel that shows an existing one.
@@ -23,6 +24,8 @@ export function CreatePanel({
 	submitLabel,
 	busy = false,
 	valid = true,
+	blockedReason,
+	savedAt,
 	failure,
 	children,
 }: {
@@ -34,11 +37,22 @@ export function CreatePanel({
 	busy?: boolean;
 	/** Whether the form can be submitted at all. */
 	valid?: boolean;
+	/**
+	 * Why not, when `valid` is false.
+	 *
+	 * 🔑 The caller supplies it because only the caller knows what is missing.
+	 * A generic "fill in the form" is the same dead end as saying nothing.
+	 */
+	blockedReason?: string;
+	/** Set by the caller when the create succeeded, so the button can tick. */
+	savedAt?: unknown;
 	/** The failure itself, so it can reach the status and the request id. */
 	failure?: { error: unknown; fallback: string } | null;
 	children: ReactNode;
 }) {
 	const online = useOnline();
+	// A tick when it worked, for a moment, before the panel closes.
+	const saved = useSavedFlash(Boolean(savedAt));
 	return (
 		<DetailPanel
 			title={title}
@@ -53,6 +67,13 @@ export function CreatePanel({
 				<button
 					type="submit"
 					form="create-panel-form"
+					title={
+						!online
+							? "Waiting for a connection"
+							: !valid
+								? blockedReason
+								: undefined
+					}
 					disabled={busy || !valid || !online}
 					/* 🔴 Refuses BEFORE it can lose the work.
 					   Offline, this used to submit, fail, and leave the reason under
@@ -61,11 +82,13 @@ export function CreatePanel({
 					   instead, which keeps everything on screen until it can go. */
 					className={`${busy ? "shimmer-busy" : ""} inline-flex h-9 w-full items-center justify-center rounded-full bg-[rgb(var(--console-ink))] text-[12.5px] text-[var(--console-pop)] transition-opacity hover:opacity-85 disabled:opacity-40`}
 				>
-					{!online
-						? "Waiting for a connection…"
-						: busy
-							? "Saving…"
-							: submitLabel}
+					<SaveLabel
+						saving={busy}
+						saved={saved}
+						savingLabel={!online ? "Waiting…" : "Saving…"}
+					>
+						{submitLabel}
+					</SaveLabel>
 				</button>
 			}
 		>

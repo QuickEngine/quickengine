@@ -79,7 +79,7 @@ export function StorefrontButton({
 			<PopoverTrigger
 				aria-label="Your shop"
 				title={published ? "Your shop is open" : "Your shop is closed"}
-				className="relative flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] text-[var(--ink-40)] transition-colors duration-150 hover:text-[var(--ink-90)] active:translate-y-px data-[state=open]:text-[var(--ink-90)]"
+				className="relative control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] text-[var(--ink-40)] hover:text-[var(--ink-90)] data-[state=open]:text-[var(--ink-90)]"
 			>
 				<StorefrontIcon size={15} />
 				{/* ⚠️ A closed shop is marked, an open one is not. Open is the normal
@@ -92,9 +92,18 @@ export function StorefrontButton({
 				)}
 			</PopoverTrigger>
 			<PopoverContent
-				align="end"
-				sideOffset={8}
-				className="w-64 rounded-2xl border border-[var(--console-line-strong)] bg-[var(--console-pop)] p-1.5"
+				/* 🔴 The SWITCHER's alignment, exactly. This button moved into the
+				   workspace group on the left, and a menu opening from that group has
+				   to land where the group's other menu lands: `align="end"` pulled it
+				   toward the window's right, which on a control near the left edge
+				   threw the panel across the header. Aligned to the trigger's start
+				   with the same 6px gap, the two read as one set. */
+				align="start"
+				alignOffset={0}
+				sideOffset={6}
+				collisionPadding={8}
+				style={{ boxShadow: "var(--lift-pop)" }}
+				className="w-64 rounded-2xl border-0 bg-[var(--console-pop)] p-1.5"
 			>
 				{site ? (
 					<a

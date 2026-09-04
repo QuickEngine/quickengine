@@ -2,6 +2,7 @@ import {
 	DownloadSimpleIcon,
 	FunnelIcon,
 	MagnifyingGlassIcon,
+	SortAscendingIcon,
 } from "@phosphor-icons/react";
 import {
 	Popover,
@@ -16,6 +17,7 @@ import {
 	useHeaderSlots,
 	usePageTakenOver,
 	useTableRail,
+	useViewRail,
 } from "./header-action";
 import { useToast } from "./toast";
 
@@ -81,6 +83,7 @@ export function ListControls({
 	const { action: createAction } = useHeaderSlots();
 	const { rail } = useHeaderRail();
 	const { tableRail } = useTableRail();
+	const { viewRail } = useViewRail();
 	/**
 	 * 🔴 Nothing to search, so nothing to search with.
 	 *
@@ -120,13 +123,16 @@ export function ListControls({
 						});
 					}}
 					title="Export what you can see, as a spreadsheet"
-					className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[var(--console-line)] bg-[var(--console-panel)] px-2.5 text-[12px] text-[var(--ink-50)] outline-none transition-[box-shadow,color] duration-150 hover:text-[var(--ink-85)] active:translate-y-px"
+					/* `.control-raised`, the same object as the page action beside it.
+					   Export was the last hand rolled button on the breadcrumb row:
+					   a flat bordered rectangle standing next to a raised one, which
+					   read as two buttons from two different consoles. */
+					className="control-raised flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] text-[var(--ink-50)] outline-none hover:text-[var(--ink-85)]"
 				>
 					<DownloadSimpleIcon size={14} />
 					Export
 				</button>
 			) : null}
-			{action}
 			{createAction}
 		</div>
 	);
@@ -150,7 +156,9 @@ export function ListControls({
 					<PopoverTrigger
 						aria-label="Filter"
 						title="Filter"
-						className="flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--ink-45)] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)] data-[state=open]:bg-[rgb(var(--console-ink)/0.06)] data-[state=open]:text-[var(--ink-85)]"
+						/* See the note on Sort: a key, and the open state is ink
+						   rather than a fill that would flatten its face. */
+						className="control-raised flex size-7 shrink-0 items-center justify-center rounded-md border text-[var(--ink-45)] outline-none hover:text-[var(--ink-85)] data-[state=open]:text-[var(--ink-85)]"
 					>
 						<FunnelIcon size={15} weight={filterCount ? "fill" : "regular"} />
 					</PopoverTrigger>
@@ -164,7 +172,13 @@ export function ListControls({
 				</Popover>
 			) : null}
 			{filterCount ? (
-				<span className="-ml-1 shrink-0 rounded-full bg-[rgb(var(--console-ink)/0.08)] px-1.5 py-0.5 text-[10.5px] text-[var(--ink-60)]">
+				/* 🔴 A FIXED square, not a pill that grows with its number.
+				   `px-1.5` on a rounded-full span meant "3" and "12" were two
+				   different shapes, so the control group changed width as you
+				   filtered. A 28px squircle matching the keys either side keeps the
+				   row still, and being raised makes it part of the group rather
+				   than a sticker on it. */
+				<span className="control-raised flex size-7 shrink-0 items-center justify-center rounded-md border text-[10.5px] text-[var(--ink-60)] tabular-nums">
 					{filterCount}
 				</span>
 			) : null}
@@ -182,7 +196,9 @@ export function ListControls({
 						onQueryChange("");
 						onClearFilter?.();
 					}}
-					className="shrink-0 rounded-md px-1.5 py-1 text-[11px] text-[var(--ink-40)] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] hover:text-[var(--ink-85)]"
+					/* Part of the group, so it is a key like the rest. See the note on
+					   the count beside it. */
+					className="control-raised flex h-7 shrink-0 items-center rounded-md border px-2 text-[11px] text-[var(--ink-40)] outline-none hover:text-[var(--ink-85)]"
 				>
 					Clear
 				</button>
@@ -220,11 +236,41 @@ export function ListControls({
 			 * worst moment to lose it: an active filter is usually WHY it looks
 			 * empty.
 			 */}
+			{/* The view switch goes to its own slot beside Sort, not into the
+			    `flex-1` rail the search box lives in. See `viewRail`. */}
+			{viewRail ? createPortal(action, viewRail) : null}
 			{tableRail ? (
 				createPortal(tableControls, tableRail)
 			) : (
-				<div className="mb-3 flex items-center gap-2 rounded-xl border border-[var(--console-line-soft)] px-2 py-1.5">
+				/* 🔑 `--empty-line`, because this strip only exists when there is no
+					   table to sit in: an empty list, a loading one, or a page of cards
+					   with no frame. It is standing alone on the panel exactly like an
+					   empty state, so it needs the same visible outline rather than the
+					   divider hairline it borrowed. */
+				<div
+					data-flat="true"
+					className="mb-3 flex items-center gap-2 rounded-xl border border-[var(--empty-line)] px-2 py-1.5"
+				>
 					{tableControls}
+					{/* 🔴 Sort is DRAWN here, not portalled, because the real one lives
+					    in `DataTable` and there is no table on this path: the page swapped
+					    the whole list out for its empty state. It does nothing, and that
+					    is the point. The strip is the same object on every page, and a
+					    control group that loses a member when a list happens to be empty
+					    reads as the console breaking rather than as there being nothing to
+					    sort. Disabled, so it never pretends otherwise. */}
+					<button
+						type="button"
+						disabled
+						aria-label="Sort"
+						title="Nothing to sort yet"
+						className="control-raised flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11.5px] text-[var(--ink-45)] outline-none"
+					>
+						<SortAscendingIcon size={15} />
+					</button>
+					{/* Carried into the standalone strip too, or switching to cards on
+					    an empty list would remove the only way back to the table. */}
+					{viewRail ? null : action}
 				</div>
 			)}
 		</>

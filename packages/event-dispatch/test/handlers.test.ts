@@ -9,6 +9,7 @@ import {
 	dispatchPendingEvents,
 	realtimeHandler,
 	searchHandler,
+	storefrontRealtimeHandler,
 } from "../src";
 
 const ownerId = "dispatch-owner";
@@ -114,6 +115,70 @@ describe("activity handler", () => {
 		await activityHandler().handle(e);
 
 		expect(await listWorkspaceActivity(workspaceId, 10)).toHaveLength(1);
+	});
+});
+
+describe("storefront realtime handler", () => {
+	it("publishes a catalog event on the workspace's PUBLIC channel", async () => {
+		const { published, provider } = fakeRealtime();
+		const e = event({
+			aggregateType: "catalog-item",
+			eventName: "catalog-item.updated",
+		});
+
+		await storefrontRealtimeHandler(provider).handle(e);
+
+		expect(published).toEqual([
+			{
+				channel: `catalog-workspace-${workspaceId}`,
+				name: "catalog-item.updated",
+				// Identity only. A price or a name here would be readable by anyone,
+				// because nothing authorizes a public channel.
+				payload: { id: e.id, recordId: e.aggregateId },
+			},
+		]);
+	});
+
+	it("publishes a stock change, so availability can move live", async () => {
+		const { published, provider } = fakeRealtime();
+
+		await storefrontRealtimeHandler(provider).handle(
+			event({
+				aggregateType: "inventory-item",
+				eventName: "inventory-item.adjusted",
+			}),
+		);
+
+		expect(published).toHaveLength(1);
+	});
+
+	it("never lets a private event reach the public channel", async () => {
+		const { published, provider } = fakeRealtime();
+
+		// The events a storefront visitor must never be told about, even as bare
+		// ids: who bought, who paid, and who the customers are.
+		for (const eventName of [
+			"client.created",
+			"order.paid",
+			"payment.succeeded",
+			"customer.message.received",
+		]) {
+			await storefrontRealtimeHandler(provider).handle(event({ eventName }));
+		}
+
+		expect(published).toEqual([]);
+	});
+
+	it("fails closed on an event name nobody has classified", async () => {
+		const { published, provider } = fakeRealtime();
+
+		// The guarantee that matters as the product grows: a brand new event is
+		// private until somebody deliberately adds it to the allowlist.
+		await storefrontRealtimeHandler(provider).handle(
+			event({ eventName: "something.invented-tomorrow" }),
+		);
+
+		expect(published).toEqual([]);
 	});
 });
 

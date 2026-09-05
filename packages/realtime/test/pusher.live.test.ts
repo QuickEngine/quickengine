@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { workspaceChannel } from "../src/channels";
+import { catalogChannel, workspaceChannel } from "../src/channels";
 import { getPusherServer, resetPusherServerForTests } from "../src/pusher";
 
 /**
@@ -73,5 +73,33 @@ describe.skipIf(!live)("pusher, against the real app", () => {
 		const other = workspaceChannel("22222222-2222-4222-8222-222222222222");
 		const otherAuth = pusher?.authorizeChannel("123.456", other);
 		expect(otherAuth?.auth).not.toEqual(auth?.auth);
+	});
+
+	it("publishes to the public catalog channel a storefront listens on", async () => {
+		resetPusherServerForTests();
+		const pusher = getPusherServer();
+		const workspaceId = "00000000-0000-4000-8000-00000000ffff";
+
+		/**
+		 * The storefront half of realtime. A public channel name has different
+		 * rules from a private one, so this proves the name we generate is one
+		 * Pusher will actually accept before a storefront tries to subscribe to it.
+		 */
+		const res = await pusher?.trigger(
+			catalogChannel(workspaceId),
+			"catalog-item.updated",
+			{ id: "test", recordId: "test" },
+		);
+		expect(res?.status).toBe(200);
+	});
+
+	it("keeps the two channels distinct", async () => {
+		// The console's channel must stay private and the storefront's must not be,
+		// because Pusher decides whether to demand authorization purely by prefix.
+		const workspaceId = "00000000-0000-4000-8000-00000000ffff";
+
+		expect(workspaceChannel(workspaceId)).toMatch(/^private-/);
+		expect(catalogChannel(workspaceId)).not.toMatch(/^private-/);
+		expect(catalogChannel(workspaceId)).not.toBe(workspaceChannel(workspaceId));
 	});
 });

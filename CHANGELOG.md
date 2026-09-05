@@ -8,6 +8,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Your shop updates itself.** Publish a product or change stock in QuickDash and any storefront
+  someone is already looking at shows it about a second later, without them reloading. Connected
+  sites subscribe through Quick.js `0.2.0` with a few lines, so this is available to every site you
+  connect, not only the one it was proven on.
+
+- **A public channel that carries only what is public.** Storefront visitors have no account to
+  sign in with, so they cannot listen on the private channel the QuickDash console uses. Catalog and
+  stock changes now go out on a separate public one, and only those: the allowlist that decides what
+  may cross it refuses anything it does not recognise, so an event added to QuickDash later stays
+  private until somebody deliberately says otherwise. What crosses is an id rather than any detail,
+  and the shop answers by refetching through the catalog it can already read, which returns published
+  items only.
+
 - **The console keeps up on its own.** Orders, customers, products and stock now appear as they
   happen, in every open tab and on the desktop app, instead of on a timer. Place an order on a shop
   and the console has it in about a second, so two people working the same workspace see the same

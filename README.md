@@ -219,7 +219,9 @@ moderated reviews and customer-owned referral codes; discount codes priced again
 basket; delivery options; an order with authoritative totals that a repeated request cannot
 duplicate; owned orders no other customer can read; a two-way message answered by the business;
 and a single-use pass that opens the account portal without a second sign-in. The custom
-storefront reads all of it without changing its visual system.
+storefront reads all of it without changing its visual system. A connected storefront can also
+subscribe to its workspace's catalog, so a published product or a stock change reaches a page that
+is already open instead of waiting for the next visit.
 One leg is unproven locally — capturing a real PayPal sandbox payment needs credentials this
 machine does not have — and is tracked as a pre-launch gate.
 

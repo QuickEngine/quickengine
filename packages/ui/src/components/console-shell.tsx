@@ -4,7 +4,6 @@ import {
 	CaretDownIcon,
 	CaretUpDownIcon,
 	ChatCircleIcon,
-	ChatTeardropDotsIcon,
 	CheckIcon,
 	DesktopIcon,
 	GearSixIcon,
@@ -16,6 +15,7 @@ import {
 	PlugsConnectedIcon,
 	PlusCircleIcon,
 	SignOutIcon,
+	SparkleIcon,
 	SquaresFourIcon,
 	SunIcon,
 	TerminalWindowIcon,
@@ -72,7 +72,35 @@ const AnchorLink: ConsoleLink = ({ href, className, children }) => (
  * test-mode marker may never become. */
 export function SidebarBadge({ label }: { label: string }) {
 	return (
-		<span className="shrink-0 rounded-[3px] bg-[color-mix(in_srgb,var(--signal-attention)_16%,transparent)] px-1.5 py-0.5 font-medium text-[9px] text-[var(--signal-attention-text)] uppercase tracking-[0.09em]">
+		<span
+			style={{
+				background:
+					"color-mix(in srgb, var(--signal-attention) 16%, transparent)",
+				color: "var(--signal-attention-text)",
+				/**
+				 * 🔴 Letter-spacing is added after the LAST letter as well, so the
+				 * word sat one space left of centre and equal padding could never fix
+				 * it. The right side gives that space back.
+				 */
+				paddingRight: "calc(0.375rem - 0.09em)",
+				/**
+				 * 🔴 Uneven on purpose, and measured rather than guessed.
+				 *
+				 * `items-center` centres the LINE BOX, and a line box reserves room
+				 * for descenders. "TEST" is all capitals and has none, so that room
+				 * sits under the glyphs and lifts them: a screenshot showed six device
+				 * pixels above the caps and nine below. Half that difference, moved
+				 * from the bottom to the top, puts the letters on the middle.
+				 */
+				paddingTop: "3.75px",
+				paddingBottom: "2.25px",
+			}}
+			/* ⚠️ `inline-flex` and `leading-none`. As an inline box the label was
+			   placed on its BASELINE, which reserves descender space below it and
+			   nothing above, so the word rode high in the chip. A flex box centres
+			   the glyphs themselves. */
+			className="inline-flex shrink-0 items-center justify-center rounded-[3px] pl-1.5 font-medium text-[9px] uppercase leading-none tracking-[0.09em]"
+		>
 			{label}
 		</span>
 	);
@@ -96,6 +124,7 @@ export function SidebarName({
 	searchLabel,
 	createLabel,
 	createHref,
+	actions,
 	link: Link = AnchorLink,
 }: {
 	name: string;
@@ -145,6 +174,21 @@ export function SidebarName({
 	searchLabel: string;
 	createLabel: string;
 	createHref: string;
+	/**
+	 * Things you do to THIS one, under the list of all of them.
+	 *
+	 * 🔑 A slot, not a fixed set. Account and QuickDash both use this switcher
+	 * and have nothing in common here: a workspace has settings and a shop, an
+	 * organization has neither. The shell would have to know about both to offer
+	 * either, so it offers a place instead.
+	 *
+	 * ⚠️ Why here at all. Settings and the storefront are properties of the
+	 * workspace, and this menu is the only surface already scoped to one: in the
+	 * account menu settings read as YOUR settings rather than the workspace's,
+	 * and in the header they each cost a permanent slot for something touched
+	 * rarely.
+	 */
+	actions?: ReactNode;
 	link?: ConsoleLink;
 }) {
 	const [open, setOpen] = useState(false);
@@ -159,10 +203,17 @@ export function SidebarName({
 	const others = visibleItems.filter((item) => item.id !== currentId);
 
 	return (
-		<div className={`h-full min-w-0 ${compact ? "flex flex-1" : ""}`}>
+		<div
+			/* Named so the desktop shell can shrink it to its mark. See
+			   `styles.css`: `flex-1` here is what spreads the switcher across the
+			   whole left column, which is right for a name and wrong for a square. */
+			data-switcher-root=""
+			className={`h-full min-w-0 ${compact ? "flex flex-1" : ""}`}
+		>
 			<Popover open={open} onOpenChange={setOpen}>
 				<PopoverAnchor asChild>
 					<div
+						data-switcher-row=""
 						className={`flex h-full min-w-0 flex-1 items-center gap-0.5 ${
 							compact ? "" : "px-2.5"
 						}`}
@@ -185,8 +236,12 @@ export function SidebarName({
 							    unfinished row rather than a control. Alone in the row it
 							    should look like the header button it is. */}
 							<span
+								/* Named so the desktop shell can collapse this to a square.
+								   See the rule in the app's `styles.css`. */
+								data-switcher-trigger=""
+								data-switcher-badged={badge ? "" : undefined}
 								style={compact ? {} : undefined}
-								className={`flex min-w-0 items-center gap-1.5 rounded-md ${
+								className={`relative flex min-w-0 items-center gap-1.5 rounded-md ${
 									compact
 										? "control-raised h-9 min-w-0 flex-1 border border-[var(--console-line)] pr-3 pl-1"
 										: "h-9 w-full bg-transparent px-2.5 transition-colors group-hover:bg-[rgb(var(--console-ink)/0.06)] group-focus-visible:bg-[rgb(var(--console-ink)/0.06)] group-data-[state=open]:bg-[rgb(var(--console-ink)/0.06)]"
@@ -204,6 +259,7 @@ export function SidebarName({
 									/>
 								) : null}
 								<span
+									data-switcher-name=""
 									className={`min-w-0 truncate text-[var(--ink-90)] ${
 										compact ? "text-[12.5px]" : "text-[15px]"
 									}`}
@@ -217,8 +273,38 @@ export function SidebarName({
 								    are in test mode is how somebody takes a real order they
 								    cannot fulfil, or ships against a card that never charged;
 								    the name is the part that can afford to be shortened. */}
-								{badge ? <SidebarBadge label={badge} /> : null}
+								{badge ? (
+									/* 🔴 `inline-flex`, not a bare span.
+									   This wrapper exists only so the desktop shell can hide the
+									   badge when the switcher collapses to a square — but a plain
+									   span inherits the row's line-height, which makes it TALLER
+									   than the chip inside it. The flex row then centres the
+									   wrapper while the chip sits on the baseline within it, and
+									   the badge ends up three points below the middle of the
+									   pill. Measured, not guessed: the pill ran from device row
+									   31 to 87 and the chip from 51 to 79. */
+									<span
+										data-switcher-badge=""
+										className="inline-flex"
+										/* 🔴 Lifted three pixels, and this is an OPTICAL
+										   alignment rather than a layout one.
+										   `items-center` centres boxes, and the name's box is
+										   not its letters: it reserves descender room below the
+										   caps, so the word rides high inside it while the chip
+										   beside it is only as tall as itself. Both were
+										   perfectly centred and looked three pixels apart.
+										   Measured from a screenshot, twice. Three points was an
+										   overshoot and put the chip three and a half device
+										   pixels the other way: the capitals ran from device row
+										   65 to 78, centre 71.5, and the chip from 54 to 82,
+										   centre 68. 1.25 lands it on the letters. */
+										style={{ position: "relative", top: -1.25 }}
+									>
+										<SidebarBadge label={badge} />
+									</span>
+								) : null}
 								<CaretDownIcon
+									data-switcher-caret=""
 									size={compact ? 14 : 15}
 									// `ml-auto` in both modes now: with a real width the caret has
 									// to be pushed to the far end, or it sits against the name in
@@ -474,6 +560,16 @@ export function SidebarName({
 						) : null}
 					</div>
 
+					{/* ⚠️ Divided from the LIST above it. Everything above switches which
+					    workspace you are in; everything below acts on the one you are
+					    already in. Without the rule they read as one menu whose rows do
+					    two different things. */}
+					{actions ? (
+						<div className="my-1 border-[var(--console-line-soft)] border-t pt-1">
+							{actions}
+						</div>
+					) : null}
+
 					<Link
 						href={createHref}
 						className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-[12px] text-[var(--ink-55)] no-underline outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-90)]"
@@ -602,9 +698,24 @@ export function ConsoleAssistant({
 }) {
 	return (
 		<button
-			data-hint={open ? "Close QuickAssist" : "QuickAssist"}
+			/**
+			 * 🔴 "Ask", not a product name, and the change is a correction rather
+			 * than a rebrand.
+			 *
+			 * This is a HARNESS: the customer chooses which model answers. Calling
+			 * it QuickAssist claimed QuickEngine had made an intelligence, which is
+			 * both untrue and immediately contradicted by the model picker sitting
+			 * inside it. Every other Quick name is a thing you are given: a dash,
+			 * tools, a flow, an engine. This one is a seam to somebody else's
+			 * thing, which is exactly why it never fitted the family.
+			 *
+			 * ⚠️ A verb, like Search beside it in the same bar. It says what you do
+			 * rather than who you are talking to, so it stays true whichever model
+			 * is behind it today.
+			 */
+			data-hint={open ? "Close" : "Ask"}
 			type="button"
-			aria-label="QuickAssist"
+			aria-label="Ask"
 			aria-pressed={open}
 			onClick={onClick}
 			style={{}}
@@ -619,7 +730,13 @@ export function ConsoleAssistant({
 					: "text-[var(--ink-40)] hover:text-[var(--ink-90)]"
 			}`}
 		>
-			<ChatTeardropDotsIcon size={17} />
+			{/* 🔑 A sparkle, which is what this means everywhere now. A speech
+			    bubble says "messages" and this bar already has messages; brain and
+			    robot are the corny register the name was just moved out of, and
+			    circuitry reads as hardware. The note on QuickTools below already
+			    called this "the sparkle beside it", so the drawing had drifted from
+			    the design rather than the other way round. */}
+			<SparkleIcon size={17} />
 		</button>
 	);
 }
@@ -854,6 +971,125 @@ const PALETTE_LABEL: Record<Palette, string> = {
 	parchment: "Parchment",
 };
 
+/**
+ * Choosing a theme, without the button that used to open it.
+ *
+ * 🔴 Split out of `ConsoleTheme` so the same control can live on a settings
+ * page. The header held the ONLY door to the fifty palettes, so the button
+ * could not simply be deleted: light and dark were already in settings, the
+ * palettes were not, and removing the button without moving them would have
+ * taken the feature with it.
+ *
+ * ⚠️ The repaint still expands from whatever you pressed, which is exactly why
+ * this belongs on a page rather than in a menu. Inside a popover the panel
+ * closes as the reveal plays and the circle grows from a point that is no
+ * longer there; on a page the control stays put and the effect reads.
+ */
+export function ConsoleThemePanel() {
+	const { theme, setTheme, palette, setPalette } = useTheme();
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => setMounted(true), []);
+	const mode = mounted ? theme : "dark";
+	const family = mounted ? palette : "neutral";
+	const showLight =
+		mode === "light" ||
+		(mode === "system" &&
+			mounted &&
+			!window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+	const from = (event: { currentTarget: HTMLElement }) => {
+		const box = event.currentTarget.getBoundingClientRect();
+		return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+	};
+
+	return (
+		<div className="flex w-[15rem] flex-col gap-1">
+			{/* The switch every console has, in the console's own shape. */}
+			<div
+				className="flex items-center gap-0.5 rounded-[7px] bg-[var(--view-face)] p-0.5"
+				style={{ boxShadow: "var(--lift-inset)" }}
+			>
+				{MODES.map(({ id, label, Icon }) => (
+					<button
+						key={id}
+						type="button"
+						aria-pressed={mode === id}
+						data-hint={label}
+						onClick={(event) => setTheme(id, from(event))}
+						className={
+							mode === id
+								? "control-raised flex h-6 flex-1 items-center justify-center gap-1.5 rounded-[5px] border-0 text-[10.5px] text-[var(--ink-90)]"
+								: "flex h-6 flex-1 items-center justify-center gap-1.5 rounded-[5px] text-[10.5px] text-[var(--ink-35)] transition-colors hover:text-[var(--ink-70)]"
+						}
+					>
+						<Icon size={11} />
+						{label}
+					</button>
+				))}
+			</div>
+
+			<p className="px-2 pt-1 pb-0.5 text-[10px] text-[var(--ink-25)] uppercase tracking-[0.08em]">
+				Palette
+			</p>
+			{/* 🔑 Scrollable, and steppable with the arrow keys, which is the
+		    point: a theme cannot be judged from a 16px square, so moving
+		    through the list APPLIES each one as you pass it. Hold an arrow
+		    and the console repaints under you until something looks right.
+
+		    ⚠️ Hover does not preview. The pointer crosses this list on its
+		    way to the row somebody wants, and repainting the whole console
+		    on the way past is a strobe, not a preview. */}
+			<div className="fade-ends -mr-1 flex max-h-[15rem] flex-col gap-0.5 overflow-y-auto pr-1">
+				{PALETTES.map((entry) => (
+					<button
+						key={entry}
+						type="button"
+						aria-pressed={family === entry}
+						onClick={(event) => setPalette(entry, from(event))}
+						/* 🔴 On the BUTTON, not on the scroll container. The handler
+					   only ever ran by bubbling from whichever row had focus, and
+					   a bare div with a key listener is a control with no role:
+					   nothing announces it and nothing can reach it by keyboard.
+					   A button is already interactive, so the behaviour is
+					   identical and the element is honest about what it is. */
+						onKeyDown={(event) => {
+							const step =
+								event.key === "ArrowDown"
+									? 1
+									: event.key === "ArrowUp"
+										? -1
+										: 0;
+							if (!step) return;
+							event.preventDefault();
+							const at = PALETTES.indexOf(family);
+							const to =
+								PALETTES[(at + step + PALETTES.length) % PALETTES.length];
+							setPalette(to, from(event));
+						}}
+						className={`flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-[12px] outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] ${
+							family === entry ? "text-[var(--ink-90)]" : "text-[var(--ink-55)]"
+						}`}
+					>
+						<span
+							aria-hidden="true"
+							style={{
+								background: showLight
+									? SWATCHES[entry].light
+									: SWATCHES[entry].dark,
+							}}
+							className="size-4 shrink-0 rounded-[4px] border border-[var(--console-line-strong)]"
+						/>
+						<span className="min-w-0 flex-1 text-left">
+							{PALETTE_LABEL[entry]}
+						</span>
+						{family === entry ? <CheckIcon size={12} /> : null}
+					</button>
+				))}
+			</div>
+		</div>
+	);
+}
+
 export function ConsoleTheme() {
 	const { theme, setTheme, palette, setPalette } = useTheme();
 	const [mounted, setMounted] = useState(false);
@@ -991,6 +1227,7 @@ export function SidebarAccount({
 	onSignOut,
 	link: Link = AnchorLink,
 	settingsHref,
+	showSettings = true,
 	settingsLink,
 	onSettings,
 	email,
@@ -1020,6 +1257,14 @@ export function SidebarAccount({
 	 * beats two rows competing to be the settings row.
 	 */
 	settingsHref?: string;
+	/**
+	 * Whether this menu offers a Settings row at all.
+	 *
+	 * ⚠️ Defaults to TRUE so the Account app keeps it without asking. A console
+	 * that has its own settings elsewhere passes false rather than pointing this
+	 * row somewhere confusing.
+	 */
+	showSettings?: boolean;
 	/**
 	 * Opens settings in place instead of navigating to it.
 	 *
@@ -1060,7 +1305,13 @@ export function SidebarAccount({
 				style={compact ? {} : undefined}
 				className={
 					compact
-						? "control-raised group flex h-9 shrink-0 items-center gap-2 rounded-md border border-[var(--console-line)] pr-3 pl-1 outline-none"
+						? /* 🔴 `min-w-0`, not `shrink-0`. This is the last control on the
+						   header and the only one carrying prose, so when the window is
+						   narrow it is the one that has to give. Refusing to shrink did
+						   not protect it: the header simply clipped it against the
+						   window's edge, and the name was cut in half. Now it truncates,
+						   which is what the cap on it was always for. */
+							"control-raised group flex h-9 min-w-0 items-center gap-2 rounded-md border border-[var(--console-line)] pr-3 pl-1 outline-none"
 						: "group flex w-full min-w-0 items-center gap-2.5 px-3 py-2.5 text-left outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] focus-visible:bg-[rgb(var(--console-ink)/0.055)]"
 				}
 			>
@@ -1078,7 +1329,15 @@ export function SidebarAccount({
 				    not "your account". ⚠️ Capped and truncated: a long name must not
 				    be allowed to push the search out of the centre of the window. */}
 				{compact ? (
-					<span className="max-w-[8rem] truncate text-[12.5px] text-[var(--ink-75)] transition-colors group-hover:text-[var(--ink-90)]">
+					<span
+						/* Named so a narrow window can drop it. See `styles.css`: the
+						   account button is the last thing on the row, so when the header
+						   runs out of width this name is what gets cut in half against
+						   the edge. The avatar alone still opens the same menu, which
+						   names the account at the top of it. */
+						data-account-name=""
+						className="min-w-0 max-w-[8rem] truncate text-[12.5px] text-[var(--ink-75)] transition-colors group-hover:text-[var(--ink-90)]"
+					>
 						{name || "Account"}
 					</span>
 				) : null}
@@ -1165,7 +1424,13 @@ export function SidebarAccount({
 				    everything below changes surface. Somebody deep in a workspace
 				    should never be thrown to another app by a menu row that looked
 				    identical to the one above it. */}
-				{onSettings ? (
+				{/* 🔴 Hidden where the console has settings of its OWN.
+				    In QuickDash this row jumped to the account app while the workspace's
+				    settings lived somewhere else entirely, so one word meant two
+				    different objects depending on which console you were reading it in.
+				    The Account app still shows it, because there "Settings" and "your
+				    account" are the same thing. */}
+				{!showSettings ? null : onSettings ? (
 					<button
 						type="button"
 						onClick={() => {
@@ -1328,6 +1593,7 @@ export function ConsoleShell({
 	header,
 	assistant,
 	assistantOpen = false,
+	railOpen = true,
 	integrations,
 	integrationsOpen = false,
 	tools,
@@ -1355,6 +1621,17 @@ export function ConsoleShell({
 	 */
 	assistant?: ReactNode;
 	assistantOpen?: boolean;
+	/**
+	 * Whether the navigation rail is showing.
+	 *
+	 * 🔴 A PROP, not state the shell keeps. The control that toggles it lives in
+	 * the app's own header, which is rendered by the app and passed in — so it
+	 * sits OUTSIDE this component and cannot reach a context created inside it.
+	 * It read the default value and its setter did nothing: the button looked
+	 * alive and the sidebar never moved. The assistant is a prop for exactly this
+	 * reason; so is this.
+	 */
+	railOpen?: boolean;
 	/**
 	 * What this workspace is connected to. Shares the assistant's column.
 	 *
@@ -1709,7 +1986,7 @@ export function ConsoleShell({
 					width: "var(--console-rail, 240px)",
 				}}
 				className={`hidden shrink-0 flex-col overflow-hidden rounded-2xl border border-[var(--console-line)] bg-[var(--console-panel)] ${
-					focused ? "" : "md:flex"
+					focused || !railOpen ? "" : "md:flex"
 				}`}
 			>
 				{sidebar}
@@ -1723,7 +2000,7 @@ export function ConsoleShell({
 			 * ⚠️ Hidden with the sidebar. Below `md` the panel is a drawer and there
 			 * is nothing beside the content to resize.
 			 */}
-			{focused ? null : (
+			{focused || !railOpen ? null : (
 				/**
 				 * 🔴 A real column, not a zero-width overlay.
 				 *
@@ -2006,6 +2283,35 @@ export function ConsoleShell({
 				 * cannot drift away from the panels it belongs with.
 				 */
 				<div
+					/**
+					 * 🔴 The header IS the title bar in the desktop shell.
+					 *
+					 * macOS draws its close, minimise and zoom buttons over the page, and
+					 * the app hides the real title bar so it reads as one surface rather
+					 * than a web page under a grey strip. Two things follow, and both are
+					 * solved here rather than around the edges.
+					 *
+					 * The buttons are POSITIONED into this card by
+					 * `trafficLightPosition` in `tauri.conf.json`, so they sit on its row
+					 * as though they were part of it, and the card is inset from the left
+					 * to make room. An earlier attempt padded the header's left GROUP
+					 * instead, which was worse than doing nothing: that column is `1fr`,
+					 * so the padding came out of the workspace switcher and collapsed it
+					 * to its initials with the traffic lights crowding it.
+					 *
+					 * `data-tauri-drag-region` makes the card the handle. Hiding the
+					 * title bar takes away the strip you normally drag, so without this
+					 * the window cannot be moved, snapped to half the screen, or
+					 * double-clicked to zoom. ⚠️ It applies to THIS element only: the
+					 * shell checks the event's target, so every button inside still
+					 * receives its own clicks.
+					 *
+					 * ⚠️ Inert outside the shell. The attribute is one nothing reads in a
+					 * browser, and the inset comes from a rule that only matches when the
+					 * document has been marked as the macOS shell.
+					 */
+					data-tauri-drag-region
+					data-console-header=""
 					style={{ boxShadow: "var(--console-lift)" }}
 					className="control-tray flex h-14 shrink-0 items-center overflow-hidden rounded-2xl border border-[var(--console-line)] px-2"
 				>

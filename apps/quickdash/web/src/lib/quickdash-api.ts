@@ -194,7 +194,21 @@ export const quickDashQueries = {
 								used: number;
 								limit: number | null;
 								remaining: number | null;
+								/**
+								 * ⚠️ `used >= limit`, so it is true at exactly the limit as
+								 * well as past it. "Fully consumed", not "over the line".
+								 * Read `state` when the difference matters.
+								 */
 								exceeded: boolean;
+								/**
+								 * ok below 80 percent of the limit, warn from there, over at
+								 * the limit and beyond.
+								 *
+								 * 🔑 Computed by `evaluate` in `packages/billing`, which owns
+								 * the threshold. Recomputing it here would give the console a
+								 * second opinion that drifts the day the threshold moves.
+								 */
+								state?: "ok" | "warn" | "over";
 							}
 						>;
 					}>(

@@ -10,6 +10,8 @@
 		"core:default",
 		"deep-link:default",
 		"opener:default",
-		"updater:default"
+		"updater:default",
+		"core:window:allow-start-dragging",
+		"core:window:allow-internal-toggle-maximize"
 	]
 }

@@ -1,5 +1,5 @@
 import { auth, isAllowedOrigin } from "@quickengine/auth/server";
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 import { resolveSignOutDestination } from "./auth-redirect";
 import type { PlatformEnv } from "./platform-types";
 
@@ -128,6 +128,28 @@ export function registerAuthRoutes(app: Hono<PlatformEnv>) {
 		}
 
 		try {
+			/**
+			 * 🔴 The browser is signed OUT first, and this is not tidiness.
+			 *
+			 * The app clears its own token before it sends anybody here, but the
+			 * browser keeps whatever session it already had — the two are separate
+			 * by design, which is the entire reason this handoff exists. So somebody
+			 * who signed out in the app and then picked a DIFFERENT account arrived
+			 * at the provider callback still carrying the first account's cookie.
+			 * Better Auth reads that as "link this new identity to the signed-in
+			 * user", `disableImplicitLinking` correctly refuses, and the browser
+			 * shows `account_not_linked` with no way forward.
+			 *
+			 * ⚠️ The cost is real and deliberate: starting a desktop sign-in signs
+			 * this browser out of QuickDash too. That is the honest trade. The
+			 * alternative is either allowing implicit linking, which is the
+			 * account-takeover hole that policy exists to close, or leaving the
+			 * account you end up signed in as decided by a cookie you cannot see.
+			 */
+			const cleared = await auth.api
+				.signOut({ headers: c.req.raw.headers, asResponse: true })
+				.catch(() => null);
+
 			const result = await auth.api.signInSocial({
 				body: {
 					provider,
@@ -145,6 +167,11 @@ export function registerAuthRoutes(app: Hono<PlatformEnv>) {
 			}
 
 			const headers = new Headers({ location: url });
+			/* ⚠️ The sign-out's cookies go on FIRST, so the session clear cannot
+			   overwrite the OAuth state cookie the next step depends on. */
+			for (const cookie of cleared?.headers.getSetCookie() ?? []) {
+				headers.append("set-cookie", cookie);
+			}
 			for (const cookie of result.headers.getSetCookie()) {
 				headers.append("set-cookie", cookie);
 			}
@@ -159,11 +186,48 @@ export function registerAuthRoutes(app: Hono<PlatformEnv>) {
 	app.get("/api/auth-native-handoff", async (c) => {
 		const session = await auth.api.getSession({ headers: c.req.raw.headers });
 		if (!session?.session) {
-			return c.redirect(`${NATIVE_SCHEME}://auth?error=no_session`, 302);
+			return handoffPage(c, `${NATIVE_SCHEME}://auth?error=no_session`);
 		}
 		const token = encodeURIComponent(session.session.token);
-		return c.redirect(`${NATIVE_SCHEME}://auth?token=${token}`, 302);
+		return handoffPage(c, `${NATIVE_SCHEME}://auth?token=${token}`);
 	});
+
+	/**
+	 * Hand the shell its answer, and leave the browser somewhere finished.
+	 *
+	 * 🔴 A PAGE, not a 302 to `quickdash://`.
+	 *
+	 * A redirect to a custom scheme hands the URL to the operating system and
+	 * leaves the tab with nothing to render: the spinner never stops, and the
+	 * person is left looking at a blank page wondering whether it worked. It DID
+	 * work, in another window they cannot see. So the browser gets a real page
+	 * that says so, and the deep link is fired from it.
+	 *
+	 * ⚠️ `location.replace`, so this page does not become a history entry that
+	 * re-fires the handoff when somebody presses Back.
+	 */
+	function handoffPage(c: Context, target: string) {
+		const escaped = target.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+		return c.html(
+			`<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+				`<title>Signing you in</title>` +
+				`<style>` +
+				`html{color-scheme:dark light}` +
+				`body{margin:0;min-height:100vh;display:grid;place-items:center;` +
+				`font:15px/1.6 system-ui,-apple-system,sans-serif;` +
+				`background:#0c0c0c;color:#f2f2f2}` +
+				`@media(prefers-color-scheme:light){body{background:#f7f7f9;color:#191919}}` +
+				`div{text-align:center;max-width:22rem;padding:0 1.5rem}` +
+				`p{margin:.4rem 0;opacity:.65;font-size:13.5px}` +
+				`a{color:inherit}` +
+				`</style></head><body><div>` +
+				`<h1 style="font-size:17px;margin:0">QuickDash is signed in</h1>` +
+				`<p>You can close this tab and go back to the app.</p>` +
+				`<p><a href="${escaped}">Reopen QuickDash</a> if it did not come forward.</p>` +
+				`</div><script>location.replace(${JSON.stringify(target)})</script>` +
+				`</body></html>`,
+		);
+	}
 
 	app.get("/api/auth-signout", async (c) => {
 		const target = resolveSignOutDestination(c.req.query("redirect"));

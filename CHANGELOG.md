@@ -8,6 +8,55 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **QuickDash on your desktop.** A real Mac app: sign in through your browser, and your workspaces,
+  orders and customers are all there. The window's own buttons sit in the header rather than on top
+  of it, you can drag the app by its header, and it snaps to half or a quarter of the screen like
+  anything else.
+
+- **A sidebar you can put away,** from the header, so a narrow window gives the work the room.
+
+- **Settings is a place, not a pop-up.** It has its own address, its list of sections lives in the
+  console's own sidebar, and each section opens on the page. You can link somebody straight to a
+  section, reload it, and leave with the back button. Find it, and your shop, in the workspace menu
+  at the top of the sidebar.
+
+- **The search reaches settings,** and every page, not just your records. It always said it did.
+
+- **Three fewer buttons in the header.** Your shop moved into the workspace menu beside settings, a
+  closed shop is now marked on the workspace itself so it stays visible from anywhere, and choosing
+  a theme moved into Settings under Appearance, where all fifty palettes now sit with light and
+  dark.
+
+- **Clear a board,** from the boards menu, and build one from nothing. Deleting a saved board now
+  empties the screen too. Resetting a board is still there when you want the starting layout back.
+
+- **Drag a card to the edge and the page follows,** steadily, without having to keep the mouse
+  moving, and the board stops rearranging itself while you travel: cards no longer shuffle aside for
+  a card that is only passing over them on its way somewhere else.
+
+- **A calendar on the dashboard.** A real grid of squares with a mark on every day something is
+  booked, the day's appointments underneath, and paging back and forward through the year. It sizes
+  its cells to the card it is given, and on a small one it shows what is coming up instead of
+  squashing a month into a space nobody can read.
+
+- **Boards you can save and switch between.** Arrange the dashboard, save it under a name, and keep
+  up to five. Switch between them from the board's own menu, delete one you have finished with, or
+  reset it back to the layout your workspace started with.
+
+- **A starting board built from what you switched on.** A new workspace no longer opens on the same
+  generic set of cards: the modules you enabled decide which cards appear and how big they are, so
+  the first thing you see is about your business.
+
+- **Gauge how much of your plan you have used,** right on the dashboard. API requests, AI actions,
+  storage, seats, workspaces and webhook deliveries each get a card showing what you have used
+  against what your plan allows, and anything unlimited says so instead of drawing an empty ring.
+  The dial grows and shrinks with the card, and steps aside entirely when the card is too small to
+  read it. Seats and workspaces count their allowance out one mark at a time, so a plan that allows
+  one of each reads as an allowance rather than as something already gone wrong.
+
+- **A card for each module's open work.** Outstanding invoices, low stock, orders waiting to be
+  fulfilled, active projects, scheduled bookings and contracts waiting on a signature.
+
 - **A Markets card.** Watch a coin's price with real candles, switch between candles and a line, and
   add or remove the symbols you care about. It watches a price and nothing else: no wallet, no
   balance, nothing of yours is connected.
@@ -147,6 +196,55 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   decided instead.
 
 ### Fixed
+
+- **The board works in a narrow window.** It only laid itself out properly above 1024 pixels, so
+  tiling the desktop app to half the screen showed one empty card and blank space where the rest of
+  your board should be.
+
+- **Numbers on the dashboard stopped flickering.** A card could get stuck resizing its own figure
+  forever, a few times a second.
+
+- **The search box no longer disappears under the buttons beside it** when the window is narrow.
+
+- **Every card on the board now scales.** Resize a card and what is in it grows with it: a figure
+  gets larger, a calendar gets bigger squares and moves its day list beside the month, a dial fills
+  the space it is given. Numbers used to stay the same size however large the card, which left a
+  small figure in the corner of a lot of nothing.
+
+- **The traffic heatmap fills the card it is in.** A year is a fixed long thin shape, so on most
+  cards it either shrank to specks or ran off the side. It now wraps onto a second or third row when
+  that suits the card better, the way a paragraph wraps.
+
+- **The usage dial no longer gets cut off** at certain card heights.
+
+- **Numbers no longer run through the ring around them.** A long reading now sits under the dial at
+  full size rather than across it, and two cards side by side agree about how big a number is.
+
+- **The smallest cards stopped clipping.** Revenue, Orders, Site traffic, Seats and Workspaces all
+  cut their figure in half at the smallest size, because the figure and its caption were measured
+  wrongly against the space they had. A card too small for its caption now keeps the number and
+  drops the caption.
+
+- **A card with no limit shows its number again** one size up, instead of going blank.
+
+- **Card titles are readable while you edit.** The move and remove controls sat on top of the title,
+  so every card read as "ats" instead of "Seats".
+
+- **Charts fill a tall card** instead of stopping partway down and leaving the rest blank, while
+  still refusing to stretch a small movement into a cliff.
+
+- **Cards that are too small to hold everything now drop the least useful part** and keep what you
+  glance at, rather than squashing all of it. The traffic card falls back to its total instead of
+  going blank, and the markets card keeps the price and its move when there is no room for a chart.
+  Everything comes back as soon as the card can hold it.
+
+- **A full seat or workspace allowance no longer looks like a fault.** Being at the limit of what
+  your plan allows was drawn in the same red as a genuine failure, on every free account from its
+  first minute. Allowances now stay in your theme's own colour and say "All in use", while the
+  meters that really do stop working keep amber as they approach and red when they run out.
+
+- **The Markets card works on the live site.** Its price feed was being blocked in production and the
+  card said it was unreachable, while working perfectly in development.
 
 - **The traffic heatmap shows a full year,** every day drawn whether or not anything happened, and it
   fills the card it is given at any size.

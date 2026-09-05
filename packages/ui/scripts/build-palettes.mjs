@@ -393,7 +393,49 @@ const ramp = ([ground, surface, raised, line, accent], dark) => ({
 	 * full strength: everything else borrows a trace of it.
 	 */
 	"--chart-ink": dark ? mix(accent, ground, 0.12) : mix(accent, "#000000", 0.1),
+	/**
+	 * The mark that says this workspace is NOT real.
+	 *
+	 * 🔑 Derived from the palette, not fixed. It was one amber for all fifty
+	 * themes, which read as a warning badge stuck onto whatever you had chosen
+	 * and looked identical on a theme built out of amber. Sandbox is not a
+	 * warning and not an error: nothing is wrong, the workspace simply is not
+	 * live. It has one job, which is to be impossible not to notice.
+	 *
+	 * 🔴 The accent's OPPOSITE hue, at full commitment. Opposing the theme is
+	 * what makes it leap off a surface built entirely from the accent; taking the
+	 * theme's own saturation and lightness is what stops it looking like a
+	 * sticker from another product. On a blue console it is warm, on a green one
+	 * it is magenta, and on every one of them it is the one thing on screen that
+	 * is not a shade of the theme.
+	 *
+	 * ⚠️ Lightness is pinned into the readable band rather than inherited. Some
+	 * accents are nearly black and some nearly white, and the opposite of an
+	 * invisible colour is still invisible.
+	 */
+	"--signal-sandbox": opposite(accent, dark),
 });
+
+/**
+ * The far side of the colour wheel from an accent, kept vivid enough to see.
+ *
+ * ⚠️ Saturation has a FLOOR. A near-grey accent has no meaningful opposite, and
+ * rotating its hue produces another near-grey: exactly the case where the mark
+ * matters most, because a neutral console gives the eye nothing else to catch
+ * on.
+ */
+function opposite(accent, dark) {
+	const [h, s, l] = toHsl(rgb(accent));
+	return hex(
+		fromHsl([
+			(h + 0.5) % 1,
+			Math.min(1, Math.max(0.62, s)),
+			dark
+				? Math.min(0.72, Math.max(0.58, l))
+				: Math.min(0.52, Math.max(0.38, l)),
+		]),
+	);
+}
 
 const LADDER = [
 	"--console-floor",

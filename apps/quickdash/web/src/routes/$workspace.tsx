@@ -1,17 +1,25 @@
-import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import {
+	GearSixIcon,
+	MagnifyingGlassIcon,
+	SidebarSimpleIcon,
+} from "@phosphor-icons/react";
 import { authClient } from "@quickengine/auth/client";
 import {
 	ConsoleAssistant,
 	ConsoleBell,
 	ConsoleShell,
-	ConsoleTheme,
 	ConsoleTools,
 	SidebarAccount,
 	SidebarName,
 } from "@quickengine/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { type MouseEventHandler, useState } from "react";
+import {
+	createFileRoute,
+	Link,
+	Outlet,
+	useRouterState,
+} from "@tanstack/react-router";
+import { type MouseEventHandler, useCallback, useState } from "react";
 import { AssistantPanel } from "../components/assistant-panel";
 import { ConnectionBanner } from "../components/connection-banner";
 import { ConsoleGlow } from "../components/console-glow";
@@ -21,9 +29,9 @@ import { HeaderActionProvider } from "../components/header-action";
 import { NotificationToasts } from "../components/notification-toasts";
 import { QuickActions } from "../components/quick-actions";
 import { QuickToolsPanel } from "../components/quicktools-panel";
-import { SettingsDialog } from "../components/settings-dialog";
+import { SettingsNav } from "../components/settings/settings-nav";
 import { SidebarCard } from "../components/sidebar-card";
-import { StorefrontButton } from "../components/storefront-button";
+import { StorefrontActions } from "../components/storefront-button";
 import {
 	helpWasOpen,
 	rememberHelpOpen,
@@ -195,7 +203,51 @@ function WorkspaceFrame() {
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [feedbackOpen, setFeedbackOpen] = useState(false);
 	const [assistantOpen, setAssistantOpen] = useState(false);
-	const [settingsOpen, setSettingsOpen] = useState(false);
+	/**
+	 * Whether the settings rail is showing, and which section it should mark.
+	 *
+	 * ⚠️ Read from the router rather than from a param hook: this is the LAYOUT,
+	 * so it is mounted for every child route and `useParams` for a child's
+	 * parameter is not available here.
+	 */
+	/**
+	 * Whether the navigation rail is showing.
+	 *
+	 * 🔴 Held HERE, beside the button that toggles it, and handed to the shell.
+	 * It lived inside `ConsoleShell` behind a context, and this component renders
+	 * that shell rather than living inside it — so the hook returned the default
+	 * and the setter was a no-op. The button worked perfectly and changed
+	 * nothing.
+	 *
+	 * ⚠️ Remembered, and read on the first render rather than in an effect: a
+	 * sidebar that appears and then vanishes a frame later is worse than one that
+	 * starts closed.
+	 */
+	const [railOpen, setRailOpenState] = useState(() => {
+		try {
+			return localStorage.getItem(RAIL_OPEN_KEY) !== "closed";
+		} catch {
+			return true;
+		}
+	});
+	const setRailOpen = useCallback((value: boolean) => {
+		setRailOpenState(value);
+		try {
+			localStorage.setItem(RAIL_OPEN_KEY, value ? "open" : "closed");
+		} catch {
+			// Storage disabled. It simply will not be remembered.
+		}
+	}, []);
+	/* The button only exists in the desktop app. See the note on it. */
+	const shell = isNativeShell();
+
+	const settingsPath = useRouterState({
+		select: (state) => state.location.pathname,
+	});
+	const inSettings = settingsPath.includes("/settings");
+	const settingsSection = inSettings
+		? (settingsPath.split("/settings/")[1]?.split("/")[0] ?? undefined)
+		: undefined;
 	const [toolsOpen, setToolsOpen] = useState(false);
 	const [consoleOpen, setConsoleOpen] = useState(false);
 	// Summoned, and remembered for the session so navigating does not close it.
@@ -259,12 +311,48 @@ function WorkspaceFrame() {
 				 * on the right. It was `header={null}` — the slot existed and nothing was
 				 * ever put in it.
 				 *
-				 * ⚠️ `grid-cols-[1fr_auto_1fr]`, not a flex row. The search has to be
+				 * ⚠️ Three columns, not a flex row. The search has to be
+				 * 🔴 The middle is `minmax(0, 24rem)` rather than `auto`. An `auto`
+				 * column is sized to its content and never gives way, so once the
+				 * window was narrow — a half screen tile is 756 points — the right
+				 * hand group ran out of room and was drawn straight OVER the search:
+				 * the create button sat on top of the ⌘K hint. A minmax column takes
+				 * up to 24rem and yields below it, so the search narrows instead.
 				 * centred on the window rather than on whatever space the left group
 				 * leaves, or it drifts every time a workspace name changes length.
 				 */
 				header={
-					<div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3">
+					/* 🔴 Draggable, like the card around it. `data-tauri-drag-region`
+					   matches the element the event actually lands on and does NOT walk
+					   up the tree, and this grid covers the whole header — so with the
+					   attribute only on the card, nothing but a few pixels of padding
+					   was ever draggable and the window could not be moved. The gaps
+					   and empty columns belong to this element, so it needs it too. */
+					<div
+						data-tauri-drag-region
+						/* 🔴 An inline style, not a Tailwind arbitrary class.
+						   `grid-cols-[1fr_minmax(0,24rem)_1fr]` produced no CSS at all:
+						   the value contains a comma inside brackets, the scanner did not
+						   emit a rule for it, and the class silently did nothing — the
+						   header looked untouched and the search kept being overlapped.
+						   A style attribute cannot fail quietly. */
+						/* 🔴 The outer columns have a FLOOR of their own content.
+						   Plain `1fr` splits the leftover evenly whatever the content
+						   needs, so at half screen each side got about 206px while the
+						   right hand group needs nearer 300 — and a grid item does not
+						   shrink to fit, it overflows. Pinned to the right by
+						   `justify-self-end`, it overflowed leftward and was drawn on top
+						   of the search box.
+						   `minmax(max-content, 1fr)` says: never narrower than what is in
+						   you, and share anything spare equally. The search keeps the
+						   middle and gives way first, which is the right order — it is
+						   the one control here that is still usable at half the size. */
+						style={{
+							gridTemplateColumns:
+								"minmax(max-content, 1fr) minmax(0, 24rem) minmax(max-content, 1fr)",
+						}}
+						className="grid min-w-0 flex-1 items-center gap-3"
+					>
 						{/* 🔴 FIXED, and deliberately no longer tracking the drag.
 					    224px is the sidebar at its narrowest (240px) less the nav's own
 					    `px-2` on both sides, so at the default width the switcher still
@@ -275,6 +363,7 @@ function WorkspaceFrame() {
 					    because you dragged a divider, so the extra width was empty. */}
 						<div
 							style={{ width: "224px" }}
+							data-tauri-drag-region
 							className="flex min-w-0 items-center gap-1.5 justify-self-start"
 						>
 							<SidebarName
@@ -282,8 +371,15 @@ function WorkspaceFrame() {
 								name={context.data?.workspace.name ?? ""}
 								// 🔴 Test mode is otherwise invisible, which is how a real card
 								// gets taken in a test workspace — or a test card in the live one.
+								/* ⚠️ Test wins over Closed when both are true. A test
+								   workspace's shop being shut is not news; a LIVE one's is,
+								   and that is the case the badge exists for. */
 								badge={
-									context.data?.workspace.environment === "test" ? "Test" : null
+									context.data?.workspace.environment === "test"
+										? "Test"
+										: context.data?.workspace.published === false
+											? "Closed"
+											: null
 								}
 								currentId={context.data?.workspace.id ?? ""}
 								items={(context.data?.workspaces ?? []).map((item) => ({
@@ -299,6 +395,23 @@ function WorkspaceFrame() {
 									);
 									window.location.assign(`/${target?.slug ?? chosen}`);
 								}}
+								actions={
+									<>
+										<Link
+											to="/$workspace/settings/$section"
+											params={{ workspace, section: "general" }}
+											className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-[12px] text-[var(--ink-55)] no-underline outline-none transition-colors hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-90)]"
+										>
+											<GearSixIcon size={16} className="shrink-0" />
+											Workspace settings
+										</Link>
+										<StorefrontActions
+											workspaceId={workspaceId}
+											organizationId={context.data?.workspace.organizationId}
+											published={context.data?.workspace.published ?? true}
+										/>
+									</>
+								}
 								searchLabel="Find workspace"
 								createLabel="Create workspace"
 								createHref={`${clientEnv.ACCOUNT_URL}/workspaces/new`}
@@ -327,25 +440,48 @@ function WorkspaceFrame() {
 									)
 								}
 							/>
-							{/* 🔴 With the WORKSPACE, not with the actions.
-							    Your shop is a property of the workspace you are in, the
-							    same as its name and its notifications: it changes when
-							    you switch workspace, and it is the one control here that
-							    leaves QuickDash entirely. On the right it sat among
-							    things that open panels over the page, which is a
-							    different kind of verb. */}
-							<StorefrontButton
-								workspaceId={workspaceId}
-								organizationId={context.data?.workspace.organizationId}
-								published={context.data?.workspace.published ?? true}
-							/>
+							{/*
+							 * 🔴 Desktop only, and it is the shell that makes it earn its
+							 * place. In a browser a window is one tab of twenty and the
+							 * sidebar is the map; in an app snapped to half a screen it is
+							 * a third of everything you can see, and being able to put it
+							 * away is the difference between the window being usable at
+							 * that size and not.
+							 *
+							 * ⚠️ Always present rather than only while the rail is open.
+							 * Hiding the control that reopens a hidden panel leaves no way
+							 * back to it, and a person who collapsed the sidebar by accident
+							 * would have to find their way through localStorage. It says
+							 * which state pressing it produces instead.
+							 */}
+							{shell ? (
+								<button
+									type="button"
+									aria-pressed={railOpen}
+									data-hint={railOpen ? "Hide the sidebar" : "Show the sidebar"}
+									aria-label={
+										railOpen ? "Hide the sidebar" : "Show the sidebar"
+									}
+									onClick={() => setRailOpen(!railOpen)}
+									className={`control-raised flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--console-line)] outline-none ${
+										railOpen
+											? "text-[var(--ink-40)] hover:text-[var(--ink-90)]"
+											: "text-[var(--ink-90)]"
+									}`}
+								>
+									<SidebarSimpleIcon size={16} />
+								</button>
+							) : null}
 						</div>
 
 						<button
 							type="button"
 							onClick={() => setSearchOpen(true)}
 							style={{}}
-							className="control-raised flex h-9 w-[min(24rem,34vw)] items-center gap-2 rounded-md border border-[var(--console-line)] px-2.5 text-[12px] text-[var(--ink-35)] hover:text-[var(--ink-70)]"
+							/* `w-full` inside a column that already caps at 24rem: the width
+							   belongs to the grid, which is the only thing that knows how
+							   much room the other two columns need. */
+							className="control-raised flex h-9 w-full min-w-0 items-center gap-2 rounded-md border border-[var(--console-line)] px-2.5 text-[12px] text-[var(--ink-35)] hover:text-[var(--ink-70)]"
 						>
 							<MagnifyingGlassIcon size={13} className="shrink-0" />
 							<span className="min-w-0 flex-1 truncate text-left">Search</span>
@@ -370,7 +506,12 @@ function WorkspaceFrame() {
 						    went to the place it was already a member of. The theme
 						    switch is the deliberate exception, for the reason on it
 						    below. */}
-						<div className="flex items-center gap-1.5 justify-self-end">
+						<div
+							data-tauri-drag-region
+							/* `min-w-0` so the account button inside can truncate instead
+							   of the whole group being clipped by the header's edge. */
+							className="flex min-w-0 items-center gap-1.5 justify-self-end"
+						>
 							{/* Starting something new sits with the things that OPEN a
 						    surface, at the head of the group. */}
 							<QuickActions
@@ -399,15 +540,6 @@ function WorkspaceFrame() {
 									})
 								}
 							/>
-							{/* 🔴 STAYS, and it is the one exception to the rule above.
-							    The repaint is a circle expanding from whatever you
-							    pressed, so the control has to be somewhere the eye is
-							    already looking and somewhere that is still on screen
-							    while it plays. Inside a menu it is neither: the panel
-							    closes, and the reveal starts from a point that was
-							    behind it. Moving this button would have cost the effect
-							    it exists to trigger. */}
-							<ConsoleTheme />
 							<SidebarAccount
 								compact
 								name={user.name ?? ""}
@@ -415,10 +547,16 @@ function WorkspaceFrame() {
 								planId={plan.data?.planId ?? null}
 								accountUrl={clientEnv.ACCOUNT_URL}
 								authUrl={clientEnv.AUTH_URL}
-								// 🔴 No `settingsHref`. Settings are a DIALOG, and passing a
-								// link as well left the shell to choose between two front
-								// doors to one screen — the surest way for them to drift.
-								onSettings={() => setSettingsOpen(true)}
+								/* 🔴 No `settingsHref`, so this row falls back to the ACCOUNT's
+								   own settings, which is what it should always have meant.
+								   This menu is about the person: their account, their plan,
+								   signing out. The WORKSPACE's settings live in the workspace
+								   switcher, the one surface already scoped to one workspace.
+								   Pointing this row at them made "Settings" mean two different
+								   objects depending on which console you were in. */
+								/* 🔴 No Settings row. QuickDash has its own, in the workspace
+								   switcher; this menu is about the person. See `showSettings`. */
+								showSettings={false}
 								onSignOut={nativeSignOut}
 								onFeedback={() => setFeedbackOpen(true)}
 								onHelp={() => showHelp(true)}
@@ -452,7 +590,23 @@ function WorkspaceFrame() {
 					   the sidebar is where this console keeps lists: it already swaps
 					   between navigation and notifications, so conversations behave the
 					   way those two do rather than inventing their own place. */
-					sidebarContext === "chats" ? (
+					/* 🔴 SETTINGS IS A SIDEBAR CONTEXT, and it is driven by the ROUTE
+					   rather than by a piece of state.
+					   Settings used to be a dialog laid over the console. It is now a
+					   place, so the thing that decides whether its list is showing is
+					   the address you are at: arriving by link, reloading, or walking
+					   back out with the browser's button all put the rail in the right
+					   state without anything having to remember to set it.
+					   ⚠️ It wins over the other two on purpose. Opening notifications
+					   while inside settings would leave you looking at a section with
+					   no way back to its list. */
+					inSettings ? (
+						<SettingsNav
+							workspace={workspace}
+							modules={context.data?.modules ?? []}
+							active={settingsSection}
+						/>
+					) : sidebarContext === "chats" ? (
 						<WorkspaceChats />
 					) : sidebarContext === "notifications" ? (
 						<WorkspaceNotifications
@@ -513,6 +667,7 @@ function WorkspaceFrame() {
 				toolsOpen={toolsOpen}
 				tools={<QuickToolsPanel />}
 				assistantOpen={assistantOpen}
+				railOpen={railOpen}
 				bottomOpen={consoleOpen}
 				bottom={<DevConsole workspaceId={workspaceId} />}
 				assistant={<AssistantPanel />}
@@ -544,18 +699,6 @@ function WorkspaceFrame() {
 						/>
 						{/* Reads the same list the bell does, so a toast is only ever a
 					    preview of a row that is already durable. */}
-						<SettingsDialog
-							workspace={workspace}
-							open={settingsOpen}
-							onOpenChange={setSettingsOpen}
-							workspaceId={workspaceId}
-							modules={context.data?.modules ?? []}
-							workspaceName={context.data?.workspace.name ?? ""}
-							organizationId={context.data?.workspace.organizationId}
-							accountUrl={clientEnv.ACCOUNT_URL}
-							environment={context.data?.workspace.environment ?? "live"}
-							apiUrl={clientEnv.API_URL}
-						/>
 						<NotificationToasts items={notifications.data?.items} />
 					</>
 				}
@@ -568,6 +711,9 @@ function WorkspaceFrame() {
 		</AssistantProvider>
 	);
 }
+
+/** Whether the rail is showing at all, as opposed to how wide it is. */
+const RAIL_OPEN_KEY = "quickengine-console-rail-open";
 
 export const Route = createFileRoute("/$workspace")({
 	/**

@@ -92,7 +92,7 @@ export const STOREFRONT_CAPABILITIES: readonly ApiCapability[] = [
 	"checkout:write",
 ];
 
-const KEY_PREFIX: Record<QuickEngineApiKeyType, string> = {
+export const KEY_PREFIX: Record<QuickEngineApiKeyType, string> = {
 	publishable: "qpk",
 	// A distinct prefix so a leaked key is identifiable on sight — in a support
 	// ticket, a log, or a public repository — without anyone having to look it up.
@@ -100,6 +100,28 @@ const KEY_PREFIX: Record<QuickEngineApiKeyType, string> = {
 	secret: "qsk",
 	scoped: "qsc",
 };
+
+/**
+ * Whether a credential is shaped like one of OUR api keys.
+ *
+ * 🔴 `Authorization: Bearer` carries two different things now. It has always
+ * carried an API key, and the desktop shell puts a SESSION token there too,
+ * because a cookie cannot cross from the system browser into the app's webview.
+ * The workspace guard treated every bearer as a key and answered
+ * `INVALID_API_KEY`, so a perfectly good session was rejected and the app could
+ * read nothing.
+ *
+ * ⚠️ A prefix test, not a "try the key and fall back on failure". Falling back
+ * would turn a genuinely expired or revoked key into a confusing
+ * `AUTHENTICATION_REQUIRED`, hiding the real answer from the one person who
+ * needs it. Every key we issue is prefixed by construction; a session token is
+ * not, so the two are told apart before either is checked.
+ */
+export function looksLikeApiKey(raw: string): boolean {
+	return Object.values(KEY_PREFIX).some((prefix) =>
+		raw.startsWith(`${prefix}_`),
+	);
+}
 
 /**
  * Where each key type is allowed to live: a browser, or a server.

@@ -41,10 +41,36 @@ export function isAllowedOrigin(origin: string | null | undefined): boolean {
 	return matchOrigin(origin, trustedOrigins, serverEnv.AUTH_COOKIE_DOMAIN);
 }
 
+/**
+ * When a social identity may attach itself to an account that already exists
+ * under the same email.
+ *
+ * 🔴 `disableImplicitLinking` was TRUE, and it blocked a legitimate case as well
+ * as the dangerous one. A user row can exist with a verified email and no
+ * credential at all — created by an invitation, a seed, or an auth setup since
+ * replaced — and such an account cannot be signed into by ANY route: there is no
+ * password to use and no provider to present. Signing in with the matching
+ * Google account failed with `account_not_linked`, and there was no path
+ * forward, because linking in Better Auth requires already being signed in.
+ *
+ * 🔑 What actually makes linking dangerous is trusting an email the provider has
+ * not verified: anyone can claim an address they do not own and inherit the
+ * account behind it. `trustedProviders` is the distinction Better Auth draws for
+ * exactly this. Google verifies the address before it will assert it, so a
+ * Google identity matching a verified email is evidence of ownership rather than
+ * a claim of it.
+ *
+ * ⚠️ GitHub is deliberately NOT here. It can expose unverified addresses on an
+ * account, so the same reasoning does not carry across, and nothing yet needs
+ * it. Add it only with the same argument made about GitHub's own guarantees.
+ */
+/* ⚠️ No `as const`. It makes `trustedProviders` a readonly tuple, which Better
+   Auth's own option type will not accept — it wants a mutable array. */
 export const accountLinkingPolicy = {
 	enabled: true,
-	disableImplicitLinking: true,
-} as const;
+	disableImplicitLinking: false,
+	trustedProviders: ["google"],
+};
 
 export const auth = betterAuth({
 	baseURL: serverEnv.BETTER_AUTH_URL,

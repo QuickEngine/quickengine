@@ -66,6 +66,10 @@ function HomePage() {
 			<DashboardBoard
 				workspaceId={workspace}
 				workspace={slug}
+				/* ⚠️ The ACCOUNT, not the workspace. Plan usage is billed once per
+				   account and shared across every workspace in it, so a usage tile
+				   asking about the workspace would be asking about nothing. */
+				organizationId={context.data?.workspace.organizationId}
 				modules={pretendFirstRun ? [] : (context.data?.modules ?? [])}
 				/* 🔴 Whether the list is EMPTY or merely UNKNOWN.
 				   `data?.modules ?? []` reads the same either way, so a failed

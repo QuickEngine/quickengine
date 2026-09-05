@@ -1,17 +1,25 @@
 import {
 	ArrowsOutCardinalIcon,
+	CardsIcon,
 	ChartPieSliceIcon,
 	CheckIcon,
 	PlusIcon,
 	SlidersHorizontalIcon,
+	TrashIcon,
 	XIcon,
 } from "@phosphor-icons/react";
-import { useRef, useState } from "react";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@quickengine/ui/components/ui/popover";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
 	BOARD_RANGES,
 	type BoardRange,
 	defaultLayout,
+	MAX_VIEWS,
 	type PlacedTile,
 	rangeDays,
 	readBoardRange,
@@ -41,9 +49,19 @@ import { BOARD_COLUMNS, TILES } from "./tiles";
  * reading are chrome nobody asked for, and one stray click rearranges something
  * you liked.
  */
+/**
+ * How close to the edge of the window a dragged card starts pulling the page.
+ *
+ * ⚠️ Generous on purpose. A narrow margin means aiming at a few pixels while
+ * already holding something, and it is also the band where the board stops
+ * rearranging, so it has to be wide enough to be entered deliberately.
+ */
+const EDGE_MARGIN = 96;
+
 export function DashboardBoard({
 	workspaceId,
 	workspace,
+	organizationId,
 	modulesKnown = true,
 	modulesError = null,
 	modules,
@@ -51,6 +69,8 @@ export function DashboardBoard({
 	workspaceId: string;
 	/** The slug, for links inside tiles. */
 	workspace: string;
+	/** The account this workspace belongs to, for the usage tiles. */
+	organizationId?: string | null;
 	/** True only when the module list actually loaded. See `firstRun`. */
 	modulesKnown?: boolean;
 	/** Why it did not load, when it did not. */
@@ -62,11 +82,93 @@ export function DashboardBoard({
 	const [dragging, setDragging] = useState<string | null>(null);
 	/** Whether the chart picker is showing. See the note on the control. */
 	const [picking, setPicking] = useState(false);
+	/** The name being typed into "save this board as". */
+	const [naming, setNaming] = useState("");
 	/** How far back every tile on this board looks. See `BOARD_RANGES`. */
 	const [range, setRange] = useState<BoardRange>(readBoardRange);
 	/** The order being previewed mid-drag, before anything is written. */
 	const [preview, setPreview] = useState<PlacedTile[] | null>(null);
 	const gridRef = useRef<HTMLDivElement>(null);
+	/**
+	 * The running edge scroll, so it can be cancelled the instant a drag ends.
+	 *
+	 * ⚠️ A ref rather than state: it changes many times a second while dragging
+	 * and nothing on screen depends on its value, so putting it in state would
+	 * re-render the whole board on every animation frame of a drag.
+	 */
+	const scrollFrame = useRef<number | null>(null);
+
+	/** The pointer's last position, so a wake-up frame can steer without an event. */
+	const pointer = useRef({ x: 0, y: 0 });
+
+	const stopScroll = useCallback(() => {
+		if (scrollFrame.current !== null) {
+			cancelAnimationFrame(scrollFrame.current);
+			scrollFrame.current = null;
+		}
+	}, []);
+
+	/**
+	 * Scroll the page while a card is held near the top or bottom edge.
+	 *
+	 * 🔴 Rewritten after the first version was "really annoying and hard to use",
+	 * and both faults were the same mistake: it only ran while the pointer MOVED.
+	 *
+	 * ⚠️ `dragover` fires only on movement, so holding still at the edge stopped
+	 * the page dead. You had to keep jiggling the mouse to keep scrolling, which
+	 * is the opposite of holding a card at the edge and waiting. The scroll is now
+	 * a loop that runs on its own once armed and steers by the last known pointer
+	 * position, so holding still scrolls steadily.
+	 *
+	 * 🔴 And every frame of that scroll re-ran the placement, so the board
+	 * reflowed continuously under a card that was only passing through: the cards
+	 * "jump and get all excited that you're placing a new card there". Scrolling
+	 * and placing are now separate intents. While the pointer is inside the
+	 * margin the board SCROLLS and the arrangement is left alone; the preview
+	 * resumes the moment the pointer comes back out of the margin, which is the
+	 * same gesture that means "here".
+	 */
+	/** How hard the page is being pulled, from -1 at the top to 1 at the bottom. */
+	const pullAt = useCallback((clientY: number) => {
+		const above = clientY - EDGE_MARGIN;
+		const below = clientY - (window.innerHeight - EDGE_MARGIN);
+		if (above < 0) return Math.max(-1, above / EDGE_MARGIN);
+		if (below > 0) return Math.min(1, below / EDGE_MARGIN);
+		return 0;
+	}, []);
+
+	const edgeScroll = useCallback(
+		(clientX: number, clientY: number) => {
+			pointer.current = { x: clientX, y: clientY };
+			if (pullAt(clientY) === 0) {
+				stopScroll();
+				return;
+			}
+			if (scrollFrame.current !== null) return;
+			const run = () => {
+				const pull = pullAt(pointer.current.y);
+				if (pull === 0) {
+					scrollFrame.current = null;
+					return;
+				}
+				/* ⚠️ Eased, not linear. `pull * pull` keeps the first few pixels of the
+				   margin gentle, so brushing the edge on the way to a card near it
+				   does not fling the page; pushing right to the edge still moves
+				   quickly. A single speed is either too slow to cross a long board or
+				   too fast to stop where you meant. */
+				const speed = Math.sign(pull) * (4 + pull * pull * 26);
+				window.scrollBy(0, speed);
+				scrollFrame.current = requestAnimationFrame(run);
+			};
+			scrollFrame.current = requestAnimationFrame(run);
+		},
+		[pullAt, stopScroll],
+	);
+
+	/* A drag can end without `onDragEnd` firing: dropping outside the window,
+	   or the component unmounting mid drag. Neither must leave the page
+	   scrolling by itself forever. */
+	useEffect(() => stopScroll, [stopScroll]);
 	const { rail } = useHeaderRail();
 	const resizing = useRef<string | null>(null);
 
@@ -253,6 +355,133 @@ export function DashboardBoard({
 			{rail && !firstRun && !loadingModules
 				? createPortal(
 						<div className="flex items-center gap-1.5">
+							{/* 🔴 OUTSIDE edit mode, like the range. Switching between saved
+						    boards is READING — "show me the fulfilment view" — not
+						    arranging, and putting it behind Edit board would mean entering
+						    a mode where cards can be dragged just to change which board
+						    you are looking at. */}
+							<Popover>
+								<PopoverTrigger
+									data-hint="Saved boards"
+									className="control-raised flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] text-[var(--ink-55)] outline-none hover:text-[var(--ink-90)]"
+								>
+									<CardsIcon size={13} />
+									{layout.view}
+								</PopoverTrigger>
+								<PopoverContent
+									align="end"
+									sideOffset={6}
+									collisionPadding={8}
+									style={{ boxShadow: "var(--lift-pop)" }}
+									className="flex w-60 flex-col gap-0.5 rounded-xl border-0 bg-[var(--console-pop)] p-1.5"
+								>
+									<p className="px-2 pt-1 pb-0.5 text-[10px] text-[var(--ink-25)] uppercase tracking-[0.08em]">
+										Saved boards
+									</p>
+									{layout.views.map((name) => (
+										<div
+											key={name}
+											className="group/view flex items-center gap-1"
+										>
+											<button
+												type="button"
+												aria-pressed={name === layout.view}
+												onClick={() => layout.open(name)}
+												className={`flex h-8 min-w-0 flex-1 items-center rounded-lg px-2 text-left text-[12px] transition-colors hover:bg-[rgb(var(--console-ink)/0.06)] ${
+													name === layout.view
+														? "text-[var(--ink-90)]"
+														: "text-[var(--ink-55)]"
+												}`}
+											>
+												<span className="min-w-0 flex-1 truncate">{name}</span>
+												{name === layout.view ? <CheckIcon size={12} /> : null}
+											</button>
+											{/* ⚠️ Never on the LAST board. Deleting your only view
+										    leaves nothing to fall back to, and the board would
+										    reseed to a default nobody asked for. */}
+											{/* 🔴 Every board is deletable, INCLUDING the last one.
+										    Deleting the last used to be forbidden on the reasoning
+										    that it leaves nothing to fall back to — but there is
+										    something: the preset, derived from the modules this
+										    workspace has. An empty board is a legitimate place to
+										    stand, it has its own screen offering every card, and
+										    refusing the delete means somebody who wants to start
+										    over cannot. */}
+											<button
+												type="button"
+												aria-label={`Delete ${name}`}
+												data-hint="Delete this board"
+												onClick={() => void layout.remove(name)}
+												className="flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--ink-25)] opacity-0 transition-opacity hover:text-[var(--signal-failure-text)] focus-visible:opacity-100 group-hover/view:opacity-100"
+											>
+												<TrashIcon size={12} />
+											</button>
+										</div>
+									))}
+									{layout.views.length < MAX_VIEWS ? (
+										<div className="mt-1 flex items-center gap-1">
+											<input
+												value={naming}
+												onChange={(event) => setNaming(event.target.value)}
+												onKeyDown={(event) => {
+													if (event.key !== "Enter") return;
+													layout.saveAs(naming);
+													setNaming("");
+												}}
+												placeholder="Save this board as…"
+												aria-label="Name for this board"
+												className="field h-7 min-w-0 flex-1 rounded-md px-2 text-[11.5px] text-[var(--ink-85)] outline-none placeholder:text-[var(--ink-25)]"
+											/>
+											<button
+												type="button"
+												disabled={!naming.trim()}
+												onClick={() => {
+													layout.saveAs(naming);
+													setNaming("");
+												}}
+												className="control-raised flex h-7 shrink-0 items-center rounded-md border px-2 text-[11px] text-[var(--ink-55)] outline-none hover:text-[var(--ink-90)] disabled:opacity-40"
+											>
+												Save
+											</button>
+										</div>
+									) : (
+										<p className="px-2 py-1 text-[10.5px] text-[var(--ink-25)] leading-[1.45]">
+											Five boards is the limit. Delete one to save another.
+										</p>
+									)}
+
+									{/*
+									 * 🔑 Two ways back, because they answer two different
+									 * questions, and neither is delete.
+									 *
+									 * 🔴 There was no way to clear a board at all: the only
+									 * route to an empty grid was deleting a saved board, which
+									 * reseeded the preset instead. Somebody who wants to build
+									 * a board from nothing had to remove twenty four cards one
+									 * at a time.
+									 */}
+									<div className="mt-1 flex flex-col gap-0.5 border-[var(--console-line)] border-t pt-1">
+										<button
+											type="button"
+											/* ⚠️ The popover stays open, deliberately: the board is
+											   behind it and you can see it clear, and the next thing
+											   somebody does after clearing is usually reset or a
+											   different board. */
+											onClick={() => layout.save([])}
+											className="rounded-md px-2 py-1.5 text-left text-[11.5px] text-[var(--ink-55)] outline-none hover:bg-[var(--surface-recess)] hover:text-[var(--ink-90)]"
+										>
+											Clear this board
+										</button>
+										<button
+											type="button"
+											onClick={() => layout.reset()}
+											className="rounded-md px-2 py-1.5 text-left text-[11.5px] text-[var(--ink-55)] outline-none hover:bg-[var(--surface-recess)] hover:text-[var(--ink-90)]"
+										>
+											Reset this board to the preset
+										</button>
+									</div>
+								</PopoverContent>
+							</Popover>
 							{/* 🔴 OUTSIDE edit mode, unlike the other two. Changing how far
 						    back the board looks is reading, not arranging: it is the
 						    question somebody asks while using the dashboard, and putting
@@ -372,7 +601,16 @@ export function DashboardBoard({
 				   shaped like nothing. */
 				<div
 					aria-busy="true"
-					className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:auto-rows-[104px] lg:grid-cols-4"
+					/* 🔴 Four columns and a fixed row height at EVERY width.
+							   The board is a placed layout, not a flow: a tile states
+							   `gridColumn: 3 / span 2`. Below `lg` the grid used to drop to
+							   two columns and lose its row height, so a tile asking for
+							   column three landed in an implicit column outside the board
+							   and every row collapsed to nothing — at half screen you saw
+							   one empty card and blank space where the rest should be.
+							   Narrower columns are fine; the tiles measure themselves and
+							   already know how to be small. */
+					className="grid auto-rows-[104px] grid-cols-4 gap-3"
 				>
 					<span className="sr-only">Loading your board…</span>
 					{[
@@ -480,6 +718,20 @@ export function DashboardBoard({
 						? (event) => {
 								if (!dragging) return;
 								event.preventDefault();
+								/* 🔑 Carry the page while you drag. A board taller than the
+								   window could only be rearranged within the part of it you
+								   could already see: to move a card up you had to drop it,
+								   scroll, and pick it up again. Nothing scrolls during a
+								   drag on its own, because the wheel is not what you are
+								   holding. */
+								edgeScroll(event.clientX, event.clientY);
+								/* 🔴 SCROLLING is not PLACING. Inside the margin the gesture
+								   means "take me further down the board", and re-running the
+								   placement on the way made every card it passed shuffle
+								   aside for a drop that was not coming. The arrangement is
+								   left exactly as it was until the pointer leaves the
+								   margin, which is the same movement that means "here". */
+								if (pullAt(event.clientY) !== 0) return;
 								const at = cellAt(event.clientX, event.clientY);
 								if (!at) return;
 								setPreview((current) =>
@@ -488,7 +740,16 @@ export function DashboardBoard({
 							}
 						: undefined
 				}
-				className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:auto-rows-[104px] lg:grid-cols-4"
+				/* 🔴 Four columns and a fixed row height at EVERY width.
+							   The board is a placed layout, not a flow: a tile states
+							   `gridColumn: 3 / span 2`. Below `lg` the grid used to drop to
+							   two columns and lose its row height, so a tile asking for
+							   column three landed in an implicit column outside the board
+							   and every row collapsed to nothing — at half screen you saw
+							   one empty card and blank space where the rest should be.
+							   Narrower columns are fine; the tiles measure themselves and
+							   already know how to be small. */
+				className="grid auto-rows-[104px] grid-cols-4 gap-3"
 			>
 				{shown.map((entry) => {
 					const tile = available.find((candidate) => candidate.id === entry.id);
@@ -510,6 +771,11 @@ export function DashboardBoard({
 									? `${entry.row} / span ${entry.rows}`
 									: `span ${entry.rows}`,
 							}}
+							/* 🔴 Edit mode is announced on the WRAPPER so the card's title
+							   can step around the grip and the remove button laid over it.
+							   Passing an `editing` prop instead would put a mode that
+							   belongs to the board into all twenty four tiles. */
+							data-editing={editing ? "true" : undefined}
 							className={`relative min-w-0 transition-opacity ${
 								dragging === entry.id ? "opacity-40" : ""
 							}`}
@@ -520,6 +786,7 @@ export function DashboardBoard({
 								event.dataTransfer.effectAllowed = "move";
 							}}
 							onDragEnd={() => {
+								stopScroll();
 								setDragging(null);
 								// The preview IS the arrangement by now — keep it.
 								setPreview((current) => {
@@ -531,6 +798,7 @@ export function DashboardBoard({
 							<tile.Render
 								workspaceId={workspaceId}
 								workspace={workspace}
+								organizationId={organizationId}
 								chart={entry.chart as ChartKind | undefined}
 								days={rangeDays(range)}
 							/>

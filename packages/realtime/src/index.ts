@@ -20,6 +20,11 @@ export const createNoopRealtimeProvider = (): RealtimeProvider => ({
 // in a server-free module so importing the browser hook cannot pull `pusher`
 // (Node crypto) into a Vite bundle.
 export {
+	CATALOG_CHANNEL_PREFIX,
+	catalogChannel,
+	isPublicCatalogEvent,
+	PUBLIC_CATALOG_EVENTS,
+	parseCatalogChannel,
 	parseWorkspaceChannel,
 	WORKSPACE_CHANNEL_PREFIX,
 	workspaceChannel,

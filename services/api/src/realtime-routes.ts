@@ -4,7 +4,11 @@ import {
 	listWorkspaceActivity,
 	listWorkspaceActivitySince,
 } from "@quickengine/db";
-import { getPusherServer, parseWorkspaceChannel } from "@quickengine/realtime";
+import {
+	catalogChannel,
+	getPusherServer,
+	parseWorkspaceChannel,
+} from "@quickengine/realtime";
 import type { Hono } from "hono";
 import { authorizeWorkspace } from "./authorize";
 import type { ApiLogger } from "./logger";
@@ -49,6 +53,49 @@ export function registerRealtimeRoutes(
 	 * channel name is parsed for its workspace id and checked against the caller's
 	 * own authorized workspace — a member of workspace A may not subscribe to B.
 	 */
+	const storefrontRead = authorizeWorkspace(options.platform, {
+		// Shares the storefront's existing capability rather than inventing one: a
+		// site that may read the catalog may be told when the catalog changed.
+		keyCapability: "catalog:read",
+		sessionCapability: "workspace.view",
+	});
+
+	/**
+	 * What a connected storefront needs to listen for catalog changes.
+	 *
+	 * 🔴 Returns the Pusher KEY, never the secret. The key is a public
+	 * identifier that every Pusher browser client ships anyway; the secret signs
+	 * subscriptions and stays on this side.
+	 *
+	 * This exists so a site does not have to carry QuickEngine's realtime
+	 * configuration as its own environment variables. It already holds a
+	 * publishable site key and a workspace id, and that is enough: the channel it
+	 * is told to listen on is derived from the workspace it just authenticated
+	 * as, so a site cannot ask for somebody else's.
+	 */
+	app.get("/v1/realtime/catalog", storefrontRead, readLimit, async (c) => {
+		const pusher = getPusherServer();
+		const key = process.env.PUSHER_KEY;
+		const cluster = process.env.PUSHER_CLUSTER;
+
+		if (!pusher || !key || !cluster) {
+			// Realtime being absent is not the caller's fault, and a storefront must
+			// keep working without it: it falls back to fetching on load, as before.
+			return respondError(
+				c,
+				"DEPENDENCY_UNAVAILABLE",
+				"Realtime is not configured.",
+				503,
+			);
+		}
+
+		return respond(c, {
+			key,
+			cluster,
+			channel: catalogChannel(c.get("authorized").workspaceId),
+		});
+	});
+
 	app.post("/v1/realtime/auth", readAccess, readLimit, async (c) => {
 		const pusher = getPusherServer();
 		if (!pusher) {

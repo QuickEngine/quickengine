@@ -2,7 +2,9 @@ import { recordActivity } from "@quickengine/db";
 import type { OutboxEvent, OutboxHandler } from "@quickengine/events";
 import { searchSubjectFor } from "@quickengine/module-registry";
 import {
+	catalogChannel,
 	getRealtimeProvider,
+	isPublicCatalogEvent,
 	type RealtimeProvider,
 	workspaceChannel,
 } from "@quickengine/realtime";
@@ -70,6 +72,39 @@ export function realtimeHandler(
 }
 
 /**
+ * Catalog fan-out on the workspace's PUBLIC channel, for connected storefronts.
+ *
+ * A storefront's visitors are strangers with no session, so they cannot
+ * authorize the private channel the console uses. This is the seam that lets a
+ * published product or a stock change reach a browser that is already sitting
+ * on the page, without putting anything private within its reach.
+ *
+ * 🔴 Deliberately a SEPARATE handler rather than a second publish inside
+ * `realtimeHandler`. Failing separately is the point: a storefront push that
+ * breaks must not stop the console's own updates, and the allowlist stays
+ * somewhere a reader can see it rather than buried in a branch.
+ *
+ * ⚠️ `isPublicCatalogEvent` fails closed. A new event name is private until
+ * somebody adds it to the allowlist in `@quickengine/realtime/channels`.
+ */
+export function storefrontRealtimeHandler(
+	provider: RealtimeProvider = getRealtimeProvider(),
+): OutboxHandler {
+	return {
+		name: "storefront-realtime",
+		async handle(event: OutboxEvent) {
+			if (!isPublicCatalogEvent(event.eventName)) return;
+
+			await provider.publish({
+				channel: catalogChannel(event.workspaceId),
+				name: event.eventName,
+				payload: { id: event.id, recordId: event.aggregateId },
+			});
+		},
+	};
+}
+
+/**
  * Keeps the search index in step with client records.
  *
  * Search is not a source of truth, so this reads current state rather than
@@ -126,6 +161,10 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 	return [
 		activityHandler(),
 		realtimeHandler(),
+		// The same push again, filtered to catalog events, on the public channel a
+		// connected storefront can actually subscribe to. Separate so a storefront
+		// failure never takes the console's updates with it.
+		storefrontRealtimeHandler(),
 		searchHandler(),
 		// Transactional mail to the workspace's own customers. Sits before webhook
 		// fan-out because a receipt matters more than a third-party integration,

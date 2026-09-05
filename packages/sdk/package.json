@@ -1,6 +1,6 @@
 {
 	"name": "@quickengine/quick",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Quick.js TypeScript client for QuickEngine and QuickDash",
 	"repository": {
 		"type": "git",
@@ -61,5 +61,13 @@
 		"api"
 	],
 	"license": "UNLICENSED",
-	"author": "QuickEngine Software"
+	"author": "QuickEngine Software",
+	"peerDependencies": {
+		"pusher-js": ">=8"
+	},
+	"peerDependenciesMeta": {
+		"pusher-js": {
+			"optional": true
+		}
+	}
 }

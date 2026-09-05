@@ -197,6 +197,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **Signing in to the desktop app works against the live site.** It failed before your browser even
+  opened, because of a setting that was missing in production and had to be set to a value the
+  server already knew.
+
 - **The board works in a narrow window.** It only laid itself out properly above 1024 pixels, so
   tiling the desktop app to half the screen showed one empty card and blank space where the rest of
   your board should be.

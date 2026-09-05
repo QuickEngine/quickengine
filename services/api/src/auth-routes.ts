@@ -256,7 +256,25 @@ export function registerAuthRoutes(app: Hono<PlatformEnv>) {
  * `callbackURL` built from anything else fails the trusted-origin check.
  */
 function authOrigin(): string {
-	const configured = process.env.QUICKENGINE_AUTH_URL;
-	if (!configured) throw new Error("QUICKENGINE_AUTH_URL is not set");
+	/**
+	 * 🔴 Falls back to `BETTER_AUTH_URL`, which is the SAME ORIGIN by definition.
+	 *
+	 * Better Auth is configured against that URL and every OAuth redirect URI
+	 * registered with Google and GitHub points at it, so the two cannot disagree
+	 * without sign-in already being broken for everyone. Requiring a second
+	 * variable that has to be set to the same value is not extra safety, it is an
+	 * extra thing to forget.
+	 *
+	 * ⚠️ And it WAS forgotten. `QUICKENGINE_AUTH_URL` was absent from production
+	 * while `BETTER_AUTH_URL` was set correctly, so this threw, the caller caught
+	 * it, and the desktop app was sent `quickdash://auth?error=start_failed`
+	 * before the browser had even shown a Google page. Nothing else on the
+	 * deployment was wrong.
+	 */
+	const configured =
+		process.env.QUICKENGINE_AUTH_URL ?? process.env.BETTER_AUTH_URL;
+	if (!configured) {
+		throw new Error("Neither QUICKENGINE_AUTH_URL nor BETTER_AUTH_URL is set");
+	}
 	return new URL(configured).origin;
 }

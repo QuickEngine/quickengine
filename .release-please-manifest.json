@@ -1,5 +1,5 @@
 {
-	"packages/sdk": "0.2.0",
+	"packages/sdk": "0.2.1",
 	"packages/cli": "0.1.0",
 	"packages/modules/bookings": "0.1.0",
 	"packages/modules/client-records": "0.1.0",

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { subscribeToCatalog } from "./catalog-realtime";
-import type { QuickClient } from "./client";
+import { QuickClient } from "./client";
 
 /**
  * A storefront must survive realtime being absent.
@@ -63,5 +63,35 @@ describe("subscribeToCatalog", () => {
 		await expect(
 			subscribeToCatalog(clientRejecting(), { onChange: vi.fn() }),
 		).resolves.toBeInstanceOf(Function);
+	});
+
+	it("asks the API for the path the API actually serves", async () => {
+		/**
+		 * 🔴 The regression guard for the bug that made 0.2.0 useless. Every other
+		 * test here mocked `client.request`, so nothing ever exercised how the URL
+		 * is built, and a path written as `/v1/realtime/catalog` quietly became
+		 * `/v1/v1/realtime/catalog`. It 404d, this function reported "unavailable",
+		 * and the storefront degraded exactly as it would if realtime were off.
+		 *
+		 * Drives a REAL client with a fake fetch, because the defect lived in the
+		 * seam a mocked client hides.
+		 */
+		const seen: string[] = [];
+		const client = new QuickClient({
+			baseUrl: "https://api.example.com",
+			workspaceId: "11111111-1111-4111-8111-111111111111",
+			credential: { type: "site", key: "qsf_test" },
+			fetcher: async (input: RequestInfo | URL) => {
+				seen.push(String(input));
+				return new Response(JSON.stringify({ error: { code: "NOPE" } }), {
+					status: 503,
+					headers: { "content-type": "application/json" },
+				});
+			},
+		});
+
+		await subscribeToCatalog(client, { onChange: vi.fn() });
+
+		expect(seen).toEqual(["https://api.example.com/v1/realtime/catalog"]);
 	});
 });

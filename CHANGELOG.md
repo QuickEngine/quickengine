@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Fixed: live catalog updates never actually started.** The shop asked the API for a page that
+  does not exist, took the answer to mean live updates were switched off, and quietly carried on
+  refreshing only when somebody reloaded. It looked exactly like a working page. Quick.js 0.2.1
+  fixes it, and a test now checks the address it asks for rather than trusting it.
+
 - **Your shop updates itself.** Publish a product or change stock in QuickDash and any storefront
   someone is already looking at shows it about a second later, without them reloading. Connected
   sites subscribe through Quick.js `0.2.0` with a few lines, so this is available to every site you

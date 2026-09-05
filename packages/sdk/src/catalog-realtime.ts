@@ -86,9 +86,16 @@ export async function subscribeToCatalog(
 
 	let config: CatalogRealtimeConfig;
 	try {
-		const response = await client.request<CatalogRealtimeConfig>(
-			"/v1/realtime/catalog",
-		);
+		/**
+		 * 🔴 No `/v1` here. The client prepends its own API version, so a path
+		 * written with one becomes `/v1/v1/realtime/catalog`, 404s, and this
+		 * function reports "unavailable" as though realtime were simply switched
+		 * off. That shipped in 0.2.0 and cost an evening: every other link in the
+		 * chain was verified working, because the fault was one segment long and
+		 * degraded quietly by design.
+		 */
+		const response =
+			await client.request<CatalogRealtimeConfig>("/realtime/catalog");
 		config = response.data;
 	} catch {
 		// 503 when realtime has no provider configured, 403 when the key may not

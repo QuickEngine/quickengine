@@ -4,6 +4,7 @@ import {
 	SidebarSimpleIcon,
 } from "@phosphor-icons/react";
 import { authClient } from "@quickengine/auth/client";
+import { useWorkspaceRealtime } from "@quickengine/realtime/client";
 import {
 	ConsoleAssistant,
 	ConsoleBell,
@@ -240,6 +241,39 @@ function WorkspaceFrame() {
 	}, []);
 	/* The button only exists in the desktop app. See the note on it. */
 	const shell = isNativeShell();
+
+	/**
+	 * 🔴 The console LISTENS. Everything else was already built.
+	 *
+	 * `realtimeHandler` has been in `defaultOutboxHandlers` all along, so every
+	 * domain event has been published to this workspace's private channel since
+	 * the outbox existed. `useWorkspaceRealtime` was written, tested and never
+	 * called. The console simply asked again every sixty seconds instead, which
+	 * is why an order took a minute to appear after the email had already
+	 * arrived.
+	 *
+	 * ⚠️ It invalidates rather than applying the payload, and that is the design:
+	 * the event carries identity only, never customer data, so the channel can
+	 * stay a notification instead of becoming a second copy of the API that can
+	 * disagree with the first. React Query refetches only what is mounted, so a
+	 * burst of events on a page showing none of it costs nothing.
+	 *
+	 * ⚠️ `onReconnect` matters as much as `onEvent`. Pusher does not replay what
+	 * happened while the socket was down, so without this a laptop coming out of
+	 * sleep would show stale data until something unrelated triggered a refetch.
+	 */
+	useWorkspaceRealtime(workspaceId, {
+		onEvent: () => {
+			void queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspaceId],
+			});
+		},
+		onReconnect: () => {
+			void queryClient.invalidateQueries({
+				queryKey: ["quickdash", workspaceId],
+			});
+		},
+	});
 
 	const settingsPath = useRouterState({
 		select: (state) => state.location.pathname,

@@ -8,6 +8,19 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The console keeps up on its own.** Orders, customers, products and stock now appear as they
+  happen, in every open tab and on the desktop app, instead of on a timer. Place an order on a shop
+  and the console has it in about a second, so two people working the same workspace see the same
+  thing without anybody reloading. Reconnecting after the network drops catches you up on what you
+  missed.
+
+- **Live updates were switched on but not reaching anyone.** The console was reading a Pusher key
+  under a name it stopped using when it moved off Next.js, finding nothing, and quietly falling back
+  to checking every sixty seconds. Nothing reported this: realtime was configured, deployed and off.
+  The build now accepts either name, the same way it already did for error reporting, so no
+  production settings need changing. Live tests against real Pusher run when credentials are present
+  and skip cleanly when they are not.
+
 - **QuickDash on your desktop.** A real Mac app: sign in through your browser, and your workspaces,
   orders and customers are all there. The window's own buttons sit in the header rather than on top
   of it, you can drag the app by its header, and it snaps to half or a quarter of the screen like

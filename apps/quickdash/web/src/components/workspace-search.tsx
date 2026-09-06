@@ -7,7 +7,9 @@ import {
 	CreditCardIcon,
 	FilesIcon,
 	FileTextIcon,
+	GearSixIcon,
 	HouseIcon,
+	ImagesIcon,
 	InvoiceIcon,
 	PackageIcon,
 	PenNibIcon,
@@ -31,6 +33,7 @@ import { useEffect, useState } from "react";
 import { workspaceApi } from "../lib/api";
 import type { QuickDashModule, QuickDashSearchHit } from "../lib/quickdash-api";
 import { ModuleIcon } from "./module-icon";
+import { settingsGroups } from "./settings/settings-nav";
 
 /**
  * Search, scoped to one workspace.
@@ -218,13 +221,76 @@ export function WorkspaceSearch({
 						value="Connect developers API keys webhooks"
 						onSelect={() => {
 							close();
-							void navigate({ to: `/${workspaceId}/connect` });
+							void navigate({ to: `/${workspace}/connect` });
 						}}
 						className={item}
 					>
 						<PlugsIcon size={15} className="text-[var(--ink-35)]" />
 						<p className="min-w-0 flex-1 truncate text-[12px]">Developers</p>
 					</CommandItem>
+					<CommandItem
+						value="Media images files uploads"
+						onSelect={() => {
+							close();
+							void navigate({ to: `/${workspace}/media` });
+						}}
+						className={item}
+					>
+						<ImagesIcon size={15} className="text-[var(--ink-35)]" />
+						<p className="min-w-0 flex-1 truncate text-[12px]">Media</p>
+					</CommandItem>
+					<CommandItem
+						value="Activity audit log history"
+						onSelect={() => {
+							close();
+							void navigate({ to: `/${workspace}/audit` });
+						}}
+						className={item}
+					>
+						<ClockIcon size={15} className="text-[var(--ink-35)]" />
+						<p className="min-w-0 flex-1 truncate text-[12px]">Activity</p>
+					</CommandItem>
+				</CommandGroup>
+
+				{/*
+				 * 🔴 Every settings section, reachable from the console's ONE search.
+				 *
+				 * The settings rail used to carry a search box of its own, which meant
+				 * "tax" was only findable by somebody who already knew it lived in
+				 * settings and had gone there to look. The placeholder on this box has
+				 * always claimed it searched settings; now it does.
+				 *
+				 * ⚠️ Matched on label, blurb AND keywords, the same three fields the
+				 * rail matched on, so "dark" still finds Appearance and "tax" still
+				 * finds Orders even though neither says the word in its title.
+				 */}
+				<CommandGroup heading="Settings" className={groupHeading}>
+					{settingsGroups(modules).flatMap(({ group, items }) =>
+						items.map((section) => (
+							<CommandItem
+								key={section.id}
+								value={`settings ${group} ${section.label} ${section.blurb} ${section.keywords ?? ""}`}
+								onSelect={() => {
+									close();
+									void navigate({
+										to: "/$workspace/settings/$section",
+										params: { workspace, section: section.id },
+									});
+								}}
+								className={item}
+							>
+								<GearSixIcon size={15} className="text-[var(--ink-35)]" />
+								<p className="min-w-0 flex-1 truncate text-[12px]">
+									{section.label}
+								</p>
+								{/* The group, so "General" in Workspace is not confused with
+								    a module's own general section. */}
+								<span className="shrink-0 text-[10.5px] text-[var(--ink-25)]">
+									{group}
+								</span>
+							</CommandItem>
+						)),
+					)}
 				</CommandGroup>
 
 				<CommandGroup heading="Modules" className={groupHeading}>
@@ -234,7 +300,7 @@ export function WorkspaceSearch({
 							value={`${module.name} ${module.description}`}
 							onSelect={() => {
 								close();
-								void navigate({ to: `/${workspaceId}/${module.id}` });
+								void navigate({ to: `/${workspace}/${module.id}` });
 							}}
 							className={item}
 						>

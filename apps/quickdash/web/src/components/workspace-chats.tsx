@@ -40,8 +40,7 @@ export function WorkspaceChats() {
 
 			{conversations.length === 0 ? (
 				<p className="px-3 py-1 text-[11.5px] text-[var(--ink-30)] leading-[1.5]">
-					Nothing saved yet. Ask QuickAssist something and the conversation is
-					kept here.
+					Nothing saved yet. Ask something and the conversation is kept here.
 				</p>
 			) : (
 				/* `fade-ends`, the same treatment the navigation got, so a long list

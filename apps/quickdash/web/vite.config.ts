@@ -15,12 +15,43 @@ export default defineConfig(({ mode }) => {
 	const sentryAuthToken =
 		process.env.SENTRY_AUTH_TOKEN ?? buildEnv.SENTRY_AUTH_TOKEN;
 
+	/**
+	 * 🔴 Production carries these under their `NEXT_PUBLIC_` names and has done
+	 * since before this console was a Vite app. Vite exposes only `VITE_`, so the
+	 * browser read `undefined`, `useWorkspaceRealtime` returned before
+	 * subscribing, and the console silently fell back to polling. Realtime was
+	 * built, deployed, and off, with nothing anywhere saying so.
+	 *
+	 * ⚠️ Both of these are public by contract: the Pusher KEY and the Stripe
+	 * PUBLISHABLE key are meant to reach the browser. The Pusher secret is
+	 * server-side and is not read here. Same fix already applied to the Sentry DSN
+	 * above, which is why that one works in production and these did not.
+	 */
+	const fromEither = (viteName: string, nextName: string) =>
+		process.env[viteName] ??
+		buildEnv[viteName] ??
+		process.env[nextName] ??
+		buildEnv[nextName];
+	const pusherKey = fromEither("VITE_PUSHER_KEY", "NEXT_PUBLIC_PUSHER_KEY");
+	const pusherCluster = fromEither(
+		"VITE_PUSHER_CLUSTER",
+		"NEXT_PUBLIC_PUSHER_CLUSTER",
+	);
+	const stripePublishableKey = fromEither(
+		"VITE_STRIPE_PUBLISHABLE_KEY",
+		"NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+	);
+
 	return {
 		// All apps share the repository-root `.env.local`; Vite only exposes keys
 		// carrying its `VITE_` prefix to browser code.
 		envDir,
 		define: {
 			"import.meta.env.VITE_SENTRY_DSN": JSON.stringify(sentryDsn),
+			"import.meta.env.VITE_PUSHER_KEY": JSON.stringify(pusherKey),
+			"import.meta.env.VITE_PUSHER_CLUSTER": JSON.stringify(pusherCluster),
+			"import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY":
+				JSON.stringify(stripePublishableKey),
 		},
 		plugins: [
 			tanstackRouter({ target: "react", autoCodeSplitting: true }),

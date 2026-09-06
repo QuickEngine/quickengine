@@ -21,6 +21,7 @@ export {
 	ConsoleShell,
 	ConsoleTerminal,
 	ConsoleTheme,
+	ConsoleThemePanel,
 	ConsoleTools,
 	SidebarAccount,
 	SidebarBadge,

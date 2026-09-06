@@ -1,10 +1,5 @@
 import { resolveSession } from "@quickengine/auth/session";
-import {
-	HintLayer,
-	MobileNotice,
-	presentRequestError,
-	ThemeProvider,
-} from "@quickengine/ui";
+import { HintLayer, presentRequestError, ThemeProvider } from "@quickengine/ui";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
@@ -127,10 +122,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 				<ThemeProvider>
 					<ToastProvider>
 						<Outlet />
-						{/* Every surface was designed at desktop width first, and the small
-				    screen passes have not been done. Saying so is the difference
-				    between a product under construction and one that looks broken. */}
-						<MobileNotice />
+						{/*
+						 * 🔴 GONE from the console, and only from the console.
+						 *
+						 * It said "QuickDash needs a bigger screen" under 1024px, which was
+						 * honest while the console was a website. In the desktop app it is
+						 * a wall: half of a 1512pt display is 756, so snapping the window
+						 * to one side of the screen — the ordinary thing anybody does with
+						 * a desktop app — replaced the entire product with a notice
+						 * telling them to use a desktop.
+						 *
+						 * ⚠️ Still mounted on the marketing site and the customer portal.
+						 * Those are pages a stranger opens on a phone, and it is the right
+						 * answer there until the small screen passes are done.
+						 */}
 						{/* Upgrades every `title` in the product. See `HintLayer`. */}
 						<HintLayer />
 					</ToastProvider>

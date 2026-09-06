@@ -64,7 +64,7 @@ const dependencies: PlatformDependencies = {
 	getWorkspaceForUser: async () => null,
 	getWorkspaceForKey: async (id) => workspaceFor(id),
 	verifyApiKey: async (raw) =>
-		raw === "sk_refund_order"
+		raw === "qsk_refund_order"
 			? {
 					allowedOrigins: [],
 					capabilities: ["payments:write", "payments:read"],
@@ -85,7 +85,7 @@ async function refundRequest(headers: Record<string, string>) {
 	return app.request(`/v1/payments/${PAYMENT}/refund`, {
 		method: "POST",
 		headers: {
-			Authorization: "Bearer sk_refund_order",
+			Authorization: "Bearer qsk_refund_order",
 			"QuickEngine-Workspace": WORKSPACE,
 			"content-type": "application/json",
 			...headers,

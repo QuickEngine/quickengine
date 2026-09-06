@@ -117,7 +117,13 @@ describe("authorizeWorkspace", () => {
 	it("rejects invalid keys, wrong channels, and missing key capabilities", async () => {
 		const invalid = await testApp(
 			dependencies({ verifyApiKey: async () => null }),
-		).request("/protected", { headers: { Authorization: "Bearer invalid" } });
+			/* ⚠️ Prefixed, because that is now what makes a bearer an API KEY.
+		   An unprefixed bearer is a SESSION token — the desktop shell sends one,
+		   since a cookie cannot cross from the browser into its webview — and it
+		   is answered by the session path, not by "your key is invalid". */
+		).request("/protected", {
+			headers: { Authorization: "Bearer qsk_invalid" },
+		});
 		const wrongChannel = await testApp(dependencies()).request("/protected", {
 			headers: { "QuickEngine-Publishable-Key": "qsk_valid" },
 		});

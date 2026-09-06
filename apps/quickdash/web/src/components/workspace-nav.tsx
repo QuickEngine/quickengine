@@ -245,6 +245,21 @@ const rowBase =
 const row = `${rowBase} w-full`;
 const idle =
 	"text-[var(--ink-42)] hover:bg-[rgb(var(--console-ink)/0.055)] hover:text-[var(--ink-85)]";
+
+/**
+ * The nav's own row shape, exported so another sidebar CONTEXT can sit exactly
+ * where this one does.
+ *
+ * 🔴 Settings replaces this list, and its first row has to land on the same
+ * pixel as Home: two sidebars that swap under you while their first item moves
+ * makes the whole panel appear to jump. Copying the class string would have
+ * worked today and drifted the first time either changed, which is the same
+ * failure as any other duplicated constant.
+ */
+export const NAV_ROW = row;
+export const NAV_IDLE = idle;
+/** The padding around the first group, so the row above starts in line. */
+export const NAV_GROUP = "flex flex-col gap-1 px-2 pb-1";
 const active = "bg-[rgb(var(--console-ink)/0.07)] text-[var(--ink-90)]";
 
 function SectionLabel({ children }: { children: string }) {

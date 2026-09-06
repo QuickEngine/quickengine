@@ -1,5 +1,5 @@
 import { API_HEADERS } from "@quickengine/api-contracts/headers";
-import { isBrowserKeyType } from "@quickengine/auth/api-keys";
+import { isBrowserKeyType, looksLikeApiKey } from "@quickengine/auth/api-keys";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type {
@@ -110,14 +110,32 @@ export function authorizeWorkspace(
 	return createMiddleware<PlatformEnv>(async (c, next) => {
 		const bearer = readBearer(c.req.raw.headers);
 		const publishable = c.req.header(API_HEADERS.publishableKey)?.trim();
-		const rawKey = bearer ?? publishable;
+		/**
+		 * 🔴 A bearer is only an API KEY if it is shaped like one.
+		 *
+		 * That header carries two different credentials. It has always carried an
+		 * API key, and the desktop shell puts a SESSION token there as well,
+		 * because a cookie cannot cross from the system browser into the app's own
+		 * webview — the whole reason the native handoff exists. This guard treated
+		 * every bearer as a key and answered `INVALID_API_KEY`, so the desktop app
+		 * authenticated successfully and could then read nothing: the workspace
+		 * switcher had no name, no modules resolved, and every board said to sign
+		 * in again.
+		 *
+		 * ⚠️ Told apart by prefix BEFORE either is checked, rather than trying the
+		 * key and falling back when it fails. A fallback would turn a genuinely
+		 * expired or revoked key into `AUTHENTICATION_REQUIRED` and hide the real
+		 * answer from the only person who needs it.
+		 */
+		const keyBearer = bearer && looksLikeApiKey(bearer) ? bearer : null;
+		const rawKey = keyBearer ?? publishable;
 		if (rawKey) {
 			const rejection = await resolveKey(
 				c,
 				dependencies,
 				requirement,
 				rawKey,
-				bearer ? "bearer" : "publishable",
+				keyBearer ? "bearer" : "publishable",
 			);
 			if (rejection) return rejection;
 			// Usage is charged to the account, so it can only be checked once the

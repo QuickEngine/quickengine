@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BAND_GAP, bandFit, HEAT_GAP, statFit } from "../lib/tile-fit";
 import { useMeasure } from "./charts";
 
 /**
@@ -58,7 +59,17 @@ export function Card({
 			{title || action ? (
 				<div className="mb-3 flex min-w-0 items-center justify-between gap-3">
 					{title ? (
-						<p className="min-w-0 truncate text-[12px] text-[var(--ink-45)]">
+						/* 🔴 `data-card-title`, so edit mode can indent it.
+						   The board lays a drag grip and a remove button OVER the tile,
+						   both 24px squares in the top corners, and they sat straight on
+						   top of this line: "Seats" read as "ats" on every card while
+						   editing. The tile knows nothing about the mode, so the board
+						   reaches this one element by attribute rather than every tile
+						   taking an `editing` prop. */
+						<p
+							data-card-title=""
+							className="min-w-0 truncate text-[12px] text-[var(--ink-45)]"
+						>
 							{title}
 						</p>
 					) : (
@@ -88,21 +99,68 @@ export function Stat({
 	label?: string;
 	sub?: string;
 }) {
+	/**
+	 * 🔴 MEASURED, like the charts beside it, and this was the most visible gap
+	 * on the whole board.
+	 *
+	 * The figure was a fixed 24px however large the card, so resizing a count
+	 * card to four times the area produced the same small number in the corner of
+	 * a much bigger empty rectangle. It is the most common tile there is, so
+	 * "these do not scale" was mostly this one component.
+	 *
+	 * The arithmetic is in `statFit`, tested against every size the board can
+	 * produce, because the cards are freely resizable and a fit that is only
+	 * right at the default size is not a fit.
+	 */
+	const box = useMeasure<HTMLDivElement>();
+	const fit = statFit(box.width, box.height, value.length, {
+		label: Boolean(label),
+		sub: Boolean(sub),
+	});
 	return (
-		<div className="min-w-0">
-			{label ? (
-				<p className="mb-1 truncate text-[11.5px] text-[var(--ink-35)]">
-					{label}
+		/*
+		 * 🔴 The measured box and the content it sizes are DIFFERENT elements, and
+		 * that separation is the whole point.
+		 *
+		 * Measuring the same box the text lives in is a loop with a delay in it:
+		 * the size decides the font, the font changes the box, the observer fires,
+		 * and the number flickers between two sizes forever. It survived review
+		 * because a `flex-1` child looks like it has a height of its own — until a
+		 * fractional layout, a zoomed webview, or one line of text appearing or
+		 * disappearing nudges it by half a pixel.
+		 *
+		 * The outer element takes its size purely from the flex row it sits in.
+		 * The inner one is absolutely positioned inside it, so nothing it contains
+		 * can ever change what was measured.
+		 */
+		<div ref={box.ref} className="relative min-h-0 min-w-0 flex-1">
+			<div className="absolute inset-0 flex flex-col justify-center overflow-hidden">
+				{/* ⚠️ `fit.label`, not `label`. A card too short for the caption keeps the
+			    NUMBER, which is the thing you glanced at, and drops the caption. The
+			    fit decides that, because only the fit knows what fits. */}
+				{label && fit.label ? (
+					<p
+						className="truncate text-[var(--ink-35)]"
+						style={{ fontSize: fit.note, marginBottom: fit.gap }}
+					>
+						{label}
+					</p>
+				) : null}
+				<p
+					className="truncate text-[var(--ink-90)] leading-none tabular-nums"
+					style={{ fontSize: fit.value }}
+				>
+					{value}
 				</p>
-			) : null}
-			<p className="truncate text-[24px] text-[var(--ink-90)] leading-none tabular-nums">
-				{value}
-			</p>
-			{sub ? (
-				<p className="mt-1.5 truncate text-[11.5px] text-[var(--ink-35)]">
-					{sub}
-				</p>
-			) : null}
+				{sub && fit.sub ? (
+					<p
+						className="truncate text-[var(--ink-35)]"
+						style={{ fontSize: fit.note, marginTop: fit.gap }}
+					>
+						{sub}
+					</p>
+				) : null}
+			</div>
 		</div>
 	);
 }
@@ -143,9 +201,6 @@ export function Stat({
  * value off a colour, which nobody can do; five steps say "none, quiet, normal,
  * busy, busiest" and that is all anybody takes from a heatmap anyway.
  */
-/** Names the padding cells before the first day, so they need no index key. */
-const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-
 export function Heatmap({
 	days,
 	/**
@@ -214,36 +269,61 @@ export function Heatmap({
 	 * range is — but a single week at 90px a cell would be a chessboard, so
 	 * there is a ceiling as well as a floor.
 	 */
-	const gap = 3;
 	/**
-	 * 🔴 The cell is sized by HEIGHT, and the width is allowed to overflow.
+	 * 🔴 The year WRAPS into bands, and that is what finally made it scale.
 	 *
-	 * A year is 53 columns by 7 rows, a fixed 7.6:1 shape. Fitting all of it
-	 * inside the card meant the cell could never be larger than a card-width
-	 * divided by 53 — so a tall card got a small strip of squares with a third of
-	 * itself empty underneath, which is what "shouldn't it scale up" is asking
-	 * about. It cannot scale up AND stay inside; those are different charts.
+	 * A year is 53 columns by 7 rows: a fixed 7.6 to 1 shape. Any tile that is
+	 * not that shape strands space in one direction, and both previous attempts
+	 * picked which direction to strand it in. Fitting the whole year meant a wide
+	 * card of tiny squares with a third of itself empty underneath. Sizing by
+	 * height and scrolling sideways meant a tall card showed two months.
 	 *
-	 * So it takes the height it is given and scrolls sideways, exactly as the
-	 * previous QuickDash did and as a contribution graph does on a phone. The
-	 * ceiling is high enough for a tall card and the floor keeps a small one
-	 * legible.
+	 * ⚠️ The code also contradicted its own comment: `min(byHeight, MAX_CELL,
+	 * max(byWidth, 8))` uses width as a CEILING while the comment beside it said
+	 * floor, so a tall narrow card was pinned to 8px cells however much room it
+	 * had. That is the "why doesn't it scale" everybody could see.
+	 *
+	 * So the year is allowed to run onto a second or third band, the way a
+	 * paragraph runs onto another line. Every candidate band count is measured
+	 * and the one giving the largest cell wins, which fills a square tile, a wide
+	 * strip and a tall column with the same code and no special cases.
 	 */
-	const MAX_CELL = 34;
 	const legend = 16;
 	// The key is dropped before the grid is: a heatmap with no scale still says
 	// where the busy days are, a scale with no heatmap says nothing.
 	const room = height - (height >= 96 ? legend : 0);
-	const byHeight = (room - gap * 6) / 7;
-	// ⚠️ Width is a FLOOR, not a ceiling: it keeps the whole year visible when
-	// the card is wide enough, and is ignored when it is not.
-	const byWidth = (width - gap * (columns - 1)) / columns;
-	const cell = Math.floor(
-		Math.max(3, Math.min(byHeight, MAX_CELL, Math.max(byWidth, 8))),
-	);
-	// Under three pixels a cell is not a square, it is a dot, and seven rows of
-	// dots is noise. The card's own number carries the tile instead.
+
+	/* The wrapping itself lives in `tile-fit`, tested against every card size the
+	   board can produce, beside the ring and the figure that had the same
+	   problem. See the note there. */
+	const { bands, cell } = bandFit(width, room, columns);
+	const perBand = Math.ceil(columns / bands);
+
+	/**
+	 * Under three pixels a cell is not a square, it is a dot, and seven rows of
+	 * dots is noise.
+	 *
+	 * 🔴 It used to render NOTHING at that size: an empty card, which reads as
+	 * broken rather than as small. Cutting detail out of a tile too small to hold
+	 * it is right; leaving the tile blank is not. It falls back to the one number
+	 * the chart is about, and the grid returns the moment the card can hold it.
+	 */
 	const drawable = width > 0 && cell >= 3;
+	const sum = cells.reduce((count, day) => count + day.value, 0);
+
+	/**
+	 * The padded run of squares, lead blanks included, cut into bands.
+	 *
+	 * ⚠️ Cut by COLUMN, not by cell count, so every band starts on the same
+	 * weekday and a row still reads straight across as "Tuesdays".
+	 */
+	const padded: Array<{ date: string; value: number } | null> = [
+		...Array.from({ length: lead }, () => null),
+		...cells,
+	];
+	const rows = Array.from({ length: bands }, (_, band) =>
+		padded.slice(band * perBand * 7, (band + 1) * perBand * 7),
+	);
 
 	/**
 	 * 🔴 ONE scale, and zero is the bottom of it.
@@ -278,40 +358,46 @@ export function Heatmap({
 		>
 			{drawable ? (
 				<>
-					{/* Scrolls sideways when a year is wider than the card, with the
-					    scrollbar hidden and touch momentum on, the same treatment the
-					    series charts use. */}
-					<div className="min-w-0 overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-						<div
-							className="grid w-max grid-flow-col"
-							style={{
-								gap,
-								gridTemplateRows: `repeat(7, ${cell}px)`,
-								gridAutoColumns: `${cell}px`,
-							}}
-						>
-							{/* ⚠️ Keyed by the WEEKDAY these blanks stand for, not by index:
-						    the count changes with the first day of the range, and an index
-						    key makes React reuse the wrong cell when the range moves. */}
-							{WEEKDAYS.slice(0, lead).map((weekday) => (
-								<span key={`lead-${weekday}`} aria-hidden="true" />
-							))}
-							{cells.map((day) => (
-								<span
-									key={day.date}
-									data-hint={`${new Date(day.date).toLocaleDateString(
-										undefined,
-										{
-											weekday: "short",
-											month: "short",
-											day: "numeric",
-										},
-									)}: ${day.value.toLocaleString()}`}
-									className="rounded-[2px]"
-									style={{ background: shade(day.value) }}
-								/>
-							))}
-						</div>
+					<div
+						className="flex min-w-0 flex-col items-center"
+						style={{ gap: BAND_GAP }}
+					>
+						{rows.map((band, index) => (
+							<div
+								// biome-ignore lint/suspicious/noArrayIndexKey: bands are positional slices of one fixed run, never reordered
+								key={index}
+								className="grid grid-flow-col"
+								style={{
+									gap: HEAT_GAP,
+									gridTemplateRows: `repeat(7, ${cell}px)`,
+									gridAutoColumns: `${cell}px`,
+								}}
+							>
+								{band.map((day, slot) =>
+									day === null ? (
+										<span
+											// biome-ignore lint/suspicious/noArrayIndexKey: a blank has no identity beyond its slot
+											key={`blank-${index}-${slot}`}
+											aria-hidden="true"
+										/>
+									) : (
+										<span
+											key={day.date}
+											data-hint={`${new Date(day.date).toLocaleDateString(
+												undefined,
+												{
+													weekday: "short",
+													month: "short",
+													day: "numeric",
+												},
+											)}: ${day.value.toLocaleString()}`}
+											className="rounded-[2px]"
+											style={{ background: shade(day.value) }}
+										/>
+									),
+								)}
+							</div>
+						))}
 					</div>
 					{height >= 96 ? (
 						<div className="flex items-center gap-1.5">
@@ -333,7 +419,9 @@ export function Heatmap({
 						</div>
 					) : null}
 				</>
-			) : null}
+			) : (
+				<Stat value={sum.toLocaleString()} sub="in the last year" />
+			)}
 		</div>
 	);
 }

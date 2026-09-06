@@ -570,3 +570,144 @@ body,
 		transparent 72%
 	);
 }
+
+/*
+ * A card's title, while the board is being edited.
+ *
+ * 🔴 The board lays a drag grip and a remove button OVER each tile, both 24px
+ * squares 8px in from the corners, so they land exactly on the title line: every
+ * card read as "ats" instead of "Seats" the moment you pressed Edit. The tile
+ * knows nothing about the mode, so the indent is applied by attribute rather
+ * than by threading an `editing` prop through twenty four components.
+ *
+ * ⚠️ Both sides. The grip is on the left and the remove button on the right, and
+ * a title long enough to truncate ran under the second one.
+ */
+[data-editing="true"] [data-card-title] {
+	padding-left: 22px;
+	padding-right: 22px;
+}
+
+/*
+ * Room for the window's own buttons, inside the desktop shell.
+ *
+ * 🔴 The whole console is inset, rather than one element being indented.
+ *
+ * The first attempt padded the header's left group past the traffic lights, and
+ * it looked exactly as bad as it sounds: the workspace switcher was shoved
+ * sideways into a stub while the rest of the row stayed put, so the header read
+ * as broken rather than as making room. Every app that solves this properly —
+ * Claude's own desktop app included — gives the window controls a BAND of their
+ * own and starts the interface underneath it.
+ *
+ * So the console's frame drops below them. The header card, the sidebar and the
+ * outlet all keep the exact proportions they have in a browser; the traffic
+ * lights sit in the app's own ground above them, which reads as deliberate
+ * because it is.
+ *
+ * ⚠️ macOS only, and that is not an oversight. Windows and Linux draw their
+ * controls at the top RIGHT and do not overlay the page at all, so there is
+ * nothing to make room for: an inset there would be a band of empty space with
+ * no cause. `markNativeShell` sets the platform, and this rule claims the one
+ * platform that needs it. If the Windows build ever goes frameless, it gets its
+ * own rule and its own reasoning rather than inheriting this one.
+ */
+:root[data-shell="macos"] [data-console-header] {
+	/* Thinner than in a browser. The desktop header doubles as the title bar,
+	   and a title bar the height of a web header reads as a web page wearing one
+	   rather than as the app's own chrome.
+	   🔴 Changing this MOVES THE TRAFFIC LIGHTS, which are placed in window
+	   points by `trafficLightPosition` and know nothing about CSS. At 48px the
+	   value that centres them is y 29.
+	   ⚠️ MEASURED, not derived. Arithmetic from the frame padding and the zoom
+	   predicts 21 and is wrong by eight: macOS does not measure that position
+	   from where the documentation implies. It was settled by decoding a
+	   screenshot — the card runs from device row 31 to 117, so its middle is 74,
+	   and the red light's middle was 79.5. Do the same rather than recomputing
+	   it. */
+	height: 48px;
+}
+
+/*
+ * The room for the window buttons, only while there ARE window buttons.
+ *
+ * 🔴 macOS takes the traffic lights away in fullscreen, and a gap left behind
+ * is a hole in the header with nothing in it: the app looks like it is
+ * permanently working around something that is not there. Every native app
+ * slides its controls left the moment the space is free, which is also the
+ * answer to not wanting to rearrange the interface for the sake of three
+ * buttons. Nothing moves except this padding.
+ *
+ * `mark_fullscreen` in the shell keeps the flag honest on every resize.
+ */
+:root[data-shell="macos"]:not([data-shell-fullscreen="true"])
+[data-console-header] {
+	/* 104 CSS pixels, about 94 window points at the shell's 0.9 zoom. The three
+	   lights end around 74, so this leaves a real gap rather than having the
+	   switcher hug them. */
+	padding-left: 104px;
+}
+
+/*
+ * The workspace switcher as a square, in the desktop shell.
+ *
+ * 🔴 The header doubles as the title bar, so its left end is shared with three
+ * window buttons. A switcher wide enough to spell out a workspace name turns
+ * that end into a queue: buttons, then a long pill, then a bell, before the
+ * search has started. Reduced to its mark it is the same size as every other
+ * control on the row, and the row reads as one set of buttons rather than one
+ * wide thing followed by some small ones.
+ *
+ * The name has not been lost. It is the subject of the menu this opens, and the
+ * page's own trail says where you are.
+ *
+ * ⚠️ Windowed only. In fullscreen macOS takes its buttons away, the header's
+ * left end is the app's own again, and the switcher goes back to its full width
+ * with the workspace spelled out. The square is a response to the buttons being
+ * there, so it leaves when they do.
+ *
+ * ⚠️ The test badge survives as a DOT. It is not decoration: forgetting a
+ * workspace is in test mode is how somebody takes a real order they cannot
+ * fulfil, or ships against a card that never charged. A square cannot hold the
+ * word, so it carries the mark, in the attention colour it uses everywhere else.
+ */
+:root[data-shell]:not([data-shell-fullscreen="true"]) [data-switcher-trigger] {
+	width: 36px;
+	flex: none;
+	justify-content: center;
+	padding: 0;
+}
+
+:root[data-shell]:not([data-shell-fullscreen="true"]) [data-switcher-name],
+:root[data-shell]:not([data-shell-fullscreen="true"]) [data-switcher-caret],
+:root[data-shell]:not([data-shell-fullscreen="true"]) [data-switcher-badge] {
+	display: none;
+}
+
+:root[data-shell]:not([data-shell-fullscreen="true"])
+	[data-switcher-trigger][data-switcher-badged]::after {
+	content: "";
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	width: 8px;
+	height: 8px;
+	border-radius: 9999px;
+	background: var(--signal-attention);
+	box-shadow: 0 0 0 2px var(--surface-tray);
+}
+
+/*
+ * ...and the switcher stops claiming the whole left column while it is one.
+ *
+ * 🔴 `SidebarName` is `flex-1` in its compact form, which is right when it is
+ * spelling out a workspace name and wrong the moment it is a square: the
+ * element still stretched the full width of the header's left column, so the
+ * notification bell beside it was shoved to the far end with a hand's width of
+ * nothing in between. Shrinking it to its content puts the two controls
+ * together, which is what they are.
+ */
+:root[data-shell]:not([data-shell-fullscreen="true"]) [data-switcher-root],
+:root[data-shell]:not([data-shell-fullscreen="true"]) [data-switcher-row] {
+	flex: none;
+}

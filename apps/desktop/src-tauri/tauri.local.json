@@ -1,0 +1,5 @@
+{
+	"build": {
+		"frontendDist": "http://localhost:3011"
+	}
+}

@@ -13,7 +13,7 @@
  * not simply be deleted. Now they live here and the dialog is the only caller.
  */
 import { CheckIcon, WarningIcon } from "@phosphor-icons/react";
-import { ThemeSwitch } from "@quickengine/ui";
+import { ConsoleThemePanel, ThemeSwitch } from "@quickengine/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { sessionApi, workspaceApi } from "../../lib/api";
@@ -407,6 +407,21 @@ export function SettingsSections({
 								</p>
 							</div>
 							<ThemeSwitch />
+						</div>
+						{/* 🔴 The palettes, in the only place they now live.
+						    The console header held the ONLY door to the fifty palettes
+						    while light and dark were already here, so removing that button
+						    without moving them would have deleted the feature rather than
+						    tidied the header. */}
+						<div className="mt-6 flex flex-wrap items-start justify-between gap-4">
+							<div className="min-w-0 flex-1">
+								<p className="text-[12.5px] text-[var(--ink-85)]">Colour</p>
+								<p className="mt-1 text-[11.5px] text-[var(--ink-35)] leading-5">
+									Fifty palettes, each with its own light and dark mode. The
+									console repaints as you pass each one.
+								</p>
+							</div>
+							<ConsoleThemePanel />
 						</div>
 					</div>
 				</>

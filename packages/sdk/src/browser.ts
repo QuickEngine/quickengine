@@ -9,6 +9,11 @@ import type {
 	QuickSessionCredential,
 } from "./types";
 
+export {
+	type CatalogChange,
+	type SubscribeToCatalogOptions,
+	subscribeToCatalog,
+} from "./catalog-realtime";
 export { QuickClient } from "./client";
 export { QuickApiError } from "./error";
 export type * from "./types";

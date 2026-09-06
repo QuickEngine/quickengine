@@ -40,7 +40,24 @@ export function ThemeSwitch({ className }: { className?: string }) {
 					type="button"
 					aria-label={label}
 					aria-pressed={active === value}
-					onClick={() => setTheme(value as Theme)}
+					/**
+					 * 🔑 The press position, so the repaint expands from the control
+					 * you actually touched.
+					 *
+					 * 🔴 This switch called `setTheme` with no origin, so it swapped the
+					 * theme instantly while the console's own palette button did the
+					 * circular reveal: the same change, animated in one place and not in
+					 * the other. The origin is optional on purpose, so a caller that has
+					 * no sensible point to grow from simply omits it, but a real button
+					 * on a page always has one.
+					 */
+					onClick={(event) => {
+						const box = event.currentTarget.getBoundingClientRect();
+						setTheme(value as Theme, {
+							x: box.left + box.width / 2,
+							y: box.top + box.height / 2,
+						});
+					}}
 					className={`flex size-6 items-center justify-center rounded-full transition-colors ${
 						active === value ? "bg-field text-ink" : "text-dim hover:text-ink"
 					}`}

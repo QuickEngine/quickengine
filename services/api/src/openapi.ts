@@ -3660,6 +3660,21 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/realtime/catalog": {
+				get: {
+					operationId: "getStorefrontRealtimeConfig",
+					summary: "What a storefront needs to watch its catalog live",
+					description:
+						"Returns the realtime key, cluster and the public channel this workspace's catalog changes are published on, so a connected site does not have to carry QuickEngine's realtime configuration as its own environment variables. The channel is derived from the authenticated workspace, so a site cannot ask for another's. Only catalog and stock events cross it, and each carries identity alone: the site refetches through the public catalog API, which returns published items only. Never returns the realtime secret.",
+					responses: {
+						"200": { description: "The key, cluster and channel name." },
+						"403": {
+							description: "The key may not read this workspace's catalog.",
+						},
+						"503": { description: "Realtime is not configured." },
+					},
+				},
+			},
 			"/v1/realtime/auth": {
 				post: {
 					operationId: "authorizeRealtimeChannel",

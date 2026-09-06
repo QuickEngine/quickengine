@@ -26,8 +26,11 @@ into separate applications.
 | `quickdash.statuspage.io` | **Status — live.** Incidents and uptime |
 | `docs.` · `help.` | Documentation and support — planned |
 
-**QuickDash Desktop** (macOS · Windows · Linux) is a Tauri shell around the deployed web
-product, so a web release reaches the app without an update. **QuickDash Mobile** (iOS ·
+**QuickDash Desktop** (macOS · Windows) is a Tauri shell around the deployed web product, so a
+web release reaches the app without an update. Signing in hands off to your own browser, because
+providers refuse to authenticate inside an embedded window, and the session comes back to the app.
+The window's own buttons sit in the header rather than over it. Linux is not built yet: its
+GTK stack carries an unpatched advisory, recorded in the tech debt ledger. **QuickDash Mobile** (iOS ·
 Android) is planned from the same project.
 
 ---
@@ -216,7 +219,9 @@ moderated reviews and customer-owned referral codes; discount codes priced again
 basket; delivery options; an order with authoritative totals that a repeated request cannot
 duplicate; owned orders no other customer can read; a two-way message answered by the business;
 and a single-use pass that opens the account portal without a second sign-in. The custom
-storefront reads all of it without changing its visual system.
+storefront reads all of it without changing its visual system. A connected storefront can also
+subscribe to its workspace's catalog, so a published product or a stock change reaches a page that
+is already open instead of waiting for the next visit.
 One leg is unproven locally — capturing a real PayPal sandbox payment needs credentials this
 machine does not have — and is tracked as a pre-launch gate.
 
@@ -254,7 +259,10 @@ your own shop on the left, one search that reaches the whole workspace in the mi
 right a create button that only ever offers what this workspace has switched on, QuickTools, the
 assistant, the theme switch and your account. The assistant keeps its conversations, and while it
 is open the sidebar lists them beside the work you are doing. Every card on Home can be dragged anywhere, resized, and told how to draw its data, with the whole
-board sharing one range. The theme control offers fifty
+board sharing one range. An arrangement can be saved under a name and up to five kept, and a new
+workspace opens on a board built from the modules it switched on rather than a generic set. Cards
+cover each module's open work, a month calendar of what is booked, and how much of your plan you
+have used. The theme control offers fifty
 palettes, each with its own light and dark mode, and the drifting ground behind the console takes
 the colour of whichever one is chosen. Every page
 says where you are on a trail at the top, with the page's own controls on the same line. Every list

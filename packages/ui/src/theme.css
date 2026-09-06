@@ -1039,9 +1039,30 @@ body {
 	/* The ground behind the console. Named here so a palette can restate it:
 	   the wave belongs to the theme, and a blue sea under an Ember console read
 	   as somebody else's background showing through. */
-	--glow-deep: #1d3a4f;
-	--glow-body: #3e6c8f;
-	--glow-crest: #7fa8c9;
+	/* 🔴 NEUTRAL, R=G=B, like the rest of this palette.
+	   These were blues, and on the one theme whose entire point is that it has
+	   no accent they were the single hue on screen: a cold wash across the floor
+	   of a console built out of strict greys. Desaturated to the same HSL
+	   lightness, so the glow is exactly as strong as it was and only the hue is
+	   gone. Every OTHER palette generates its own from its accent, which is
+	   correct there and was never the problem. */
+	/**
+	 * The mark that says a workspace is NOT real.
+	 *
+	 * 🔴 Authored here because the neutral theme has no accent to take an
+	 * opposite of. Every other palette derives this from its own colour; a
+	 * console built from strict greys has nothing to oppose, so it gets a hue
+	 * chosen to be the one saturated thing on the screen.
+	 *
+	 * ⚠️ Not amber, and not red or green. Sandbox is not a warning and not a
+	 * failure: nothing is wrong, the workspace simply is not live. Borrowing the
+	 * attention colour made it read as a problem to fix, and it collided head on
+	 * with every palette built out of amber.
+	 */
+	--signal-sandbox: #ff4fd8;
+	--glow-deep: #363636;
+	--glow-body: #666666;
+	--glow-crest: #a4a4a4;
 	/* Neutral has no accent, so its charts stay in ink: this is the behaviour
 	   every dashboard had before palettes existed, kept exactly. Every other
 	   palette overrides it with its own. */
@@ -1180,10 +1201,13 @@ body {
 	/* See the dark value: chrome stays a step off the content. */
 	--surface-tray: #f7f7f9;
 
-	/* Paler water for a light ground. See the dark values. */
-	--glow-deep: #6d94ad;
-	--glow-body: #93b6cd;
-	--glow-crest: #bcd3e2;
+	/* Paler light for a light ground, and neutral for the same reason as the
+	   dark values above. See the note there. */
+	/* See the dark value. Deeper, so it holds against a light ground. */
+	--signal-sandbox: #c2159c;
+	--glow-deep: #8d8d8d;
+	--glow-body: #b0b0b0;
+	--glow-crest: #cfcfcf;
 	/* Neutral has no accent, so its charts stay in ink: this is the behaviour
 	   every dashboard had before palettes existed, kept exactly. Every other
 	   palette overrides it with its own. */
@@ -1246,6 +1270,7 @@ body {
 	--glow-body: #6c5aa1;
 	--glow-crest: #bea9fb;
 	--chart-ink: #947bde;
+	--signal-sandbox: #d8f976;
 }
 :root.light.obsidian {
 	--console-floor: #dedaea;
@@ -1269,6 +1294,7 @@ body {
 	--glow-body: #7a5ace;
 	--glow-crest: #aa96e0;
 	--chart-ink: #6243b6;
+	--signal-sandbox: #a7d039;
 }
 
 /* Abyss: Deep water. Cold and very dark. */
@@ -1294,6 +1320,7 @@ body {
 	--glow-body: #24789f;
 	--glow-crest: #6ccefa;
 	--chart-ink: #32a7dc;
+	--signal-sandbox: #f87338;
 }
 :root.light.abyss {
 	--console-floor: #d2e2ed;
@@ -1317,6 +1344,7 @@ body {
 	--glow-body: #1976a9;
 	--glow-crest: #6da8c8;
 	--chart-ink: #035f91;
+	--signal-sandbox: #be4604;
 }
 
 /* Void: Almost nothing, then a flash of orchid. */
@@ -1342,6 +1370,7 @@ body {
 	--glow-body: #934e9e;
 	--glow-crest: #ee9cfb;
 	--chart-ink: #cd6bdc;
+	--signal-sandbox: #88f976;
 }
 :root.light.void {
 	--console-floor: #e5d6e8;
@@ -1365,6 +1394,7 @@ body {
 	--glow-body: #aa30b6;
 	--glow-crest: #c97bd1;
 	--chart-ink: #92199e;
+	--signal-sandbox: #29af1c;
 }
 
 /* Sandstone: Almost flat. The hairlines carry it. */
@@ -1390,6 +1420,7 @@ body {
 	--glow-body: #958059;
 	--glow-crest: #e1cba2;
 	--chart-ink: #c1a775;
+	--signal-sandbox: #789bdf;
 }
 :root.light.sandstone {
 	--console-floor: #dfd4be;
@@ -1413,6 +1444,7 @@ body {
 	--glow-body: #937a4a;
 	--glow-crest: #bbab8e;
 	--chart-ink: #7c6436;
+	--signal-sandbox: #2650a0;
 }
 
 /* Linen: Paper and thread. Quiet and close. */
@@ -1438,6 +1470,7 @@ body {
 	--glow-body: #8a8373;
 	--glow-crest: #d7d0bf;
 	--chart-ink: #b5ac97;
+	--signal-sandbox: #8ba6e4;
 }
 :root.light.linen {
 	--console-floor: #e3ddd1;
@@ -1461,6 +1494,7 @@ body {
 	--glow-body: #857c6d;
 	--glow-crest: #b2aca3;
 	--chart-ink: #6e6556;
+	--signal-sandbox: #295db1;
 }
 
 /* Concrete: Poured grey. Nothing shouts. */
@@ -1486,6 +1520,7 @@ body {
 	--glow-body: #6e7074;
 	--glow-crest: #b8bbbf;
 	--chart-ink: #909398;
+	--signal-sandbox: #dcaa6b;
 }
 :root.light.concrete {
 	--console-floor: #d9d9db;
@@ -1509,6 +1544,7 @@ body {
 	--glow-body: #6a6d73;
 	--glow-crest: #a0a3a6;
 	--chart-ink: #53565c;
+	--signal-sandbox: #9d6d25;
 }
 
 /* Gloaming: Violet dusk with a warm lamp in it. */
@@ -1534,6 +1570,7 @@ body {
 	--glow-body: #9f704d;
 	--glow-crest: #f4bf8f;
 	--chart-ink: #d6965f;
+	--signal-sandbox: #68b0f0;
 }
 :root.light.gloaming {
 	--console-floor: #e3dae6;
@@ -1557,6 +1594,7 @@ body {
 	--glow-body: #bb7232;
 	--glow-crest: #d4a67c;
 	--chart-ink: #a35b1a;
+	--signal-sandbox: #1d6db5;
 }
 
 /* Harvest: Warm earth, cool green growing out of it. */
@@ -1582,6 +1620,7 @@ body {
 	--glow-body: #668149;
 	--glow-crest: #acd091;
 	--chart-ink: #82ab60;
+	--signal-sandbox: #9d52d7;
 }
 :root.light.harvest {
 	--console-floor: #e0d7c4;
@@ -1605,6 +1644,7 @@ body {
 	--glow-body: #5d843e;
 	--glow-crest: #98b286;
 	--chart-ink: #456e29;
+	--signal-sandbox: #6c259d;
 }
 
 /* Lagoon: Cold water, warm coral under it. */
@@ -1630,6 +1670,7 @@ body {
 	--glow-body: #9d7273;
 	--glow-crest: #f7bcbc;
 	--chart-ink: #d99495;
+	--signal-sandbox: #80f0f0;
 }
 :root.light.lagoon {
 	--console-floor: #cce2e4;
@@ -1653,6 +1694,7 @@ body {
 	--glow-body: #c36969;
 	--glow-crest: #da9f9f;
 	--chart-ink: #ad5151;
+	--signal-sandbox: #39d0d0;
 }
 
 /* Tundra: Grey green ice, low sun. */
@@ -1678,6 +1720,7 @@ body {
 	--glow-body: #958364;
 	--glow-crest: #ead3ae;
 	--chart-ink: #caaf83;
+	--signal-sandbox: #8bade4;
 }
 :root.light.tundra {
 	--console-floor: #d5ddd9;
@@ -1701,6 +1744,7 @@ body {
 	--glow-body: #937646;
 	--glow-crest: #bba989;
 	--chart-ink: #7c5f2f;
+	--signal-sandbox: #25529d;
 }
 
 /* Aubergine: Deep purple, sharp green. */
@@ -1726,6 +1770,7 @@ body {
 	--glow-body: #6a886f;
 	--glow-crest: #b4ddbc;
 	--chart-ink: #8bba93;
+	--signal-sandbox: #e388d2;
 }
 :root.light.aubergine {
 	--console-floor: #e7d7e2;
@@ -1749,6 +1794,7 @@ body {
 	--glow-body: #428756;
 	--glow-crest: #86b493;
 	--chart-ink: #2a713e;
+	--signal-sandbox: #9d257b;
 }
 
 /* Driftwood: A lighter dark. Gentle and dusty. */
@@ -1774,6 +1820,7 @@ body {
 	--glow-body: #8e8274;
 	--glow-crest: #d7caba;
 	--chart-ink: #b7a793;
+	--signal-sandbox: #88b0e3;
 }
 :root.light.driftwood {
 	--console-floor: #dfd8cd;
@@ -1797,6 +1844,7 @@ body {
 	--glow-body: #7b6c58;
 	--glow-crest: #aba296;
 	--chart-ink: #645643;
+	--signal-sandbox: #25599d;
 }
 
 /* Pewter: Soft metal. Blue in the shadows. */
@@ -1822,6 +1870,7 @@ body {
 	--glow-body: #7a8994;
 	--glow-crest: #bfd0dc;
 	--chart-ink: #9aafbd;
+	--signal-sandbox: #e4b08b;
 }
 :root.light.pewter {
 	--console-floor: #d2dae0;
@@ -1845,6 +1894,7 @@ body {
 	--glow-body: #56768a;
 	--glow-crest: #94a9b5;
 	--chart-ink: #405f73;
+	--signal-sandbox: #a15526;
 }
 
 /* Sage: A lit room with plants in it. */
@@ -1870,6 +1920,7 @@ body {
 	--glow-body: #88977c;
 	--glow-crest: #d2e1c3;
 	--chart-ink: #b0c29e;
+	--signal-sandbox: #b88be4;
 }
 :root.light.sage {
 	--console-floor: #d7ded0;
@@ -1893,6 +1944,7 @@ body {
 	--glow-body: #637c4f;
 	--glow-crest: #9cac90;
 	--chart-ink: #4d6539;
+	--signal-sandbox: #67259d;
 }
 
 /* Ultraviolet: Saturated purple, electric cyan. */
@@ -1918,6 +1970,7 @@ body {
 	--glow-body: #1d87a5;
 	--glow-crest: #5bdef2;
 	--chart-ink: #20bbd7;
+	--signal-sandbox: #f05038;
 }
 :root.light.ultraviolet {
 	--console-floor: #dbd3f1;
@@ -1941,6 +1994,7 @@ body {
 	--glow-body: #247f9a;
 	--glow-crest: #73aebf;
 	--chart-ink: #0d6882;
+	--signal-sandbox: #b13411;
 }
 
 /* Inferno: Hot and red. Not subtle. */
@@ -1966,6 +2020,7 @@ body {
 	--glow-body: #a75e29;
 	--glow-crest: #fcae6f;
 	--chart-ink: #e08236;
+	--signal-sandbox: #3ca5fb;
 }
 :root.light.inferno {
 	--console-floor: #efd1cd;
@@ -1989,6 +2044,7 @@ body {
 	--glow-body: #c75121;
 	--glow-crest: #dc9172;
 	--chart-ink: #af3b0b;
+	--signal-sandbox: #0c8dc2;
 }
 
 /* Acid: Toxic green. Awake at 3am. */
@@ -2014,6 +2070,7 @@ body {
 	--glow-body: #7ca040;
 	--glow-crest: #cff58c;
 	--chart-ink: #a9d859;
+	--signal-sandbox: #9864f2;
 }
 :root.light.acid {
 	--console-floor: #dbe8c3;
@@ -2037,6 +2094,7 @@ body {
 	--glow-body: #5c8823;
 	--glow-crest: #98b374;
 	--chart-ink: #45700e;
+	--signal-sandbox: #5615ad;
 }
 
 /* Flamingo: Pink on pink, and proud. */
@@ -2062,6 +2120,7 @@ body {
 	--glow-body: #ad6b79;
 	--glow-crest: #febcc4;
 	--chart-ink: #e4929e;
+	--signal-sandbox: #73fceb;
 }
 :root.light.flamingo {
 	--console-floor: #f4d3df;
@@ -2085,6 +2144,7 @@ body {
 	--glow-body: #c42c6b;
 	--glow-crest: #d979a1;
 	--chart-ink: #ab1654;
+	--signal-sandbox: #18be79;
 }
 
 /* Cyber: Blue city, magenta signage. */
@@ -2110,6 +2170,7 @@ body {
 	--glow-body: #996fa6;
 	--glow-crest: #f4c1fd;
 	--chart-ink: #d498e1;
+	--signal-sandbox: #89fa75;
 }
 :root.light.cyber {
 	--console-floor: #d7dbe9;
@@ -2133,6 +2194,7 @@ body {
 	--glow-body: #a930b6;
 	--glow-crest: #c97bd1;
 	--chart-ink: #92199e;
+	--signal-sandbox: #29af1c;
 }
 
 /* Fog: Grey and damp. Almost no colour. */
@@ -2158,6 +2220,7 @@ body {
 	--glow-body: #667478;
 	--glow-crest: #b0bfc2;
 	--chart-ink: #86989c;
+	--signal-sandbox: #db7d66;
 }
 :root.light.fog {
 	--console-floor: #d5dcdd;
@@ -2181,6 +2244,7 @@ body {
 	--glow-body: #596e72;
 	--glow-crest: #96a3a6;
 	--chart-ink: #43575b;
+	--signal-sandbox: #9d3725;
 }
 
 /* Dune: Sand at dusk. Warm and low. */
@@ -2206,6 +2270,7 @@ body {
 	--glow-body: #907b5b;
 	--glow-crest: #dfc8a3;
 	--chart-ink: #bfa276;
+	--signal-sandbox: #78a1df;
 }
 :root.light.dune {
 	--console-floor: #e0d8c9;
@@ -2229,6 +2294,7 @@ body {
 	--glow-body: #94774c;
 	--glow-crest: #bba98e;
 	--chart-ink: #7c6037;
+	--signal-sandbox: #2657a1;
 }
 
 /* Juniper: Still water in a forest. */
@@ -2254,6 +2320,7 @@ body {
 	--glow-body: #577d71;
 	--glow-crest: #a0cabc;
 	--chart-ink: #72a594;
+	--signal-sandbox: #d95e87;
 }
 :root.light.juniper {
 	--console-floor: #d1ddd9;
@@ -2277,6 +2344,7 @@ body {
 	--glow-body: #447c6c;
 	--glow-crest: #89aca2;
 	--chart-ink: #2e6556;
+	--signal-sandbox: #9d2546;
 }
 
 /* Plumsmoke: Smoke with a purple cast. */
@@ -2302,6 +2370,7 @@ body {
 	--glow-body: #7c7088;
 	--glow-crest: #cabdd7;
 	--chart-ink: #a595b5;
+	--signal-sandbox: #b6e48b;
 }
 :root.light.plumsmoke {
 	--console-floor: #ddd8e4;
@@ -2325,6 +2394,7 @@ body {
 	--glow-body: #706185;
 	--glow-crest: #a59bb2;
 	--chart-ink: #594a6e;
+	--signal-sandbox: #6fa527;
 }
 
 /* Cinder: Cooling ash. Warm grey. */
@@ -2350,6 +2420,7 @@ body {
 	--glow-body: #837268;
 	--glow-crest: #d3bfb4;
 	--chart-ink: #b0988a;
+	--signal-sandbox: #7dbde1;
 }
 :root.light.cinder {
 	--console-floor: #ddd7d3;
@@ -2373,6 +2444,7 @@ body {
 	--glow-body: #806d5d;
 	--glow-crest: #afa399;
 	--chart-ink: #695647;
+	--signal-sandbox: #25689f;
 }
 
 /* Emerald: One green stone, cut deep. */
@@ -2398,6 +2470,7 @@ body {
 	--glow-body: #238a65;
 	--glow-crest: #69deb4;
 	--chart-ink: #2ebc88;
+	--signal-sandbox: #d94f81;
 }
 :root.light.emerald {
 	--console-floor: #cde5d9;
@@ -2421,6 +2494,7 @@ body {
 	--glow-body: #1a8465;
 	--glow-crest: #6db19e;
 	--chart-ink: #046c4e;
+	--signal-sandbox: #bc063a;
 }
 
 /* Sapphire: Blue with weight behind it. */
@@ -2446,6 +2520,7 @@ body {
 	--glow-body: #3e6ca8;
 	--glow-crest: #89bcfb;
 	--chart-ink: #5593e0;
+	--signal-sandbox: #fab560;
 }
 :root.light.sapphire {
 	--console-floor: #cedaee;
@@ -2469,6 +2544,7 @@ body {
 	--glow-body: #305ddb;
 	--glow-crest: #7c98e8;
 	--chart-ink: #1a46c2;
+	--signal-sandbox: #d8a71d;
 }
 
 /* Ruby: Red, and expensive about it. */
@@ -2494,6 +2570,7 @@ body {
 	--glow-body: #a44856;
 	--glow-crest: #fc96a5;
 	--chart-ink: #e06476;
+	--signal-sandbox: #71fbe7;
 }
 :root.light.ruby {
 	--console-floor: #f0cfd5;
@@ -2517,6 +2594,7 @@ body {
 	--glow-body: #c4264d;
 	--glow-crest: #d9768e;
 	--chart-ink: #ab1036;
+	--signal-sandbox: #12be94;
 }
 
 /* Topaz: Warm yellow, lit from inside. */
@@ -2542,6 +2620,7 @@ body {
 	--glow-body: #a47d19;
 	--glow-crest: #fcd05d;
 	--chart-ink: #e0aa20;
+	--signal-sandbox: #2d66fb;
 }
 :root.light.topaz {
 	--console-floor: #eedfbf;
@@ -2565,6 +2644,7 @@ body {
 	--glow-body: #bb621d;
 	--glow-crest: #d49b70;
 	--chart-ink: #a24b08;
+	--signal-sandbox: #096db9;
 }
 
 /* Amethyst: Purple crystal, cool not sweet. */
@@ -2590,6 +2670,7 @@ body {
 	--glow-body: #7e56a7;
 	--glow-crest: #d0a4fd;
 	--chart-ink: #ab75e1;
+	--signal-sandbox: #b8fc74;
 }
 :root.light.amethyst {
 	--console-floor: #e1d5ef;
@@ -2613,6 +2694,7 @@ body {
 	--glow-body: #8935d2;
 	--glow-crest: #b47fe3;
 	--chart-ink: #711fb9;
+	--signal-sandbox: #72ce22;
 }
 
 /* Crt: An old monitor with the brightness up. */
@@ -2638,6 +2720,7 @@ body {
 	--glow-body: #779131;
 	--glow-crest: #cae879;
 	--chart-ink: #a3c742;
+	--signal-sandbox: #724ae0;
 }
 :root.light.crt {
 	--console-floor: #dae1c5;
@@ -2661,6 +2744,7 @@ body {
 	--glow-body: #697f28;
 	--glow-crest: #a0ae77;
 	--chart-ink: #526813;
+	--signal-sandbox: #401ea4;
 }
 
 /* Polaroid: A photograph left in the sun. */
@@ -2686,6 +2770,7 @@ body {
 	--glow-body: #9d856a;
 	--glow-crest: #eed3b4;
 	--chart-ink: #d0af8b;
+	--signal-sandbox: #8bb5e5;
 }
 :root.light.polaroid {
 	--console-floor: #e5ddce;
@@ -2709,6 +2794,7 @@ body {
 	--glow-body: #a3784a;
 	--glow-crest: #c4a98d;
 	--chart-ink: #8b6034;
+	--signal-sandbox: #2869ac;
 }
 
 /* Typewriter: Ribbon ink on cheap paper. */
@@ -2734,6 +2820,7 @@ body {
 	--glow-body: #908c81;
 	--glow-crest: #e3ded2;
 	--chart-ink: #c2bcad;
+	--signal-sandbox: #8ba6e4;
 }
 :root.light.typewriter {
 	--console-floor: #e0dcd4;
@@ -2757,6 +2844,7 @@ body {
 	--glow-body: #6d675b;
 	--glow-crest: #a29f97;
 	--chart-ink: #565044;
+	--signal-sandbox: #254b9d;
 }
 
 /* Oxide: Iron left out in the rain. */
@@ -2782,6 +2870,7 @@ body {
 	--glow-body: #965c41;
 	--glow-crest: #e8a889;
 	--chart-ink: #c87c56;
+	--signal-sandbox: #5fb5e0;
 }
 :root.light.oxide {
 	--console-floor: #ead5ca;
@@ -2805,6 +2894,7 @@ body {
 	--glow-body: #af623c;
 	--glow-crest: #cd9c83;
 	--chart-ink: #974c26;
+	--signal-sandbox: #287faa;
 }
 
 /* Glacier: Blue ice, very cold light. */
@@ -2830,6 +2920,7 @@ body {
 	--glow-body: #538da8;
 	--glow-crest: #9fdefd;
 	--chart-ink: #70bde2;
+	--signal-sandbox: #fc9f73;
 }
 :root.light.glacier {
 	--console-floor: #cddfe7;
@@ -2853,6 +2944,7 @@ body {
 	--glow-body: #1976a9;
 	--glow-crest: #6da8c8;
 	--chart-ink: #035f91;
+	--signal-sandbox: #be4604;
 }
 
 /* Monsoon: Warm rain on grey stone. */
@@ -2878,6 +2970,7 @@ body {
 	--glow-body: #638c80;
 	--glow-crest: #b0dece;
 	--chart-ink: #85bcaa;
+	--signal-sandbox: #e284a4;
 }
 :root.light.monsoon {
 	--console-floor: #d2dede;
@@ -2901,6 +2994,7 @@ body {
 	--glow-body: #427e75;
 	--glow-crest: #88ada7;
 	--chart-ink: #2c675e;
+	--signal-sandbox: #9d2537;
 }
 
 /* Savanna: Dry grass, long light. */
@@ -2926,6 +3020,7 @@ body {
 	--glow-body: #98782c;
 	--glow-crest: #eac66f;
 	--chart-ink: #cba037;
+	--signal-sandbox: #4473e4;
 }
 :root.light.savanna {
 	--console-floor: #e5dbbf;
@@ -2949,6 +3044,7 @@ body {
 	--glow-body: #9f7c2c;
 	--glow-crest: #c2ac7a;
 	--chart-ink: #876517;
+	--signal-sandbox: #1d46a5;
 }
 
 /* Canyon: Layered rock, late sun. */
@@ -2974,6 +3070,7 @@ body {
 	--glow-body: #975233;
 	--glow-crest: #ea9c79;
 	--chart-ink: #ca6d43;
+	--signal-sandbox: #4ab3e2;
 }
 :root.light.canyon {
 	--console-floor: #ebd3c5;
@@ -2997,6 +3094,7 @@ body {
 	--glow-body: #b05a2f;
 	--glow-crest: #cd977b;
 	--chart-ink: #974419;
+	--signal-sandbox: #1c79a8;
 }
 
 /* Reef: Teal water, pink coral. */
@@ -3022,6 +3120,7 @@ body {
 	--glow-body: #9d718f;
 	--glow-crest: #fbbfdf;
 	--chart-ink: #dc97be;
+	--signal-sandbox: #79f6b2;
 }
 :root.light.reef {
 	--console-floor: #cce3e7;
@@ -3045,6 +3144,7 @@ body {
 	--glow-body: #c16998;
 	--glow-crest: #d99fbd;
 	--chart-ink: #ab5180;
+	--signal-sandbox: #39d082;
 }
 
 /* Meadow: Grass in full sun. */
@@ -3070,6 +3170,7 @@ body {
 	--glow-body: #6d9927;
 	--glow-crest: #bbed6a;
 	--chart-ink: #92ce31;
+	--signal-sandbox: #8040e7;
 }
 :root.light.meadow {
 	--console-floor: #d7e2ca;
@@ -3093,6 +3194,7 @@ body {
 	--glow-body: #5c8723;
 	--glow-crest: #98b374;
 	--chart-ink: #45700e;
+	--signal-sandbox: #5615ad;
 }
 
 /* Thunder: Slate sky, lightning yellow. */
@@ -3118,6 +3220,7 @@ body {
 	--glow-body: #a38a39;
 	--glow-crest: #fdde7b;
 	--chart-ink: #e0bc47;
+	--signal-sandbox: #4d76fc;
 }
 :root.light.thunder {
 	--console-floor: #d4d7df;
@@ -3141,6 +3244,7 @@ body {
 	--glow-body: #a76f1e;
 	--glow-crest: #c8a46f;
 	--chart-ink: #915806;
+	--signal-sandbox: #0851ba;
 }
 
 /* Aurora: Night sky with green in it. */
@@ -3166,6 +3270,7 @@ body {
 	--glow-body: #6b9e8a;
 	--glow-crest: #bef6dc;
 	--chart-ink: #94d8ba;
+	--signal-sandbox: #ee81b3;
 }
 :root.light.aurora {
 	--console-floor: #d0e3de;
@@ -3189,6 +3294,7 @@ body {
 	--glow-body: #24827a;
 	--glow-crest: #74b0ab;
 	--chart-ink: #0e6a63;
+	--signal-sandbox: #ac1622;
 }
 
 /* Espresso: Very dark, very warm. */
@@ -3214,6 +3320,7 @@ body {
 	--glow-body: #856952;
 	--glow-crest: #d6b89d;
 	--chart-ink: #b38e6d;
+	--signal-sandbox: #67a4db;
 }
 :root.light.espresso {
 	--console-floor: #e0d4c9;
@@ -3237,6 +3344,7 @@ body {
 	--glow-body: #856046;
 	--glow-crest: #b29b8a;
 	--chart-ink: #6e4a31;
+	--signal-sandbox: #256c9d;
 }
 
 /* Matcha: Powdered green, milky light. */
@@ -3262,6 +3370,7 @@ body {
 	--glow-body: #698946;
 	--glow-crest: #b6d98d;
 	--chart-ink: #8cb75b;
+	--signal-sandbox: #9459d8;
 }
 :root.light.matcha {
 	--console-floor: #d9e1cc;
@@ -3285,6 +3394,7 @@ body {
 	--glow-body: #68873c;
 	--glow-crest: #9fb383;
 	--chart-ink: #517026;
+	--signal-sandbox: #57259d;
 }
 
 /* Honey: Thick, golden, slow. */
@@ -3310,6 +3420,7 @@ body {
 	--glow-body: #9f8032;
 	--glow-crest: #f4d17a;
 	--chart-ink: #d7ac43;
+	--signal-sandbox: #4b7af0;
 }
 :root.light.honey {
 	--console-floor: #e9ddbf;
@@ -3333,6 +3444,7 @@ body {
 	--glow-body: #a37b23;
 	--glow-crest: #c4ab74;
 	--chart-ink: #8b640e;
+	--signal-sandbox: #1243b0;
 }
 
 /* Mulberry: Dark fruit, stained fingers. */
@@ -3358,6 +3470,7 @@ body {
 	--glow-body: #975b7d;
 	--glow-crest: #eca9ce;
 	--chart-ink: #cc7ca9;
+	--signal-sandbox: #8ae5b3;
 }
 :root.light.mulberry {
 	--console-floor: #e8d2df;
@@ -3381,6 +3494,7 @@ body {
 	--glow-body: #ad4d82;
 	--glow-crest: #cb8eb0;
 	--chart-ink: #95376a;
+	--signal-sandbox: #2bb86b;
 }
 
 /* Outrun: Sunset over a grid. Chrome and pink. */
@@ -3406,6 +3520,7 @@ body {
 	--glow-body: #a5478b;
 	--glow-crest: #ff94d6;
 	--chart-ink: #e362b4;
+	--signal-sandbox: #6effa6;
 }
 :root.light.outrun {
 	--console-floor: #decff1;
@@ -3429,6 +3544,7 @@ body {
 	--glow-body: #b63c91;
 	--glow-crest: #d183b9;
 	--chart-ink: #9e2679;
+	--signal-sandbox: #29b154;
 }
 
 /* Arcade: Dark cabinet, bright buttons. */
@@ -3454,6 +3570,7 @@ body {
 	--glow-body: #a29137;
 	--glow-crest: #fee877;
 	--chart-ink: #e0c742;
+	--signal-sandbox: #4764fd;
 }
 :root.light.arcade {
 	--console-floor: #d4d7e5;
@@ -3477,6 +3594,7 @@ body {
 	--glow-body: #a76f1e;
 	--glow-crest: #c8a46f;
 	--chart-ink: #915806;
+	--signal-sandbox: #0851ba;
 }
 
 /* Blueprint: Drafting paper, reversed. */
@@ -3502,6 +3620,7 @@ body {
 	--glow-body: #8c99ab;
 	--glow-crest: #e4effe;
 	--chart-ink: #c2d0e4;
+	--signal-sandbox: #fbc174;
 }
 :root.light.blueprint {
 	--console-floor: #ccdaec;
@@ -3525,6 +3644,7 @@ body {
 	--glow-body: #3151b6;
 	--glow-crest: #7d90d1;
 	--chart-ink: #1b3a9e;
+	--signal-sandbox: #af8d1e;
 }
 
 /* Peacock: Deep teal with a gold thread through it. The richest of them. */
@@ -3550,6 +3670,7 @@ body {
 	--glow-body: #937f33;
 	--glow-crest: #eecb71;
 	--chart-ink: #cda73b;
+	--signal-sandbox: #406fe8;
 }
 :root.light.peacock {
 	--console-floor: #cbdfdc;
@@ -3573,6 +3694,7 @@ body {
 	--glow-body: #927726;
 	--glow-crest: #bba974;
 	--chart-ink: #7c5f0e;
+	--signal-sandbox: #143cae;
 }
 
 /* Parchment: Aged paper and brown ink. Made for reading. */
@@ -3598,6 +3720,7 @@ body {
 	--glow-body: #99907e;
 	--glow-crest: #eee5d0;
 	--chart-ink: #cfc4ab;
+	--signal-sandbox: #8ba6e4;
 }
 :root.light.parchment {
 	--console-floor: #ded3b8;
@@ -3621,4 +3744,5 @@ body {
 	--glow-body: #6d593a;
 	--glow-crest: #a29683;
 	--chart-ink: #564326;
+	--signal-sandbox: #25549d;
 }

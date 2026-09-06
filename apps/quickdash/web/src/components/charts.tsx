@@ -1,5 +1,6 @@
 import type React from "react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { MIN_PLOT, plotHeight } from "../lib/tile-fit";
 
 /**
  * Every chart in QuickDash.
@@ -30,7 +31,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
  * NOTHING and let the card's own figure carry the tile.
  */
 
-const MIN_HEIGHT = 44;
+const MIN_HEIGHT = MIN_PLOT;
 /**
  * 🔴 A ceiling, not just a floor.
  *
@@ -39,7 +40,6 @@ const MIN_HEIGHT = 44;
  * than it is, purely because somebody wanted a bigger card. Past this the chart
  * keeps its proportions and the card gets the rest as space.
  */
-const MAX_HEIGHT = 260;
 /** Under this, a chart drops its grid and labels and becomes a bare line. */
 const DETAIL_HEIGHT = 96;
 /** Under this, a bar series is too cramped for gaps between bars. */
@@ -62,7 +62,30 @@ export function useMeasure<T extends HTMLElement>() {
 		 */
 		const observer = new ResizeObserver(([entry]) => {
 			const box = entry.contentRect;
-			setSize({ width: Math.round(box.width), height: Math.round(box.height) });
+			const next = {
+				width: Math.round(box.width),
+				height: Math.round(box.height),
+			};
+			/**
+			 * 🔴 Only when it actually MOVED, and by a whole pixel.
+			 *
+			 * Everything measured here sizes something from the result, so a report
+			 * that is a fraction different from the last one can change a font size,
+			 * nudge the layout, and be reported again: the card ends up flickering
+			 * between two sizes for as long as it is on screen. A zoomed webview
+			 * makes it likely rather than theoretical, because almost nothing lands
+			 * on a whole pixel any more.
+			 *
+			 * ⚠️ This is a guard, not the fix. A component whose measured box is the
+			 * box it sizes is broken however the report is filtered, and the answer
+			 * there is to measure something the content cannot influence — see
+			 * `Stat`. This stops one careless consumer taking the whole page with it.
+			 */
+			setSize((current) =>
+				current.width === next.width && current.height === next.height
+					? current
+					: next,
+			);
 		});
 		observer.observe(element);
 		return () => observer.disconnect();
@@ -170,12 +193,12 @@ function Frame({
 				<div
 					style={{
 						width: scrolls ? needed : width,
-						height: Math.min(height, MAX_HEIGHT),
+						height: plotHeight(width, height),
 					}}
 				>
 					{children({
 						width: scrolls ? needed : width,
-						height: Math.min(height, MAX_HEIGHT),
+						height: plotHeight(width, height),
 					})}
 				</div>
 			) : null}
@@ -375,7 +398,10 @@ function Path({
 	 * short for them — so the picker offered the same drawing twice under two
 	 * names. Detail follows the room; it is not a choice.
 	 */
-	const detailed = height >= DETAIL_HEIGHT;
+	/* ⚠️ Width as well as height. The bar series already tested both; this one
+	   did not, so a narrow tall card reserved a 46px gutter out of 178px and gave
+	   a quarter of itself to axis numbers nobody asked for. */
+	const detailed = height >= DETAIL_HEIGHT && width >= DETAIL_WIDTH;
 	// Room at the top for the highest gridline's label, and at the foot for the
 	// day names when they are shown.
 	const pad = detailed ? 10 : 3;

@@ -100,7 +100,29 @@ jobs:
             exit 1
           fi
 
+          # 🔴 An allowlist, because Release Please VERSIONS every package in its
+          # config — the SDK, the CLI and sixteen `mod-*` packages — and
+          # `paths_released` therefore names all of them. Versioning them is
+          # wanted. Publishing them is NOT: `VERSIONING.md` defers module
+          # publication until their dependency graph and customer need justify
+          # it, and they currently declare `main: ./src/index.ts`, so publishing
+          # one would put raw TypeScript on the public registry, permanently.
+          #
+          # ⚠️ Their manifests say `"private": false` with `publishConfig.access:
+          # public`, so nothing in the packages themselves would have stopped it.
+          # Add a package here only when its publication is a decision somebody
+          # actually made.
+          PUBLISHABLE="packages/sdk packages/cli"
+
           echo "$PATHS_RELEASED" | jq -r '.[]' | while read -r package_path; do
+            case " $PUBLISHABLE " in
+              *" $package_path "*) ;;
+              *)
+                echo "Skipping ${package_path}: versioned, publication deferred"
+                continue
+                ;;
+            esac
+
             echo "Publishing $package_path"
             # `--no-git-checks` because this runs on the released commit with the
             # tag already in place, which pnpm would otherwise refuse.

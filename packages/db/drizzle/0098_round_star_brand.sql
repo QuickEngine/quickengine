@@ -1,0 +1,1 @@
+ALTER TABLE "quickengine_accounts" ADD COLUMN "issuer" text;

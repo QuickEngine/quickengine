@@ -687,6 +687,13 @@
 			"when": 1788326010710,
 			"tag": "0097_breezy_multiple_man",
 			"breakpoints": true
+		},
+		{
+			"idx": 98,
+			"version": "7",
+			"when": 1788659718987,
+			"tag": "0098_round_star_brand",
+			"breakpoints": true
 		}
 	]
 }

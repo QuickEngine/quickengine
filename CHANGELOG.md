@@ -8,6 +8,18 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Backups keep a readable timestamp.** The name of a backup file no longer runs a pointless
+  substitution over itself, which static analysis flagged as a likely mistake.
+
+- **Security updates.** Three dependencies moved to patched releases, clearing every outstanding
+  advisory. Nothing changes in how anything works.
+
+- **Fixed: the second page of a list was the first page again.** Bookings, contracts, files,
+  projects, milestones, tasks and time entries all handed back a marker their own reader could not
+  understand, so asking for more gave you what you already had. Anything scrolling through a long
+  list would have gone round forever. All seventeen lists now share one way of doing it, and a test
+  walks a list to the end rather than stopping after one page.
+
 - **Fixed: live catalog updates never actually started.** The shop asked the API for a page that
   does not exist, took the answer to mean live updates were switched off, and quietly carried on
   refreshing only when somebody reloaded. It looked exactly like a working page. Quick.js 0.2.1

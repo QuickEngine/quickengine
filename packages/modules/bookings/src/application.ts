@@ -17,6 +17,7 @@ import {
 	mutationUnitOfWork,
 	pageOrder,
 	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import {
@@ -188,11 +189,17 @@ export async function listBookingsPage(
 		.where(where)
 		.orderBy(...pageOrder(sort.column, bookings.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
+	/**
+	 * 🔴 `toPage` rather than a hand-rolled cursor. The bare `id` this used to
+	 * return is not what `decodeCursor` reads: it wants an encoded
+	 * `"<len>:<value><id>"` pair, fails its own guard on a plain uuid, and yields
+	 * `undefined`. The `afterCursor` predicate was then dropped and page two came
+	 * back as page one, forever.
+	 */
+	const { items, page: pageInfo } = toPage(rows, page.limit, sort.key, "id");
 	return {
 		items: items.map(serializeBooking),
-		page: { hasMore, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null },
+		page: pageInfo,
 	};
 }
 

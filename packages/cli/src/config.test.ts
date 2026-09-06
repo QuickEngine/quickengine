@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ProcessEnvLike } from "./config";
 import { credentialFromKey, maskKey, resolveConfig } from "./config";
 
 describe("credentialFromKey", () => {
@@ -34,7 +35,7 @@ describe("resolveConfig", () => {
 			QUICK_BASE_URL: "https://dash.quickengine.test/api",
 			QUICK_WORKSPACE: "ws_1",
 			QUICK_KEY: "qpk_env",
-		} as NodeJS.ProcessEnv);
+		} as ProcessEnvLike);
 		expect(resolved).toMatchObject({
 			baseUrl: "https://dash.quickengine.test/api",
 			workspaceId: "ws_1",

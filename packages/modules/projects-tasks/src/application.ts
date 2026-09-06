@@ -18,6 +18,7 @@ import {
 	projects,
 	projectTasks,
 	resolveSort,
+	toPage,
 } from "@quickengine/db";
 import { z } from "zod";
 import {
@@ -263,11 +264,17 @@ export async function listProjectsPage(
 		.where(where)
 		.orderBy(...pageOrder(sort.column, projects.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
+	/**
+	 * 🔴 `toPage` rather than a hand-rolled cursor. The bare `id` this used to
+	 * return is not what `decodeCursor` reads: it wants an encoded
+	 * `"<len>:<value><id>"` pair, fails its own guard on a plain uuid, and yields
+	 * `undefined`. The `afterCursor` predicate was then dropped and page two came
+	 * back as page one, forever.
+	 */
+	const { items, page: pageInfo } = toPage(rows, page.limit, sort.key, "id");
 	return {
 		items: items.map(serializeProject),
-		page: { hasMore, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null },
+		page: pageInfo,
 	};
 }
 
@@ -314,11 +321,17 @@ export async function listMilestonesPage(
 		.where(where)
 		.orderBy(...pageOrder(sort.column, projectMilestones.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
+	/**
+	 * 🔴 `toPage` rather than a hand-rolled cursor. The bare `id` this used to
+	 * return is not what `decodeCursor` reads: it wants an encoded
+	 * `"<len>:<value><id>"` pair, fails its own guard on a plain uuid, and yields
+	 * `undefined`. The `afterCursor` predicate was then dropped and page two came
+	 * back as page one, forever.
+	 */
+	const { items, page: pageInfo } = toPage(rows, page.limit, sort.key, "id");
 	return {
 		items: items.map(serializeMilestone),
-		page: { hasMore, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null },
+		page: pageInfo,
 	};
 }
 
@@ -372,11 +385,17 @@ export async function listTasksPage(
 		.where(where)
 		.orderBy(...pageOrder(sort.column, projectTasks.id, page.direction))
 		.limit(page.limit + 1);
-	const hasMore = rows.length > page.limit;
-	const items = rows.slice(0, page.limit);
+	/**
+	 * 🔴 `toPage` rather than a hand-rolled cursor. The bare `id` this used to
+	 * return is not what `decodeCursor` reads: it wants an encoded
+	 * `"<len>:<value><id>"` pair, fails its own guard on a plain uuid, and yields
+	 * `undefined`. The `afterCursor` predicate was then dropped and page two came
+	 * back as page one, forever.
+	 */
+	const { items, page: pageInfo } = toPage(rows, page.limit, sort.key, "id");
 	return {
 		items: items.map(serializeTask),
-		page: { hasMore, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null },
+		page: pageInfo,
 	};
 }
 

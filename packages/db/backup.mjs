@@ -80,7 +80,9 @@ if (!Number.isFinite(keep) || keep < 1)
 
 mkdirSync(resolve(outDir), { recursive: true, mode: 0o700 });
 
-const stamp = new Date().toISOString().replace(/[:.]/g, "-").replace(/Z$/, "Z");
+// Colons and dots are not safe in a filename on every platform; the trailing
+// `Z` is, and is worth keeping so the name still says UTC.
+const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 let target;
 try {
 	target = assertPrivateOutputPath(

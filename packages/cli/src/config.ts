@@ -4,6 +4,17 @@ import { dirname, join } from "node:path";
 import type { QuickClient, QuickCredential } from "@quickengine/quick";
 import { createQuick } from "@quickengine/quick";
 
+/**
+ * The shape of `process.env`, written out rather than taken from the ambient
+ * `NodeJS` namespace.
+ *
+ * ⚠️ That namespace is a global supplied by `@types/node`, and it stops
+ * resolving here under newer major versions: the Dependabot majors PR failed
+ * with `Cannot find namespace 'NodeJS'` on exactly these lines. This is the same
+ * type, owned by us, and it cannot break on a types upgrade.
+ */
+export type ProcessEnvLike = Record<string, string | undefined>;
+
 export type QuickConfig = {
 	baseUrl: string;
 	workspaceId: string;
@@ -44,7 +55,7 @@ function readConfigFile(): Partial<QuickConfig> {
  * what's missing.
  */
 export function resolveConfig(
-	env: NodeJS.ProcessEnv = process.env,
+	env: ProcessEnvLike = process.env,
 ): Partial<QuickConfig> {
 	const file = readConfigFile();
 	return {
@@ -89,7 +100,7 @@ export class MissingConfigError extends Error {
  * Build a workspace-scoped Quick.js client from resolved config, or throw a clear error
  * naming exactly what's missing or malformed.
  */
-export function buildClient(env?: NodeJS.ProcessEnv): {
+export function buildClient(env?: ProcessEnvLike): {
 	client: QuickClient;
 	config: QuickConfig;
 } {

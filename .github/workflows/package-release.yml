@@ -30,12 +30,29 @@ jobs:
       # checks pass. It is NOT an immediate merge: `--auto` waits for the
       # required checks on `main` (Validate and TruffleHog, strict), so a release
       # can only go out on a green tree.
+      #
+      # 🔴 Also gated on `NPM_TOKEN` existing, and that ordering is the whole
+      # point. Merging a release PR is what CUTS THE TAGS. If the token were
+      # missing we would tag a release, fail at the publish step, and leave
+      # versions that exist on GitHub and nowhere on npm — a mess to unpick,
+      # because tags cannot be quietly withdrawn once anyone has fetched them.
+      # Refusing to start is recoverable; a half-finished release is not.
       - name: Queue the release PR to merge itself once CI is green
-        if: steps.release.outputs.pr != ''
+        if: steps.release.outputs.pr != '' && env.HAS_NPM_TOKEN == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
           PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
         run: gh pr merge "$PR_NUMBER" --auto --squash
+
+      - name: Say why the release PR was left alone
+        if: steps.release.outputs.pr != '' && env.HAS_NPM_TOKEN != 'true'
+        env:
+          HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+        run: |
+          echo "::warning::A release PR is open but NPM_TOKEN is not set, so it" \
+            "was NOT queued to merge. Merging it would cut tags that nothing" \
+            "could publish. Set the secret and the next run will queue it."
 
       # Everything below runs ONLY on the push that merged a release PR, when
       # Release Please has just cut tags. On every other push it does nothing.

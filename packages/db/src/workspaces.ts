@@ -510,3 +510,21 @@ export async function setWorkspacePublished(
 		});
 	return row ?? null;
 }
+
+/**
+ * Which organization a workspace bills to, or null if it has none.
+ *
+ * Exists for post-commit work that only has a workspace id to hand, such as the
+ * outbox handlers: billing is per organization, events are per workspace, and
+ * something has to bridge the two.
+ */
+export async function organizationIdForWorkspace(
+	workspaceId: string,
+): Promise<string | null> {
+	const [row] = await db
+		.select({ organizationId: quickengineWorkspaces.organizationId })
+		.from(quickengineWorkspaces)
+		.where(eq(quickengineWorkspaces.id, workspaceId))
+		.limit(1);
+	return row?.organizationId ?? null;
+}

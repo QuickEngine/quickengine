@@ -34,13 +34,26 @@ describe("module dependency resolver", () => {
 			"invoicing",
 			"payments",
 			"fulfillment",
+			"reporting-analytics",
 		]);
 		expect(resolveFoundationModules().map((module) => module.id)).toEqual([
 			"client-records",
 			"invoicing",
 			"payments",
 			"fulfillment",
+			"reporting-analytics",
 		]);
+	});
+
+	/**
+	 * 🔴 The dashboard is the page a new workspace lands on, and every figure on
+	 * it comes from one call to `/v1/reports/workspace`, which requires
+	 * `reporting-analytics`. Leaving it out of the foundation put three tiles
+	 * reading "This didn't load" in front of every new customer, with a Retry
+	 * that could never work.
+	 */
+	it("starts every workspace with the module the dashboard needs", () => {
+		expect(FOUNDATION_MODULE_IDS).toContain("reporting-analytics");
 	});
 
 	it("resolves the entire foundation from Fulfillment alone", () => {

@@ -12,6 +12,17 @@ export const FOUNDATION_MODULE_IDS = [
 	"invoicing",
 	"payments",
 	"fulfillment",
+	// 🔴 `reporting-analytics` is NOT optional in practice, however much it looks
+	// like an extra. `GET /v1/reports/workspace` requires it, and that one call
+	// feeds every figure tile on the dashboard, which is the page a workspace
+	// lands on.
+	//
+	// Without it a brand new workspace opened to three tiles reading "This didn't
+	// load" with a raw uuid under them, and Retry could never fix it because all
+	// three share a single query against a route that was answering 403. The
+	// module is also hidden from the navigation, so nobody could have found it to
+	// switch on. Reported from a real first-run on 2026-09-06.
+	"reporting-analytics",
 ] as const;
 
 /** Resolve requested modules in dependency-first order. */

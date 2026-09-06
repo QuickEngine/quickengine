@@ -24,6 +24,7 @@ import {
 import type { Hono } from "hono";
 import { z } from "zod";
 import { authorizeWorkspace } from "./authorize";
+import { requireSecondParty } from "./plan-gate";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { respond, respondError } from "./respond";
 
@@ -326,7 +327,7 @@ export function registerDiscountRoutes(
 	);
 
 	/** Retire or restore one, without erasing what it already earned. */
-	app.patch("/v1/partner-links/:id", write, async (c) => {
+	app.patch("/v1/partner-links/:id", write, requireSecondParty, async (c) => {
 		const { active } = z
 			.object({ active: z.boolean() })
 			.parse(await c.req.json());
@@ -360,7 +361,7 @@ export function registerDiscountRoutes(
 	);
 
 	/** Issue a code to a named partner. Operator only. */
-	app.post("/v1/partner-links", write, async (c) => {
+	app.post("/v1/partner-links", write, requireSecondParty, async (c) => {
 		const input = partnerLinkSchema.parse(await c.req.json());
 		try {
 			return respond(

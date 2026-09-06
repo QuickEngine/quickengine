@@ -48,6 +48,7 @@ import { authorizeWorkspace } from "./authorize";
 import type { ApiLogger } from "./logger";
 import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
+import { requireSecondParty } from "./plan-gate";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
 import { respond, respondError } from "./respond";
@@ -295,15 +296,20 @@ export function registerInventoryRoutes(
 			items: await listSuppliers(c.get("authorized").workspaceId),
 		}),
 	);
-	app.post("/v1/inventory/suppliers", writeAccess, writeLimit, async (c) =>
-		respond(
-			c,
-			await createSupplier(
-				c.get("authorized").workspaceId,
-				supplierInputSchema.parse(await c.req.json()),
+	app.post(
+		"/v1/inventory/suppliers",
+		writeAccess,
+		requireSecondParty,
+		writeLimit,
+		async (c) =>
+			respond(
+				c,
+				await createSupplier(
+					c.get("authorized").workspaceId,
+					supplierInputSchema.parse(await c.req.json()),
+				),
+				201,
 			),
-			201,
-		),
 	);
 	app.patch(
 		"/v1/inventory/suppliers/:id",

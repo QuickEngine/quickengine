@@ -96,4 +96,23 @@ describe("presentRequestError", () => {
 		});
 		expect(presentRequestError(error).requestId).toBeNull();
 	});
+
+	it("tells an upgrade apart from a spent allowance", () => {
+		// 🔴 Both are 402. The remedy is opposite: one upgrades, one waits.
+		// Getting this wrong tells a buyer to wait instead of to buy.
+		const upgrade = Object.assign(new Error("gated"), {
+			status: 402,
+			code: "PLAN_UPGRADE_REQUIRED",
+		});
+		const spent = Object.assign(new Error("used up"), {
+			status: 402,
+			code: "USAGE_LIMIT_EXCEEDED",
+		});
+
+		expect(presentRequestError(upgrade).title).toMatch(/Commerce/);
+		expect(presentRequestError(spent).title).toMatch(/larger plan/);
+		// Both stay the same kind, so neither is ever painted as a fault.
+		expect(presentRequestError(upgrade).kind).toBe("plan-limit");
+		expect(presentRequestError(spent).kind).toBe("plan-limit");
+	});
 });

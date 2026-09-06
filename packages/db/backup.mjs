@@ -136,6 +136,32 @@ if (useDocker) {
  */
 const OUR_SCHEMAS = ["--schema=public", "--schema=drizzle"];
 
+/**
+ * 🔴 Inside a container, `localhost` is the CONTAINER, not this machine.
+ *
+ * When the local client is too old we run `pg_dump` in Docker, and a URL
+ * pointing at `localhost` then resolves to the container itself and is refused.
+ * The effect was that this script could back up a REMOTE database perfectly and
+ * could not back up the local one at all — which is exactly the database anyone
+ * rehearses against, so the gap hid until someone tried to prove the backup
+ * rather than take one.
+ *
+ * `host.docker.internal` is how a container reaches its host on Docker Desktop;
+ * `--add-host` supplies it on Linux, where it is not present by default.
+ */
+const dockerUrl = (original) => {
+	try {
+		const u = new URL(original);
+		if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+			u.hostname = "host.docker.internal";
+			return u.toString();
+		}
+		return original;
+	} catch {
+		return original;
+	}
+};
+
 try {
 	if (useDocker) {
 		execFileSync(
@@ -144,6 +170,8 @@ try {
 				"run",
 				"--rm",
 				"-i",
+				"--add-host",
+				"host.docker.internal:host-gateway",
 				"-v",
 				`${resolve(outDir)}:/out`,
 				`postgres:${server}-alpine`,
@@ -154,7 +182,7 @@ try {
 				...OUR_SCHEMAS,
 				"--file",
 				`/out/${target.split("/").at(-1)}`,
-				url,
+				dockerUrl(url),
 			],
 			{ stdio: ["ignore", "inherit", "pipe"] },
 		);

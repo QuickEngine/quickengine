@@ -8,6 +8,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Signing in keeps working on the newer login library.** A column the library writes was missing
+  from our own schema, so creating an account half succeeded and every later sign-in reported no
+  such user. Ten tests read like a login bug and were one missing column.
+
 - **Releases publish themselves.** A release now goes out on its own once the checks pass, instead
   of waiting for somebody to tag it and publish by hand. Nothing has been released since July for
   want of that, and the version the command line tool installs is now read from the package itself,

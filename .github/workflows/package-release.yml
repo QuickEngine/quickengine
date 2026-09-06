@@ -42,8 +42,28 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
-          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
-        run: gh pr merge "$PR_NUMBER" --auto --squash
+          # 🔴 Raw JSON, parsed in the shell, NOT `fromJSON(...).number` here.
+          # Expressions in `env:` are evaluated when the step is PREPARED, before
+          # `if:` is applied, so a `fromJSON` over an empty output fails the whole
+          # job even when the step should have been skipped. That is exactly what
+          # happened on 2026-09-06: Release Please failed on a bad credential,
+          # produced no `pr` output, and this step then reported "Error reading
+          # JToken from JsonReader" — a second, misleading failure stacked on top
+          # of the real one.
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
+        run: |
+          set -euo pipefail
+          pr_number="$(echo "$RELEASE_PR" | jq -r '.number // empty')"
+          if [[ -z "$pr_number" ]]; then
+            echo "No release PR number to queue."
+            exit 0
+          fi
+          # ⚠️ `--repo` because this step runs BEFORE any checkout: the
+          # repository is only cloned later, and only when a release was
+          # actually created. Without it `gh` looks for a local git repository,
+          # finds none, and fails with "not a git repository" — which is what
+          # happened on the first run that got this far.
+          gh pr merge "$pr_number" --auto --squash --repo "$GITHUB_REPOSITORY"
 
       - name: Say why the release PR was left alone
         if: steps.release.outputs.pr != '' && env.HAS_NPM_TOKEN != 'true'

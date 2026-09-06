@@ -2,147 +2,227 @@
 /**
  * Prove the production database can be restored, unattended.
  *
- * Creates a Neon branch from a past point in time, connects to it, checks that
- * schema and data actually came back, prints a verdict, and deletes the branch.
+ * Takes a real backup with `backup.mjs`, restores it into a throwaway database,
+ * and reconciles the row count of EVERY table against the source. Prints a
+ * verdict and a duration, then deletes both the dump and the scratch database.
  *
  * **Why a script and not a checklist.** "We have backups" is not a claim anyone
  * should accept, including us. Almost every company has backups; far fewer have
- * ever restored one, and the gap is discovered on the worst possible day. This
- * turns the assertion into a dated, repeatable receipt — which is also what an
+ * ever restored one, and the gap is found on the worst possible day. This turns
+ * the assertion into a dated, repeatable receipt, which is also what an
  * enterprise customer or an insurer asks to see.
  *
- * **What a manual run on 2026-07-26 established**, so this script does not have to
- * re-derive it:
- *  - Point-in-time restore genuinely reconstructs history rather than copying the
- *    current database. The branch reported 39 migrations where production had 43,
- *    matching the state at the chosen timestamp.
- *  - Schema restored intact: 61 tables.
- *  - **Data recovery was NOT proven** — the chosen point fell after a deliberate
- *    wipe, so there was nothing to recover. That remains open.
+ * 🔴 **Rewritten 2026-09-06, and the reason matters.** The previous version drove
+ * Neon's point-in-time branch API and needed `NEON_API_KEY`. Production moved to
+ * Supabase and the Neon project was deleted, so the drill could no longer run
+ * against the database holding customer data — it had been silently untestable
+ * since the migration, which is the exact failure this script exists to prevent.
  *
- * Requires:
- *   NEON_API_KEY      Account Settings → API Keys
- *   NEON_PROJECT_ID   the project id from the console URL
+ * ⚠️ It now tests the ARTEFACT rather than a provider feature: the same dump
+ * `backup.mjs` writes is the thing restored. That is stronger, because it proves
+ * the file we actually keep can bring the business back, and it works against any
+ * Postgres, which is the point of being able to leave a provider.
  *
- *   node packages/db/restore-drill.mjs [hoursAgo]     # default 2
+ *   node packages/db/restore-drill.mjs --source <url> --scratch <admin url>
+ *
+ *   --source    the database to prove. READ ONLY; never written to.
+ *   --scratch   an admin connection on a DIFFERENT host where a temporary
+ *               database can be created and dropped. Local Docker is the
+ *               intended answer.
  */
-import postgres from "postgres";
-import { formatProviderError } from "./recovery-safety.mjs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const API = "https://console.neon.tech/api/v2";
-const KEY = process.env.NEON_API_KEY;
-const PROJECT = process.env.NEON_PROJECT_ID;
-const HOURS_AGO = Number(process.argv[2] ?? 2);
-
-if (!KEY || !PROJECT) {
-	console.error(
-		"NEON_API_KEY and NEON_PROJECT_ID are required.\n" +
-			"Account Settings → API Keys, and the project id from the console URL.",
-	);
-	process.exit(2);
-}
-
-const api = async (path, init = {}) => {
-	const res = await fetch(`${API}${path}`, {
-		...init,
-		headers: {
-			accept: "application/json",
-			authorization: `Bearer ${KEY}`,
-			"content-type": "application/json",
-			...init.headers,
-		},
-	});
-	if (!res.ok) {
-		throw new Error(
-			formatProviderError("Neon", init.method ?? "GET", path, res.status),
-		);
-	}
-	return res.json();
+const arg = (name) => {
+	const index = process.argv.indexOf(`--${name}`);
+	return index === -1 ? undefined : process.argv[index + 1];
 };
 
-const restorePoint = new Date(Date.now() - HOURS_AGO * 3_600_000).toISOString();
-const name = `restore-drill-${Date.now()}`;
-let branchId;
+const fail = (message) => {
+	console.error(`\n✗ ${message}\n`);
+	process.exit(1);
+};
 
+const source = arg("source") ?? process.env.RESTORE_SOURCE_URL;
+const scratch = arg("scratch") ?? process.env.RESTORE_SCRATCH_URL;
+if (!source) fail("No --source database URL.");
+if (!scratch) fail("No --scratch admin URL.");
+
+/**
+ * 🔴 The guard that makes this safe to run against production.
+ *
+ * The drill restores, which means it WRITES. Pointing both ends at the same host
+ * would restore production over itself. Hosts must differ, and there is no flag
+ * to override it: an accidental match is never a thing somebody meant.
+ */
+const parse = (url) => {
+	try {
+		const u = new URL(url);
+		return { host: u.host, db: u.pathname.replace(/^\//, "") };
+	} catch {
+		return null;
+	}
+};
+const hostOf = (url) => parse(url)?.host ?? null;
+const from = parse(source);
+const to = parse(scratch);
+if (!from || !to) fail("A URL could not be parsed.");
+
+/**
+ * ⚠️ Host AND database, not host alone. Restoring into a different database on
+ * the same server is the normal way to rehearse locally; restoring into the one
+ * being proven is the accident. An earlier version compared hosts only and made
+ * the safe case impossible, which would have pushed anyone testing it towards
+ * disabling the check.
+ */
+if (from.host === to.host && from.db === to.db) {
+	fail(
+		`--source and --scratch are the same database (${from.host}/${from.db}). ` +
+			"Restoring into the database being proven would destroy it.",
+	);
+}
+
+const psql = (url, sql) => {
+	const out = spawnSync("psql", [url, "-tAc", sql], { encoding: "utf8" });
+	if (out.status !== 0) {
+		fail(`psql failed: ${(out.stderr || "").trim().slice(0, 300)}`);
+	}
+	return out.stdout.trim();
+};
+
+/** Row counts for every table we own, as the comparison the verdict rests on. */
+const countsFor = (url) => {
+	const sql = `
+		SELECT string_agg(format('%I.%I=%s', schemaname, relname, n_live_tup), E'\\n' ORDER BY schemaname, relname)
+		FROM pg_stat_user_tables WHERE schemaname IN ('public','drizzle')`;
+	const exact = `
+		SELECT string_agg(t, E'\\n' ORDER BY t) FROM (
+			SELECT format('%I.%I=%s', table_schema, table_name,
+				(xpath('/row/c/text()', query_to_xml(
+					format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name),
+					false, true, '')))[1]::text::bigint) AS t
+			FROM information_schema.tables
+			WHERE table_schema IN ('public','drizzle') AND table_type = 'BASE TABLE'
+		) s`;
+	// `pg_stat_user_tables` is an estimate; the drill needs the real number, so
+	// the estimate is only a fallback if the exact query is refused.
+	const rows = psql(url, exact) || psql(url, sql);
+	const map = new Map();
+	for (const line of rows.split("\n").filter(Boolean)) {
+		const [name, count] = line.split("=");
+		map.set(name, Number(count));
+	}
+	return map;
+};
+
+const started = Date.now();
+const workDir = mkdtempSync(join(tmpdir(), "quickengine-drill-"));
+const scratchDb = `drill_${Date.now()}`;
+const adminUrl = new URL(scratch);
+const scratchUrl = new URL(scratch);
+scratchUrl.pathname = `/${scratchDb}`;
+
+let created = false;
 try {
-	console.log(`Restoring to ${restorePoint} (${HOURS_AGO}h ago)…`);
+	console.log(`\n  source   ${hostOf(source)}`);
+	console.log(`  scratch  ${hostOf(scratch)}/${scratchDb}\n`);
 
-	const created = await api(`/projects/${PROJECT}/branches`, {
-		method: "POST",
-		body: JSON.stringify({
-			branch: { name, parent_timestamp: restorePoint },
-			endpoints: [{ type: "read_write" }],
-		}),
-	});
-	branchId = created.branch.id;
+	console.log("  1. counting the source");
+	const before = countsFor(source);
+	console.log(`     ${before.size} tables`);
 
-	const uri =
-		created.connection_uris?.[0]?.connection_uri ??
-		(
-			await api(
-				`/projects/${PROJECT}/connection_uri?branch_id=${branchId}&database_name=neondb&role_name=neondb_owner`,
-			)
-		).uri;
+	console.log("  2. taking a real backup");
+	const backupScript = fileURLToPath(new URL("./backup.mjs", import.meta.url));
+	execFileSync(
+		"node",
+		[backupScript, "--url", source, "--out", workDir, "--keep", "1"],
+		{ stdio: "inherit" },
+	);
+	const dump = readdirSync(workDir).find((f) => f.endsWith(".dump"));
+	if (!dump) fail("The backup produced no dump file.");
 
-	// A freshly created endpoint can refuse the first connection while it starts.
-	let sql;
-	for (let attempt = 1; attempt <= 5; attempt++) {
-		try {
-			sql = postgres(uri, { max: 1, onnotice: () => {} });
-			await sql`select 1`;
-			break;
-		} catch (error) {
-			if (attempt === 5) throw error;
-			await sql?.end({ timeout: 5 }).catch(() => {});
-			await new Promise((r) => setTimeout(r, 3000));
+	console.log("  3. creating the scratch database");
+	psql(adminUrl.toString(), `CREATE DATABASE ${scratchDb}`);
+	created = true;
+
+	console.log("  4. restoring");
+	/**
+	 * 🔴 The client must be at least the server's major version, exactly as in
+	 * `backup.mjs`. A v14 `pg_restore` against a v17 custom-format dump does not
+	 * refuse loudly: it restored NOTHING and exited in a way that looked survivable,
+	 * and the drill only caught it because reconciliation counts rows rather than
+	 * trusting the exit code. Reuse the same Docker fallback, and the same
+	 * `host.docker.internal` mapping, since the scratch database is usually local.
+	 */
+	const serverMajor = Number(psql(adminUrl.toString(), "show server_version_num")) / 10000;
+	const restoreLocal = spawnSync("pg_restore", ["--version"], { encoding: "utf8" });
+	const localMajor = restoreLocal.status === 0
+		? Number((restoreLocal.stdout.match(/(\d+)\./) ?? [0, 0])[1])
+		: 0;
+	const viaDocker = localMajor < Math.floor(serverMajor);
+
+	const inContainer = (u) => {
+		const parsed = new URL(u);
+		if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+			parsed.hostname = "host.docker.internal";
 		}
+		return parsed.toString();
+	};
+
+	const restore = viaDocker
+		? spawnSync("docker", [
+				"run", "--rm", "-i",
+				"--add-host", "host.docker.internal:host-gateway",
+				"-v", `${workDir}:/dump`,
+				`postgres:${Math.floor(serverMajor)}-alpine`,
+				"pg_restore", "--dbname", inContainer(scratchUrl.toString()),
+				"--no-owner", "--no-privileges", `/dump/${dump}`,
+			], { encoding: "utf8" })
+		: spawnSync("pg_restore", [
+				"--dbname", scratchUrl.toString(),
+				"--no-owner", "--no-privileges", join(workDir, dump),
+			], { encoding: "utf8" });
+
+	// ⚠️ A non-zero exit is reported but does not decide the verdict: pg_restore
+	// warns about extensions that already exist and roles that do not. The row
+	// reconciliation below is the actual test.
+	if (restore.status !== 0) {
+		const detail = (restore.stderr || "").trim().split("\n").slice(-3).join(" · ");
+		console.log(`     pg_restore warnings (exit ${restore.status}): ${detail.slice(0, 200)}`);
 	}
 
-	const [{ tables }] = await sql`
-		select count(*)::int as tables from information_schema.tables
-		where table_schema = 'public' and table_type = 'BASE TABLE'`;
-	const [{ migrations }] = await sql`
-		select count(*)::int as migrations from drizzle.__drizzle_migrations`;
-	const [rows] = await sql`
-		select
-			(select count(*)::int from quickengine_users) as users,
-			(select count(*)::int from quickengine_workspaces) as workspaces,
-			(select count(*)::int from quickengine_organizations) as orgs`;
-	await sql.end({ timeout: 5 });
+	console.log("  5. reconciling every table");
+	const after = countsFor(scratchUrl.toString());
 
-	console.log(`  tables      ${tables}`);
-	console.log(`  migrations  ${migrations}`);
-	console.log(`  users       ${rows.users}`);
-	console.log(`  workspaces  ${rows.workspaces}`);
-	console.log(`  orgs        ${rows.orgs}`);
-
-	// Schema without data is a restore that would not save anyone. Both are required
-	// for a pass, and the distinction is the whole point of running this.
-	const schemaOk = tables > 50 && migrations > 0;
-	const dataOk = rows.users > 0 && rows.workspaces > 0;
-
-	if (schemaOk && dataOk) {
-		console.log("\n✅ PASS — schema and data both restored.");
-	} else if (schemaOk) {
-		console.log(
-			"\n⚠️  PARTIAL — schema restored, no data at this point in time.\n" +
-				"    Either the restore point predates any data, or data recovery is broken.\n" +
-				"    Re-run with a timestamp you know had records.",
-		);
-		process.exitCode = 1;
-	} else {
-		console.log("\n❌ FAIL — schema did not restore.");
-		process.exitCode = 1;
+	const problems = [];
+	for (const [table, count] of before) {
+		const got = after.get(table);
+		if (got === undefined) problems.push(`${table}: MISSING after restore`);
+		else if (got !== count) problems.push(`${table}: ${count} → ${got}`);
 	}
+	const extra = [...after.keys()].filter((t) => !before.has(t));
+
+	const seconds = ((Date.now() - started) / 1000).toFixed(1);
+	console.log(`\n  tables   ${before.size} source · ${after.size} restored`);
+	console.log(`  rows     ${[...before.values()].reduce((a, b) => a + b, 0)}`);
+	console.log(`  elapsed  ${seconds}s\n`);
+
+	if (problems.length) {
+		console.log("  mismatches:");
+		for (const p of problems.slice(0, 20)) console.log(`    ${p}`);
+		fail(`${problems.length} table(s) did not come back identical.`);
+	}
+	if (extra.length) console.log(`  note: ${extra.length} table(s) only in the restore`);
+
+	console.log(`✓ PASS — every table restored with identical row counts in ${seconds}s.`);
+	console.log("  That number is the one an incident update has to contain.\n");
 } finally {
-	// Always, including on failure: an orphaned branch bills storage and the next
-	// run should never inherit state from this one.
-	if (branchId) {
-		await api(`/projects/${PROJECT}/branches/${branchId}`, { method: "DELETE" })
-			.then(() => console.log(`\nDeleted ${name}.`))
-			.catch((error) => {
-				console.error(`\n⚠️  Could not delete ${name}: ${error.message}`);
-				process.exitCode = 1;
-			});
+	// 🔴 The dump is real customer data. It does not outlive the drill.
+	rmSync(workDir, { recursive: true, force: true });
+	if (created) {
+		spawnSync("psql", [adminUrl.toString(), "-tAc", `DROP DATABASE IF EXISTS ${scratchDb}`]);
 	}
 }

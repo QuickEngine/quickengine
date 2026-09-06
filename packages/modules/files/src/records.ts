@@ -14,6 +14,7 @@ import {
 	max,
 	quickengineWorkspaces,
 	sql,
+	workspaceAssets,
 } from "@quickengine/db";
 import type { JobQueue } from "@quickengine/jobs";
 import type {
@@ -277,10 +278,23 @@ export async function deleteFileFolderInTx(
 	}
 }
 
-// Total file storage across an organization's workspaces. Billing is org-scoped, so storage
-// meters against the org — the sum of every workspace it owns.
+/**
+ * Total storage across an organization's workspaces. Billing is org-scoped, so
+ * storage meters against the org: the sum of every workspace it owns.
+ *
+ * 🔴 BOTH sources, and that is the point. This used to sum `file_versions`
+ * alone, which is the Files module and almost nobody uses it. Product
+ * photographs and workspace images go to object storage through
+ * `putPublicAsset` and were recorded as a URL in a metadata blob, so they were
+ * invisible here: a customer could fill a bucket we pay for and watch their
+ * usage sit at zero. Found on 2026-09-06 by uploading three product images and
+ * seeing the meter stay put.
+ *
+ * ⚠️ Anything that can be uploaded has to be counted. If a fourth upload path
+ * is ever added, it belongs in this sum on the same day.
+ */
 async function orgStorageBytes(organizationId: string): Promise<number> {
-	const [result] = await db
+	const [files] = await db
 		.select({
 			value: sql<string>`coalesce(sum(${fileVersions.sizeBytes}), 0)::bigint`,
 		})
@@ -295,7 +309,17 @@ async function orgStorageBytes(organizationId: string): Promise<number> {
 				inArray(fileVersions.status, ["available", "quarantined"]),
 			),
 		);
-	const total = Number(result?.value ?? 0);
+	const [assets] = await db
+		.select({
+			value: sql<string>`coalesce(sum(${workspaceAssets.sizeBytes}), 0)::bigint`,
+		})
+		.from(workspaceAssets)
+		.innerJoin(
+			quickengineWorkspaces,
+			eq(quickengineWorkspaces.id, workspaceAssets.workspaceId),
+		)
+		.where(eq(quickengineWorkspaces.organizationId, organizationId));
+	const total = Number(files?.value ?? 0) + Number(assets?.value ?? 0);
 	if (!Number.isSafeInteger(total) || total < 0) {
 		throw new Error("FILE_STORAGE_TOTAL_INVALID");
 	}
@@ -316,7 +340,14 @@ export async function syncOrgFileStorageUsage(
 	return total;
 }
 
-async function assertStorageUploadAllowed(
+/**
+ * May this organization store another `bytes` worth?
+ *
+ * ⚠️ Exported so EVERY upload path can ask, not just the Files module. Product
+ * images went straight to object storage without asking anything, which is how
+ * the storage ceiling became bypassable.
+ */
+export async function assertStorageUploadAllowed(
 	organizationId: string | null,
 	incomingBytes: number,
 ) {

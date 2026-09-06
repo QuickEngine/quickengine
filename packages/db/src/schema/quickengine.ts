@@ -304,6 +304,16 @@ export const quickengineAccounts = pgTable("quickengine_accounts", {
 	}),
 	scope: text("scope"),
 	idToken: text("id_token"),
+	/**
+	 * The OIDC issuer that vouched for this account, added by Better Auth 1.7.
+	 *
+	 * 🔴 Nullable and unused by us today, but Better Auth INSERTS it, and a column
+	 * it writes that the Drizzle schema does not declare fails the whole insert:
+	 * sign-up returned 500, the user row was created without its account row, and
+	 * every later sign-in reported "User not found". Ten auth tests failed for
+	 * what reads as a login bug and was a missing column.
+	 */
+	issuer: text("issuer"),
 	password: text("password"),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.defaultNow()

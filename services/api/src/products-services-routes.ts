@@ -317,13 +317,55 @@ export function registerProductsServicesRoutes(
 					.replace(/[^a-z0-9.]+/g, "-")
 					.replace(/^-|-$/g, "")
 					.slice(-60) || "image";
+			// 🔴 Asked BEFORE the bytes are written. Storage is a ceiling, and
+			// uploading first then refusing would leave the object in a bucket we
+			// pay for while telling the customer it did not happen.
+			const organizationId = c.get("authorized").workspace.organizationId;
+			if (organizationId) {
+				const { assertStorageUploadAllowed } = await import(
+					"@quickengine/mod-files"
+				);
+				try {
+					await assertStorageUploadAllowed(organizationId, file.size);
+				} catch {
+					return respondError(
+						c,
+						"USAGE_LIMIT_EXCEEDED",
+						"This image would take you over your plan's storage. Upgrade, or remove something you no longer need.",
+						402,
+					);
+				}
+			}
+
 			const provider = await publicAssets(new URL(c.req.url).origin);
+			const key = `catalog/${id}/${Date.now()}-${safeName}`;
 			const asset = await provider.putPublicAsset({
 				workspaceId,
-				key: `catalog/${id}/${Date.now()}-${safeName}`,
+				key,
 				body: new Uint8Array(await file.arrayBuffer()),
 				contentType: file.type,
 			});
+
+			// 🔴 Recorded so it COUNTS. Product images used to be stored as a bare
+			// URL inside a metadata blob, which the storage gauge could not see, so
+			// a customer could fill a bucket and stay at zero usage forever.
+			// `asset.size` is what the provider actually stored, not what the
+			// client claimed.
+			const { recordWorkspaceAsset } = await import("@quickengine/db");
+			await recordWorkspaceAsset({
+				workspaceId,
+				kind: "catalog",
+				key: asset.key,
+				url: asset.url,
+				sizeBytes: asset.size,
+				contentType: file.type,
+			});
+			// Recount and write the gauge. Recount, never adjust: it converges from
+			// any state, so a missed write cannot leave the number wrong for good.
+			const { syncOrgFileStorageUsage } = await import(
+				"@quickengine/mod-files"
+			);
+			await syncOrgFileStorageUsage(organizationId);
 
 			return saveImages(c, id, item.metadata ?? {}, [
 				...imagesOf(item.metadata),

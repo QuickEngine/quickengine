@@ -112,13 +112,47 @@ export function registerImageRoutes(
 				.replace(/[^a-z0-9.]+/g, "-")
 				.replace(/^-|-$/g, "")
 				.slice(-60) || "image";
+		// Asked before the bytes are written: refusing after the upload would
+		// leave the object in a bucket we pay for.
+		const { workspaceId, workspace } = c.get("authorized");
+		if (workspace.organizationId) {
+			const { assertStorageUploadAllowed } = await import(
+				"@quickengine/mod-files"
+			);
+			try {
+				await assertStorageUploadAllowed(workspace.organizationId, file.size);
+			} catch {
+				return respondError(
+					c,
+					"USAGE_LIMIT_EXCEEDED",
+					"This image would take you over your plan's storage. Upgrade, or remove something you no longer need.",
+					402,
+				);
+			}
+		}
+
 		const provider = await publicAssets(new URL(c.req.url).origin);
 		const asset = await provider.putPublicAsset({
-			workspaceId: c.get("authorized").workspaceId,
+			workspaceId,
 			key: `content/${Date.now()}-${safeName}`,
 			body: new Uint8Array(await file.arrayBuffer()),
 			contentType: file.type,
 		});
+
+		// Recorded so it counts toward storage, the same as a catalog image.
+		const { recordWorkspaceAsset } = await import("@quickengine/db");
+		await recordWorkspaceAsset({
+			workspaceId,
+			kind: "workspace",
+			key: asset.key,
+			url: asset.url,
+			sizeBytes: asset.size,
+			contentType: file.type,
+		});
+		// Recount and write the gauge. Recount, never adjust: it converges from
+		// any state, so a missed write cannot leave the number wrong for good.
+		const { syncOrgFileStorageUsage } = await import("@quickengine/mod-files");
+		await syncOrgFileStorageUsage(workspace.organizationId);
 
 		return respond(c, { url: asset.url }, 201);
 	});

@@ -8,6 +8,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Security updates.** Three dependencies moved to patched releases, clearing every outstanding
+  advisory. Nothing changes in how anything works.
+
 - **Fixed: the second page of a list was the first page again.** Bookings, contracts, files,
   projects, milestones, tasks and time entries all handed back a marker their own reader could not
   understand, so asking for more gave you what you already had. Anything scrolling through a long

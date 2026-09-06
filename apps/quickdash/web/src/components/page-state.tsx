@@ -1204,6 +1204,32 @@ export function ReadOnlyNote({ children }: { children: ReactNode }) {
 	);
 }
 
+/**
+ * A ceiling met mid-task, said as an offer.
+ *
+ * ⚠️ INLINE, not the modal `PlanWall`. That one answers a page that could not
+ * load, where there is nothing behind it to return to. This answers a save that
+ * was refused while somebody is standing in a working screen with a form open,
+ * and covering that up would be both rude and confusing. The wall belongs where
+ * the road ends; this belongs where the road narrows.
+ *
+ * ⚠️ Carries no request id and no support link. Both mean "report this", and a
+ * plan doing exactly what it says is not a fault.
+ */
+function PlanNotice({ detail }: { detail: string }) {
+	return (
+		<div className="mb-3 rounded-xl border border-[var(--console-line)] bg-[var(--console-card)] px-3.5 py-3">
+			<p className="text-[11.5px] text-[var(--ink-75)] leading-5">{detail}</p>
+			<a
+				href={`${clientEnv.ACCOUNT_URL}/billing`}
+				className="control-raised mt-2.5 inline-flex h-8 items-center rounded-md border px-3 text-[12px] text-[var(--ink-85)] no-underline outline-none hover:text-[var(--ink-100)]"
+			>
+				See what Commerce includes
+			</a>
+		</div>
+	);
+}
+
 export function WriteFailure({
 	error,
 	message,
@@ -1234,6 +1260,29 @@ export function WriteFailure({
 			? ((error as { message?: string }).message ?? null)
 			: null;
 	const text = domain ?? it?.message ?? message ?? "That did not save.";
+
+	/**
+	 * 🔴 A plan limit is an OFFER, and it must not wear a failure's clothes.
+	 *
+	 * Refusing to add a supplier on the free plan rendered the same card as a
+	 * dropped database connection: a coloured dot, a request id, and a Contact
+	 * support button. Nothing had broken, there was nothing for support to look
+	 * up, and the one moment somebody was reaching for something worth paying
+	 * for was answered as though they had hit a bug. Reported from a real
+	 * first-run on 2026-09-06.
+	 *
+	 * 🔑 Hard rule 4 bans advertising SOMEBODY ELSE'S product and is explicit
+	 * that telling your own users what your own product does is the product.
+	 * That rule has already caused two screens to be built as dead ends on the
+	 * mistaken reading that an upgrade prompt was advertising. This is the third
+	 * and it sits on the exact moment somebody is trying to give us money.
+	 *
+	 * ⚠️ No request id and no support link, deliberately. Both say "report
+	 * this", and there is nothing to report: the plan worked exactly as sold.
+	 */
+	if (it?.kind === "plan-limit") {
+		return <PlanNotice detail={text} />;
+	}
 
 	return (
 		<div

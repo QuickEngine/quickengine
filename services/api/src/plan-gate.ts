@@ -53,5 +53,5 @@ export function requireCapability(
  */
 export const requireSecondParty = requireCapability(
 	"second-party",
-	"Suppliers, purchase orders and partner payouts are part of Commerce. Your current plan covers everything you sell on your own.",
+	"Partners and suppliers are part of Commerce: purchase orders, supplier payments and partner payouts. Your current plan covers everything you sell on your own.",
 );

@@ -1,4 +1,5 @@
 import { and, count, db, eq, isNull } from "@quickengine/db";
+import { catalogItems } from "@quickengine/db/schema/catalog-items";
 import {
 	quickengineOrganizationMembers,
 	quickengineSubscriptions,
@@ -176,4 +177,124 @@ export async function admitWorkspace(
 		meter: "workspaces",
 		amount: proposed,
 	});
+}
+
+/**
+ * The two BUSINESS-VOLUME gates, added 2026-09-06.
+ *
+ * 🔴 Why they exist. Metering only API requests, storage and AI meant a real
+ * single-merchant shop could run on Free permanently: steady retail never comes
+ * near 25,000 requests a month, so nothing ever asked them to pay. The only
+ * other wall was suppliers, which a shop without suppliers never meets. Free was
+ * a home rather than a place you try the product.
+ *
+ * ⚠️ **A ceiling, never a fee.** `OVERAGE` is `null` for both and must stay
+ * `null`. Passing one means this plan is no longer the right plan, exactly like
+ * running out of workspaces. Charging per order or per product listed is the
+ * per-outcome billing hard rule 7 forbids, and these being meters must never be
+ * mistaken for permission to price them.
+ *
+ * Both are uncapped on every paid tier, so in practice they only ever bind Free.
+ */
+
+/**
+ * How many products this workspace currently lists for sale.
+ *
+ * Counts `active` only: a draft is not on sale and an archived item is somebody
+ * tidying up, so neither should count against a ceiling. Delisting therefore
+ * frees room, which is the behaviour somebody would expect.
+ */
+export async function countActiveProducts(
+	workspaceId: string,
+): Promise<number> {
+	const [row] = await db
+		.select({ total: count() })
+		.from(catalogItems)
+		.where(
+			and(
+				eq(catalogItems.workspaceId, workspaceId),
+				eq(catalogItems.status, "active"),
+			),
+		);
+	return row?.total ?? 0;
+}
+
+/**
+ * Keep the active-product gauge true after a product is listed, delisted or
+ * archived. Recount rather than adjust, the same rule as seats and workspaces:
+ * an incrementing counter drifts the first time a call is missed and cannot
+ * recover, while a recount converges from any state.
+ */
+export async function syncActiveProducts(
+	organizationId: string,
+	workspaceId: string,
+): Promise<number> {
+	const products = await countActiveProducts(workspaceId);
+	await meter({
+		scopeId: organizationId,
+		meter: "activeProducts",
+		amount: products,
+	});
+	return products;
+}
+
+/** May this workspace list one more product? Same contract as `admitWorkspace`. */
+export async function admitProduct(
+	organizationId: string,
+	workspaceId: string,
+): Promise<EnforceResult> {
+	const proposed = (await countActiveProducts(workspaceId)) + 1;
+	return checkAllowance({
+		scopeId: organizationId,
+		meter: "activeProducts",
+		amount: proposed,
+	});
+}
+
+/**
+ * May this account take one more order this period?
+ *
+ * ⚠️ Unlike products this is a COUNTER, so it is asked against the running
+ * period total rather than a recount: an order that happened cannot be undone by
+ * deleting the record, and a refunded order still consumed the month. The caller
+ * increments with `meter` once the order is actually written.
+ */
+export async function admitOrder(
+	organizationId: string,
+): Promise<EnforceResult> {
+	const check = await checkAllowance({
+		scopeId: organizationId,
+		meter: "ordersPerMonth",
+		amount: 1,
+	});
+	// Paid tiers carry no ceiling, so there is nothing to land softly on.
+	if (check.limit === null) return check;
+
+	// 🔴 THE SOFT LANDING, and it deliberately OVERRIDES the engine's own answer.
+	//
+	// `checkAllowance` allows any counter up to (1 + GRACE) x limit, and GRACE is
+	// 10%. On a limit of 25 that is 27.5, so it would wave through orders 26 AND
+	// 27 before refusing 28. That percentage is right for API requests, where an
+	// overshoot is invisible and a hard stop mid-integration is worse than a
+	// small overrun. It is wrong here: "you get roughly two and a half more
+	// orders" is not a rule anybody can act on.
+	//
+	// So this decides for itself. One order is allowed past the ceiling and then
+	// nothing:
+	//
+	// ⚠️ `check.used` on a counter is the PROPOSED total, already including this
+	// order, not the count before it. So the order being asked about is number
+	// `check.used`, and the test is against `limit + 1`:
+	//
+	//   proposed <= limit     -> ordinary, inside the plan
+	//   proposed == limit + 1 -> the crossing order, allowed. It belongs to a
+	//                            real shopper standing at a checkout, and
+	//                            refusing it costs the merchant a genuine sale
+	//                            to a limit they may never have seen. They blame
+	//                            the platform, not the plan page.
+	//   proposed >  limit + 1 -> the grace is spent. Refused, every time.
+	//
+	// ⚠️ Exactly one, and never a percentage. "Your next order is your last" is
+	// a sentence a merchant can act on; "you have about 10% left" is not.
+	return { ...check, allowed: check.used <= check.limit + 1 };
 }

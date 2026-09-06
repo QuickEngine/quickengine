@@ -546,6 +546,30 @@ export function registerCheckoutRoutes(
 			requestId: c.get("requestId"),
 		});
 
+		// 🔴 The same ceiling as the operator route, because a wall only one of two
+		// doors respects is not a wall: almost every order arrives through here.
+		//
+		// ⚠️ Placed BEFORE `createOrderCommand`, which is before any payment is
+		// taken, so a shopper is never charged and then refused.
+		//
+		// ⚠️ And the message is written for a SHOPPER, not the merchant. They
+		// cannot upgrade anything, they do not know what a plan is, and telling
+		// them to would be both confusing and a little humiliating for the
+		// business. The merchant learns about this on their own usage screen.
+		const checkoutOrganizationId = c.get("authorized").workspace.organizationId;
+		if (checkoutOrganizationId) {
+			const { admitOrder } = await import("@quickengine/billing");
+			const room = await admitOrder(checkoutOrganizationId);
+			if (!room.allowed) {
+				return respondError(
+					c,
+					"USAGE_LIMIT_EXCEEDED",
+					"This shop cannot take new orders right now. Please try again later or contact the shop directly.",
+					402,
+				);
+			}
+		}
+
 		const result = await createOrderCommand(
 			context,
 			{
@@ -597,6 +621,16 @@ export function registerCheckoutRoutes(
 		// safe. Conflict and in-progress are handed back as-is.
 		if (result.kind !== "success") {
 			return respondMutation(c, result);
+		}
+		// Same rule as the operator route: only an order this request actually
+		// wrote counts. `replayed` is a double-tapped buy button, and counting it
+		// would charge a shop's monthly allowance twice for one sale.
+		if (checkoutOrganizationId && result.source === "executed") {
+			const { meter } = await import("@quickengine/billing");
+			await meter({
+				scopeId: checkoutOrganizationId,
+				meter: "ordersPerMonth",
+			});
 		}
 		const order = result.result;
 

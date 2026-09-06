@@ -17,8 +17,12 @@ export {
 	maybeAutoRecharge,
 } from "./credit-topup";
 export {
+	admitOrder,
+	admitProduct,
 	admitSeat,
 	admitWorkspace,
+	countActiveProducts,
+	syncActiveProducts,
 	syncSeats,
 	syncWorkspaces,
 } from "./gauges";
@@ -34,6 +38,7 @@ export {
 	type LimitCheck,
 	type LimitState,
 	meter,
+	withinLapseGrace,
 } from "./metering";
 export { billOverage } from "./overage";
 export type { PlanCapability } from "./plans";

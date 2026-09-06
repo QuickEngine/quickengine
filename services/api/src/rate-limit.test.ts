@@ -131,12 +131,28 @@ describe("policyForPlan", () => {
 
 	it("tightens Free and loosens paid tiers", () => {
 		expect(policyForPlan(base, "free").limit).toBe(150);
-		expect(policyForPlan(base, "grow").limit).toBe(1200);
-		expect(policyForPlan(base, "scale").limit).toBe(2400);
+		expect(policyForPlan(base, "scale").limit).toBe(1800);
+		expect(policyForPlan(base, "teams").limit).toBe(3600);
 	});
 
 	it("leaves the base policy untouched at the reference tier", () => {
-		expect(policyForPlan(base, "launch")).toBe(base);
+		expect(policyForPlan(base, "commerce")).toBe(base);
+	});
+
+	/**
+	 * 🔴 `launch` and `grow` are retired but still stored on live rows until the
+	 * migration runs, and a retired plan must map to AT LEAST what its successor
+	 * gets. An unlisted plan silently falls back to the reference multiplier, so
+	 * dropping `grow` here before migrating would quietly cut a Grow account from
+	 * Scale throughput down to Commerce throughput.
+	 */
+	it("never throttles a retired tier below the one replacing it", () => {
+		expect(policyForPlan(base, "launch").limit).toBeGreaterThanOrEqual(
+			policyForPlan(base, "commerce").limit,
+		);
+		expect(policyForPlan(base, "grow").limit).toBeGreaterThanOrEqual(
+			policyForPlan(base, "scale").limit,
+		);
 	});
 
 	/**

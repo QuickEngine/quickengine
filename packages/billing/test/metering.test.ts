@@ -138,8 +138,8 @@ describe("metering engine", () => {
 
 		await db
 			.insert(quickengineSubscriptions)
-			.values({ organizationId: scope, planId: "grow", status: "active" });
-		expect(await getAccountPlanId(scope)).toBe("grow");
+			.values({ organizationId: scope, planId: "commerce", status: "active" });
+		expect(await getAccountPlanId(scope)).toBe("commerce");
 
 		// A canceled subscription falls back to Free.
 		await db
@@ -149,7 +149,7 @@ describe("metering engine", () => {
 		expect(await getAccountPlanId(scope)).toBe("free");
 	});
 
-	it("a higher plan raises the limit (Grow API requests = 1M)", async () => {
+	it("a higher plan raises the limit (Commerce API requests = 1M)", async () => {
 		const scope = "00000000-0000-4000-8000-0000000ccf02";
 		await insertOrg(scope);
 		await db
@@ -166,8 +166,10 @@ describe("metering engine", () => {
 		// Exhaustive on purpose: a new meter that nothing reports would be invisible
 		// on the usage dashboard, so adding one has to break this.
 		expect(Object.keys(usage).sort()).toEqual([
+			"activeProducts",
 			"aiActions",
 			"apiRequests",
+			"ordersPerMonth",
 			"seats",
 			"storageBytes",
 			"webhookDeliveries",

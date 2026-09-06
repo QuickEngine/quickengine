@@ -13,18 +13,27 @@ import type {
 // change without a code change. Any of these env vars may be unset pre-launch.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// 🔴 REVISED 2026-08-11 from `internal/planning/PRICING_STRATEGY.md`, after market
-// research against Odoo, Zoho, HubSpot, Shopify, FreshBooks and Supabase.
+// 🔴 REVISED 2026-09-06. Two axes, and keeping them separate is the whole design.
 //
-// The two changes that matter:
+//  1. **The boolean gate decides free or paid.** Is there a second party on this
+//     workspace's orders: a supplier, a fulfiller, a partner who gets paid. It
+//     unlocks on the CHEAPEST paid tier on purpose, because the gate's job is to
+//     convert free into paying, and putting it higher only buys hesitation.
+//  2. **Volume decides how much you pay once you are paying.** A solo merchant
+//     with one supplier must not pay what a twenty seat operation pays. An
+//     earlier draft of this file had a single paid price and called it
+//     simplicity; it was mispricing.
 //
-//  1. **Free API requests: 10k → 50k.** 10k is ~330 requests a day, which cannot
-//     host the connected website the marketing site advertises. Supabase gives
-//     unlimited on free; 50k is the minimum that makes our own pitch true.
-//  2. **Seats: 1/2/5/15 → 1/3/8/20.** Two seats on a $30 plan meant the third
-//     hire triggered a $60 jump to Grow they did not otherwise need, and 15 on
-//     Scale created a $160/month cliff at the sixteenth seat that customers
-//     would rationally game by sharing logins.
+// ⚠️ **Free is feature complete and volume tight**, which is a deliberate change
+// from "free is the entire single merchant system". That version had exactly one
+// upgrade trigger, so a happy solo merchant never paid anything, ever. This one
+// has two: you took on a second party, or you outgrew the volume.
+//
+// 🔴 **`aiActions` is the one number that cannot be generous.** Every other limit
+// spends our own infrastructure at roughly $0.0001 a request, which is close
+// enough to free at this scale. An AI action buys tokens from a third party at
+// roughly thirty times that. Free gets 25: enough for a few meaningful tasks, not
+// enough to work in it all day on somebody else's money.
 //
 // Per-plan usage limits. Metered PER ACCOUNT (one budget shared across all the
 // account's workspaces). `actions` is a COUNTER (an allowance that refills each
@@ -50,6 +59,30 @@ export type PlanLimits = {
 	 * a third party's, the same way a file upload consumes a request and storage.
 	 */
 	aiActions: number | null;
+	/**
+	 * Counter: orders placed this billing period.
+	 *
+	 * 🔴 A CEILING, never a fee, and the distinction is the whole of hard rule 7.
+	 * Passing it does not produce a charge per order, an invoice line, or a cent
+	 * of usage billing: `OVERAGE.ordersPerMonth` is `null` and must stay `null`.
+	 * It means "this plan is no longer the right plan", the same way running out
+	 * of workspaces does. We never bill a business outcome the customer earned.
+	 *
+	 * ⚠️ It exists because the alternative was worse. Metering only API, storage
+	 * and AI let a real shop run on Free forever: a single merchant doing steady
+	 * retail never comes near 25k requests, so nothing ever asked them to pay.
+	 * Orders is the one number that tracks whether this is somebody's actual
+	 * business rather than somebody trying it out.
+	 */
+	ordersPerMonth: number | null;
+	/**
+	 * Gauge: products currently listed for sale.
+	 *
+	 * The catalog-side twin of `ordersPerMonth`, and the same rule applies: a
+	 * ceiling, never a fee. A tester lists a handful; a real shop lists hundreds.
+	 * Katana caps its free tier the same way, at roughly thirty SKUs.
+	 */
+	activeProducts: number | null;
 	/** Gauge: total bytes stored across the account. */
 	storageBytes: number | null;
 	/** Gauge: team members. */
@@ -147,21 +180,59 @@ const paidPlan = (
 export const PLANS: readonly PlanDefinition[] = [
 	{
 		id: "free",
-		displayName: "Free",
+		// "Solo" to the customer: it names who it is for and, by naming it, why you
+		// leave. You hired somebody, or you took on a supplier.
+		displayName: "Solo",
 		free: true,
 		priceEnv: {},
 		limits: {
-			apiRequests: 50_000,
+			apiRequests: 25_000,
 			aiActions: 25,
+			// 🔴 The two walls that make Solo a place you TRY the product rather
+			// than a place you run a business from forever.
+			//
+			// ⚠️ 25, lowered from 40 on external review before any of this shipped.
+			// Forty is still a soft month for a shop doing any consistent volume,
+			// and starting too high is the exact failure being escaped: a limit
+			// nobody reaches never asks anybody to pay. Twenty-five leaves a
+			// tester, a side project or a quiet month working, and a real shop
+			// meets it inside a month or two. Raise it later WITH DATA; there is
+			// none today.
+			ordersPerMonth: 25,
+			activeProducts: 25,
 			storageBytes: 2 * GB,
 			seats: 1,
 			workspaces: 1,
 			webhookDeliveries: null,
 		},
 	},
+	// 🔴 THE rung. Everything below it is the free single merchant system;
+	// everything above is the same product with more room. Priced against Cin7
+	// Core Standard ($349/month for five users of inventory alone) and Katana
+	// Core ($299), NOT against Shopify. Two earlier drafts anchored on Shopify's
+	// $39 to $105 storefront tiers and landed at $25 to $75, which `DECISIONS.md`
+	// had already rejected in writing before either was written.
+	paidPlan("commerce", "Commerce", {
+		apiRequests: 1_000_000,
+		aiActions: 1_500,
+		// Uncapped from here up. The ceiling was never the product.
+		ordersPerMonth: null,
+		activeProducts: null,
+		storageBytes: 100 * GB,
+		seats: 5,
+		workspaces: 3,
+		webhookDeliveries: null,
+	}),
+	// ⚠️ RETIRED 2026-09-06. Kept ONLY until stored rows are migrated (launch to
+	// commerce, grow to scale). Never shown, never sold, no Stripe price. They
+	// stay so an existing subscription still resolves to real limits instead of
+	// silently falling back to Free, which is what deleting them early would do.
 	paidPlan("launch", "Launch", {
 		apiRequests: 250_000,
 		aiActions: 500,
+		// Retired, and never capped when sold. Leave them uncapped.
+		ordersPerMonth: null,
+		activeProducts: null,
 		storageBytes: 25 * GB,
 		seats: 3,
 		workspaces: 2,
@@ -170,6 +241,9 @@ export const PLANS: readonly PlanDefinition[] = [
 	paidPlan("grow", "Grow", {
 		apiRequests: 1_000_000,
 		aiActions: 2_500,
+		// Retired, and never capped when sold. Leave them uncapped.
+		ordersPerMonth: null,
+		activeProducts: null,
 		storageBytes: 150 * GB,
 		seats: 8,
 		workspaces: 5,
@@ -177,10 +251,12 @@ export const PLANS: readonly PlanDefinition[] = [
 	}),
 	paidPlan("scale", "Scale", {
 		apiRequests: 5_000_000,
-		aiActions: 10_000,
+		aiActions: 6_000,
+		ordersPerMonth: null,
+		activeProducts: null,
 		storageBytes: 500 * GB,
-		seats: 20,
-		workspaces: 15,
+		seats: 15,
+		workspaces: 10,
 		webhookDeliveries: null,
 	}),
 	// 🔴 Teams is the only PER-SEAT tier. Launch, Grow and Scale are flat prices
@@ -202,13 +278,22 @@ export const PLANS: readonly PlanDefinition[] = [
 		capabilities: ["second-party"],
 		perSeat: true,
 		limits: {
-			// PER SEAT, not per account. Calibrated so the 16-seat floor lands above
-			// Scale in every dimension — 8M requests, 24k AI actions, 800 GB against
-			// Scale's 5M / 10k / 500 GB — because moving up a tier must never cost a
-			// customer capacity. Everything above the floor grows with the team.
+			// PER SEAT, not per account. At the 16 seat floor this is 8M requests,
+			// 16k AI actions and 1.6 TB, against Scale's 5M / 5k / 500 GB, because
+			// moving UP a tier must never cost a customer capacity.
+			//
+			// 🔴 An 8 seat floor was proposed on 2026-09-06 and REJECTED: 500k x 8 is
+			// 4M, which is LESS than Scale's 5M, so the upgrade would have taken a
+			// million requests away. The invariant test caught it. It also priced
+			// Expand at $392 against Scale's $349, which is pure arbitrage and would
+			// have meant nobody rational ever bought Scale.
 			apiRequests: 500_000,
 			aiActions: 1_500,
-			storageBytes: 50 * GB,
+			// Uncapped, and NOT scaled per seat: a ceiling that grew with the team
+			// would be meaningless, and there is no ceiling above Commerce anyway.
+			ordersPerMonth: null,
+			activeProducts: null,
+			storageBytes: 100 * GB,
 			// Not a ceiling. Every seat is billed, so there is nothing to cap.
 			seats: null,
 			workspaces: null,
@@ -237,6 +322,8 @@ export const PLANS: readonly PlanDefinition[] = [
 		limits: {
 			apiRequests: null,
 			aiActions: 100_000,
+			ordersPerMonth: null,
+			activeProducts: null,
 			storageBytes: null,
 			seats: null,
 			workspaces: null,
@@ -267,6 +354,8 @@ export const PLANS: readonly PlanDefinition[] = [
 		limits: {
 			apiRequests: null,
 			aiActions: 25_000,
+			ordersPerMonth: null,
+			activeProducts: null,
 			storageBytes: null,
 			seats: null,
 			workspaces: null,
@@ -344,6 +433,11 @@ export const OVERAGE: Record<MeterKey, OveragePrice | null> = {
 	aiActions: { blockSize: 100, cents: 200 },
 	// Counted, never capped, and not charged until real volume says what it costs.
 	webhookDeliveries: null,
+	// 🔴 NEVER price these two. They are the business the customer built, and
+	// charging per order or per product listed is precisely the per-outcome fee
+	// that hard rule 7 forbids. They gate which plan fits; they never bill.
+	ordersPerMonth: null,
+	activeProducts: null,
 	// Gauges are ceilings, not consumption. Passing one is a reason to change
 	// plan, not a line on an invoice.
 	storageBytes: null,
@@ -354,6 +448,10 @@ export const OVERAGE: Record<MeterKey, OveragePrice | null> = {
 export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
 	apiRequests: "counter",
 	aiActions: "counter",
+	// Refills each period: this month's trading, not a lifetime total.
+	ordersPerMonth: "counter",
+	// A running total of what is listed right now, so delisting frees room.
+	activeProducts: "gauge",
 	storageBytes: "gauge",
 	seats: "gauge",
 	workspaces: "gauge",
@@ -385,6 +483,11 @@ export const getPlanLimits = (
 	return {
 		apiRequests: scale(plan.limits.apiRequests),
 		aiActions: scale(plan.limits.aiActions),
+		// 🔴 Deliberately NOT scaled. These are ceilings that only exist on Free,
+		// and Free is not per seat, so multiplying them by a team size would
+		// invent a limit where the plan says there is none.
+		ordersPerMonth: plan.limits.ordersPerMonth,
+		activeProducts: plan.limits.activeProducts,
 		storageBytes: scale(plan.limits.storageBytes),
 		webhookDeliveries: scale(plan.limits.webhookDeliveries),
 		seats: plan.limits.seats,

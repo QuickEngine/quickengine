@@ -25,6 +25,13 @@ export type QuickEngineAppId = "quickengine" | "quickdash";
 // `plans.ts`; nothing user-facing reads this string.
 export type QuickEnginePlanId =
 	| "free"
+	| "commerce"
+	// 🔴 `launch` and `grow` are RETIRED, not deleted, and the order matters.
+	// The 2026-09-06 ladder replaced them with a single `commerce` rung, but
+	// `plan_id` is a stored column: removing an id here before every row has
+	// been migrated turns a real subscription into a value the type says cannot
+	// exist. They stay until a migration moves launch to commerce and grow to
+	// scale, and only then come out. Do not sell them.
 	| "launch"
 	| "grow"
 	| "scale"

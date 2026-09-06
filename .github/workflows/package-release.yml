@@ -19,8 +19,114 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run Release Please
+        id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # On an ordinary push this asks GitHub to merge the release PR once its
+      # checks pass. It is NOT an immediate merge: `--auto` waits for the
+      # required checks on `main` (Validate and TruffleHog, strict), so a release
+      # can only go out on a green tree.
+      #
+      # 🔴 Also gated on `NPM_TOKEN` existing, and that ordering is the whole
+      # point. Merging a release PR is what CUTS THE TAGS. If the token were
+      # missing we would tag a release, fail at the publish step, and leave
+      # versions that exist on GitHub and nowhere on npm — a mess to unpick,
+      # because tags cannot be quietly withdrawn once anyone has fetched them.
+      # Refusing to start is recoverable; a half-finished release is not.
+      - name: Queue the release PR to merge itself once CI is green
+        if: steps.release.outputs.pr != '' && env.HAS_NPM_TOKEN == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+        run: gh pr merge "$PR_NUMBER" --auto --squash
+
+      - name: Say why the release PR was left alone
+        if: steps.release.outputs.pr != '' && env.HAS_NPM_TOKEN != 'true'
+        env:
+          HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+        run: |
+          echo "::warning::A release PR is open but NPM_TOKEN is not set, so it" \
+            "was NOT queued to merge. Merging it would cut tags that nothing" \
+            "could publish. Set the secret and the next run will queue it."
+
+      # Everything below runs ONLY on the push that merged a release PR, when
+      # Release Please has just cut tags. On every other push it does nothing.
+      #
+      # 🔴 Publishing is permanent. npm allows unpublishing for 72 hours and then
+      # the version exists forever. `paths_released` is exactly the set Release
+      # Please tagged in this run, so this cannot publish a package it did not
+      # version, and it refuses to run at all without a token rather than
+      # skipping quietly and leaving a tag with no package behind it.
+      - name: Check out the released commit
+        if: steps.release.outputs.releases_created == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up pnpm
+        if: steps.release.outputs.releases_created == 'true'
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+
+      - name: Set up Node
+        if: steps.release.outputs.releases_created == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        if: steps.release.outputs.releases_created == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the packages
+        if: steps.release.outputs.releases_created == 'true'
+        run: pnpm build
+
+      - name: Publish the packages that were released
+        if: steps.release.outputs.releases_created == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PATHS_RELEASED: ${{ steps.release.outputs.paths_released }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${NODE_AUTH_TOKEN:-}" ]]; then
+            echo "::error::NPM_TOKEN is not set, so the tagged packages cannot" \
+              "be published. The tags exist; publish them by hand and fix the" \
+              "secret before the next release."
+            exit 1
+          fi
+
+          # 🔴 An allowlist, because Release Please VERSIONS every package in its
+          # config — the SDK, the CLI and sixteen `mod-*` packages — and
+          # `paths_released` therefore names all of them. Versioning them is
+          # wanted. Publishing them is NOT: `VERSIONING.md` defers module
+          # publication until their dependency graph and customer need justify
+          # it, and they currently declare `main: ./src/index.ts`, so publishing
+          # one would put raw TypeScript on the public registry, permanently.
+          #
+          # ⚠️ Their manifests say `"private": false` with `publishConfig.access:
+          # public`, so nothing in the packages themselves would have stopped it.
+          # Add a package here only when its publication is a decision somebody
+          # actually made.
+          PUBLISHABLE="packages/sdk packages/cli"
+
+          echo "$PATHS_RELEASED" | jq -r '.[]' | while read -r package_path; do
+            case " $PUBLISHABLE " in
+              *" $package_path "*) ;;
+              *)
+                echo "Skipping ${package_path}: versioned, publication deferred"
+                continue
+                ;;
+            esac
+
+            echo "Publishing $package_path"
+            # `--no-git-checks` because this runs on the released commit with the
+            # tag already in place, which pnpm would otherwise refuse.
+            pnpm --filter "./${package_path}" publish \
+              --access public \
+              --no-git-checks
+          done

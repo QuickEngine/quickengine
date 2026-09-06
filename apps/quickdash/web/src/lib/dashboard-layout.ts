@@ -433,42 +433,30 @@ export function defaultLayout(
 	 * product having nothing for them.
 	 */
 	const ORDER: Array<{ id: string; cols: number; rows: number }> = [
-		/* 🔴 The four usage meters, across the top, before anything else.
-		   Set 2026-09-06. They answer "how much of my plan is left", which is
-		   the question a customer cannot answer from anywhere else in the
-		   product, and on Solo two of them are the walls that decide whether
-		   somebody upgrades. A wall nobody saw coming is an ambush.
+		/* 🔴 The whole default board, set 2026-09-06. Four meters and the money,
+		   and deliberately nothing else.
 
-		   ⚠️ These four and not the other four. Not AI actions or webhook
-		   deliveries, which mean nothing to most businesses; not seats, because
-		   Solo allows one and every new account would open on a full gauge
-		   reading "1 of 1", which once put a red warning in front of every new
-		   customer for a problem that did not exist. */
-		{ id: "orders-usage", cols: 1, rows: 1 },
-		{ id: "products-usage", cols: 1, rows: 1 },
-		{ id: "api-usage", cols: 1, rows: 1 },
-		{ id: "storage-usage", cols: 1, rows: 1 },
-		/* Full width, directly under the meters: the money is what the page is
-		   opened for, and at four columns it has room to be a chart rather than
+		   The previous default carried fifteen tiles and filled the page on the
+		   first visit, which read as clutter rather than as a product that
+		   arrives useful: every count a business had was on screen before it had
+		   a single customer, so all of them said zero.
+
+		   ⚠️ This is NOT an empty board. Arriving to a blank page reads as the
+		   product having nothing for you, which is the bug the long list was
+		   written to fix in the first place. Five tiles that all mean something
+		   on day one is the middle: the four numbers nobody can find anywhere
+		   else, and the one number everybody opens the page for.
+
+		   Everything removed from here is still in the catalogue and one click
+		   away in Edit board. This decides what a NEW workspace opens to, not
+		   what anybody is allowed to have. */
+		{ id: "orders-usage", cols: 1, rows: 2 },
+		{ id: "products-usage", cols: 1, rows: 2 },
+		{ id: "api-usage", cols: 1, rows: 2 },
+		{ id: "storage-usage", cols: 1, rows: 2 },
+		/* Full width under the meters, and tall enough to be a chart rather than
 		   a number in a box. */
-		{ id: "revenue", cols: 4, rows: 2 },
-		{ id: "needs-you", cols: 1, rows: 2 },
-		{ id: "today", cols: 1, rows: 2 },
-		{ id: "invoices-outstanding", cols: 1, rows: 1 },
-		{ id: "fulfilment-pending", cols: 1, rows: 1 },
-		{ id: "projects-active", cols: 1, rows: 1 },
-		{ id: "bookings-scheduled", cols: 1, rows: 1 },
-		/* ⚠️ Two by two, the size the calendar needs to be a month rather than a
-		   list. It sits with the counts rather than at the top because a business
-		   opens this page for its money first; the count beside it answers "how
-		   many" and the calendar answers "when". */
-		{ id: "calendar", cols: 2, rows: 2 },
-		{ id: "customers", cols: 1, rows: 1 },
-		{ id: "products", cols: 1, rows: 1 },
-		{ id: "stock-low", cols: 1, rows: 1 },
-		{ id: "contracts-waiting", cols: 1, rows: 1 },
-		{ id: "orders-week", cols: 2, rows: 1 },
-		{ id: "activity", cols: 4, rows: 2 },
+		{ id: "revenue", cols: 4, rows: 3 },
 	];
 	return ORDER.flatMap((entry) => {
 		const tile = catalogue.find((candidate) => candidate.id === entry.id);

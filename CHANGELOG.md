@@ -32,6 +32,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **A plan message that tells you what you get.** Running into something your plan does not cover
   now explains what it comes with, rather than reporting a failure. It is also told apart from
   running out of an allowance, which is a different thing with a different answer.
+- **The payment fields look like QuickDash.** Entering a card now uses your own colours, type and
+  corners rather than a generic payment form dropped into the page.
+
+- **AI credits, and an honest note about them.** You can see your balance and top it up, and the
+  page says plainly that there is not much to spend it on yet, because the AI work it pays for is
+  still being built. Everything else in QuickDash is covered by your plan and never touches
+  credits.
+
 - **You can actually buy QuickDash now.** The billing and checkout screens were blank, so the
   price list, the plans and the payment endpoints all worked and there was nowhere to use them.
   Choosing a plan, entering a card and seeing a confirmation afterwards all work again, and the

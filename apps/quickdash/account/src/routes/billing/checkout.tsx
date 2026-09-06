@@ -46,6 +46,57 @@ const PLAN_LABEL: Record<string, string> = {
 const publishableKey = clientEnv.STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
+/**
+ * Dress Stripe's card fields in our own tokens.
+ *
+ * 🔴 The fields render inside a Stripe IFRAME, so our stylesheet does not reach
+ * them and `var(--text)` resolves to nothing in there. The values have to be
+ * READ from the live document and passed across as concrete colours.
+ *
+ * ⚠️ Read at mount rather than subscribed to. A theme change mid-payment is not
+ * worth a re-render of a mounted PaymentElement, which would remount the card
+ * fields and lose whatever the customer had typed.
+ *
+ * Falls back to Stripe's own dark theme if a token is missing, which is better
+ * than passing empty strings and getting unstyled fields.
+ */
+function appearanceFromTokens(): Record<string, unknown> {
+	if (typeof window === "undefined") return { theme: "night" };
+	const root = getComputedStyle(document.documentElement);
+	const token = (name: string) => root.getPropertyValue(name).trim();
+
+	const surface = token("--surface-card") || token("--surface");
+	const text = token("--text");
+	const dim = token("--text-dim");
+	const edge = token("--edge-shade") || token("--border");
+	const accent = token("--accent");
+	if (!surface || !text) return { theme: "night" };
+
+	return {
+		// `night` or `stripe` decides the BASE, then variables override it. Picking
+		// the base from our own background means an unset variable degrades to
+		// something close rather than to the opposite scheme.
+		theme: token("--color-invert") ? "night" : "stripe",
+		variables: {
+			colorBackground: surface,
+			colorText: text,
+			colorTextSecondary: dim || text,
+			colorPrimary: accent || text,
+			colorDanger: token("--danger") || undefined,
+			borderRadius: token("--radius") || "0.5rem",
+			fontFamily: root.getPropertyValue("font-family").trim() || undefined,
+		},
+		rules: {
+			".Input": { border: `1px solid ${edge}` },
+			".Input:focus": {
+				border: `1px solid ${accent || text}`,
+				boxShadow: "none",
+			},
+			".Label": { color: dim || text },
+		},
+	};
+}
+
 function CheckoutPage() {
 	const { plan, cycle, code } = Route.useSearch();
 	const { user } = Route.useRouteContext();
@@ -95,7 +146,7 @@ function CheckoutPage() {
 					stripe={stripePromise}
 					options={{
 						clientSecret: checkoutState.clientSecret,
-						appearance: { theme: "night" },
+						appearance: appearanceFromTokens(),
 					}}
 				>
 					<PayForm subscriptionId={checkoutState.subscriptionId} />

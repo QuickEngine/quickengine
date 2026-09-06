@@ -35,6 +35,7 @@ export {
 	type LimitState,
 	meter,
 } from "./metering";
+export { billOverage } from "./overage";
 export type { PlanCapability } from "./plans";
 export {
 	billableSeats,
@@ -44,6 +45,8 @@ export {
 	isPerSeatPlan,
 	METER_KIND,
 	type MeterKey,
+	OVERAGE,
+	type OveragePrice,
 	PLANS,
 	type PlanDefinition,
 	type PlanLimits,

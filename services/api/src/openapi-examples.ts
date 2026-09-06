@@ -301,6 +301,10 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		surface: "web",
 		attribution: { utm_source: "twitter", utm_campaign: "launch-week" },
 	},
+	startAgentRun: {
+		prompt: "Summarise this week's orders and flag anything unusual.",
+		maxSteps: 6,
+	},
 	createCreditTopUp: {
 		pack: "medium",
 		billingEmail: "billing@northwind.example",

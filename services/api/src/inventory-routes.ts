@@ -206,6 +206,7 @@ export function registerInventoryRoutes(
 	app.post(
 		"/v1/inventory/supplier-connections",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			const body = supplierConnectionInputSchema.parse(await c.req.json());
@@ -236,6 +237,7 @@ export function registerInventoryRoutes(
 	app.post(
 		"/v1/inventory/supplier-connections/check",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			const workspaceId = c.get("authorized").workspaceId;
@@ -314,6 +316,7 @@ export function registerInventoryRoutes(
 	app.patch(
 		"/v1/inventory/suppliers/:id",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {
@@ -407,6 +410,7 @@ export function registerInventoryRoutes(
 	app.post(
 		"/v1/inventory/suppliers/:id/payment-account",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {
@@ -448,6 +452,7 @@ export function registerInventoryRoutes(
 	app.get(
 		"/v1/inventory/suppliers/:id/payment-account/link",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {
@@ -494,6 +499,7 @@ export function registerInventoryRoutes(
 	app.post(
 		"/v1/inventory/supplier-skus",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {
@@ -513,6 +519,7 @@ export function registerInventoryRoutes(
 	app.patch(
 		"/v1/inventory/supplier-skus/:id",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {

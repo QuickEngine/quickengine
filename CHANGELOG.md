@@ -8,6 +8,26 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **You can ask an agent to do something in your workspace.** There is now a way to send an agent
+  a request and get its answer back, scoped to the one workspace you asked from and nothing else.
+  The work is paid for before it starts: your plan's AI allowance covers it, and prepaid credits
+  cover it when the allowance is gone. If neither can, you are told so instead of being charged.
+  What a run actually costs is drawn down afterwards, including when a run fails partway, because
+  the words it produced before failing cost real money too.
+
+- **Going over your plan can be billed instead of blocked.** API requests and AI actions can now
+  run past the included amount and be charged for the extra, in whole blocks, on your next
+  invoice. Nothing is charged twice, however many times the billing runs.
+
+- **Paid supplier features are now actually paid.** Only creating a supplier asked for a plan
+  that includes it. Updating one, connecting one, pricing its items and setting up how it gets
+  paid did not, so anyone who had added a supplier during a trial kept the whole thing for
+  nothing. All of those now ask. Viewing your suppliers and deleting them stay free on every
+  plan, so stopping payment never locks you out of your own records or stops you tidying up.
+
+- **Discount codes work at checkout.** A code that is expired, mistyped, or switched off is
+  refused and says so, rather than quietly charging the full price.
+
 - **Suppliers, purchase orders and partner payouts are part of Commerce.** Everything you sell
   on your own stays free: your catalog, orders, payments, stock, bookings, invoices, quotes,
   contracts, files, projects, time and content. You pay when somebody other than you gets paid.

@@ -318,6 +318,39 @@ export const billableSeats = (memberCount: number): number =>
 export type MeterKey = keyof PlanLimits;
 
 /** Which meters refill each period (counters) vs. are a current total (gauges). */
+/**
+ * What one unit past the included allowance costs, in cents.
+ *
+ * 🔴 Only meters with a REAL marginal cost appear here. Hard rule 7 forbids
+ * billing a business outcome the customer earns, so there is no overage on
+ * orders, invoices, customers or workspaces however much of them somebody
+ * creates. These three cost us money per unit: bandwidth and compute for API
+ * requests, model spend for AI, egress for webhook attempts.
+ *
+ * ⚠️ Priced per BLOCK, not per unit, because a bill that reads "$1.00 per 10,000
+ * requests" is one a customer can predict and "$0.0001 per request" is one they
+ * have to do arithmetic on. `null` means the meter is counted and capped but
+ * never charged.
+ */
+export type OveragePrice = {
+	/** How many units one charge covers. */
+	blockSize: number;
+	/** Cents per block. */
+	cents: number;
+};
+
+export const OVERAGE: Record<MeterKey, OveragePrice | null> = {
+	apiRequests: { blockSize: 10_000, cents: 100 },
+	aiActions: { blockSize: 100, cents: 200 },
+	// Counted, never capped, and not charged until real volume says what it costs.
+	webhookDeliveries: null,
+	// Gauges are ceilings, not consumption. Passing one is a reason to change
+	// plan, not a line on an invoice.
+	storageBytes: null,
+	seats: null,
+	workspaces: null,
+};
+
 export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
 	apiRequests: "counter",
 	aiActions: "counter",

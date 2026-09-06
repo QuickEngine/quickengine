@@ -38,7 +38,18 @@ describe("publishable key capability allowlist", () => {
 
 	it("keeps every capability paired and lowercase so the gate can match it", () => {
 		for (const capability of API_CAPABILITIES) {
-			expect(capability).toMatch(/^[a-z-]+:(read|write)$/);
+			// 🔴 `run` is the ONE verb beyond read/write, and it is deliberate
+			// rather than a loosened rule. Running an agent is not CRUD: it spends
+			// real money on the account the moment it starts, and calling it
+			// `agents:write` would file a billable action alongside editing a
+			// record and hide exactly the thing that makes it dangerous. There
+			// are no agent rows to write, either.
+			//
+			// ⚠️ This stays a tripwire. Nothing derives read-vs-write from the
+			// suffix — every clamp is an explicit allowlist — so the rule exists
+			// to stop a fourth verb appearing by accident. A new one still fails
+			// here, and should, until somebody decides it on purpose.
+			expect(capability).toMatch(/^[a-z-]+:(read|write|run)$/);
 		}
 		expect(new Set(API_CAPABILITIES).size).toBe(API_CAPABILITIES.length);
 	});

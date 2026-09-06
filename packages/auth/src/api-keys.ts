@@ -54,6 +54,15 @@ export const API_CAPABILITIES = [
 	// enters through checkout, where the server resolves every price from the
 	// catalog and the buyer can only be the person checking out.
 	"checkout:write",
+	/**
+	 * Start an agent run.
+	 *
+	 * 🔴 Never a storefront capability. A run costs real money per invocation and
+	 * reads workspace data through its tools, so a key that ships in a public
+	 * website must not carry it — that is somebody else's model spend on a page
+	 * anyone can view source on.
+	 */
+	"agents:run",
 ] as const;
 export type ApiCapability = (typeof API_CAPABILITIES)[number];
 

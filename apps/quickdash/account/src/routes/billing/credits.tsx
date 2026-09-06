@@ -63,7 +63,7 @@ function CreditsPage() {
 				<p className="text-muted-foreground text-sm">Balance</p>
 				<p className="mt-1 font-semibold text-3xl">
 					{credits.isPending
-						? "—"
+						? "-"
 						: money((balanceMicros / MICROS_PER_DOLLAR) * 100)}
 				</p>
 			</section>
@@ -74,12 +74,13 @@ function CreditsPage() {
 			 * work yet. This is the difference.
 			 */}
 			<section className="rounded-xl border border-dashed p-5">
-				<h2 className="font-medium">There is not much to spend this on yet</h2>
+				<h2 className="font-medium">What credits pay for</h2>
 				<p className="mt-2 text-muted-foreground text-sm">
-					Credits pay for AI work — drafting purchase orders, watching orders
-					for problems, answering customers. That is being built, and until it
-					ships a balance would sit unused. Everything else in QuickDash is
-					covered by your plan and does not touch credits.
+					Credits pay for AI work: asking an agent to look at your workspace and
+					answer a question about it. Your plan includes an allowance first, and
+					credits only start being used once that runs out. More agent work is
+					being built, including watching orders for problems. Everything else
+					in QuickDash is covered by your plan and never touches credits.
 				</p>
 			</section>
 

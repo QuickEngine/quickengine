@@ -93,7 +93,7 @@ function BillingPage() {
 										? "Free"
 										: plan.monthly
 											? `${CENTS(plan.monthly.amount, plan.monthly.currency)}/mo`
-											: "—"}
+											: "-"}
 								</p>
 							</div>
 							<p className="mt-2 text-muted-foreground text-sm">

@@ -35,10 +35,10 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **The payment fields look like QuickDash.** Entering a card now uses your own colours, type and
   corners rather than a generic payment form dropped into the page.
 
-- **AI credits, and an honest note about them.** You can see your balance and top it up, and the
-  page says plainly that there is not much to spend it on yet, because the AI work it pays for is
-  still being built. Everything else in QuickDash is covered by your plan and never touches
-  credits.
+- **AI credits, and a plain note about them.** You can see your balance and top it up, and the
+  page says what credits are actually for: asking an agent to look at your workspace. Your plan
+  allowance is used first, and credits only start being spent once it runs out. Everything else in
+  QuickDash is covered by your plan and never touches credits.
 
 - **You can actually buy QuickDash now.** The billing and checkout screens were blank, so the
   price list, the plans and the payment endpoints all worked and there was nowhere to use them.

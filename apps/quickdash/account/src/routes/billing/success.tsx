@@ -59,7 +59,7 @@ function SuccessPage() {
 			<h1 className="mt-4 font-semibold text-2xl">You're on {planName}</h1>
 			<p className="mt-2 text-muted-foreground text-sm">
 				{confirm.isSuccess
-					? `Thanks — ${active?.name ?? "your organization"} is now on ${planName}.`
+					? `Thanks. ${active?.name ?? "your organization"} is now on ${planName}.`
 					: "Your payment went through. Your plan will update in a moment if it hasn't already."}
 			</p>
 			<p className="mt-3 text-muted-foreground text-xs">

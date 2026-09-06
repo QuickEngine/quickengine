@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/QuickEngine/quickengine/compare/quick-v0.3.0...quick-v0.4.0) (2026-09-06)
+
+
+### Features
+
+* **quickdash:** ask an agent to work and pay for what it uses ([#573](https://github.com/QuickEngine/quickengine/issues/573)) ([8996421](https://github.com/QuickEngine/quickengine/commit/8996421afd9ddbde6275ce00b5cee20fb94fc6e2))
+
 ## [0.3.0](https://github.com/QuickEngine/quickengine/compare/quick-v0.2.1...quick-v0.3.0) (2026-09-06)
 
 

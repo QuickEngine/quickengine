@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.1](https://github.com/QuickEngine/quickengine/compare/cli-v0.2.0...cli-v0.2.1) (2026-09-06)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @quickengine/quick bumped to 0.4.0
+
 ## [0.2.0](https://github.com/QuickEngine/quickengine/compare/cli-v0.1.0...cli-v0.2.0) (2026-09-06)
 
 

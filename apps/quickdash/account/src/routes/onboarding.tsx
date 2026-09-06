@@ -1362,6 +1362,16 @@ function OnboardingPage() {
 		string | null
 	>(null);
 	const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+	/**
+	 * 🔴 Kept alongside the id purely so the exit link can prefer it.
+	 *
+	 * Onboarding only ever stored the id, so the one button that leaves for
+	 * QuickDash sent people to `/<uuid>` while every other link in the product
+	 * uses `slug ?? id`. The workspace then showed a raw uuid in the address bar
+	 * on the very first visit and its real name on every visit afterwards, which
+	 * reads like two different places.
+	 */
+	const [workspaceSlug, setWorkspaceSlug] = useState<string | null>(null);
 
 	const catalog = useQuery({
 		queryKey: ["account", "module-catalog"],
@@ -1411,7 +1421,10 @@ function OnboardingPage() {
 
 	const create = useMutation({
 		mutationFn: () =>
-			api.request<{ id: string }>("/account/workspaces", {
+			// The route responds with the whole workspace; this type was narrower
+			// than the payload, which is why the slug looked unavailable and the
+			// exit link fell back to the raw id.
+			api.request<{ id: string; slug: string | null }>("/account/workspaces", {
 				method: "POST",
 				body: {
 					name: businessName,
@@ -1423,6 +1436,7 @@ function OnboardingPage() {
 		onSuccess: async ({ data: workspace }) => {
 			await queryClient.invalidateQueries({ queryKey: ["account"] });
 			setWorkspaceId(workspace.id);
+			setWorkspaceSlug(workspace.slug ?? null);
 			navigate("success");
 		},
 		onError: (cause) =>
@@ -1922,8 +1936,11 @@ function OnboardingPage() {
 				next={{
 					// The one control that leaves Account for QuickDash itself.
 					label: `Open ${businessName || "workspace"}`,
+					// `slug ?? id`, the same pattern every other link to a workspace
+					// uses. The id still works as a fallback if a slug was not
+					// returned, so this can never leave the button pointing nowhere.
 					href: workspaceId
-						? `${clientEnv.DASH_URL}/${workspaceId}`
+						? `${clientEnv.DASH_URL}/${workspaceSlug ?? workspaceId}`
 						: clientEnv.DASH_URL,
 				}}
 				stepKey={step}

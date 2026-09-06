@@ -131,14 +131,15 @@ export function registerProductsServicesRoutes(
 			}
 		}
 		const context = await mutationContext(c, "catalog-items.create", body);
-		const created = await createCatalogItemCommand(context, body, options.uow);
-		// Recount rather than increment: the gauge converges from any state, and
-		// a missed or retried call cannot drift it.
-		if (workspace.organizationId) {
-			const { syncActiveProducts } = await import("@quickengine/billing");
-			await syncActiveProducts(workspace.organizationId, workspaceId);
-		}
-		return respondMutation(c, created);
+		// ⚠️ The gauge is NOT written here. It is recounted by the `product-gauge`
+		// outbox handler, which fires on every catalog-item event and is retried
+		// on failure. Doing it here as well meant two owners for one number, and
+		// the route version silently missed a write: three products on screen,
+		// a gauge reading two, and no way for it to correct itself.
+		return respondMutation(
+			c,
+			await createCatalogItemCommand(context, body, options.uow),
+		);
 	});
 	app.post("/v1/catalog/availability", readAccess, readLimit, async (c) => {
 		const parsed = catalogAvailabilityInputSchema.safeParse(

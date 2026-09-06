@@ -433,24 +433,36 @@ export function defaultLayout(
 	 * product having nothing for them.
 	 */
 	const ORDER: Array<{ id: string; cols: number; rows: number }> = [
-		{ id: "revenue", cols: 2, rows: 2 },
-		{ id: "needs-you", cols: 1, rows: 2 },
-		{ id: "today", cols: 1, rows: 2 },
-		{ id: "invoices-outstanding", cols: 1, rows: 1 },
-		{ id: "fulfilment-pending", cols: 1, rows: 1 },
-		{ id: "projects-active", cols: 1, rows: 1 },
-		{ id: "bookings-scheduled", cols: 1, rows: 1 },
-		/* ⚠️ Two by two, the size the calendar needs to be a month rather than a
-		   list. It sits with the counts rather than at the top because a business
-		   opens this page for its money first; the count beside it answers "how
-		   many" and the calendar answers "when". */
-		{ id: "calendar", cols: 2, rows: 2 },
-		{ id: "customers", cols: 1, rows: 1 },
-		{ id: "products", cols: 1, rows: 1 },
-		{ id: "stock-low", cols: 1, rows: 1 },
-		{ id: "contracts-waiting", cols: 1, rows: 1 },
-		{ id: "orders-week", cols: 2, rows: 1 },
-		{ id: "activity", cols: 4, rows: 2 },
+		/* 🔴 Laid out by hand on a real workspace on 2026-09-06 and copied here,
+		   rather than guessed. The previous default carried fifteen tiles and
+		   filled the page before a business had a single customer, so every count
+		   on screen read zero and the whole thing looked like clutter.
+
+		   ⚠️ Still NOT an empty board. Arriving to a blank page reads as the
+		   product having nothing for you, which is the bug the long list was
+		   written to fix. Eight tiles that all mean something on day one is the
+		   middle.
+
+		   Positions are not stored here on purpose: tiles FLOW in this order
+		   across a four column grid, so a workspace missing a module closes the
+		   gap instead of leaving a hole. That is what keeps one list correct for
+		   every business type. */
+
+		/* Rows 1 to 2: the four meters. The only numbers a customer cannot find
+		   anywhere else in the product, and on Solo two of them are the walls
+		   that decide whether somebody upgrades. */
+		{ id: "orders-usage", cols: 1, rows: 2 },
+		{ id: "products-usage", cols: 1, rows: 2 },
+		{ id: "api-usage", cols: 1, rows: 2 },
+		{ id: "storage-usage", cols: 1, rows: 2 },
+
+		/* Rows 3 to 5: the money, full width, tall enough to be a chart. */
+		{ id: "revenue", cols: 4, rows: 3 },
+
+		/* Rows 6 to 8: what happened, what needs a person, and the log. */
+		{ id: "orders-week", cols: 2, rows: 3 },
+		{ id: "needs-you", cols: 1, rows: 3 },
+		{ id: "activity", cols: 1, rows: 3 },
 	];
 	return ORDER.flatMap((entry) => {
 		const tile = catalogue.find((candidate) => candidate.id === entry.id);

@@ -8,6 +8,26 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Your dashboard opens on what your plan has left.** Four meters across the top: orders this
+  month, products listed, API requests and storage. Underneath, your revenue full width. Every
+  tile is still yours to move or remove, and the board leaves out anything a business does not
+  have switched on.
+
+### Fixed
+
+- **New workspaces no longer open onto cards that will not load.** Three panels on the dashboard
+  read their figures from one place, and a brand new workspace was never given access to it, so
+  all three failed and Retry could not help. Every workspace now starts with what the dashboard
+  needs.
+
+- **Your workspace shows its name in the address bar from the very first visit**, instead of a
+  long identifier on the first visit and its name on every one after.
+
+- **The products count stays true.** It was written once when a product was saved, so a single
+  missed write left the number wrong for good. It is now recalculated after every change to your
+  catalogue, retried if it fails, and archiving something you no longer sell frees room again.
+
+
 - **Solo, the free plan, now has room to try rather than room to live.** It runs a real
   single-merchant shop with every module and no cut of your sales, and it now stops at 40 orders
   a month and 25 products listed. Drafts do not count and archiving something you no longer sell

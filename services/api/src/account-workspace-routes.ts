@@ -146,7 +146,25 @@ export function registerAccountWorkspaceRoutes(
 			const requested = (input.moduleIds ?? []).filter((id) => getModule(id));
 			const modules =
 				requested.length > 0
-					? resolveModules(requested)
+					? // 🔴 `reporting-analytics` is added to EVERY workspace, whatever
+						// was asked for. It is not an optional feature, it is where the
+						// dashboard gets its numbers: one call to
+						// `GET /v1/reports/workspace` feeds every figure tile, and that
+						// route requires the module.
+						//
+						// Without this a new workspace opened onto three tiles reading
+						// "This didn't load" with a raw uuid underneath, and Retry could
+						// never fix it because all three share a single query. The module
+						// is hidden from the navigation, so nobody could find it to turn
+						// on either.
+						//
+						// ⚠️ Adding it to `FOUNDATION_MODULE_IDS` does NOT cover this, and
+						// that was the first attempt at the fix. The foundation set is
+						// only consulted when the caller requests NOTHING, and onboarding
+						// always sends the recipe's module list, so that branch never
+						// runs during signup. Fixed here because this is the line every
+						// workspace actually goes through.
+						resolveModules([...requested, "reporting-analytics"])
 					: resolveFoundationModules();
 
 			// ⚠️ Only checked when the caller names an organization. Onboarding does

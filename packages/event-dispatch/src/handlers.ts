@@ -157,6 +157,52 @@ export function searchHandler(
  * separate worker, so a customer's slow endpoint cannot delay the feed, realtime,
  * or search for anyone else.
  */
+/**
+ * Keeps the "products listed" gauge true.
+ *
+ * 🔴 This lives on the OUTBOX rather than in the route, and that is the whole
+ * point. The route recounted right after creating an item, which worked until
+ * one call did not: three products on screen and a gauge reading two, with no
+ * way back, because a gauge that is written once per action drifts the first
+ * time a write is missed and never recovers. The outbox retries, so a failure
+ * here is a delay rather than a permanently wrong number.
+ *
+ * ⚠️ Recount, never adjust. The same rule as seats and workspaces: an
+ * incrementing counter cannot recover from a missed or duplicated event, while
+ * a recount converges on the truth from any state, including a wrong one.
+ *
+ * ⚠️ Fires on every catalog-item event, not only creation. Archiving an item
+ * frees room, so a delisting has to move the number too or somebody who tidies
+ * their catalogue stays blocked.
+ *
+ * ⚠️ Swallows its own failure. A billing gauge is a display, and no catalogue
+ * change should fail because a usage row could not be written.
+ */
+export function productGaugeHandler(): OutboxHandler {
+	return {
+		name: "product-gauge",
+		async handle(event: OutboxEvent) {
+			if (event.aggregateType !== "catalog_item") return;
+			try {
+				const [{ syncActiveProducts }, { organizationIdForWorkspace }] =
+					await Promise.all([
+						import("@quickengine/billing"),
+						import("@quickengine/db"),
+					]);
+				const organizationId = await organizationIdForWorkspace(
+					event.workspaceId,
+				);
+				if (!organizationId) return;
+				await syncActiveProducts(organizationId, event.workspaceId);
+			} catch (error) {
+				console.error(
+					`[product-gauge] recount failed (${error instanceof Error ? error.name : "UnknownError"})`,
+				);
+			}
+		},
+	};
+}
+
 export function defaultOutboxHandlers(): OutboxHandler[] {
 	return [
 		activityHandler(),
@@ -166,6 +212,7 @@ export function defaultOutboxHandlers(): OutboxHandler[] {
 		// failure never takes the console's updates with it.
 		storefrontRealtimeHandler(),
 		searchHandler(),
+		productGaugeHandler(),
 		// Transactional mail to the workspace's own customers. Sits before webhook
 		// fan-out because a receipt matters more than a third-party integration,
 		// and it swallows its own failures so a mail outage cannot stall the rest.

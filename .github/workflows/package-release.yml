@@ -58,7 +58,12 @@ jobs:
             echo "No release PR number to queue."
             exit 0
           fi
-          gh pr merge "$pr_number" --auto --squash
+          # ⚠️ `--repo` because this step runs BEFORE any checkout: the
+          # repository is only cloned later, and only when a release was
+          # actually created. Without it `gh` looks for a local git repository,
+          # finds none, and fails with "not a git repository" — which is what
+          # happened on the first run that got this far.
+          gh pr merge "$pr_number" --auto --squash --repo "$GITHUB_REPOSITORY"
 
       - name: Say why the release PR was left alone
         if: steps.release.outputs.pr != '' && env.HAS_NPM_TOKEN != 'true'

@@ -30,10 +30,12 @@ export {
 	getAccountLimits,
 	getAccountPlanId,
 	getUsage,
+	hasCapability,
 	type LimitCheck,
 	type LimitState,
 	meter,
 } from "./metering";
+export type { PlanCapability } from "./plans";
 export {
 	billableSeats,
 	getPlan,

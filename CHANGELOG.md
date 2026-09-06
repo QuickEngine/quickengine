@@ -8,6 +8,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Suppliers, purchase orders and partner payouts are part of Commerce.** Everything you sell
+  on your own stays free: your catalog, orders, payments, stock, bookings, invoices, quotes,
+  contracts, files, projects, time and content. You pay when somebody other than you gets paid.
+
+- **A plan message that tells you what you get.** Running into something your plan does not cover
+  now explains what it comes with, rather than reporting a failure. It is also told apart from
+  running out of an allowance, which is a different thing with a different answer.
+
 - **Signing in keeps working on the newer login library.** A column the library writes was missing
   from our own schema, so creating an account half succeeded and every later sign-in reported no
   such user. Ten tests read like a login bug and were one missing column.

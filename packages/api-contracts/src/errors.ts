@@ -31,6 +31,16 @@ export const API_ERROR_CODES = [
 	"REQUEST_TIMEOUT",
 	"RATE_LIMITED",
 	"USAGE_LIMIT_EXCEEDED",
+	/**
+	 * The plan does not include this capability at all.
+	 *
+	 * 🔴 Distinct from USAGE_LIMIT_EXCEEDED on purpose, though both are 402. That
+	 * one means "you have used your included amount"; this means "this is not part
+	 * of what you bought." Same status, opposite remedy: one waits for the month to
+	 * roll over, the other upgrades. Telling a customer the wrong one wastes their
+	 * time and loses the sale.
+	 */
+	"PLAN_UPGRADE_REQUIRED",
 	"IDEMPOTENCY_REQUIRED",
 	"IDEMPOTENCY_CONFLICT",
 	"IDEMPOTENCY_IN_PROGRESS",
@@ -76,6 +86,8 @@ export const API_ERROR_STATUS: Record<ApiErrorCode, number> = {
 	// usage is spent." Retrying does not help, and conflating the two sends people
 	// to add backoff for a problem only an upgrade or a top-up resolves.
 	USAGE_LIMIT_EXCEEDED: 402,
+	// Not 403: this is not a permission the user lacks, it is a plan they can buy.
+	PLAN_UPGRADE_REQUIRED: 402,
 	IDEMPOTENCY_REQUIRED: 400,
 	IDEMPOTENCY_CONFLICT: 409,
 	IDEMPOTENCY_IN_PROGRESS: 409,

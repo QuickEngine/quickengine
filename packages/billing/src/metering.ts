@@ -16,6 +16,8 @@ import {
 	isPerSeatPlan,
 	METER_KIND,
 	type MeterKey,
+	PLANS,
+	type PlanCapability,
 } from "./plans";
 
 export type { LimitCheck, LimitState } from "./_metering-core";
@@ -112,6 +114,28 @@ async function readValue(scopeId: string, key: MeterKey): Promise<number> {
  * maintain — so there is no second source of truth to keep in step. It is read
  * only for per-seat plans, so the flat tiers pay nothing for this.
  */
+/**
+ * Whether an account's plan unlocks a capability.
+ *
+ * 🔴 The single gate between the free product and the paid one. It reads the
+ * same subscription row `getAccountPlanId` does, so an expired or past-due
+ * subscription loses the capability the moment it stops being `active` or
+ * `trialing` — there is no separate flag to fall out of step with billing.
+ *
+ * ⚠️ Answers for an ORGANIZATION, not a workspace. Billing lives at the
+ * organization because that is where Stripe does; a workspace inherits it. Two
+ * workspaces under one paying organization both get it, which is correct: the
+ * customer paid once.
+ */
+export async function hasCapability(
+	scopeId: string,
+	capability: PlanCapability,
+): Promise<boolean> {
+	const planId = await getAccountPlanId(scopeId);
+	const plan = PLANS.find((candidate) => candidate.id === planId);
+	return plan?.capabilities?.includes(capability) ?? false;
+}
+
 export async function getAccountLimits(
 	scopeId: string,
 ): Promise<{ planId: QuickEnginePlanId; limits: PlanLimits }> {

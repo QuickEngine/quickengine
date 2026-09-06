@@ -32,6 +32,14 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **A plan message that tells you what you get.** Running into something your plan does not cover
   now explains what it comes with, rather than reporting a failure. It is also told apart from
   running out of an allowance, which is a different thing with a different answer.
+- **You can actually buy QuickDash now.** The billing and checkout screens were blank, so the
+  price list, the plans and the payment endpoints all worked and there was nowhere to use them.
+  Choosing a plan, entering a card and seeing a confirmation afterwards all work again, and the
+  page you land on after paying tells you which plan you are on rather than showing nothing.
+
+- **QuickDash opens on a phone.** The notice saying it needed a bigger screen is gone from the
+  website, sign-in, your account and the customer portal. Those screens are still tighter than
+  they should be and that work is coming, but a small screen no longer means a closed door.
 
 - **Founding customer pricing.** A code at checkout can now take money off the price, and the
   first ten businesses on Commerce keep theirs for as long as they stay. A code that has expired

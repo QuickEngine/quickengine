@@ -48,6 +48,7 @@ import { authorizeWorkspace } from "./authorize";
 import type { ApiLogger } from "./logger";
 import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
+import { requireSecondParty } from "./plan-gate";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
 import { respond, respondError } from "./respond";
@@ -205,6 +206,7 @@ export function registerInventoryRoutes(
 	app.post(
 		"/v1/inventory/supplier-connections",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			const body = supplierConnectionInputSchema.parse(await c.req.json());
@@ -235,6 +237,7 @@ export function registerInventoryRoutes(
 	app.post(
 		"/v1/inventory/supplier-connections/check",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			const workspaceId = c.get("authorized").workspaceId;
@@ -295,19 +298,25 @@ export function registerInventoryRoutes(
 			items: await listSuppliers(c.get("authorized").workspaceId),
 		}),
 	);
-	app.post("/v1/inventory/suppliers", writeAccess, writeLimit, async (c) =>
-		respond(
-			c,
-			await createSupplier(
-				c.get("authorized").workspaceId,
-				supplierInputSchema.parse(await c.req.json()),
+	app.post(
+		"/v1/inventory/suppliers",
+		writeAccess,
+		requireSecondParty,
+		writeLimit,
+		async (c) =>
+			respond(
+				c,
+				await createSupplier(
+					c.get("authorized").workspaceId,
+					supplierInputSchema.parse(await c.req.json()),
+				),
+				201,
 			),
-			201,
-		),
 	);
 	app.patch(
 		"/v1/inventory/suppliers/:id",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {
@@ -401,6 +410,7 @@ export function registerInventoryRoutes(
 	app.post(
 		"/v1/inventory/suppliers/:id/payment-account",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {
@@ -442,6 +452,7 @@ export function registerInventoryRoutes(
 	app.get(
 		"/v1/inventory/suppliers/:id/payment-account/link",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {
@@ -488,6 +499,7 @@ export function registerInventoryRoutes(
 	app.post(
 		"/v1/inventory/supplier-skus",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {
@@ -507,6 +519,7 @@ export function registerInventoryRoutes(
 	app.patch(
 		"/v1/inventory/supplier-skus/:id",
 		writeAccess,
+		requireSecondParty,
 		writeLimit,
 		async (c) => {
 			try {

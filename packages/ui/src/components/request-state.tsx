@@ -94,6 +94,35 @@ export function presentRequestError(error: unknown): RequestErrorPresentation {
 	 * the caller shows THAT rather than this text. This exists so a 402 can be
 	 * told apart from a fault at all, and so nothing paints it red.
 	 */
+	/**
+	 * 🔴 Two different 402s, and telling them apart decides whether we get paid.
+	 *
+	 * `PLAN_UPGRADE_REQUIRED` means this is not part of what you bought — the
+	 * remedy is upgrading. `USAGE_LIMIT_EXCEEDED` means you have spent what your
+	 * plan includes — the remedy is waiting for the month to roll over, or
+	 * freeing allowance. Same status, opposite advice. Showing "you have used
+	 * everything this plan includes" to somebody who never had the capability is
+	 * both wrong and a lost sale, because it tells them to wait rather than buy.
+	 */
+	if (status === 402 && candidate?.code === "PLAN_UPGRADE_REQUIRED") {
+		return {
+			code: "402",
+			title: "That is part of Commerce",
+			/**
+			 * 🔑 Says what the plan INCLUDES, not what was refused. This is the
+			 * moment somebody decides whether to pay, and hard rule 4 is explicit
+			 * that telling your own users what your own product does is the
+			 * product, not advertising.
+			 *
+			 * ⚠️ The API sends the specific sentence for the capability that was
+			 * hit, and the caller shows THAT. This is the fallback.
+			 */
+			message:
+				"Suppliers, purchase orders and partner payouts come with Commerce. Everything you sell on your own stays included on your current plan.",
+			requestId,
+			kind: "plan-limit",
+		};
+	}
 	if (status === 402) {
 		return {
 			code: "402",

@@ -8,6 +8,38 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **You can ask an agent to do something in your workspace.** There is now a way to send an agent
+  a request and get its answer back, scoped to the one workspace you asked from and nothing else.
+  The work is paid for before it starts: your plan's AI allowance covers it, and prepaid credits
+  cover it when the allowance is gone. If neither can, you are told so instead of being charged.
+  What a run actually costs is drawn down afterwards, including when a run fails partway, because
+  the words it produced before failing cost real money too.
+
+- **Going over your plan can be billed instead of blocked.** API requests and AI actions can now
+  run past the included amount and be charged for the extra, in whole blocks, on your next
+  invoice. Nothing is charged twice, however many times the billing runs.
+
+- **Paid supplier features are now actually paid.** Only creating a supplier asked for a plan
+  that includes it. Updating one, connecting one, pricing its items and setting up how it gets
+  paid did not, so anyone who had added a supplier during a trial kept the whole thing for
+  nothing. All of those now ask. Viewing your suppliers and deleting them stay free on every
+  plan, so stopping payment never locks you out of your own records or stops you tidying up.
+
+- **Discount codes work at checkout.** A code that is expired, mistyped, or switched off is
+  refused and says so, rather than quietly charging the full price.
+
+- **Suppliers, purchase orders and partner payouts are part of Commerce.** Everything you sell
+  on your own stays free: your catalog, orders, payments, stock, bookings, invoices, quotes,
+  contracts, files, projects, time and content. You pay when somebody other than you gets paid.
+
+- **A plan message that tells you what you get.** Running into something your plan does not cover
+  now explains what it comes with, rather than reporting a failure. It is also told apart from
+  running out of an allowance, which is a different thing with a different answer.
+
+- **Signing in keeps working on the newer login library.** A column the library writes was missing
+  from our own schema, so creating an account half succeeded and every later sign-in reported no
+  such user. Ten tests read like a login bug and were one missing column.
+
 - **Releases publish themselves.** A release now goes out on its own once the checks pass, instead
   of waiting for somebody to tag it and publish by hand. Nothing has been released since July for
   want of that, and the version the command line tool installs is now read from the package itself,

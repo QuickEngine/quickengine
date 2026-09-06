@@ -67,6 +67,25 @@ export type PlanLimits = {
 	webhookDeliveries: number | null;
 };
 
+/**
+ * What a plan UNLOCKS, as opposed to how much of it you get.
+ *
+ * 🔴 Deliberately a short list of capabilities rather than a plan-by-module
+ * matrix. Every module is available on every tier: a business running on its own
+ * gets the whole single-merchant system for nothing, because none of it costs us
+ * anything to run and a crippled free tier teaches people the product is mean.
+ *
+ * The line is drawn where the work actually is. `second-party` covers suppliers,
+ * purchase orders and partner payouts — the settlement machinery that decides who
+ * is owed what when somebody other than the merchant is involved. That is the
+ * expensive thing to build, the hard thing to replace, and the point at which a
+ * business is making enough money to have partners.
+ *
+ * ⚠️ Add a capability here only when it names a real cost or a real boundary. A
+ * matrix of fifteen module toggles is how pricing pages become unreadable.
+ */
+export type PlanCapability = "second-party";
+
 export type PlanDefinition = {
 	id: QuickEnginePlanId;
 	/** Display label — a placeholder, safe to rename. */
@@ -84,6 +103,12 @@ export type PlanDefinition = {
 	 * worth to an entire company.
 	 */
 	limits: PlanLimits;
+	/**
+	 * Capabilities unlocked, beyond the numeric allowances above.
+	 *
+	 * Absent means none. `free` deliberately has none.
+	 */
+	capabilities?: readonly PlanCapability[];
 	/** True when `limits` are per seat and scale with the billed quantity. */
 	perSeat?: boolean;
 	/**
@@ -115,6 +140,8 @@ const paidPlan = (
 		annual: priceEnvKey(id, "annual"),
 	},
 	limits,
+	// Every paid tier settles with a second party. That is what paying buys.
+	capabilities: ["second-party"],
 });
 
 export const PLANS: readonly PlanDefinition[] = [
@@ -172,6 +199,7 @@ export const PLANS: readonly PlanDefinition[] = [
 			monthly: priceEnvKey("teams", "monthly"),
 			annual: priceEnvKey("teams", "annual"),
 		},
+		capabilities: ["second-party"],
 		perSeat: true,
 		limits: {
 			// PER SEAT, not per account. Calibrated so the 16-seat floor lands above
@@ -290,6 +318,39 @@ export const billableSeats = (memberCount: number): number =>
 export type MeterKey = keyof PlanLimits;
 
 /** Which meters refill each period (counters) vs. are a current total (gauges). */
+/**
+ * What one unit past the included allowance costs, in cents.
+ *
+ * 🔴 Only meters with a REAL marginal cost appear here. Hard rule 7 forbids
+ * billing a business outcome the customer earns, so there is no overage on
+ * orders, invoices, customers or workspaces however much of them somebody
+ * creates. These three cost us money per unit: bandwidth and compute for API
+ * requests, model spend for AI, egress for webhook attempts.
+ *
+ * ⚠️ Priced per BLOCK, not per unit, because a bill that reads "$1.00 per 10,000
+ * requests" is one a customer can predict and "$0.0001 per request" is one they
+ * have to do arithmetic on. `null` means the meter is counted and capped but
+ * never charged.
+ */
+export type OveragePrice = {
+	/** How many units one charge covers. */
+	blockSize: number;
+	/** Cents per block. */
+	cents: number;
+};
+
+export const OVERAGE: Record<MeterKey, OveragePrice | null> = {
+	apiRequests: { blockSize: 10_000, cents: 100 },
+	aiActions: { blockSize: 100, cents: 200 },
+	// Counted, never capped, and not charged until real volume says what it costs.
+	webhookDeliveries: null,
+	// Gauges are ceilings, not consumption. Passing one is a reason to change
+	// plan, not a line on an invoice.
+	storageBytes: null,
+	seats: null,
+	workspaces: null,
+};
+
 export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
 	apiRequests: "counter",
 	aiActions: "counter",

@@ -157,6 +157,11 @@ const productEventInputSchema = z.object({
 	attribution: z.record(z.string(), z.unknown()).optional(),
 });
 
+const agentRunInputSchema = z.object({
+	prompt: z.string().trim().min(1).max(4000),
+	maxSteps: z.number().int().min(1).max(12).default(6),
+});
+
 const creditTopUpInputSchema = z.object({
 	pack: z.enum(["small", "medium", "large"]).optional(),
 	amountCents: z.number().int().positive().optional(),
@@ -196,6 +201,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	pinSavedView: savedViewPinSchema,
 	recordProductEvent: productEventInputSchema,
 	createCreditTopUp: creditTopUpInputSchema,
+	startAgentRun: agentRunInputSchema,
 	setAutoRecharge: autoRechargeInputSchema,
 	createClient: clientRecordInputSchema,
 	updateClient: clientRecordPatchSchema,

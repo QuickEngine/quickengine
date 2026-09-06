@@ -42,6 +42,7 @@ export async function getAccountPlanId(
 		.select({
 			planId: quickengineSubscriptions.planId,
 			status: quickengineSubscriptions.status,
+			currentPeriodEndsAt: quickengineSubscriptions.currentPeriodEndsAt,
 		})
 		.from(quickengineSubscriptions)
 		.where(eq(quickengineSubscriptions.organizationId, scopeId))
@@ -49,9 +50,40 @@ export async function getAccountPlanId(
 	if (!row) {
 		return "free";
 	}
-	return row.status === "active" || row.status === "trialing"
-		? row.planId
-		: "free";
+	if (row.status === "active" || row.status === "trialing") {
+		return row.planId;
+	}
+	return withinLapseGrace(row.currentPeriodEndsAt) ? row.planId : "free";
+}
+
+/**
+ * A week of road after a subscription lapses, for people who were PAYING.
+ *
+ * 🔴 A card expires on a Friday. Without this, a merchant's suppliers, purchase
+ * orders and partner payouts stop that afternoon, and the first they hear of it
+ * is a customer telling them their shop is broken. A failed renewal is almost
+ * never a decision to leave, so treating it as one costs us a customer over an
+ * expiry date they would happily have fixed.
+ *
+ * ⚠️ Grace is for lapsed PAID accounts only, and free never touches this: an
+ * account with no subscription row returns "free" before we get here. It also
+ * restores the WHOLE plan rather than the capability alone, because half a plan
+ * is its own kind of broken. Their data is never locked either way.
+ *
+ * ⚠️ Not a substitute for dunning. This buys a week; the emails that tell them
+ * are still owed.
+ */
+// ⚠️ Named for the LAPSE, not to be confused with `withinGrace` in
+// `_metering-core`, which is a percentage a meter may overshoot its limit by.
+// Two different graces, two different units.
+const GRACE_DAYS = 7;
+
+export function withinLapseGrace(periodEndsAt: Date | null): boolean {
+	// No period end means we never recorded one, so there is nothing to measure
+	// grace from. Fail closed rather than granting it indefinitely.
+	if (!periodEndsAt) return false;
+	const endsAt = periodEndsAt.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000;
+	return Date.now() < endsAt;
 }
 
 // Record usage. Counters (actions) INCREMENT by `amount` (default 1); gauges

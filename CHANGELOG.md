@@ -8,6 +8,28 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Solo, the free plan, now has room to try rather than room to live.** It runs a real
+  single-merchant shop with every module and no cut of your sales, and it now stops at 40 orders
+  a month and 25 products listed. Drafts do not count and archiving something you no longer sell
+  frees room again. When you reach the order limit, one more order still goes through rather
+  than a real customer being turned away at your checkout, and your dashboard tells you plainly
+  that the next one will not. You are never charged for an order or for listing a product, on any plan.
+  These are ceilings that say which plan fits, not fees.
+
+- **One paid plan that means something, instead of four that did not.** Commerce unlocks partners and suppliers
+  and unlocks partners and suppliers: purchase orders, supplier payments and partner payouts.
+  Scale is $349 for a bigger team, and Expand bills by the seat once you stop wanting ceilings.
+  Free still runs your whole shop on your own, with every module and no cut of your sales.
+
+- **Nothing you are already paying for changes.** The two older plans stay exactly as they were
+  sold until every account has been moved across, so no limit and no speed drops underneath
+  anybody.
+
+- **A week of grace if a payment fails.** A subscription that lapses keeps working for seven days
+  rather than stopping the same afternoon, because an expired card is almost never somebody
+  deciding to leave. Your data is never locked either way.
+
+
 - **You can ask an agent to do something in your workspace.** There is now a way to send an agent
   a request and get its answer back, scoped to the one workspace you asked from and nothing else.
   The work is paid for before it starts: your plan's AI allowance covers it, and prepaid credits

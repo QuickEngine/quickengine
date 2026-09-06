@@ -114,11 +114,31 @@ export function registerProductsServicesRoutes(
 	);
 	app.post("/v1/catalog", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
+		// The catalog-size ceiling, asked before the item is written. Counts only
+		// items already `active`, so a draft costs nothing and archiving one frees
+		// room again.
+		const { workspaceId, workspace } = c.get("authorized");
+		if (workspace.organizationId) {
+			const { admitProduct } = await import("@quickengine/billing");
+			const room = await admitProduct(workspace.organizationId, workspaceId);
+			if (!room.allowed) {
+				return respondError(
+					c,
+					"USAGE_LIMIT_EXCEEDED",
+					`Your plan includes ${room.limit} products. Upgrade, or archive one you no longer sell.`,
+					402,
+				);
+			}
+		}
 		const context = await mutationContext(c, "catalog-items.create", body);
-		return respondMutation(
-			c,
-			await createCatalogItemCommand(context, body, options.uow),
-		);
+		const created = await createCatalogItemCommand(context, body, options.uow);
+		// Recount rather than increment: the gauge converges from any state, and
+		// a missed or retried call cannot drift it.
+		if (workspace.organizationId) {
+			const { syncActiveProducts } = await import("@quickengine/billing");
+			await syncActiveProducts(workspace.organizationId, workspaceId);
+		}
+		return respondMutation(c, created);
 	});
 	app.post("/v1/catalog/availability", readAccess, readLimit, async (c) => {
 		const parsed = catalogAvailabilityInputSchema.safeParse(

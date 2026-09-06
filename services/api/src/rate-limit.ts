@@ -39,14 +39,18 @@ export const RATE_LIMIT_POLICIES = {
  */
 export const PLAN_RATE_MULTIPLIER: Record<string, number> = {
 	free: 0.25,
+	commerce: 1,
+	// ⚠️ Retired tiers, kept until stored rows are migrated. An unlisted plan
+	// falls back to 1, so removing these before the migration would quietly hand
+	// a Grow account Commerce throughput.
 	launch: 1,
-	grow: 2,
-	scale: 4,
+	grow: 3,
+	scale: 3,
 	// 🔴 Every plan must appear here. An unlisted plan falls back to multiplier 1,
 	// which silently gives the most expensive tier Launch-level limits — stricter
 	// than Scale. `teams` was added to `plans.ts` on 2026-08-01 and missed here,
 	// which is exactly that bug.
-	teams: 8,
+	teams: 6,
 	// Contract-negotiated, so the ceiling is a formality rather than a product
 	// decision — but it must still sit above Expand or moving up would tighten it.
 	enterprise: 16,

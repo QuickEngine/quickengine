@@ -147,11 +147,37 @@ export function registerOrdersRoutes(
 	);
 	app.post("/v1/orders", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
+		// The business-volume ceiling, asked BEFORE the order is written. Free is
+		// the only tier that carries one; every paid tier passes straight through.
+		const organizationId = c.get("authorized").workspace.organizationId;
+		if (organizationId) {
+			const { admitOrder } = await import("@quickengine/billing");
+			const room = await admitOrder(organizationId);
+			if (!room.allowed) {
+				return respondError(
+					c,
+					"USAGE_LIMIT_EXCEEDED",
+					`Your plan includes ${room.limit} orders a month. Upgrade to keep taking orders.`,
+					402,
+				);
+			}
+		}
 		const context = await mutationContext(c, "orders.create", body);
-		return respondMutation(
-			c,
-			await createOrderCommand(context, body, options.uow),
-		);
+		const created = await createOrderCommand(context, body, options.uow);
+		// 🔴 Count it only if this request actually WROTE the order. `replayed` is
+		// the idempotent retry of a request we already counted, and counting that
+		// again would spend somebody's month twice on one order: exactly the bug
+		// that makes a customer's usage screen disagree with their own records.
+		// A conflict wrote nothing at all.
+		if (
+			organizationId &&
+			created.kind === "success" &&
+			created.source === "executed"
+		) {
+			const { meter } = await import("@quickengine/billing");
+			await meter({ scopeId: organizationId, meter: "ordersPerMonth" });
+		}
+		return respondMutation(c, created);
 	});
 	app.get("/v1/orders/:id", readAccess, readLimit, async (c) => {
 		const order = await loadOperatorOrderDetail(

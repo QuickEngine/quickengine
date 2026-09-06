@@ -3,6 +3,7 @@ import {
 	billableSeats,
 	getPlanLimits,
 	getStripePriceId,
+	OVERAGE,
 	PLANS,
 	planIdForPriceId,
 	TEAMS_MIN_SEATS,
@@ -81,7 +82,12 @@ describe("per-seat plans", () => {
 describe("gauge limits", () => {
 	it("gives Free exactly one seat and one workspace", () => {
 		const free = getPlanLimits("free");
+		// 🔴 ONE seat, and the guard matters: a second seat was tried and reverted
+		// on 2026-09-06 because free already carries all sixteen modules and no
+		// transaction fee, so a two person business would never have to pay.
 		expect(free.seats).toBe(1);
+		// One workspace still. A second business is a real step up, and it is the
+		// cheapest honest thing to ask somebody to pay for.
 		expect(free.workspaces).toBe(1);
 	});
 
@@ -91,5 +97,44 @@ describe("gauge limits", () => {
 			expect(paid.seats ?? 0).toBeGreaterThan(1);
 			expect(paid.workspaces ?? 0).toBeGreaterThan(1);
 		}
+	});
+});
+
+/**
+ * The walls that stop Free being a home rather than a trial.
+ *
+ * 🔴 Added 2026-09-06 after the honest finding that metering only API requests,
+ * storage and AI let a real single-merchant shop run on Free permanently: steady
+ * retail never approaches 25,000 requests a month, and a shop without suppliers
+ * never meets the only capability gate. Nothing ever asked them to pay.
+ */
+describe("the Free tier walls", () => {
+	it("caps orders and products on Free", () => {
+		const free = getPlanLimits("free");
+		expect(free.ordersPerMonth).toBe(25);
+		expect(free.activeProducts).toBe(25);
+	});
+
+	it("caps them on NO paid tier", () => {
+		// The ceiling is what makes Free a trial. Above it, the ceiling was never
+		// the product, and a paid customer must never meet one.
+		for (const id of ["commerce", "scale", "teams", "enterprise"] as const) {
+			const limits = getPlanLimits(id, 16);
+			expect(limits.ordersPerMonth).toBeNull();
+			expect(limits.activeProducts).toBeNull();
+		}
+	});
+
+	it("never prices an order or a product", () => {
+		// 🔴 Hard rule 7. These gate which plan fits; they must never bill. A
+		// per-order fee is charging somebody for the business they built.
+		expect(OVERAGE.ordersPerMonth).toBeNull();
+		expect(OVERAGE.activeProducts).toBeNull();
+	});
+
+	it("does not multiply the ceilings by seat count on a per-seat plan", () => {
+		// Expand has no ceiling to scale. Multiplying null by sixteen would be a
+		// number, and inventing a limit the plan says does not exist.
+		expect(getPlanLimits("teams", 16).ordersPerMonth).toBeNull();
 	});
 });

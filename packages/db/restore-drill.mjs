@@ -157,11 +157,15 @@ try {
 	 * trusting the exit code. Reuse the same Docker fallback, and the same
 	 * `host.docker.internal` mapping, since the scratch database is usually local.
 	 */
-	const serverMajor = Number(psql(adminUrl.toString(), "show server_version_num")) / 10000;
-	const restoreLocal = spawnSync("pg_restore", ["--version"], { encoding: "utf8" });
-	const localMajor = restoreLocal.status === 0
-		? Number((restoreLocal.stdout.match(/(\d+)\./) ?? [0, 0])[1])
-		: 0;
+	const serverMajor =
+		Number(psql(adminUrl.toString(), "show server_version_num")) / 10000;
+	const restoreLocal = spawnSync("pg_restore", ["--version"], {
+		encoding: "utf8",
+	});
+	const localMajor =
+		restoreLocal.status === 0
+			? Number((restoreLocal.stdout.match(/(\d+)\./) ?? [0, 0])[1])
+			: 0;
 	const viaDocker = localMajor < Math.floor(serverMajor);
 
 	const inContainer = (u) => {
@@ -173,25 +177,50 @@ try {
 	};
 
 	const restore = viaDocker
-		? spawnSync("docker", [
-				"run", "--rm", "-i",
-				"--add-host", "host.docker.internal:host-gateway",
-				"-v", `${workDir}:/dump`,
-				`postgres:${Math.floor(serverMajor)}-alpine`,
-				"pg_restore", "--dbname", inContainer(scratchUrl.toString()),
-				"--no-owner", "--no-privileges", `/dump/${dump}`,
-			], { encoding: "utf8" })
-		: spawnSync("pg_restore", [
-				"--dbname", scratchUrl.toString(),
-				"--no-owner", "--no-privileges", join(workDir, dump),
-			], { encoding: "utf8" });
+		? spawnSync(
+				"docker",
+				[
+					"run",
+					"--rm",
+					"-i",
+					"--add-host",
+					"host.docker.internal:host-gateway",
+					"-v",
+					`${workDir}:/dump`,
+					`postgres:${Math.floor(serverMajor)}-alpine`,
+					"pg_restore",
+					"--dbname",
+					inContainer(scratchUrl.toString()),
+					"--no-owner",
+					"--no-privileges",
+					`/dump/${dump}`,
+				],
+				{ encoding: "utf8" },
+			)
+		: spawnSync(
+				"pg_restore",
+				[
+					"--dbname",
+					scratchUrl.toString(),
+					"--no-owner",
+					"--no-privileges",
+					join(workDir, dump),
+				],
+				{ encoding: "utf8" },
+			);
 
 	// ⚠️ A non-zero exit is reported but does not decide the verdict: pg_restore
 	// warns about extensions that already exist and roles that do not. The row
 	// reconciliation below is the actual test.
 	if (restore.status !== 0) {
-		const detail = (restore.stderr || "").trim().split("\n").slice(-3).join(" · ");
-		console.log(`     pg_restore warnings (exit ${restore.status}): ${detail.slice(0, 200)}`);
+		const detail = (restore.stderr || "")
+			.trim()
+			.split("\n")
+			.slice(-3)
+			.join(" · ");
+		console.log(
+			`     pg_restore warnings (exit ${restore.status}): ${detail.slice(0, 200)}`,
+		);
 	}
 
 	console.log("  5. reconciling every table");
@@ -215,14 +244,21 @@ try {
 		for (const p of problems.slice(0, 20)) console.log(`    ${p}`);
 		fail(`${problems.length} table(s) did not come back identical.`);
 	}
-	if (extra.length) console.log(`  note: ${extra.length} table(s) only in the restore`);
+	if (extra.length)
+		console.log(`  note: ${extra.length} table(s) only in the restore`);
 
-	console.log(`✓ PASS — every table restored with identical row counts in ${seconds}s.`);
+	console.log(
+		`✓ PASS — every table restored with identical row counts in ${seconds}s.`,
+	);
 	console.log("  That number is the one an incident update has to contain.\n");
 } finally {
 	// 🔴 The dump is real customer data. It does not outlive the drill.
 	rmSync(workDir, { recursive: true, force: true });
 	if (created) {
-		spawnSync("psql", [adminUrl.toString(), "-tAc", `DROP DATABASE IF EXISTS ${scratchDb}`]);
+		spawnSync("psql", [
+			adminUrl.toString(),
+			"-tAc",
+			`DROP DATABASE IF EXISTS ${scratchDb}`,
+		]);
 	}
 }

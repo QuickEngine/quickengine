@@ -1466,6 +1466,46 @@ export const TILES: readonly TileSpec[] = [
 	},
 	{
 		/**
+		 * 🔴 The two BUSINESS-VOLUME meters, and the reason they are worth a tile
+		 * each: on Solo they are the walls somebody actually meets. Twenty-five
+		 * orders a month and twenty-five products listed are what turn a free
+		 * account into a paying one, and a wall nobody saw coming is an ambush.
+		 *
+		 * ⚠️ Useful on a paid plan too, where both are uncapped. "142 orders this
+		 * month" is a number a merchant wants regardless of whether anything is
+		 * about to run out, so these do not go quiet once somebody upgrades.
+		 */
+		id: "orders-usage",
+		name: "Orders this month",
+		blurb: "Orders taken this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 1,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="ordersPerMonth"
+				title="Orders this month"
+				sub="orders this period"
+			/>
+		),
+	},
+	{
+		id: "products-usage",
+		name: "Products listed",
+		blurb: "Products currently listed for sale, against your plan.",
+		defaultCols: 1,
+		defaultRows: 1,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="activeProducts"
+				title="Products listed"
+				sub="listed for sale"
+			/>
+		),
+	},
+	{
+		/**
 		 * ⚠️ No `module`. Usage is about the ACCOUNT and its plan, not about a
 		 * capability somebody bought, so it is offered to every workspace the way
 		 * "Needs you" is.

@@ -433,7 +433,25 @@ export function defaultLayout(
 	 * product having nothing for them.
 	 */
 	const ORDER: Array<{ id: string; cols: number; rows: number }> = [
-		{ id: "revenue", cols: 2, rows: 2 },
+		/* 🔴 The four usage meters, across the top, before anything else.
+		   Set 2026-09-06. They answer "how much of my plan is left", which is
+		   the question a customer cannot answer from anywhere else in the
+		   product, and on Solo two of them are the walls that decide whether
+		   somebody upgrades. A wall nobody saw coming is an ambush.
+
+		   ⚠️ These four and not the other four. Not AI actions or webhook
+		   deliveries, which mean nothing to most businesses; not seats, because
+		   Solo allows one and every new account would open on a full gauge
+		   reading "1 of 1", which once put a red warning in front of every new
+		   customer for a problem that did not exist. */
+		{ id: "orders-usage", cols: 1, rows: 1 },
+		{ id: "products-usage", cols: 1, rows: 1 },
+		{ id: "api-usage", cols: 1, rows: 1 },
+		{ id: "storage-usage", cols: 1, rows: 1 },
+		/* Full width, directly under the meters: the money is what the page is
+		   opened for, and at four columns it has room to be a chart rather than
+		   a number in a box. */
+		{ id: "revenue", cols: 4, rows: 2 },
 		{ id: "needs-you", cols: 1, rows: 2 },
 		{ id: "today", cols: 1, rows: 2 },
 		{ id: "invoices-outstanding", cols: 1, rows: 1 },

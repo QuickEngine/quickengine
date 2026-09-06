@@ -3660,6 +3660,25 @@ function declaredDocument(config: ApiConfig) {
 					},
 				},
 			},
+			"/v1/agents/runs": {
+				post: {
+					operationId: "startAgentRun",
+					summary: "Ask an agent to do something in this workspace",
+					description:
+						"Runs one bounded agent turn against the workspace and returns its result. The run is admitted against the plan's AI allowance first and falls back to prepaid credits, so it is paid for before it starts; whatever it actually spends is drawn down afterwards, including when the run fails, because tokens spent before an error are still billed by the model provider. The budget ceiling comes from admission rather than the caller. Requires the `agents:run` capability, which is never carried by a publishable storefront key.",
+					responses: {
+						"200": { description: "The run's outcome and what it cost." },
+						"402": {
+							description:
+								"No allowance and no balance, or the workspace spend cap is reached.",
+						},
+						"404": {
+							description: "The workspace has no organization to bill.",
+						},
+						"503": { description: "AI is not configured in this environment." },
+					},
+				},
+			},
 			"/v1/realtime/catalog": {
 				get: {
 					operationId: "getStorefrontRealtimeConfig",

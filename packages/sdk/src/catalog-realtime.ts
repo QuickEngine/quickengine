@@ -38,6 +38,29 @@ export type SubscribeToCatalogOptions = {
 	 * just stops updating on its own.
 	 */
 	onUnavailable?: (reason: string) => void;
+	/**
+	 * Cancels a subscription that is still starting up.
+	 *
+	 * 🔴 This function is async, and two awaits happen before the connection is
+	 * opened. The ordinary React shape stores the returned stop function in a
+	 * variable and calls it from an effect cleanup:
+	 *
+	 * ```js
+	 * let stop;
+	 * subscribeToCatalog(client, opts).then((fn) => { stop = fn; });
+	 * return () => stop?.();
+	 * ```
+	 *
+	 * Unmount during those awaits and `stop` is still undefined when cleanup
+	 * runs. The promise then resolves, opens a websocket, and nothing is left
+	 * holding the handle that closes it. A storefront moving between category
+	 * pages leaks one live connection per visit, which is a memory leak on the
+	 * page and a connection the provider counts against the merchant's quota.
+	 *
+	 * Pass a signal and cancelling is safe at every point, including the window
+	 * where there is nothing to cancel yet.
+	 */
+	signal?: AbortSignal;
 };
 
 /**
@@ -103,6 +126,11 @@ export async function subscribeToCatalog(
 		return unavailable("Live catalog updates are not available.");
 	}
 
+	// Cancelled while the config was in flight. Stop here rather than after the
+	// next await: there is no reason to pull in the realtime client for a
+	// subscription nobody is waiting for any more.
+	if (options.signal?.aborted) return () => {};
+
 	let PusherClient: PusherConstructor;
 	try {
 		// Resolved at runtime by the site, never bundled: Quick.js does not depend
@@ -121,6 +149,9 @@ export async function subscribeToCatalog(
 			"Live catalog updates need the `pusher-js` package installed alongside Quick.js.",
 		);
 	}
+
+	// And cancelled while the client was loading: never open the connection.
+	if (options.signal?.aborted) return () => {};
 
 	const pusher = new PusherClient(config.key, { cluster: config.cluster });
 	const channel = pusher.subscribe(config.channel);
@@ -141,9 +172,23 @@ export async function subscribeToCatalog(
 	};
 	channel.bind_global(handler);
 
-	return () => {
+	let stopped = false;
+	const stop = () => {
+		// Idempotent: a caller that both aborts and calls stop must not
+		// double-disconnect, and `bind_global` was only ever added once.
+		if (stopped) return;
+		stopped = true;
 		channel.unbind_global(handler);
 		pusher.unsubscribe(config.channel);
 		pusher.disconnect();
 	};
+
+	// The abort could also land in the gap between the check above and here.
+	if (options.signal?.aborted) {
+		stop();
+		return () => {};
+	}
+	options.signal?.addEventListener("abort", stop, { once: true });
+
+	return stop;
 }

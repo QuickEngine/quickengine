@@ -6,6 +6,7 @@ import { registerAccountReadRoutes } from "./account-read-routes";
 import { registerAccountRoutes } from "./account-routes";
 import { registerAccountTeamRoutes } from "./account-team-routes";
 import { registerAccountWorkspaceRoutes } from "./account-workspace-routes";
+import { registerAgentRoutes } from "./agent-routes";
 import { registerAuthRoutes } from "./auth-routes";
 import { registerBillingInfoRoutes } from "./billing-info-routes";
 import { registerBookingsRoutes } from "./bookings-routes";
@@ -112,6 +113,7 @@ export function registerAllRoutes(
 	});
 	registerCustomerMessageRoutes(app, dependencies);
 	registerRealtimeRoutes(app, dependencies);
+	registerAgentRoutes(app, dependencies);
 	registerRolesRoutes(app, dependencies);
 	registerContactRoutes(app, { logger });
 	registerResendWebhookRoutes(app, { logger });

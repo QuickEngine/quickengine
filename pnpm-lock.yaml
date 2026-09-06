@@ -1852,6 +1852,15 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
+      '@quickengine/agent-providers':
+        specifier: workspace:*
+        version: link:../../packages/agent-providers
+      '@quickengine/agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agent-runtime
+      '@quickengine/agent-tools-quickdash':
+        specifier: workspace:*
+        version: link:../../packages/agent-tools-quickdash
       '@quickengine/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics

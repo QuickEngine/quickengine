@@ -135,7 +135,9 @@ request either happened completely or not at all, and there is always a record o
 **Metering charges only what costs real infrastructure** — storage, AI, email, API volume.
 Never a business outcome the customer earns: no per-invoice fee, no per-customer fee, ever.
 AI runs on prepaid credits with per-run and per-workspace ceilings, and **work already running
-always finishes** — limits stop the next request, never the one in progress.
+always finishes** — limits stop the next request, never the one in progress. An agent run is
+admitted before it starts, against the plan allowance first and prepaid credits second, and what
+it spends is drawn down afterwards even if the run fails partway.
 
 ---
 
@@ -159,7 +161,7 @@ packages/
   events/           domain events and the outbox
   realtime/ jobs/ search/ cache/ storage/ email/   providers behind seams
   sdk/ cli/         Quick.js and the `quick` command
-  agent-*/          bounded model-execution foundations
+  agent-*/          bounded agent runs, reachable at POST /v1/agents/runs
   integration-tests/ e2e-tests/
 ```
 

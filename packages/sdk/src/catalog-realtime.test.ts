@@ -95,3 +95,50 @@ describe("subscribeToCatalog", () => {
 		expect(seen).toEqual(["https://api.example.com/v1/realtime/catalog"]);
 	});
 });
+
+/**
+ * 🔴 The leak this guards is not hypothetical, it is the ordinary React shape.
+ *
+ * `subscribeToCatalog` awaits twice before it opens a connection. A component
+ * that unmounts inside that window runs its cleanup while the stop function is
+ * still undefined, the promise then resolves, a websocket opens, and nothing
+ * holds the handle that closes it. A storefront moving between category pages
+ * leaks one live connection per visit: memory on the page, and a connection the
+ * provider counts against the merchant's quota.
+ */
+describe("cancelling a subscription that is still starting", () => {
+	it("never opens a connection when the signal is already aborted", async () => {
+		const onUnavailable = vi.fn();
+		const controller = new AbortController();
+		controller.abort();
+
+		const stop = await subscribeToCatalog(
+			clientReturning({ key: "k", cluster: "eu", channel: "catalog-ws" }),
+			{ onChange: vi.fn(), signal: controller.signal, onUnavailable },
+		);
+
+		// Cancelled is not the same as unavailable: nothing failed, the caller
+		// simply stopped wanting it, so a storefront must not be told realtime is
+		// broken.
+		expect(onUnavailable).not.toHaveBeenCalled();
+		expect(() => stop()).not.toThrow();
+	});
+
+	it("stops when the abort lands mid-flight, not only before the call", async () => {
+		const controller = new AbortController();
+		const client = {
+			request: async () => {
+				// Exactly the unmount-during-await window.
+				controller.abort();
+				return { data: { key: "k", cluster: "eu", channel: "catalog-ws" } };
+			},
+		} as unknown as QuickClient;
+
+		const stop = await subscribeToCatalog(client, {
+			onChange: vi.fn(),
+			signal: controller.signal,
+		});
+
+		expect(() => stop()).not.toThrow();
+	});
+});

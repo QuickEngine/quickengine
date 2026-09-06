@@ -1,4 +1,5 @@
 import { QuickApiError } from "@quickengine/quick";
+import type { ProcessEnvLike } from "./config";
 import { buildClient, credentialFromKey, type QuickConfig } from "./config";
 
 /**
@@ -44,7 +45,7 @@ export async function verifyConnection(
 						QUICK_BASE_URL: config.baseUrl,
 						QUICK_WORKSPACE: config.workspaceId,
 						QUICK_KEY: config.key,
-					} as NodeJS.ProcessEnv)
+					} as ProcessEnvLike)
 				: undefined,
 		);
 		const { data } = await client.clients.list();

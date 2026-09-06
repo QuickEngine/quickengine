@@ -3,6 +3,16 @@ import { resolve } from "node:path";
 import process from "node:process";
 import { z } from "zod";
 
+/**
+ * The shape of `process.env`, written out rather than taken from the ambient
+ * `NodeJS` namespace.
+ *
+ * ⚠️ Defined here rather than shared: `provider-health`, the CLI and this
+ * service have no package in common, and adding a dependency to carry one line
+ * would couple three things together to save nothing.
+ */
+type ProcessEnvLike = Record<string, string | undefined>;
+
 function loadLocalEnvironment() {
 	if (process.env.NODE_ENV === "production" || process.env.VERCEL) return;
 	for (const candidate of [
@@ -69,7 +79,7 @@ export type ApiConfig = {
 	version: string;
 };
 
-export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
+export function loadApiConfig(env: ProcessEnvLike = process.env): ApiConfig {
 	const parsed = apiEnvSchema.parse(env);
 	const configuredOrigins = parsed.API_CORS_ORIGINS?.split(",")
 		.map((origin) => origin.trim())

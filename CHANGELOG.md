@@ -8,6 +8,9 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Backups keep a readable timestamp.** The name of a backup file no longer runs a pointless
+  substitution over itself, which static analysis flagged as a likely mistake.
+
 - **Security updates.** Three dependencies moved to patched releases, clearing every outstanding
   advisory. Nothing changes in how anything works.
 

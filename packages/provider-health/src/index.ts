@@ -1,4 +1,15 @@
 /**
+ * The shape of `process.env`, written out rather than taken from the ambient
+ * `NodeJS` namespace.
+ *
+ * ⚠️ That namespace is a global supplied by `@types/node`, and it stops
+ * resolving here under newer major versions: the Dependabot majors PR failed
+ * with `Cannot find namespace 'NodeJS'` on exactly these lines. This is the same
+ * type, owned by us, and it cannot break on a types upgrade.
+ */
+export type ProcessEnvLike = Record<string, string | undefined>;
+
+/**
  * Whether a provider fell back to its offline implementation, and whether anyone
  * should care.
  *
@@ -47,7 +58,7 @@ const degraded = new Map<string, ProviderDegradation>();
  * using it here would fire on every preview build and train everyone to ignore this.
  */
 export function isProductionDeployment(
-	env: NodeJS.ProcessEnv = process.env,
+	env: ProcessEnvLike = process.env,
 ): boolean {
 	return env.VERCEL_ENV === "production";
 }
@@ -64,7 +75,7 @@ export function reportProviderSelection(
 		| { provider: string; degraded: false }
 		| ({ degraded: true } & ProviderDegradation),
 	options: {
-		env?: NodeJS.ProcessEnv;
+		env?: ProcessEnvLike;
 		/** Injected in tests; production writes to stderr. */
 		log?: (message: string) => void;
 	} = {},

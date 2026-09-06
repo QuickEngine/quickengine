@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { ProcessEnvLike } from "./index";
 import {
 	getDegradedProviders,
 	hasDataLossDegradation,
@@ -7,9 +8,9 @@ import {
 	resetProviderHealthForTests,
 } from "./index";
 
-const production = { VERCEL_ENV: "production" } as NodeJS.ProcessEnv;
-const preview = { VERCEL_ENV: "preview" } as NodeJS.ProcessEnv;
-const local = {} as NodeJS.ProcessEnv;
+const production = { VERCEL_ENV: "production" } as ProcessEnvLike;
+const preview = { VERCEL_ENV: "preview" } as ProcessEnvLike;
+const local = {} as ProcessEnvLike;
 
 const jobsDegraded = {
 	degraded: true,
@@ -42,7 +43,7 @@ describe("isProductionDeployment", () => {
 	// every preview deploy and train everyone to ignore the warning.
 	it("ignores NODE_ENV", () => {
 		expect(
-			isProductionDeployment({ NODE_ENV: "production" } as NodeJS.ProcessEnv),
+			isProductionDeployment({ NODE_ENV: "production" } as ProcessEnvLike),
 		).toBe(false);
 	});
 });

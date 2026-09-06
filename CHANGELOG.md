@@ -8,6 +8,11 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Releases publish themselves.** A release now goes out on its own once the checks pass, instead
+  of waiting for somebody to tag it and publish by hand. Nothing has been released since July for
+  want of that, and the version the command line tool installs is now read from the package itself,
+  so the two can never disagree again.
+
 - **Backups keep a readable timestamp.** The name of a backup file no longer runs a pointless
   substitution over itself, which static analysis flagged as a likely mistake.
 

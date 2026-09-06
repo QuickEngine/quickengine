@@ -30,7 +30,8 @@
 			"types": "./dist/browser.d.ts",
 			"import": "./dist/browser.js",
 			"require": "./dist/browser.cjs"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist"

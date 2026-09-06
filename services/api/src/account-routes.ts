@@ -106,6 +106,20 @@ export const startSubscriptionSchema = z.object({
 	billingEmail: z.string().trim().email(),
 	billingName: z.string().trim().optional(),
 	seats: z.number().int().min(1).optional(),
+	/**
+	 * A code the customer typed, such as a founding-customer offer.
+	 *
+	 * ⚠️ Uppercased so `founding` and `FOUNDING` are the same code. Nobody types
+	 * a promo code carefully, and a case-sensitive miss reads as "your offer is
+	 * fake" rather than "check your caps".
+	 */
+	promotionCode: z
+		.string()
+		.trim()
+		.min(1)
+		.max(64)
+		.transform((code) => code.toUpperCase())
+		.optional(),
 });
 export const confirmSubscriptionSchema = z.object({
 	subscriptionId: z.string().trim().min(1),
@@ -864,11 +878,27 @@ export function registerAccountRoutes(
 				>[0]["planId"],
 				cycle: input.cycle,
 				seats: input.seats,
+				promotionCode: input.promotionCode,
 			});
 			return respond(c, result, 201);
 		} catch (error) {
 			// A missing price is our misconfiguration, not the caller's mistake, and
 			// saying so plainly beats a 500 nobody can act on.
+			// 🔴 A bad code is the CALLER's, and it must be said plainly. Falling
+			// through to a 500 here would leave somebody who typed a founding code
+			// staring at "something went wrong" while wondering whether they were
+			// charged.
+			if (
+				error instanceof Error &&
+				error.message === "PROMOTION_CODE_INVALID"
+			) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"That code is not valid, or it has already been fully claimed. Remove it to continue at the usual price.",
+					400,
+				);
+			}
 			if (error instanceof Error && error.message.includes("No Stripe price")) {
 				return respondError(
 					c,

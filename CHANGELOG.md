@@ -25,9 +25,6 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   nothing. All of those now ask. Viewing your suppliers and deleting them stay free on every
   plan, so stopping payment never locks you out of your own records or stops you tidying up.
 
-- **Discount codes work at checkout.** A code that is expired, mistyped, or switched off is
-  refused and says so, rather than quietly charging the full price.
-
 - **Suppliers, purchase orders and partner payouts are part of Commerce.** Everything you sell
   on your own stays free: your catalog, orders, payments, stock, bookings, invoices, quotes,
   contracts, files, projects, time and content. You pay when somebody other than you gets paid.
@@ -35,6 +32,27 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 - **A plan message that tells you what you get.** Running into something your plan does not cover
   now explains what it comes with, rather than reporting a failure. It is also told apart from
   running out of an allowance, which is a different thing with a different answer.
+- **The payment fields look like QuickDash.** Entering a card now uses your own colours, type and
+  corners rather than a generic payment form dropped into the page.
+
+- **AI credits, and a plain note about them.** You can see your balance and top it up, and the
+  page says what credits are actually for: asking an agent to look at your workspace. Your plan
+  allowance is used first, and credits only start being spent once it runs out. Everything else in
+  QuickDash is covered by your plan and never touches credits.
+
+- **You can actually buy QuickDash now.** The billing and checkout screens were blank, so the
+  price list, the plans and the payment endpoints all worked and there was nowhere to use them.
+  Choosing a plan, entering a card and seeing a confirmation afterwards all work again, and the
+  page you land on after paying tells you which plan you are on rather than showing nothing.
+
+- **QuickDash opens on a phone.** The notice saying it needed a bigger screen is gone from the
+  website, sign-in, your account and the customer portal. Those screens are still tighter than
+  they should be and that work is coming, but a small screen no longer means a closed door.
+
+- **Founding customer pricing.** A code at checkout can now take money off the price, and the
+  first ten businesses on Commerce keep theirs for as long as they stay. A code that has expired
+  or been fully claimed stops the sign-up and says so, rather than quietly charging the full
+  amount to somebody who thought they had a discount.
 
 - **Signing in keeps working on the newer login library.** A column the library writes was missing
   from our own schema, so creating an account half succeeded and every later sign-in reported no

@@ -84,7 +84,8 @@
 		"order:paid": "pnpm --filter @quickengine/api exec tsx scripts/emit-order-paid.mts",
 		"supplier:webhook": "pnpm --filter @quickengine/api exec tsx scripts/deliver-supplier-webhook.mts",
 		"check:environment-isolation": "node .github/ci/check-environment-isolation.mjs",
-		"check:handler-isolation": "node .github/ci/check-handler-isolation.mjs"
+		"check:handler-isolation": "node .github/ci/check-handler-isolation.mjs",
+		"metrics": "node packages/db/metrics.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",

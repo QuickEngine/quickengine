@@ -1,4 +1,4 @@
-import { type MeterKey, OVERAGE } from "./plans";
+import { type MeterKey, overageFor } from "./plans";
 import { getStripe, isStripeConfigured } from "./stripe";
 import { getSubscriptionForOrg } from "./subscriptions";
 
@@ -37,7 +37,12 @@ export async function billOverage({
 }): Promise<{ charged: boolean; blocks: number; cents: number }> {
 	const none = { charged: false, blocks: 0, cents: 0 };
 
-	const price = OVERAGE[meter];
+	// 🔴 `overageFor`, never `OVERAGE` directly. Orders and products are priced
+	// on free only, and reading the table would bill a paying customer for the
+	// business they built.
+	const { getAccountPlanId } = await import("./metering");
+	const planId = await getAccountPlanId(organizationId);
+	const price = overageFor(planId, meter);
 	if (!price || unitsOverAllowance <= 0) return none;
 	if (!isStripeConfigured()) return none;
 

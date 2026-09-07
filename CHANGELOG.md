@@ -8,6 +8,24 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **The free plan now works for every kind of business, not just shops.** Bookings, invoices,
+  contracts, quotes, projects, time entries, shipments and client records each have their own
+  monthly allowance, the same as orders and products always did. Before this, a consultancy could
+  run indefinitely without ever meeting a limit while an equivalent shop met one in a week.
+
+- **Going over an allowance on the free plan no longer stops you working.** You can keep trading
+  and pay for what you use until the month resets, or move up to a plan where those allowances
+  disappear. There is a ceiling on how much that can add up to, so a good month can never produce
+  a surprise.
+
+- **Every allowance has its own card on the dashboard**, and you only see the ones for work you
+  actually do.
+
+- **Extra storage costs the same whether you plan for it or not.** Five cents a gigabyte, which is
+  exactly the price of a storage pack, so nobody pays a penalty for not having predicted their own
+  month.
+
+
 - **Products can have video, not just photographs.** Upload a clip the same way you upload a
   picture, reorder them, and your shop shows it. Videos have their own list, so a site that only
   knows about photographs carries on working exactly as it did.

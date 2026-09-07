@@ -76,6 +76,27 @@ export type PlanLimits = {
 	 */
 	ordersPerMonth: number | null;
 	/**
+	 * Counters: the business records each module exists to create.
+	 *
+	 * 🔴 Every module, not just commerce. Capping orders and products alone meant
+	 * a consultancy running bookings, invoices, contracts and time tracking hit
+	 * NO limit and paid nothing forever, while an identical-sized shop paid.
+	 * That is not a free tier, it is a free tier for everyone except the one
+	 * business type we most want as a customer.
+	 *
+	 * ⚠️ Same rule as orders throughout: capped and priced on FREE ONLY, uncapped
+	 * and unpriced on every plan somebody pays for. A paying customer is never
+	 * charged for the work they did.
+	 */
+	bookingsPerMonth: number | null;
+	invoicesPerMonth: number | null;
+	contractsPerMonth: number | null;
+	quotesPerMonth: number | null;
+	projectsPerMonth: number | null;
+	timeEntriesPerMonth: number | null;
+	shipmentsPerMonth: number | null;
+	clientsPerMonth: number | null;
+	/**
 	 * Gauge: products currently listed for sale.
 	 *
 	 * The catalog-side twin of `ordersPerMonth`, and the same rule applies: a
@@ -180,15 +201,16 @@ const paidPlan = (
 export const PLANS: readonly PlanDefinition[] = [
 	{
 		id: "free",
-		// "Solo" to the customer: it names who it is for and, by naming it, why you
-		// leave. You hired somebody, or you took on a supplier.
-		displayName: "Solo",
+		// "Free", not "Solo". Solo implies a plan somebody chose; this is the floor
+		// everyone starts on, and naming it honestly matters more now that it is
+		// a metered tier rather than a walled one.
+		displayName: "Free",
 		free: true,
 		priceEnv: {},
 		limits: {
 			apiRequests: 25_000,
 			aiActions: 25,
-			// 🔴 The two walls that make Solo a place you TRY the product rather
+			// 🔴 The two walls that make Free a place you TRY the product rather
 			// than a place you run a business from forever.
 			//
 			// ⚠️ 25, lowered from 40 on external review before any of this shipped.
@@ -200,6 +222,14 @@ export const PLANS: readonly PlanDefinition[] = [
 			// none today.
 			ordersPerMonth: 25,
 			activeProducts: 25,
+			bookingsPerMonth: 25,
+			invoicesPerMonth: 25,
+			contractsPerMonth: 25,
+			quotesPerMonth: 25,
+			projectsPerMonth: 25,
+			timeEntriesPerMonth: 25,
+			shipmentsPerMonth: 25,
+			clientsPerMonth: 25,
 			storageBytes: 2 * GB,
 			seats: 1,
 			workspaces: 1,
@@ -218,6 +248,14 @@ export const PLANS: readonly PlanDefinition[] = [
 		// Uncapped from here up. The ceiling was never the product.
 		ordersPerMonth: null,
 		activeProducts: null,
+		bookingsPerMonth: null,
+		invoicesPerMonth: null,
+		contractsPerMonth: null,
+		quotesPerMonth: null,
+		projectsPerMonth: null,
+		timeEntriesPerMonth: null,
+		shipmentsPerMonth: null,
+		clientsPerMonth: null,
 		storageBytes: 100 * GB,
 		seats: 5,
 		workspaces: 3,
@@ -233,6 +271,14 @@ export const PLANS: readonly PlanDefinition[] = [
 		// Retired, and never capped when sold. Leave them uncapped.
 		ordersPerMonth: null,
 		activeProducts: null,
+		bookingsPerMonth: null,
+		invoicesPerMonth: null,
+		contractsPerMonth: null,
+		quotesPerMonth: null,
+		projectsPerMonth: null,
+		timeEntriesPerMonth: null,
+		shipmentsPerMonth: null,
+		clientsPerMonth: null,
 		storageBytes: 25 * GB,
 		seats: 3,
 		workspaces: 2,
@@ -244,6 +290,14 @@ export const PLANS: readonly PlanDefinition[] = [
 		// Retired, and never capped when sold. Leave them uncapped.
 		ordersPerMonth: null,
 		activeProducts: null,
+		bookingsPerMonth: null,
+		invoicesPerMonth: null,
+		contractsPerMonth: null,
+		quotesPerMonth: null,
+		projectsPerMonth: null,
+		timeEntriesPerMonth: null,
+		shipmentsPerMonth: null,
+		clientsPerMonth: null,
 		storageBytes: 150 * GB,
 		seats: 8,
 		workspaces: 5,
@@ -254,6 +308,14 @@ export const PLANS: readonly PlanDefinition[] = [
 		aiActions: 6_000,
 		ordersPerMonth: null,
 		activeProducts: null,
+		bookingsPerMonth: null,
+		invoicesPerMonth: null,
+		contractsPerMonth: null,
+		quotesPerMonth: null,
+		projectsPerMonth: null,
+		timeEntriesPerMonth: null,
+		shipmentsPerMonth: null,
+		clientsPerMonth: null,
 		storageBytes: 500 * GB,
 		seats: 15,
 		workspaces: 10,
@@ -293,6 +355,14 @@ export const PLANS: readonly PlanDefinition[] = [
 			// would be meaningless, and there is no ceiling above Commerce anyway.
 			ordersPerMonth: null,
 			activeProducts: null,
+			bookingsPerMonth: null,
+			invoicesPerMonth: null,
+			contractsPerMonth: null,
+			quotesPerMonth: null,
+			projectsPerMonth: null,
+			timeEntriesPerMonth: null,
+			shipmentsPerMonth: null,
+			clientsPerMonth: null,
 			storageBytes: 100 * GB,
 			// Not a ceiling. Every seat is billed, so there is nothing to cap.
 			seats: null,
@@ -324,6 +394,14 @@ export const PLANS: readonly PlanDefinition[] = [
 			aiActions: 100_000,
 			ordersPerMonth: null,
 			activeProducts: null,
+			bookingsPerMonth: null,
+			invoicesPerMonth: null,
+			contractsPerMonth: null,
+			quotesPerMonth: null,
+			projectsPerMonth: null,
+			timeEntriesPerMonth: null,
+			shipmentsPerMonth: null,
+			clientsPerMonth: null,
 			storageBytes: null,
 			seats: null,
 			workspaces: null,
@@ -356,6 +434,14 @@ export const PLANS: readonly PlanDefinition[] = [
 			aiActions: 25_000,
 			ordersPerMonth: null,
 			activeProducts: null,
+			bookingsPerMonth: null,
+			invoicesPerMonth: null,
+			contractsPerMonth: null,
+			quotesPerMonth: null,
+			projectsPerMonth: null,
+			timeEntriesPerMonth: null,
+			shipmentsPerMonth: null,
+			clientsPerMonth: null,
 			storageBytes: null,
 			seats: null,
 			workspaces: null,
@@ -410,11 +496,24 @@ export type MeterKey = keyof PlanLimits;
 /**
  * What one unit past the included allowance costs, in cents.
  *
- * 🔴 Only meters with a REAL marginal cost appear here. Hard rule 7 forbids
- * billing a business outcome the customer earns, so there is no overage on
- * orders, invoices, customers or workspaces however much of them somebody
- * creates. These three cost us money per unit: bandwidth and compute for API
- * requests, model spend for AI, egress for webhook attempts.
+ * 🔴 Two different reasons a meter is priced, and keeping them apart is the
+ * whole design.
+ *
+ * **Things that cost us money** are billed on EVERY plan: API requests, AI
+ * actions, storage. Recovering a cost is not the same as taxing success.
+ *
+ * **Things that cost us nothing** are billed on FREE ONLY, and never on a plan
+ * somebody pays for. Orders and products cost us nothing to hold, so on a paid
+ * tier they carry no price at all: that is what keeps "we take 0% of your
+ * sales" true for every paying customer. On free they are priced because the
+ * alternative is worse. Blocking a shop mid-month teaches them the product is
+ * unreliable; letting them keep trading and pay for what they use turns the
+ * free tier into a ramp toward Commerce instead of a wall in front of it.
+ *
+ * ⚠️ This narrows hard rule 7 rather than breaking it. The rule exists so
+ * nobody is charged for the business they built; a paying customer never is.
+ * A free account is choosing to keep operating past a limit, and the price is
+ * what makes that choice available at all.
  *
  * ⚠️ Priced per BLOCK, not per unit, because a bill that reads "$1.00 per 10,000
  * requests" is one a customer can predict and "$0.0001 per request" is one they
@@ -431,16 +530,33 @@ export type OveragePrice = {
 export const OVERAGE: Record<MeterKey, OveragePrice | null> = {
 	apiRequests: { blockSize: 10_000, cents: 100 },
 	aiActions: { blockSize: 100, cents: 200 },
+	// 🔴 Storage is the one gauge that IS charged, because it is the only cost
+	// that recurs for as long as the bytes exist. Per gigabyte, so somebody 3 GB
+	// over pays for 3 GB.
+	//
+	// ⚠️ 5 cents a gigabyte is EXACTLY the pack price of $5 per 100 GB, and that
+	// is deliberate. If overage cost more than buying the pack, somebody who
+	// simply used the product would be paying a penalty for not having predicted
+	// their own month. Our cost is $0.015/GB, so this is a 3.3x margin without
+	// being the dollar a gigabyte some providers charge.
+	storageBytes: { blockSize: 1024 ** 3, cents: 5 },
 	// Counted, never capped, and not charged until real volume says what it costs.
 	webhookDeliveries: null,
-	// 🔴 NEVER price these two. They are the business the customer built, and
-	// charging per order or per product listed is precisely the per-outcome fee
-	// that hard rule 7 forbids. They gate which plan fits; they never bill.
+	// 🔴 Priced on FREE ONLY. See `overageFor`, which is the function anything
+	// billing must call: reading this table directly would charge a paying
+	// customer for their own orders.
 	ordersPerMonth: null,
 	activeProducts: null,
-	// Gauges are ceilings, not consumption. Passing one is a reason to change
-	// plan, not a line on an invoice.
-	storageBytes: null,
+	bookingsPerMonth: null,
+	invoicesPerMonth: null,
+	contractsPerMonth: null,
+	quotesPerMonth: null,
+	projectsPerMonth: null,
+	timeEntriesPerMonth: null,
+	shipmentsPerMonth: null,
+	clientsPerMonth: null,
+	// A ceiling, not consumption. Passing one is a reason to change plan rather
+	// than a line on an invoice, and neither can be bought by the unit.
 	seats: null,
 	workspaces: null,
 };
@@ -450,6 +566,14 @@ export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
 	aiActions: "counter",
 	// Refills each period: this month's trading, not a lifetime total.
 	ordersPerMonth: "counter",
+	bookingsPerMonth: "counter",
+	invoicesPerMonth: "counter",
+	contractsPerMonth: "counter",
+	quotesPerMonth: "counter",
+	projectsPerMonth: "counter",
+	timeEntriesPerMonth: "counter",
+	shipmentsPerMonth: "counter",
+	clientsPerMonth: "counter",
 	// A running total of what is listed right now, so delisting frees room.
 	activeProducts: "gauge",
 	storageBytes: "gauge",
@@ -457,6 +581,86 @@ export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
 	workspaces: "gauge",
 	webhookDeliveries: "counter",
 };
+
+/**
+ * What one unit past the allowance costs on a GIVEN PLAN.
+ *
+ * 🔴 The only correct way to price overage. Reading `OVERAGE` directly bills a
+ * paying customer for their own orders and products, which is exactly what the
+ * ladder promises never to do.
+ *
+ * ⚠️ Free-only meters are the ones that cost us nothing to hold. On a paid plan
+ * they are uncapped, so there is no allowance to exceed and nothing to charge;
+ * on free they are the mechanism that lets somebody keep trading past the cap
+ * instead of being shut off until the month rolls over.
+ */
+const FREE_ONLY_METERS: ReadonlySet<MeterKey> = new Set([
+	"ordersPerMonth",
+	"activeProducts",
+	"bookingsPerMonth",
+	"invoicesPerMonth",
+	"contractsPerMonth",
+	"quotesPerMonth",
+	"projectsPerMonth",
+	"timeEntriesPerMonth",
+	"shipmentsPerMonth",
+	"clientsPerMonth",
+]);
+
+/** What a free account pays for the meters that only free is charged for. */
+const FREE_ONLY_PRICES: Partial<Record<MeterKey, OveragePrice>> = {
+	// 25 cents an order and 50 an item, chosen so the bill ARRIVES at the
+	// Commerce price for a business that has genuinely outgrown free rather
+	// than punishing a quiet month. A shop doing 250 orders and 120 products
+	// pays about $153, at which point the plan is plainly better value; one
+	// doing 40 orders pays about $9, which is the accessible tier nobody had
+	// to invent.
+	ordersPerMonth: { blockSize: 1, cents: 25 },
+	activeProducts: { blockSize: 1, cents: 50 },
+	// ⚠️ One rate across every module, deliberately. A booking is worth the same
+	// to us as an order, and pricing them differently would make some business
+	// types cheaper to run on free than others, which is the exact unfairness
+	// this replaces.
+	bookingsPerMonth: { blockSize: 1, cents: 25 },
+	invoicesPerMonth: { blockSize: 1, cents: 25 },
+	contractsPerMonth: { blockSize: 1, cents: 25 },
+	quotesPerMonth: { blockSize: 1, cents: 25 },
+	projectsPerMonth: { blockSize: 1, cents: 25 },
+	timeEntriesPerMonth: { blockSize: 1, cents: 25 },
+	shipmentsPerMonth: { blockSize: 1, cents: 25 },
+	clientsPerMonth: { blockSize: 1, cents: 25 },
+};
+
+/**
+ * The most a free account can run up in overage before it has to choose.
+ *
+ * 🔴 This is what stops free being a permanent home, and it does the job that
+ * raising the per-unit price would otherwise have to do. At 25 cents an order
+ * the bill only reaches the Commerce price somewhere past 600 orders a month,
+ * so without a ceiling a real business could sit on free indefinitely paying
+ * less than the plan. Raising the price to close that gap would mean charging
+ * about 5% of a ten dollar order, which is worse than the transaction fee we
+ * refuse to take.
+ *
+ * ⚠️ Set BELOW the Commerce price on purpose. Somebody who reaches it is told
+ * that the plan costs less than the overage they are about to keep paying,
+ * which is a true sentence and an easy decision. A cap above the plan price
+ * would just be an expensive way to say the same thing.
+ *
+ * ⚠️ It is also a protection. Nobody on a free tier should be able to run up an
+ * unbounded bill by having a good month.
+ */
+export const FREE_OVERAGE_CAP_CENTS = 9_900;
+
+export function overageFor(
+	planId: QuickEnginePlanId,
+	meter: MeterKey,
+): OveragePrice | null {
+	if (FREE_ONLY_METERS.has(meter)) {
+		return planId === "free" ? (FREE_ONLY_PRICES[meter] ?? null) : null;
+	}
+	return OVERAGE[meter];
+}
 
 export const getPlan = (id: QuickEnginePlanId): PlanDefinition | undefined =>
 	PLANS.find((plan) => plan.id === id);
@@ -488,6 +692,14 @@ export const getPlanLimits = (
 		// invent a limit where the plan says there is none.
 		ordersPerMonth: plan.limits.ordersPerMonth,
 		activeProducts: plan.limits.activeProducts,
+		bookingsPerMonth: plan.limits.bookingsPerMonth,
+		invoicesPerMonth: plan.limits.invoicesPerMonth,
+		contractsPerMonth: plan.limits.contractsPerMonth,
+		quotesPerMonth: plan.limits.quotesPerMonth,
+		projectsPerMonth: plan.limits.projectsPerMonth,
+		timeEntriesPerMonth: plan.limits.timeEntriesPerMonth,
+		shipmentsPerMonth: plan.limits.shipmentsPerMonth,
+		clientsPerMonth: plan.limits.clientsPerMonth,
 		storageBytes: scale(plan.limits.storageBytes),
 		webhookDeliveries: scale(plan.limits.webhookDeliveries),
 		seats: plan.limits.seats,

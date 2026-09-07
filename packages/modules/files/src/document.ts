@@ -1,6 +1,48 @@
 import { z } from "zod";
 
-export const MAX_FILE_SIZE_BYTES = 5 * 1024 ** 3;
+const MB = 1024 ** 2;
+
+/**
+ * The largest single file we will accept, of any kind.
+ *
+ * 🔴 Was 5 GB, against a free plan whose ENTIRE storage allowance is 2 GB: one
+ * file could be two and a half times the plan that permitted it.
+ *
+ * ⚠️ A SAFETY limit, not a commercial one. Identical on every plan including
+ * Custom. A 600 MB photograph is somebody's mistake, and the useful answer is
+ * to say so at the door rather than spend ten minutes uploading it and then
+ * sell them a bigger plan to hold it. Nothing here mentions upgrading.
+ */
+export const MAX_FILE_SIZE_BYTES = 500 * MB;
+
+/**
+ * What is reasonable for each kind of file.
+ *
+ * Chosen so ordinary work always fits and a mistake never does. A 24-megapixel
+ * photograph is about 8 MB, so images get 10; a twenty-page scanned contract
+ * routinely clears 10 MB, so documents get 25 rather than a 4 MB limit that
+ * would generate support tickets on the first day.
+ */
+export const MAX_BYTES_BY_CATEGORY: Record<string, number> = {
+	image: 10 * MB,
+	pdf: 25 * MB,
+	document: 25 * MB,
+	spreadsheet: 25 * MB,
+	presentation: 50 * MB,
+	code: 10 * MB,
+	audio: 100 * MB,
+	archive: 100 * MB,
+	video: 500 * MB,
+	other: 50 * MB,
+};
+
+/** The ceiling for one category, falling back to the safe general limit. */
+export const maxBytesFor = (category: string): number =>
+	MAX_BYTES_BY_CATEGORY[category] ?? MAX_BYTES_BY_CATEGORY.other;
+
+/** How to say it, without ever implying a bigger plan would help. */
+export const tooLargeMessage = (category: string): string =>
+	`That file is larger than the ${Math.round(maxBytesFor(category) / MB)} MB limit for ${category === "other" ? "this kind of file" : `${category} files`}. Try a smaller or compressed version.`;
 
 export const FILE_CATEGORIES = [
 	"document",
@@ -58,17 +100,33 @@ const contentTypeSchema = z
 	.max(255)
 	.regex(/^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/);
 
-export const fileVersionInputSchema = z.object({
-	originalName: safeFileNameSchema,
-	contentType: contentTypeSchema,
-	sizeBytes: z.number().int().positive().max(MAX_FILE_SIZE_BYTES),
-	checksumSha256: z
-		.string()
-		.trim()
-		.toLowerCase()
-		.regex(/^[a-f0-9]{64}$/),
-	metadata: z.record(z.string(), z.unknown()).default({}),
-});
+export const fileVersionInputSchema = z
+	.object({
+		originalName: safeFileNameSchema,
+		contentType: contentTypeSchema,
+		sizeBytes: z.number().int().positive().max(MAX_FILE_SIZE_BYTES),
+		checksumSha256: z
+			.string()
+			.trim()
+			.toLowerCase()
+			.regex(/^[a-f0-9]{64}$/),
+		metadata: z.record(z.string(), z.unknown()).default({}),
+	})
+	/**
+	 * 🔴 The per-kind ceiling, checked here because EVERY upload builds one of
+	 * these. On the schema rather than in a route, so a new upload path cannot
+	 * forget it, which is exactly how product images ended up with no limit.
+	 */
+	.superRefine((value, ctx) => {
+		const category = classifyFileContentType(value.contentType);
+		if (value.sizeBytes > maxBytesFor(category)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["sizeBytes"],
+				message: tooLargeMessage(category),
+			});
+		}
+	});
 
 export type FileVersionInput = z.input<typeof fileVersionInputSchema>;
 export type FileVersion = z.output<typeof fileVersionInputSchema>;

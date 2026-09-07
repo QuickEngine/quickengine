@@ -44,6 +44,9 @@ export function registerImageRoutes(
 
 	// Matches the product upload limit. A photograph larger than this is almost
 	// always an unresized camera original, and saying so beats a timeout.
+	// ⚠️ Must match `MAX_BYTES_BY_CATEGORY.image` in `@quickengine/mod-files`.
+	// Kept as a literal rather than an import because this check runs before any
+	// dynamic import, on every upload. If one moves, move the other.
 	const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 	const publicAssets = async (origin: string) => {

@@ -233,6 +233,9 @@ export function registerProductsServicesRoutes(
 	 * other catalog edit, so an uploaded image lands with audit and outbox
 	 * exactly like a price change.
 	 */
+	// ⚠️ Must match `MAX_BYTES_BY_CATEGORY.image` in `@quickengine/mod-files`.
+	// Kept as a literal rather than an import because this check runs before any
+	// dynamic import, on every upload. If one moves, move the other.
 	const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 	/** Provider for things the public web reads. Loaded lazily — hard rule 12. */

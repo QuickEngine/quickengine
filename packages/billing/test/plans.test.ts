@@ -138,3 +138,28 @@ describe("the Free tier walls", () => {
 		expect(getPlanLimits("teams", 16).ordersPerMonth).toBeNull();
 	});
 });
+
+/**
+ * 🔴 The seat floor has to hold at CHECKOUT, not only at the later sync.
+ *
+ * `createSubscription` used `Math.max(1, ...)`, so somebody subscribing to
+ * Expand was charged $59 for one seat instead of $944 for sixteen, and the
+ * correction arrived on their next invoice as a sixteenfold surprise. Found
+ * 2026-09-07 while answering "how do we enforce the minimum".
+ */
+describe("the per-seat floor", () => {
+	it("lifts any smaller request to the floor", () => {
+		expect(billableSeats(1)).toBe(TEAMS_MIN_SEATS);
+		expect(billableSeats(0)).toBe(TEAMS_MIN_SEATS);
+	});
+
+	it("leaves a real team alone", () => {
+		expect(billableSeats(40)).toBe(40);
+	});
+
+	it("prices the smallest Expand subscription at the tier's real entry", () => {
+		// 16 x $59 = $944. If this ever reads $59, checkout is bypassing
+		// `billableSeats` again.
+		expect(billableSeats(1) * 59).toBe(944);
+	});
+});

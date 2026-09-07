@@ -54,7 +54,6 @@ function Thumb({ item, size }: { item: CatalogItem; size: "sm" | "lg" }) {
 	if (video && !broken) {
 		return (
 			<div className={`relative ${box} overflow-hidden`}>
-				{/* biome-ignore lint/a11y/useMediaCaption: a silent still frame */}
 				<video
 					className="size-full bg-[var(--console-line)] object-cover"
 					muted

@@ -141,6 +141,22 @@ export function ProductPanel({
 		...videos.map((url) => ({ type: "video" as const, url })),
 	];
 	const [viewing, setViewing] = useState<number | null>(null);
+	/**
+	 * What the last removal took away, so it can be put back.
+	 *
+	 * 🔴 Component state ON PURPOSE, so it dies when this panel closes. Leaving
+	 * the screen IS the confirmation: somebody who removed a photograph and
+	 * walked away made a decision, and an undo that follows them around the
+	 * console turns every deletion into something to dismiss.
+	 *
+	 * ⚠️ The file is kept for 24 hours regardless, which is what makes this a
+	 * real recovery rather than a promise the storage cannot keep.
+	 */
+	const [undo, setUndo] = useState<{
+		images: string[];
+		videos: string[];
+		what: string;
+	} | null>(null);
 
 	// Switching to another product must load that product, not keep editing the
 	// last one's text in a form now labelled with a different name.
@@ -666,6 +682,36 @@ export function ProductPanel({
 					</Section>
 
 					<Section title="Media" open>
+						{/*
+						 * The way back from a mis-click, and it is deliberately here
+						 * rather than in a toast that follows somebody around: leaving
+						 * this panel is the confirmation.
+						 *
+						 * ⚠️ Says what it will restore. "Undo" alone makes somebody guess
+						 * whether they are about to bring back the photograph or reverse
+						 * the reorder they did before it.
+						 */}
+						{undo ? (
+							<div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-[var(--console-line)] px-3 py-2">
+								<p className="text-[11.5px] text-[var(--ink-60)]">
+									That {undo.what} was removed.
+								</p>
+								<button
+									className="control-raised inline-flex h-7 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-85)]"
+									onClick={() => {
+										setImages.mutate({
+											images: undo.images,
+											videos: undo.videos,
+										});
+										setUndo(null);
+									}}
+									type="button"
+								>
+									Put it back
+								</button>
+							</div>
+						) : null}
+
 						{images.length > 1 ? (
 							<p className="text-[11px] text-[var(--ink-30)]">
 								Drag to reorder. The first is shown in listings.
@@ -718,12 +764,13 @@ export function ProductPanel({
 										) : null}
 										<button
 											type="button"
-											onClick={() =>
+											onClick={() => {
+												setUndo({ images, videos, what: "photograph" });
 												setImages.mutate({
 													images: images.filter((entry) => entry !== url),
 													videos,
-												})
-											}
+												});
+											}}
 											className="absolute top-1 right-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
 										>
 											Remove
@@ -758,14 +805,12 @@ export function ProductPanel({
 										 * unreadable, and the job here is to say "this is a
 										 * video", which the badge does.
 										 */}
-										{/* biome-ignore lint/a11y/useMediaCaption: a silent still frame */}
 										<button
 											aria-label={`View video ${index + 1}`}
 											className="block w-full"
 											onClick={() => setViewing(images.length + index)}
 											type="button"
 										>
-											{/* biome-ignore lint/a11y/useMediaCaption: silent still frame */}
 											<video
 												className="aspect-square w-full bg-[var(--console-line)] object-cover"
 												muted
@@ -796,12 +841,13 @@ export function ProductPanel({
 										) : null}
 										<button
 											type="button"
-											onClick={() =>
+											onClick={() => {
+												setUndo({ images, videos, what: "video" });
 												setImages.mutate({
 													images,
 													videos: videos.filter((entry) => entry !== url),
-												})
-											}
+												});
+											}}
 											className="absolute top-1 right-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
 										>
 											Remove

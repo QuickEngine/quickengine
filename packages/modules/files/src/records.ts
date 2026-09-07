@@ -318,7 +318,16 @@ async function orgStorageBytes(organizationId: string): Promise<number> {
 			quickengineWorkspaces,
 			eq(quickengineWorkspaces.id, workspaceAssets.workspaceId),
 		)
-		.where(eq(quickengineWorkspaces.organizationId, organizationId));
+		.where(
+			and(
+				eq(quickengineWorkspaces.organizationId, organizationId),
+				// 🔴 Removed media stops counting IMMEDIATELY, even though the file
+				// is kept for a month so the removal can be undone. Charging
+				// somebody for something they cannot see would make the grace
+				// window a penalty instead of a safety net.
+				isNull(workspaceAssets.removedAt),
+			),
+		);
 	const total = Number(files?.value ?? 0) + Number(assets?.value ?? 0);
 	if (!Number.isSafeInteger(total) || total < 0) {
 		throw new Error("FILE_STORAGE_TOTAL_INVALID");

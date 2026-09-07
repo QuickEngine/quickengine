@@ -496,18 +496,40 @@ export function registerProductsServicesRoutes(
 				...(keptVideos ? { videos: keptVideos } : {}),
 			});
 
+			/**
+			 * 🔴 Anything present in the saved lists is UN-marked, which is what
+			 * makes undo real. Without this, putting a photograph back restored the
+			 * url on the product while the file stayed scheduled for collection:
+			 * the page would look correct today and show a dead image tomorrow,
+			 * which is worse than the deletion it was undoing.
+			 */
+			const present = [...kept, ...(keptVideos ?? [])];
+			if (present.length > 0) {
+				try {
+					const { assetsForUrls, restoreWorkspaceAsset } = await import(
+						"@quickengine/db"
+					);
+					const back = await assetsForUrls({ workspaceId, urls: present });
+					for (const asset of back) {
+						await restoreWorkspaceAsset({ workspaceId, key: asset.key });
+					}
+				} catch {
+					// Best effort. The product is already correct, and the sweep only
+					// collects things still marked after a day.
+				}
+			}
+
 			if (removed.length > 0) {
 				try {
+					// 🔴 MARKED, not destroyed. The object stays in storage for a
+					// day so a mis-click can be undone; a sweep collects it after
+					// that. The customer's storage still falls right now, because the
+					// gauge ignores anything marked removed.
 					const { assetsForUrls, forgetWorkspaceAsset } = await import(
 						"@quickengine/db"
 					);
 					const assets = await assetsForUrls({ workspaceId, urls: removed });
-					const provider = await publicAssets(new URL(c.req.url).origin);
 					for (const asset of assets) {
-						await provider.deletePublicAsset({
-							provider: "public",
-							key: asset.key,
-						});
 						await forgetWorkspaceAsset({ workspaceId, key: asset.key });
 					}
 					const { syncOrgFileStorageUsage } = await import(

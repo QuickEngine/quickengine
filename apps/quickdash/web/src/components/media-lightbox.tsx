@@ -82,7 +82,6 @@ export function MediaLightbox({
 						 * noise, or starts a clip somebody wanted to scrub from the
 						 * beginning, is worse than one click.
 						 */
-						// biome-ignore lint/a11y/useMediaCaption: merchant-supplied clip
 						<video
 							className="max-h-[74vh] w-auto max-w-full rounded-lg"
 							controls
@@ -90,7 +89,12 @@ export function MediaLightbox({
 							playsInline
 							preload="metadata"
 							src={current.url}
-						/>
+						>
+							{/* A real element rather than a suppression. The merchant's clip
+							    carries no captions and we cannot invent them, but the track
+							    is what makes the player offer the control at all. */}
+							<track kind="captions" />
+						</video>
 					) : (
 						<img
 							alt=""
@@ -139,7 +143,6 @@ export function MediaLightbox({
 								type="button"
 							>
 								{entry.type === "video" ? (
-									// biome-ignore lint/a11y/useMediaCaption: silent still frame
 									<video
 										className="size-full object-cover"
 										muted

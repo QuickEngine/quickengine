@@ -253,9 +253,26 @@ export const workspaceAssets = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),
+		/**
+		 * When somebody removed it, or null while it is in use.
+		 *
+		 * 🔴 A SOFT delete, and the reason is a real mistake somebody already
+		 * made: media was deleted from object storage the instant it came off a
+		 * product, so a mis-click was permanent and silent. Two videos went that
+		 * way on 2026-09-07 within a minute of the immediate-delete behaviour
+		 * shipping.
+		 *
+		 * ⚠️ Storage frees IMMEDIATELY even though the file is kept: the gauge
+		 * only counts rows where this is null. The customer stops paying for it
+		 * the moment they remove it, and we carry the object for a day so the
+		 * decision is reversible. That cost is ours, and it is small.
+		 */
+		removedAt: timestamp("removed_at", { withTimezone: true }),
 	},
 	(table) => [
 		index("workspace_assets_workspace_idx").on(table.workspaceId),
+		// The sweep asks for exactly this: everything removed before a date.
+		index("workspace_assets_removed_idx").on(table.removedAt),
 		// 🔴 Unique on the key: uploading over the same key replaces the object in
 		// storage, so counting it twice would inflate the gauge and never recover.
 		uniqueIndex("workspace_assets_key_idx").on(table.key),

@@ -4,7 +4,7 @@
 	"packages/modules/bookings": "0.2.0",
 	"packages/modules/client-records": "0.2.0",
 	"packages/modules/contracts-esign": "0.2.0",
-	"packages/modules/files": "0.2.0",
+	"packages/modules/files": "0.3.0",
 	"packages/modules/fulfillment": "0.2.0",
 	"packages/modules/inventory": "0.2.0",
 	"packages/modules/invoicing": "0.2.0",

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/QuickEngine/quickengine/compare/mod-files-v0.2.0...mod-files-v0.3.0) (2026-09-07)
+
+
+### Features
+
+* **quickdash:** put video on a product and count every upload ([#577](https://github.com/QuickEngine/quickengine/issues/577)) ([d67f38f](https://github.com/QuickEngine/quickengine/commit/d67f38f01e79c3d9cf2d1c45fe3079d83f749b57))
+
 ## [0.2.0](https://github.com/QuickEngine/quickengine/compare/mod-files-v0.1.0...mod-files-v0.2.0) (2026-09-06)
 
 

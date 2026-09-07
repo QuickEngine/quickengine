@@ -119,11 +119,29 @@ export function registerImageRoutes(
 		// leave the object in a bucket we pay for.
 		const { workspaceId, workspace } = c.get("authorized");
 		if (workspace.organizationId) {
-			const { assertStorageUploadAllowed } = await import(
-				"@quickengine/mod-files"
-			);
+			const {
+				assertStorageUploadAllowed,
+				classifyFileContentType,
+				maxUploadBytes,
+				tooLargeMessage,
+			} = await import("@quickengine/mod-files");
 			try {
 				await assertStorageUploadAllowed(workspace.organizationId, file.size);
+
+				// The per-kind ceiling, raised by the plan. A safety floor stops a
+				// mistake on any tier; the multiplier stops it being arbitrary for
+				// somebody paying for terabytes.
+				const { getAccountPlanId } = await import("@quickengine/billing");
+				const planId = await getAccountPlanId(workspace.organizationId);
+				const category = classifyFileContentType(file.type);
+				if (file.size > maxUploadBytes(category, planId)) {
+					return respondError(
+						c,
+						"VALIDATION_ERROR",
+						tooLargeMessage(category, planId),
+						400,
+					);
+				}
 			} catch {
 				return respondError(
 					c,

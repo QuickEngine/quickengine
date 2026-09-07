@@ -8,12 +8,16 @@ const MB = 1024 ** 2;
  * 🔴 Was 5 GB, against a free plan whose ENTIRE storage allowance is 2 GB: one
  * file could be two and a half times the plan that permitted it.
  *
- * ⚠️ A SAFETY limit, not a commercial one. Identical on every plan including
- * Custom. A 600 MB photograph is somebody's mistake, and the useful answer is
- * to say so at the door rather than spend ten minutes uploading it and then
- * sell them a bigger plan to hold it. Nothing here mentions upgrading.
+ * ⚠️ The ABSOLUTE ceiling, identical on every plan including Custom, and no
+ * multiplier can lift anything past it. Above two gigabytes an upload is not a
+ * file any more, it is a transfer, and it needs a different mechanism than a
+ * form post.
+ *
+ * The per-kind table below is the safety floor and `UPLOAD_MULTIPLIER` raises it
+ * with the plan. A 600 MB photograph stays a mistake on every tier; a 1 GB video
+ * on a plan with two terabytes of storage is somebody's ordinary Tuesday.
  */
-export const MAX_FILE_SIZE_BYTES = 500 * MB;
+export const MAX_FILE_SIZE_BYTES = 2 * 1024 * MB;
 
 /**
  * What is reasonable for each kind of file.
@@ -40,9 +44,59 @@ export const MAX_BYTES_BY_CATEGORY: Record<string, number> = {
 export const maxBytesFor = (category: string): number =>
 	MAX_BYTES_BY_CATEGORY[category] ?? MAX_BYTES_BY_CATEGORY.other;
 
-/** How to say it, without ever implying a bigger plan would help. */
-export const tooLargeMessage = (category: string): string =>
-	`That file is larger than the ${Math.round(maxBytesFor(category) / MB)} MB limit for ${category === "other" ? "this kind of file" : `${category} files`}. Try a smaller or compressed version.`;
+/**
+ * How much bigger a file each plan may upload.
+ *
+ * 🔴 Two different limits, and keeping them apart is the point. The table above
+ * is a SAFETY floor: it stops a 600 MB photograph, which is a mistake on any
+ * plan. This is a CAPACITY multiplier: a business paying for two terabytes has
+ * legitimate reasons to upload a longer video than somebody on the free tier
+ * evaluating the product, and refusing them with the beginner's limit would be
+ * arbitrary.
+ *
+ * ⚠️ Every result is still clamped to `MAX_FILE_SIZE_BYTES`. A multiplier can
+ * raise a ceiling toward the absolute limit; it can never lift it past one.
+ */
+export const UPLOAD_MULTIPLIER: Record<string, number> = {
+	free: 1,
+	commerce: 2,
+	scale: 4,
+	teams: 8,
+	enterprise: 8,
+	bypass: 8,
+	// Retired tiers, still on live rows until the migration runs. They map to
+	// what replaced them so nobody's upload limit shrinks underneath them.
+	launch: 2,
+	grow: 4,
+};
+
+/**
+ * The ceiling for one category on one plan.
+ *
+ * Falls back to the free multiplier for an unknown plan, which under-grants
+ * rather than over-grants: a bug here should never hand somebody more than they
+ * paid for.
+ */
+export const maxUploadBytes = (category: string, planId: string): number =>
+	Math.min(
+		MAX_FILE_SIZE_BYTES,
+		maxBytesFor(category) * (UPLOAD_MULTIPLIER[planId] ?? 1),
+	);
+
+/**
+ * How to say it.
+ *
+ * ⚠️ States the ceiling that ACTUALLY applied, which depends on the plan. An
+ * error naming the free tier's 10 MB to somebody on Scale, who really has 40,
+ * sends them to compress a file that would have uploaded fine.
+ *
+ * ⚠️ No mention of upgrading. This fires on a file that is too big for any
+ * sensible use, and selling a plan at that moment would be gouging somebody for
+ * a mistake. `PLAN_UPGRADE_REQUIRED` exists for the storage ceiling, which is a
+ * genuine capacity question; this is not that.
+ */
+export const tooLargeMessage = (category: string, planId = "free"): string =>
+	`That file is larger than the ${Math.round(maxUploadBytes(category, planId) / MB)} MB limit for ${category === "other" ? "this kind of file" : `${category} files`}. Try a smaller or compressed version.`;
 
 export const FILE_CATEGORIES = [
 	"document",

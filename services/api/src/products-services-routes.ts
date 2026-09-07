@@ -254,13 +254,35 @@ export function registerProductsServicesRoutes(
 			: [];
 	};
 
-	const saveImages = async (
+	/**
+	 * 🔴 A SEPARATE key from `images`, deliberately.
+	 *
+	 * `images` is a bare array of URL strings and both live storefronts read it
+	 * today. Turning it into typed media entries would be tidier and would break
+	 * every consumer at once, for a feature none of them use yet. A new key
+	 * breaks nothing: a storefront that has not been updated simply never looks
+	 * at it, and one that has can render video without guessing which URLs in a
+	 * shared list happen to be playable.
+	 */
+	const videosOf = (metadata: unknown) => {
+		const value = (metadata as { videos?: unknown } | null)?.videos;
+		return Array.isArray(value)
+			? value.filter((entry): entry is string => typeof entry === "string")
+			: [];
+	};
+
+	/**
+	 * Write back one or both media lists, leaving everything else in the
+	 * metadata alone. Takes a patch rather than an images array so adding video
+	 * did not mean a second near-identical saver.
+	 */
+	const saveMedia = async (
 		c: Context<PlatformEnv>,
 		id: string,
 		metadata: Record<string, unknown>,
-		images: string[],
+		patch: { images?: string[]; videos?: string[] },
 	) => {
-		const body = { metadata: { ...metadata, images } };
+		const body = { metadata: { ...metadata, ...patch } };
 		const context = await mutationContext(c, "catalog-items.update", {
 			body,
 			id,
@@ -281,17 +303,29 @@ export function registerProductsServicesRoutes(
 			const form = await c.req.formData();
 			const file = form.get("file");
 			if (!(file instanceof File) || file.size === 0) {
-				return respondError(c, "VALIDATION_ERROR", "Choose an image.", 400);
-			}
-			if (!file.type.startsWith("image/")) {
 				return respondError(
 					c,
 					"VALIDATION_ERROR",
-					"That file is not an image.",
+					"Choose an image or a video.",
 					400,
 				);
 			}
-			if (file.size > MAX_IMAGE_BYTES) {
+			// Video sits beside images on a product: a shop selling a jacket wants
+			// to show it moving, and making them host that elsewhere is the reason
+			// people keep a second tool.
+			const isVideo = file.type.startsWith("video/");
+			if (!file.type.startsWith("image/") && !isVideo) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"That file is not an image or a video.",
+					400,
+				);
+			}
+			// ⚠️ Images only. A video is measured by the per-kind ceiling below,
+			// which is 500 MB on Solo and scales with the plan; applying the image
+			// limit here would refuse every video before it got there.
+			if (!isVideo && file.size > MAX_IMAGE_BYTES) {
 				return respondError(
 					c,
 					"VALIDATION_ERROR",
@@ -388,10 +422,15 @@ export function registerProductsServicesRoutes(
 			);
 			await syncOrgFileStorageUsage(organizationId);
 
-			return saveImages(c, id, item.metadata ?? {}, [
-				...imagesOf(item.metadata),
-				asset.url,
-			]);
+			const metadata = item.metadata ?? {};
+			if (isVideo) {
+				return saveMedia(c, id, metadata, {
+					videos: [...videosOf(metadata), asset.url],
+				});
+			}
+			return saveMedia(c, id, metadata, {
+				images: [...imagesOf(metadata), asset.url],
+			});
 		},
 	);
 
@@ -402,8 +441,13 @@ export function registerProductsServicesRoutes(
 		writeLimit,
 		async (c) => {
 			const id = uuid.parse(c.req.param("id"));
-			const { images } = z
-				.object({ images: z.array(z.string().url()).max(24) })
+			const { images, videos } = z
+				.object({
+					images: z.array(z.string().url()).max(24),
+					// Optional so an older client that only knows about images can
+					// still reorder them without wiping the videos.
+					videos: z.array(z.string().url()).max(8).optional(),
+				})
 				.parse(await c.req.json());
 			const item = await getCatalogItemDto(
 				c.get("authorized").workspaceId,
@@ -423,7 +467,14 @@ export function registerProductsServicesRoutes(
 			// page — an open redirect for image sources.
 			const known = new Set(imagesOf(item.metadata));
 			const kept = images.filter((url) => known.has(url));
-			return saveImages(c, id, item.metadata ?? {}, kept);
+			// Videos get the same treatment for the same reason: only ones already
+			// on this item, so neither list can be used to inject a foreign url.
+			const knownVideos = new Set(videosOf(item.metadata));
+			const keptVideos = videos?.filter((url) => knownVideos.has(url));
+			return saveMedia(c, id, item.metadata ?? {}, {
+				images: kept,
+				...(keptVideos ? { videos: keptVideos } : {}),
+			});
 		},
 	);
 

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "./client";
 import { workspaceAssets } from "./schema/files";
 
@@ -60,6 +60,30 @@ export async function forgetWorkspaceAsset(input: {
 			and(
 				eq(workspaceAssets.workspaceId, input.workspaceId),
 				eq(workspaceAssets.key, input.key),
+			),
+		);
+}
+
+/**
+ * Find the stored assets behind a set of urls, so the objects can be deleted.
+ *
+ * 🔴 Needed because product media is stored as bare urls while object storage
+ * deletes by KEY. Without this mapping, removing a photograph took it off the
+ * product and left the file in the bucket forever: invisible to the customer,
+ * still paid for by us, and still counted against their storage.
+ */
+export async function assetsForUrls(input: {
+	workspaceId: string;
+	urls: readonly string[];
+}): Promise<Array<{ key: string; url: string }>> {
+	if (input.urls.length === 0) return [];
+	return db
+		.select({ key: workspaceAssets.key, url: workspaceAssets.url })
+		.from(workspaceAssets)
+		.where(
+			and(
+				eq(workspaceAssets.workspaceId, input.workspaceId),
+				inArray(workspaceAssets.url, [...input.urls]),
 			),
 		);
 }

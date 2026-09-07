@@ -9,15 +9,23 @@ const MB = 1024 ** 2;
  * file could be two and a half times the plan that permitted it.
  *
  * ⚠️ The ABSOLUTE ceiling, identical on every plan including Custom, and no
- * multiplier can lift anything past it. Above two gigabytes an upload is not a
- * file any more, it is a transfer, and it needs a different mechanism than a
- * form post.
+ * multiplier can lift anything past it.
+ *
+ * 🔴 100 MB because that is what the API can actually accept. `body-limit.ts`
+ * BUFFERS a request to count it, collecting every chunk before replaying it, so
+ * the ceiling there is a memory allocation per upload rather than a policy.
+ * Advertising 500 MB while the middleware refused 12 was worse than a lower
+ * honest number, and that is exactly what shipped when video was added.
+ *
+ * Larger media needs a presigned upload straight to storage, bypassing the API
+ * body entirely. Until that exists this is the true limit and every plan says
+ * so.
  *
  * The per-kind table below is the safety floor and `UPLOAD_MULTIPLIER` raises it
  * with the plan. A 600 MB photograph stays a mistake on every tier; a 1 GB video
  * on a plan with two terabytes of storage is somebody's ordinary Tuesday.
  */
-export const MAX_FILE_SIZE_BYTES = 2 * 1024 * MB;
+export const MAX_FILE_SIZE_BYTES = 100 * MB;
 
 /**
  * What is reasonable for each kind of file.
@@ -36,7 +44,7 @@ export const MAX_BYTES_BY_CATEGORY: Record<string, number> = {
 	code: 10 * MB,
 	audio: 100 * MB,
 	archive: 100 * MB,
-	video: 500 * MB,
+	video: 100 * MB,
 	other: 50 * MB,
 };
 

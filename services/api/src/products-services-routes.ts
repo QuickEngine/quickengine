@@ -449,11 +449,8 @@ export function registerProductsServicesRoutes(
 					videos: z.array(z.string().url()).max(8).optional(),
 				})
 				.parse(await c.req.json());
-			const item = await getCatalogItemDto(
-				c.get("authorized").workspaceId,
-				id,
-				activeOnlyFor(c),
-			);
+			const workspaceId = c.get("authorized").workspaceId;
+			const item = await getCatalogItemDto(workspaceId, id, activeOnlyFor(c));
 			if (!item) {
 				return respondError(
 					c,
@@ -471,10 +468,67 @@ export function registerProductsServicesRoutes(
 			// on this item, so neither list can be used to inject a foreign url.
 			const knownVideos = new Set(videosOf(item.metadata));
 			const keptVideos = videos?.filter((url) => knownVideos.has(url));
-			return saveMedia(c, id, item.metadata ?? {}, {
+
+			/**
+			 * 🔴 Anything dropped from either list is DELETED from storage.
+			 *
+			 * Removing a photograph used to take it off the product and leave the
+			 * object in the bucket forever: gone from the customer's view, still
+			 * costing us money, and still counted against their plan, so somebody
+			 * could delete half their catalogue and watch their usage refuse to
+			 * fall. Nothing in the codebase called `deletePublicAsset` at all.
+			 *
+			 * ⚠️ After the metadata is saved, never before. If deletion ran first
+			 * and the save then failed, the product would still point at a file
+			 * that no longer exists, which is a broken image rather than a wasted
+			 * one. Wasting a file is recoverable; a dead link on a live shop is
+			 * what a customer sees.
+			 */
+			const removed = [
+				...imagesOf(item.metadata).filter((url) => !kept.includes(url)),
+				...(keptVideos
+					? videosOf(item.metadata).filter((url) => !keptVideos.includes(url))
+					: []),
+			];
+
+			const saved = await saveMedia(c, id, item.metadata ?? {}, {
 				images: kept,
 				...(keptVideos ? { videos: keptVideos } : {}),
 			});
+
+			if (removed.length > 0) {
+				try {
+					const { assetsForUrls, forgetWorkspaceAsset } = await import(
+						"@quickengine/db"
+					);
+					const assets = await assetsForUrls({ workspaceId, urls: removed });
+					const provider = await publicAssets(new URL(c.req.url).origin);
+					for (const asset of assets) {
+						await provider.deletePublicAsset({
+							provider: "public",
+							key: asset.key,
+						});
+						await forgetWorkspaceAsset({ workspaceId, key: asset.key });
+					}
+					const { syncOrgFileStorageUsage } = await import(
+						"@quickengine/mod-files"
+					);
+					await syncOrgFileStorageUsage(
+						c.get("authorized").workspace.organizationId,
+					);
+				} catch (error) {
+					// Swallowed on purpose: the product is already correct, and a
+					// storage cleanup that failed is a file to sweep later rather than
+					// a reason to fail the customer's edit.
+					options.logger?.error?.("catalog.media_cleanup_failed", {
+						itemId: id,
+						removed: removed.length,
+						reason: error instanceof Error ? error.name : "UnknownError",
+					});
+				}
+			}
+
+			return saved;
 		},
 	);
 

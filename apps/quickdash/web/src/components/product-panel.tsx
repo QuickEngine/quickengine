@@ -363,25 +363,42 @@ export function ProductPanel({
 	});
 
 	const setImages = useMutation({
-		mutationFn: async (next: string[]) => {
+		mutationFn: async (next: { images: string[]; videos: string[] }) => {
 			await workspaceApi(workspaceId).request(
 				`/quickdash/catalog/${item.id}/images`,
 				{
 					method: "PUT",
 					idempotencyKey: crypto.randomUUID(),
-					body: { images: next },
+					// 🔴 BOTH lists on every write. The route treats a missing key as
+					// "leave it alone", but sending only images while the panel also
+					// edits videos would make each save race the other.
+					body: { images: next.images, videos: next.videos },
 				},
 			);
 		},
 		onSuccess: refresh,
 	});
 
-	const move = (from: number, to: number) => {
-		if (from === to) return;
-		const next = [...images];
+	const reorder = (list: string[], from: number, to: number) => {
+		const next = [...list];
 		const [moved] = next.splice(from, 1);
 		next.splice(to, 0, moved);
-		setImages.mutate(next);
+		return next;
+	};
+
+	const move = (from: number, to: number) => {
+		if (from === to) return;
+		setImages.mutate({ images: reorder(images, from, to), videos });
+	};
+
+	/**
+	 * ⚠️ A SEPARATE ordering from the photographs, because they are separate
+	 * lists. Dragging a video into position two of the images would have to mean
+	 * something, and there is nothing it could sensibly mean.
+	 */
+	const moveVideo = (from: number, to: number) => {
+		if (from === to) return;
+		setImages.mutate({ images, videos: reorder(videos, from, to) });
 	};
 
 	const priced = wantsPrice(draft.pricingModel);
@@ -676,7 +693,10 @@ export function ProductPanel({
 									<button
 										type="button"
 										onClick={() =>
-											setImages.mutate(images.filter((entry) => entry !== url))
+											setImages.mutate({
+												images: images.filter((entry) => entry !== url),
+												videos,
+											})
 										}
 										className="absolute top-1 right-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
 									>
@@ -693,10 +713,14 @@ export function ProductPanel({
 					    somebody drag one into a position that does not exist. */}
 					{videos.length > 0 ? (
 						<div className="mt-2 grid grid-cols-3 gap-2">
-							{videos.map((url) => (
+							{videos.map((url, index) => (
 								<div
 									key={url}
-									className="relative overflow-hidden rounded-lg border border-[var(--console-line-soft)]"
+									className={`group relative overflow-hidden rounded-lg border ${
+										index === 0
+											? "border-[rgb(var(--console-ink)/0.35)]"
+											: "border-[var(--console-line-soft)]"
+									}`}
 								>
 									{/*
 									 * 🔴 A STILL, not a playing video. `preload="metadata"`
@@ -727,6 +751,27 @@ export function ProductPanel({
 									<span className="absolute bottom-1 left-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white">
 										Video
 									</span>
+									{index > 0 ? (
+										<button
+											type="button"
+											onClick={() => moveVideo(index, 0)}
+											className="absolute right-1 bottom-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+										>
+											Make first
+										</button>
+									) : null}
+									<button
+										type="button"
+										onClick={() =>
+											setImages.mutate({
+												images,
+												videos: videos.filter((entry) => entry !== url),
+											})
+										}
+										className="absolute top-1 right-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+									>
+										Remove
+									</button>
 								</div>
 							))}
 						</div>

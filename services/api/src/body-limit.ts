@@ -45,8 +45,26 @@ const UPLOAD_PATHS = [
 	/^\/v1\/files/,
 ];
 
-/** Headroom over the route's own 10 MB check, for multipart framing overhead. */
-const UPLOAD_MAX_BYTES = 12 * 1024 * 1024;
+/**
+ * The largest upload this middleware will read, with headroom for multipart
+ * framing over the route's own check.
+ *
+ * 🔴 MUST stay at or above `MAX_FILE_SIZE_BYTES` in `@quickengine/mod-files`.
+ * This was 12 MB, sized for an image-only world, and the day product video
+ * arrived the route began advertising 500 MB while this refused anything over
+ * 12 MB BEFORE the route ran. That is the third time this exact mismatch has
+ * shipped, and the comment above describes the first two.
+ *
+ * ⚠️ It cannot simply be raised to something enormous, because this buffers the
+ * whole body to count it: the chunks are collected and replayed. A 2 GB ceiling
+ * would be a 2 GB allocation per request. 100 MB plus framing is what a
+ * buffering middleware can honestly carry.
+ *
+ * ⚠️ Genuinely large media needs a presigned upload straight to storage, which
+ * never passes through here at all. Until that exists, no plan can accept more
+ * than this, and the file limits say so rather than promising otherwise.
+ */
+const UPLOAD_MAX_BYTES = 112 * 1024 * 1024;
 
 /** Counts the actual streamed bytes; Content-Length is only an early rejection hint. */
 export function createBodyLimit(maxBytes: number) {

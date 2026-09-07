@@ -20,6 +20,7 @@ import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
+import { admitRecord, countRecord } from "./record-allowance";
 import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
@@ -93,10 +94,11 @@ export function registerBookingsRoutes(
 	app.post("/v1/bookings", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
 		const context = await mutationContext(c, "bookings.create", body);
-		return respondMutation(
-			c,
-			await createBookingCommand(context, body, options.uow),
-		);
+		const refused = await admitRecord(c, "bookingsPerMonth", "bookings");
+		if (refused) return refused;
+		const created = await createBookingCommand(context, body, options.uow);
+		await countRecord(c, "bookingsPerMonth", created);
+		return respondMutation(c, created);
 	});
 	app.get("/v1/bookings/:id", readAccess, readLimit, async (c) => {
 		const booking = await getBookingDto(

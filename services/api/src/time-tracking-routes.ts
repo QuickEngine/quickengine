@@ -25,6 +25,7 @@ import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
+import { admitRecord, countRecord } from "./record-allowance";
 import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
@@ -105,10 +106,15 @@ export function registerTimeTrackingRoutes(
 	app.post("/v1/time-entries", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
 		const context = await mutationContext(c, "time.create", body);
-		return respondMutation(
-			c,
-			await createManualTimeEntryCommand(context, body, options.uow),
+		const refused = await admitRecord(c, "timeEntriesPerMonth", "time entries");
+		if (refused) return refused;
+		const created = await createManualTimeEntryCommand(
+			context,
+			body,
+			options.uow,
 		);
+		await countRecord(c, "timeEntriesPerMonth", created);
+		return respondMutation(c, created);
 	});
 	app.get("/v1/time-entries/:id", readAccess, readLimit, async (c) => {
 		const entry = await getTimeEntryDto(

@@ -21,6 +21,7 @@ import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
+import { admitRecord, countRecord } from "./record-allowance";
 import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
@@ -88,10 +89,11 @@ export function registerContractsRoutes(
 	app.post("/v1/contracts", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
 		const context = await mutationContext(c, "contracts.create", body);
-		return respondMutation(
-			c,
-			await createContractCommand(context, body, options.uow),
-		);
+		const refused = await admitRecord(c, "contractsPerMonth", "contracts");
+		if (refused) return refused;
+		const created = await createContractCommand(context, body, options.uow);
+		await countRecord(c, "contractsPerMonth", created);
+		return respondMutation(c, created);
 	});
 	app.get("/v1/contracts/:id", readAccess, readLimit, async (c) => {
 		// Signer token material is stripped by the module's serializer, never returned here.

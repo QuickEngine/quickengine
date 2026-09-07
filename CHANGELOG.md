@@ -41,6 +41,13 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Fixed
 
+- **The free plan's allowances now actually count.** Bookings, invoices, contracts, quotes,
+  projects, time entries, shipments and client records each had a monthly allowance that nothing
+  measured, so only shops ever met a limit. All eight now count, and going over one offers the
+  same choice as an order does: keep working and pay for what you use, move up a plan, or wait
+  for the month to reset.
+
+
 - **Everything you upload now counts toward your storage.** Product photographs and workspace
   images were never measured, so a plan could be filled without the number moving. They are
   measured now, and an upload that would take you over your plan is refused before it starts

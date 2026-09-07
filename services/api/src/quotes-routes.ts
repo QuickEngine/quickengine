@@ -25,6 +25,7 @@ import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
+import { admitRecord, countRecord } from "./record-allowance";
 import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
@@ -92,10 +93,15 @@ export function registerQuotesRoutes(
 	app.post("/v1/quotes", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
 		const context = await mutationContext(c, "quotes.create", body);
-		return respondMutation(
-			c,
-			await createQuoteEstimateCommand(context, body, options.uow),
+		const refused = await admitRecord(c, "quotesPerMonth", "quotes");
+		if (refused) return refused;
+		const created = await createQuoteEstimateCommand(
+			context,
+			body,
+			options.uow,
 		);
+		await countRecord(c, "quotesPerMonth", created);
+		return respondMutation(c, created);
 	});
 	app.get("/v1/quotes/:id", readAccess, readLimit, async (c) => {
 		const quote = await getQuoteEstimateDto(

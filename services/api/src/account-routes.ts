@@ -842,10 +842,25 @@ export function registerAccountRoutes(
 				getSubscriptionForOrg(organizationId),
 				getUsage({ scopeId: organizationId }),
 			]);
+			// 🔴 Sent so the UI can state the ceiling BEFORE somebody chooses a
+			// file. Discovering a limit by having a ten minute upload rejected is
+			// the worst possible way to learn it, and the number is not guessable:
+			// it depends on both the kind of file and the plan.
+			const { MAX_BYTES_BY_CATEGORY, maxUploadBytes } = await import(
+				"@quickengine/mod-files"
+			);
+			const uploadLimits = Object.fromEntries(
+				Object.keys(MAX_BYTES_BY_CATEGORY).map((category) => [
+					category,
+					maxUploadBytes(category, planId),
+				]),
+			);
+
 			return respond(c, {
 				planId,
 				subscription: subscription ?? null,
 				usage,
+				uploadLimits,
 			});
 		},
 	);

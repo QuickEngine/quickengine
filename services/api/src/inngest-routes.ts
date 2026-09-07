@@ -1,5 +1,6 @@
 import { onMutationCommitted } from "@quickengine/db";
 import {
+	dispatchPendingEvents,
 	eventDispatchFunctions,
 	OUTBOX_WRITTEN_EVENT,
 } from "@quickengine/event-dispatch";
@@ -64,6 +65,34 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
 	 * every route (hard rule 12).
 	 */
 	onMutationCommitted(async () => {
+		/**
+		 * 🔴 DRAIN HERE, in this process, rather than only asking Inngest to.
+		 *
+		 * Announcing the commit to Inngest means a network round trip to a third
+		 * party before a single receipt can be sent, and if that hop is slow,
+		 * throttled, or misconfigured the only thing left is the every-minute
+		 * cron. Measured on real orders on 2026-09-06: `order.created` published
+		 * 37.5s after commit, `order.paid` 22.2s, both in one batch at a clock
+		 * minute, which is a cron draining rather than a nudge landing. Two
+		 * previous attempts to fix this both kept the round trip.
+		 *
+		 * The work is a database read and a handful of handlers. Doing it here is
+		 * strictly faster than asking somebody else to come and do it, and it
+		 * makes local development behave like production: with no Inngest running
+		 * a dev machine never drained the outbox AT ALL, so nobody testing
+		 * locally ever saw an email.
+		 *
+		 * ⚠️ Still best effort, and the cron is still the durable backstop. A
+		 * failure here is a delayed receipt, never a lost one, because the events
+		 * stay unpublished until something drains them.
+		 *
+		 * ⚠️ Bounded by the same timeout as the send. A slow drain must not sit on
+		 * the critical path of the write that triggered it.
+		 */
+		const drained = dispatchPendingEvents().catch(() => {
+			// Swallowed: the events are durable and the cron will collect them.
+		});
+
 		const sent = inngest.send({ name: OUTBOX_WRITTEN_EVENT }).catch(() => {
 			// Swallowed: the cron is the backstop and the write is already durable.
 		});
@@ -82,8 +111,15 @@ export function registerInngestRoutes(app: Hono<PlatformEnv>) {
 		 * delay a response by at most this, and the every-minute cron still drains
 		 * whatever the nudge failed to announce.
 		 */
+		keepAlive(drained);
 		keepAlive(sent);
-		await settleWithin(sent, NUDGE_TIMEOUT_MS);
+		// The drain is what actually makes the receipt fast, so it is the one
+		// worth waiting on. The announcement rides along for the cases this
+		// process cannot serve, such as a handler that needs its own retries.
+		await settleWithin(
+			Promise.all([drained, sent]).then(() => undefined),
+			NUDGE_TIMEOUT_MS,
+		);
 	});
 }
 

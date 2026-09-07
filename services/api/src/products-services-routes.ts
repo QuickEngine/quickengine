@@ -233,6 +233,9 @@ export function registerProductsServicesRoutes(
 	 * other catalog edit, so an uploaded image lands with audit and outbox
 	 * exactly like a price change.
 	 */
+	// ⚠️ Must match `MAX_BYTES_BY_CATEGORY.image` in `@quickengine/mod-files`.
+	// Kept as a literal rather than an import because this check runs before any
+	// dynamic import, on every upload. If one moves, move the other.
 	const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 	/** Provider for things the public web reads. Loaded lazily — hard rule 12. */
@@ -251,13 +254,35 @@ export function registerProductsServicesRoutes(
 			: [];
 	};
 
-	const saveImages = async (
+	/**
+	 * 🔴 A SEPARATE key from `images`, deliberately.
+	 *
+	 * `images` is a bare array of URL strings and both live storefronts read it
+	 * today. Turning it into typed media entries would be tidier and would break
+	 * every consumer at once, for a feature none of them use yet. A new key
+	 * breaks nothing: a storefront that has not been updated simply never looks
+	 * at it, and one that has can render video without guessing which URLs in a
+	 * shared list happen to be playable.
+	 */
+	const videosOf = (metadata: unknown) => {
+		const value = (metadata as { videos?: unknown } | null)?.videos;
+		return Array.isArray(value)
+			? value.filter((entry): entry is string => typeof entry === "string")
+			: [];
+	};
+
+	/**
+	 * Write back one or both media lists, leaving everything else in the
+	 * metadata alone. Takes a patch rather than an images array so adding video
+	 * did not mean a second near-identical saver.
+	 */
+	const saveMedia = async (
 		c: Context<PlatformEnv>,
 		id: string,
 		metadata: Record<string, unknown>,
-		images: string[],
+		patch: { images?: string[]; videos?: string[] },
 	) => {
-		const body = { metadata: { ...metadata, images } };
+		const body = { metadata: { ...metadata, ...patch } };
 		const context = await mutationContext(c, "catalog-items.update", {
 			body,
 			id,
@@ -278,17 +303,29 @@ export function registerProductsServicesRoutes(
 			const form = await c.req.formData();
 			const file = form.get("file");
 			if (!(file instanceof File) || file.size === 0) {
-				return respondError(c, "VALIDATION_ERROR", "Choose an image.", 400);
-			}
-			if (!file.type.startsWith("image/")) {
 				return respondError(
 					c,
 					"VALIDATION_ERROR",
-					"That file is not an image.",
+					"Choose an image or a video.",
 					400,
 				);
 			}
-			if (file.size > MAX_IMAGE_BYTES) {
+			// Video sits beside images on a product: a shop selling a jacket wants
+			// to show it moving, and making them host that elsewhere is the reason
+			// people keep a second tool.
+			const isVideo = file.type.startsWith("video/");
+			if (!file.type.startsWith("image/") && !isVideo) {
+				return respondError(
+					c,
+					"VALIDATION_ERROR",
+					"That file is not an image or a video.",
+					400,
+				);
+			}
+			// ⚠️ Images only. A video is measured by the per-kind ceiling below,
+			// which is 500 MB on Solo and scales with the plan; applying the image
+			// limit here would refuse every video before it got there.
+			if (!isVideo && file.size > MAX_IMAGE_BYTES) {
 				return respondError(
 					c,
 					"VALIDATION_ERROR",
@@ -317,18 +354,83 @@ export function registerProductsServicesRoutes(
 					.replace(/[^a-z0-9.]+/g, "-")
 					.replace(/^-|-$/g, "")
 					.slice(-60) || "image";
+			// 🔴 Asked BEFORE the bytes are written. Storage is a ceiling, and
+			// uploading first then refusing would leave the object in a bucket we
+			// pay for while telling the customer it did not happen.
+			const organizationId = c.get("authorized").workspace.organizationId;
+			if (organizationId) {
+				const {
+					assertStorageUploadAllowed,
+					classifyFileContentType,
+					maxUploadBytes,
+					tooLargeMessage,
+				} = await import("@quickengine/mod-files");
+				try {
+					await assertStorageUploadAllowed(organizationId, file.size);
+
+					// The per-kind ceiling, raised by the plan. A safety floor stops a
+					// mistake on any tier; the multiplier stops it being arbitrary for
+					// somebody paying for terabytes.
+					const { getAccountPlanId } = await import("@quickengine/billing");
+					const planId = await getAccountPlanId(organizationId);
+					const category = classifyFileContentType(file.type);
+					if (file.size > maxUploadBytes(category, planId)) {
+						return respondError(
+							c,
+							"VALIDATION_ERROR",
+							tooLargeMessage(category, planId),
+							400,
+						);
+					}
+				} catch {
+					return respondError(
+						c,
+						"USAGE_LIMIT_EXCEEDED",
+						"This image would take you over your plan's storage. Upgrade, or remove something you no longer need.",
+						402,
+					);
+				}
+			}
+
 			const provider = await publicAssets(new URL(c.req.url).origin);
+			const key = `catalog/${id}/${Date.now()}-${safeName}`;
 			const asset = await provider.putPublicAsset({
 				workspaceId,
-				key: `catalog/${id}/${Date.now()}-${safeName}`,
+				key,
 				body: new Uint8Array(await file.arrayBuffer()),
 				contentType: file.type,
 			});
 
-			return saveImages(c, id, item.metadata ?? {}, [
-				...imagesOf(item.metadata),
-				asset.url,
-			]);
+			// 🔴 Recorded so it COUNTS. Product images used to be stored as a bare
+			// URL inside a metadata blob, which the storage gauge could not see, so
+			// a customer could fill a bucket and stay at zero usage forever.
+			// `asset.size` is what the provider actually stored, not what the
+			// client claimed.
+			const { recordWorkspaceAsset } = await import("@quickengine/db");
+			await recordWorkspaceAsset({
+				workspaceId,
+				kind: "catalog",
+				key: asset.key,
+				url: asset.url,
+				sizeBytes: asset.size,
+				contentType: file.type,
+			});
+			// Recount and write the gauge. Recount, never adjust: it converges from
+			// any state, so a missed write cannot leave the number wrong for good.
+			const { syncOrgFileStorageUsage } = await import(
+				"@quickengine/mod-files"
+			);
+			await syncOrgFileStorageUsage(organizationId);
+
+			const metadata = item.metadata ?? {};
+			if (isVideo) {
+				return saveMedia(c, id, metadata, {
+					videos: [...videosOf(metadata), asset.url],
+				});
+			}
+			return saveMedia(c, id, metadata, {
+				images: [...imagesOf(metadata), asset.url],
+			});
 		},
 	);
 
@@ -339,14 +441,16 @@ export function registerProductsServicesRoutes(
 		writeLimit,
 		async (c) => {
 			const id = uuid.parse(c.req.param("id"));
-			const { images } = z
-				.object({ images: z.array(z.string().url()).max(24) })
+			const { images, videos } = z
+				.object({
+					images: z.array(z.string().url()).max(24),
+					// Optional so an older client that only knows about images can
+					// still reorder them without wiping the videos.
+					videos: z.array(z.string().url()).max(8).optional(),
+				})
 				.parse(await c.req.json());
-			const item = await getCatalogItemDto(
-				c.get("authorized").workspaceId,
-				id,
-				activeOnlyFor(c),
-			);
+			const workspaceId = c.get("authorized").workspaceId;
+			const item = await getCatalogItemDto(workspaceId, id, activeOnlyFor(c));
 			if (!item) {
 				return respondError(
 					c,
@@ -360,7 +464,93 @@ export function registerProductsServicesRoutes(
 			// page — an open redirect for image sources.
 			const known = new Set(imagesOf(item.metadata));
 			const kept = images.filter((url) => known.has(url));
-			return saveImages(c, id, item.metadata ?? {}, kept);
+			// Videos get the same treatment for the same reason: only ones already
+			// on this item, so neither list can be used to inject a foreign url.
+			const knownVideos = new Set(videosOf(item.metadata));
+			const keptVideos = videos?.filter((url) => knownVideos.has(url));
+
+			/**
+			 * 🔴 Anything dropped from either list is DELETED from storage.
+			 *
+			 * Removing a photograph used to take it off the product and leave the
+			 * object in the bucket forever: gone from the customer's view, still
+			 * costing us money, and still counted against their plan, so somebody
+			 * could delete half their catalogue and watch their usage refuse to
+			 * fall. Nothing in the codebase called `deletePublicAsset` at all.
+			 *
+			 * ⚠️ After the metadata is saved, never before. If deletion ran first
+			 * and the save then failed, the product would still point at a file
+			 * that no longer exists, which is a broken image rather than a wasted
+			 * one. Wasting a file is recoverable; a dead link on a live shop is
+			 * what a customer sees.
+			 */
+			const removed = [
+				...imagesOf(item.metadata).filter((url) => !kept.includes(url)),
+				...(keptVideos
+					? videosOf(item.metadata).filter((url) => !keptVideos.includes(url))
+					: []),
+			];
+
+			const saved = await saveMedia(c, id, item.metadata ?? {}, {
+				images: kept,
+				...(keptVideos ? { videos: keptVideos } : {}),
+			});
+
+			/**
+			 * 🔴 Anything present in the saved lists is UN-marked, which is what
+			 * makes undo real. Without this, putting a photograph back restored the
+			 * url on the product while the file stayed scheduled for collection:
+			 * the page would look correct today and show a dead image tomorrow,
+			 * which is worse than the deletion it was undoing.
+			 */
+			const present = [...kept, ...(keptVideos ?? [])];
+			if (present.length > 0) {
+				try {
+					const { assetsForUrls, restoreWorkspaceAsset } = await import(
+						"@quickengine/db"
+					);
+					const back = await assetsForUrls({ workspaceId, urls: present });
+					for (const asset of back) {
+						await restoreWorkspaceAsset({ workspaceId, key: asset.key });
+					}
+				} catch {
+					// Best effort. The product is already correct, and the sweep only
+					// collects things still marked after a day.
+				}
+			}
+
+			if (removed.length > 0) {
+				try {
+					// 🔴 MARKED, not destroyed. The object stays in storage for a
+					// day so a mis-click can be undone; a sweep collects it after
+					// that. The customer's storage still falls right now, because the
+					// gauge ignores anything marked removed.
+					const { assetsForUrls, forgetWorkspaceAsset } = await import(
+						"@quickengine/db"
+					);
+					const assets = await assetsForUrls({ workspaceId, urls: removed });
+					for (const asset of assets) {
+						await forgetWorkspaceAsset({ workspaceId, key: asset.key });
+					}
+					const { syncOrgFileStorageUsage } = await import(
+						"@quickengine/mod-files"
+					);
+					await syncOrgFileStorageUsage(
+						c.get("authorized").workspace.organizationId,
+					);
+				} catch (error) {
+					// Swallowed on purpose: the product is already correct, and a
+					// storage cleanup that failed is a file to sweep later rather than
+					// a reason to fail the customer's edit.
+					options.logger?.error?.("catalog.media_cleanup_failed", {
+						itemId: id,
+						removed: removed.length,
+						reason: error instanceof Error ? error.name : "UnknownError",
+					});
+				}
+			}
+
+			return saved;
 		},
 	);
 

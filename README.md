@@ -134,6 +134,9 @@ request either happened completely or not at all, and there is always a record o
 
 **Metering charges only what costs real infrastructure** — storage, AI, email, API volume.
 Never a business outcome the customer earns: no per-invoice fee, no per-customer fee, ever.
+Storage counts every upload, whichever screen it came from, and removing something frees the
+space straight away while the file itself is kept briefly so a mistake can be undone.
+
 AI runs on prepaid credits with per-run and per-workspace ceilings, and **work already running
 always finishes** — limits stop the next request, never the one in progress. An agent run is
 admitted before it starts, against the plan allowance first and prepaid credits second, and what

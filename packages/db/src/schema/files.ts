@@ -208,3 +208,73 @@ export const fileAttachments = pgTable(
 		),
 	],
 );
+
+/**
+ * Every public asset a workspace has uploaded, recorded so it can be METERED.
+ *
+ * 🔴 This exists because storage was only counted for one of four upload paths.
+ * `file_versions` covers the Files module, which almost nobody uses; product
+ * photographs, workspace images and account images all went straight to object
+ * storage and were recorded as a URL inside a metadata blob. The gauge summed
+ * `file_versions` alone, so a customer could upload unlimited product images,
+ * consume real storage we pay for, and watch their usage sit at zero forever.
+ * Found on 2026-09-06 by uploading three product images and seeing the meter
+ * stay put.
+ *
+ * ⚠️ Storage is a GAUGE, so this table is the source of truth for a recount,
+ * never an increment. Deleting a row frees the room back up, which is what a
+ * customer expects when they remove a photograph.
+ *
+ * ⚠️ `sizeBytes` comes from what the storage provider actually stored, not from
+ * what the client claimed. Every provider returns it on write, so there is no
+ * reason to trust an uploader's number.
+ */
+export const workspaceAssets = pgTable(
+	"workspace_assets",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		workspaceId: uuid("workspace_id")
+			.notNull()
+			.references(() => quickengineWorkspaces.id, { onDelete: "cascade" }),
+		/**
+		 * Which upload path put it here.
+		 *
+		 * ⚠️ Account images are deliberately NOT here. A profile picture and a
+		 * banner are one image each, replaced rather than accumulated, so an
+		 * account is bounded at two however long somebody uses it. Metering that
+		 * would cost more in machinery than it could ever measure.
+		 */
+		kind: text("kind", { enum: ["catalog", "workspace"] }).notNull(),
+		/** The storage key, unique per bucket, so a re-upload replaces rather than doubles. */
+		key: text("key").notNull(),
+		url: text("url").notNull(),
+		sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+		contentType: text("content_type"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		/**
+		 * When somebody removed it, or null while it is in use.
+		 *
+		 * 🔴 A SOFT delete, and the reason is a real mistake somebody already
+		 * made: media was deleted from object storage the instant it came off a
+		 * product, so a mis-click was permanent and silent. Two videos went that
+		 * way on 2026-09-07 within a minute of the immediate-delete behaviour
+		 * shipping.
+		 *
+		 * ⚠️ Storage frees IMMEDIATELY even though the file is kept: the gauge
+		 * only counts rows where this is null. The customer stops paying for it
+		 * the moment they remove it, and we carry the object for a day so the
+		 * decision is reversible. That cost is ours, and it is small.
+		 */
+		removedAt: timestamp("removed_at", { withTimezone: true }),
+	},
+	(table) => [
+		index("workspace_assets_workspace_idx").on(table.workspaceId),
+		// The sweep asks for exactly this: everything removed before a date.
+		index("workspace_assets_removed_idx").on(table.removedAt),
+		// 🔴 Unique on the key: uploading over the same key replaces the object in
+		// storage, so counting it twice would inflate the gauge and never recover.
+		uniqueIndex("workspace_assets_key_idx").on(table.key),
+	],
+);

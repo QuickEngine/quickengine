@@ -8,6 +8,37 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Products can have video, not just photographs.** Upload a clip the same way you upload a
+  picture, reorder them, and your shop shows it. Videos have their own list, so a site that only
+  knows about photographs carries on working exactly as it did.
+
+- **A closer look at your media.** Click any photograph or video in a product and it opens full
+  size, where a video can be played, paused and scrubbed. Your dashboard stays visible behind it.
+
+- **Put back a photo or video you removed by mistake.** Removing one now offers to undo it while
+  you are still on the product. Your storage frees up straight away either way.
+
+- **Bigger plans take bigger files.** The size limit for each kind of file rises with your plan,
+  and the limit that applies to you is the one the message names.
+
+### Fixed
+
+- **Everything you upload now counts toward your storage.** Product photographs and workspace
+  images were never measured, so a plan could be filled without the number moving. They are
+  measured now, and an upload that would take you over your plan is refused before it starts
+  rather than after it finishes.
+
+- **Deleting media frees the space.** A removed photograph used to stay in storage forever while
+  still counting against you.
+
+- **Receipts arrive seconds after an order, not a minute later.** The work after a sale waited on
+  a scheduled sweep instead of starting immediately.
+
+- **A limit is no longer shown as an error.** Reaching something your plan does not include now
+  says what the larger plan gives you, instead of a failure message and a support link for a
+  problem that does not exist.
+
+
 - **Your dashboard opens on what your plan has left.** Four meters across the top: orders this
   month, products listed, API requests and storage. Underneath, your revenue full width. Every
   tile is still yours to move or remove, and the board leaves out anything a business does not

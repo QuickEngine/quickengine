@@ -1,6 +1,110 @@
 import { z } from "zod";
 
-export const MAX_FILE_SIZE_BYTES = 5 * 1024 ** 3;
+const MB = 1024 ** 2;
+
+/**
+ * The largest single file we will accept, of any kind.
+ *
+ * 🔴 Was 5 GB, against a free plan whose ENTIRE storage allowance is 2 GB: one
+ * file could be two and a half times the plan that permitted it.
+ *
+ * ⚠️ The ABSOLUTE ceiling, identical on every plan including Custom, and no
+ * multiplier can lift anything past it.
+ *
+ * 🔴 100 MB because that is what the API can actually accept. `body-limit.ts`
+ * BUFFERS a request to count it, collecting every chunk before replaying it, so
+ * the ceiling there is a memory allocation per upload rather than a policy.
+ * Advertising 500 MB while the middleware refused 12 was worse than a lower
+ * honest number, and that is exactly what shipped when video was added.
+ *
+ * Larger media needs a presigned upload straight to storage, bypassing the API
+ * body entirely. Until that exists this is the true limit and every plan says
+ * so.
+ *
+ * The per-kind table below is the safety floor and `UPLOAD_MULTIPLIER` raises it
+ * with the plan. A 600 MB photograph stays a mistake on every tier; a 1 GB video
+ * on a plan with two terabytes of storage is somebody's ordinary Tuesday.
+ */
+export const MAX_FILE_SIZE_BYTES = 100 * MB;
+
+/**
+ * What is reasonable for each kind of file.
+ *
+ * Chosen so ordinary work always fits and a mistake never does. A 24-megapixel
+ * photograph is about 8 MB, so images get 10; a twenty-page scanned contract
+ * routinely clears 10 MB, so documents get 25 rather than a 4 MB limit that
+ * would generate support tickets on the first day.
+ */
+export const MAX_BYTES_BY_CATEGORY: Record<string, number> = {
+	image: 10 * MB,
+	pdf: 25 * MB,
+	document: 25 * MB,
+	spreadsheet: 25 * MB,
+	presentation: 50 * MB,
+	code: 10 * MB,
+	audio: 100 * MB,
+	archive: 100 * MB,
+	video: 100 * MB,
+	other: 50 * MB,
+};
+
+/** The ceiling for one category, falling back to the safe general limit. */
+export const maxBytesFor = (category: string): number =>
+	MAX_BYTES_BY_CATEGORY[category] ?? MAX_BYTES_BY_CATEGORY.other;
+
+/**
+ * How much bigger a file each plan may upload.
+ *
+ * 🔴 Two different limits, and keeping them apart is the point. The table above
+ * is a SAFETY floor: it stops a 600 MB photograph, which is a mistake on any
+ * plan. This is a CAPACITY multiplier: a business paying for two terabytes has
+ * legitimate reasons to upload a longer video than somebody on the free tier
+ * evaluating the product, and refusing them with the beginner's limit would be
+ * arbitrary.
+ *
+ * ⚠️ Every result is still clamped to `MAX_FILE_SIZE_BYTES`. A multiplier can
+ * raise a ceiling toward the absolute limit; it can never lift it past one.
+ */
+export const UPLOAD_MULTIPLIER: Record<string, number> = {
+	free: 1,
+	commerce: 2,
+	scale: 4,
+	teams: 8,
+	enterprise: 8,
+	bypass: 8,
+	// Retired tiers, still on live rows until the migration runs. They map to
+	// what replaced them so nobody's upload limit shrinks underneath them.
+	launch: 2,
+	grow: 4,
+};
+
+/**
+ * The ceiling for one category on one plan.
+ *
+ * Falls back to the free multiplier for an unknown plan, which under-grants
+ * rather than over-grants: a bug here should never hand somebody more than they
+ * paid for.
+ */
+export const maxUploadBytes = (category: string, planId: string): number =>
+	Math.min(
+		MAX_FILE_SIZE_BYTES,
+		maxBytesFor(category) * (UPLOAD_MULTIPLIER[planId] ?? 1),
+	);
+
+/**
+ * How to say it.
+ *
+ * ⚠️ States the ceiling that ACTUALLY applied, which depends on the plan. An
+ * error naming the free tier's 10 MB to somebody on Scale, who really has 40,
+ * sends them to compress a file that would have uploaded fine.
+ *
+ * ⚠️ No mention of upgrading. This fires on a file that is too big for any
+ * sensible use, and selling a plan at that moment would be gouging somebody for
+ * a mistake. `PLAN_UPGRADE_REQUIRED` exists for the storage ceiling, which is a
+ * genuine capacity question; this is not that.
+ */
+export const tooLargeMessage = (category: string, planId = "free"): string =>
+	`That file is larger than the ${Math.round(maxUploadBytes(category, planId) / MB)} MB limit for ${category === "other" ? "this kind of file" : `${category} files`}. Try a smaller or compressed version.`;
 
 export const FILE_CATEGORIES = [
 	"document",
@@ -58,17 +162,33 @@ const contentTypeSchema = z
 	.max(255)
 	.regex(/^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/);
 
-export const fileVersionInputSchema = z.object({
-	originalName: safeFileNameSchema,
-	contentType: contentTypeSchema,
-	sizeBytes: z.number().int().positive().max(MAX_FILE_SIZE_BYTES),
-	checksumSha256: z
-		.string()
-		.trim()
-		.toLowerCase()
-		.regex(/^[a-f0-9]{64}$/),
-	metadata: z.record(z.string(), z.unknown()).default({}),
-});
+export const fileVersionInputSchema = z
+	.object({
+		originalName: safeFileNameSchema,
+		contentType: contentTypeSchema,
+		sizeBytes: z.number().int().positive().max(MAX_FILE_SIZE_BYTES),
+		checksumSha256: z
+			.string()
+			.trim()
+			.toLowerCase()
+			.regex(/^[a-f0-9]{64}$/),
+		metadata: z.record(z.string(), z.unknown()).default({}),
+	})
+	/**
+	 * 🔴 The per-kind ceiling, checked here because EVERY upload builds one of
+	 * these. On the schema rather than in a route, so a new upload path cannot
+	 * forget it, which is exactly how product images ended up with no limit.
+	 */
+	.superRefine((value, ctx) => {
+		const category = classifyFileContentType(value.contentType);
+		if (value.sizeBytes > maxBytesFor(category)) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["sizeBytes"],
+				message: tooLargeMessage(category),
+			});
+		}
+	});
 
 export type FileVersionInput = z.input<typeof fileVersionInputSchema>;
 export type FileVersion = z.output<typeof fileVersionInputSchema>;

@@ -39,8 +39,19 @@ describe("body limit", () => {
 		expect((await response.json()).size).toBe(4 * 1024 * 1024);
 	});
 
+	it("accepts a video, which a photograph-sized ceiling would have refused", async () => {
+		// 🔴 The regression this guards: the upload ceiling was 12 MB, sized for an
+		// image-only world, and the day product video arrived the route advertised
+		// 500 MB while this middleware refused anything over 12 before the route
+		// ran. Third time that mismatch shipped.
+		expect((await upload(IMAGES, 40 * 1024 * 1024)).status).toBe(200);
+	});
+
 	it("still refuses a body beyond even the upload allowance", async () => {
-		expect((await upload(IMAGES, 13 * 1024 * 1024)).status).toBe(413);
+		// Past `UPLOAD_MAX_BYTES`. The ceiling is a memory allocation, not a
+		// policy: this middleware buffers a request to count it, so it must stay
+		// at a size a process can hold.
+		expect((await upload(IMAGES, 120 * 1024 * 1024)).status).toBe(413);
 	});
 
 	it("keeps every other route on the small limit", async () => {

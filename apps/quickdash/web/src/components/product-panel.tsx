@@ -10,10 +10,12 @@ import {
 	metaText,
 	money,
 	toCents,
+	videosOf,
 } from "../lib/catalog";
 import { parseAmount } from "../lib/money-input";
 import { useOnline } from "../lib/online";
 import { BlockFailure, detailCard } from "./detail-panel";
+import { type LightboxItem, MediaLightbox } from "./media-lightbox";
 import { WriteFailure } from "./page-state";
 import {
 	Area,
@@ -122,6 +124,39 @@ export function ProductPanel({
 	const [confirming, setConfirming] = useState(false);
 	const [draft, setDraft] = useState<ProductDraft>(() => draftFrom(item));
 	const images = imagesOf(item.metadata);
+	/**
+	 * 🔴 Shown because otherwise an uploaded video is INVISIBLE here: the file
+	 * reaches storage, the record is written, and this panel renders nothing, so
+	 * the only reasonable conclusion is that the upload failed. Reported from a
+	 * real first-run on 2026-09-07.
+	 */
+	const videos = videosOf(item.metadata);
+	/**
+	 * One list for the viewer, photographs first, matching the order they are
+	 * shown in. The index a thumbnail passes has to line up with this or clicking
+	 * the third picture opens the second.
+	 */
+	const lightbox: LightboxItem[] = [
+		...images.map((url) => ({ type: "image" as const, url })),
+		...videos.map((url) => ({ type: "video" as const, url })),
+	];
+	const [viewing, setViewing] = useState<number | null>(null);
+	/**
+	 * What the last removal took away, so it can be put back.
+	 *
+	 * 🔴 Component state ON PURPOSE, so it dies when this panel closes. Leaving
+	 * the screen IS the confirmation: somebody who removed a photograph and
+	 * walked away made a decision, and an undo that follows them around the
+	 * console turns every deletion into something to dismiss.
+	 *
+	 * ⚠️ The file is kept for 24 hours regardless, which is what makes this a
+	 * real recovery rather than a promise the storage cannot keep.
+	 */
+	const [undo, setUndo] = useState<{
+		images: string[];
+		videos: string[];
+		what: string;
+	} | null>(null);
 
 	// Switching to another product must load that product, not keep editing the
 	// last one's text in a form now labelled with a different name.
@@ -355,25 +390,42 @@ export function ProductPanel({
 	});
 
 	const setImages = useMutation({
-		mutationFn: async (next: string[]) => {
+		mutationFn: async (next: { images: string[]; videos: string[] }) => {
 			await workspaceApi(workspaceId).request(
 				`/quickdash/catalog/${item.id}/images`,
 				{
 					method: "PUT",
 					idempotencyKey: crypto.randomUUID(),
-					body: { images: next },
+					// 🔴 BOTH lists on every write. The route treats a missing key as
+					// "leave it alone", but sending only images while the panel also
+					// edits videos would make each save race the other.
+					body: { images: next.images, videos: next.videos },
 				},
 			);
 		},
 		onSuccess: refresh,
 	});
 
-	const move = (from: number, to: number) => {
-		if (from === to) return;
-		const next = [...images];
+	const reorder = (list: string[], from: number, to: number) => {
+		const next = [...list];
 		const [moved] = next.splice(from, 1);
 		next.splice(to, 0, moved);
-		setImages.mutate(next);
+		return next;
+	};
+
+	const move = (from: number, to: number) => {
+		if (from === to) return;
+		setImages.mutate({ images: reorder(images, from, to), videos });
+	};
+
+	/**
+	 * ⚠️ A SEPARATE ordering from the photographs, because they are separate
+	 * lists. Dragging a video into position two of the images would have to mean
+	 * something, and there is nothing it could sensibly mean.
+	 */
+	const moveVideo = (from: number, to: number) => {
+		if (from === to) return;
+		setImages.mutate({ images, videos: reorder(videos, from, to) });
 	};
 
 	const priced = wantsPrice(draft.pricingModel);
@@ -386,59 +438,65 @@ export function ProductPanel({
 	const saved = useSavedFlash(save.isSuccess);
 
 	return (
-		<aside className={detailCard}>
-			<header className="flex items-start gap-3 px-4 py-3">
-				<div className="min-w-0 flex-1">
-					<p className="truncate text-[12.5px] text-[var(--ink-85)]">
-						{item.name}
-					</p>
-					<p className="text-[11px] text-[var(--ink-30)]">
-						{money(item.priceCents, item.currency)}
-						<span className="text-[var(--ink-20)]"> · {item.status}</span>
-					</p>
-				</div>
-				<button
-					type="button"
-					onClick={onClose}
-					className="control-raised h-7 rounded-md border px-3 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
-				>
-					Close
-				</button>
-			</header>
+		<>
+			<MediaLightbox
+				items={lightbox}
+				onClose={() => setViewing(null)}
+				startAt={viewing}
+			/>
+			<aside className={detailCard}>
+				<header className="flex items-start gap-3 px-4 py-3">
+					<div className="min-w-0 flex-1">
+						<p className="truncate text-[12.5px] text-[var(--ink-85)]">
+							{item.name}
+						</p>
+						<p className="text-[11px] text-[var(--ink-30)]">
+							{money(item.priceCents, item.currency)}
+							<span className="text-[var(--ink-20)]"> · {item.status}</span>
+						</p>
+					</div>
+					<button
+						type="button"
+						onClick={onClose}
+						className="control-raised h-7 rounded-md border px-3 text-[11px] text-[var(--ink-60)] outline-none hover:text-[var(--ink-90)]"
+					>
+						Close
+					</button>
+				</header>
 
-			{/* 🔴 Under the header, not beside Save.
+				{/* 🔴 Under the header, not beside Save.
 			    On the footer row it competed with the one control you want
 			    pressed, got clipped by the panel's width, and sat at the bottom
 			    of a long form — so a save could fail with its own message
 			    scrolled off screen. Here it is the first thing read on the way
 			    back to the fields, which is where the problem is. */}
-			{failure ? (
-				<div className="shrink-0 px-4 pt-3">
-					<WriteFailure error={failure.error} message={failure.fallback} />
-				</div>
-			) : null}
+				{failure ? (
+					<div className="shrink-0 px-4 pt-3">
+						<WriteFailure error={failure.error} message={failure.fallback} />
+					</div>
+				) : null}
 
-			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-				{/* The lifecycle moves that are NOT publishing. Publish lives in the
+				<div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+					{/* The lifecycle moves that are NOT publishing. Publish lives in the
 				    footer beside Save; showing it here as well would put the same
 				    action on screen twice and make one of them look like something
 				    else. */}
-				<div className="mb-3 flex flex-wrap items-center gap-1.5">
-					{(NEXT_STATUSES[item.status] ?? [])
-						.filter((status) => status !== "active")
-						.map((status) => (
-							<button
-								key={status}
-								type="button"
-								className={quiet}
-								disabled={setStatus.isPending}
-								onClick={() => setStatus.mutate(status)}
-							>
-								{statusLabel(item.status, status)}
-							</button>
-						))}
+					<div className="mb-3 flex flex-wrap items-center gap-1.5">
+						{(NEXT_STATUSES[item.status] ?? [])
+							.filter((status) => status !== "active")
+							.map((status) => (
+								<button
+									key={status}
+									type="button"
+									className={quiet}
+									disabled={setStatus.isPending}
+									onClick={() => setStatus.mutate(status)}
+								>
+									{statusLabel(item.status, status)}
+								</button>
+							))}
 
-					{/* 🔴 Only once ARCHIVED, because that is the only point the API will
+						{/* 🔴 Only once ARCHIVED, because that is the only point the API will
 					    accept it — `deleteCatalogItem` throws `CATALOG_ITEM_MUST_BE_ARCHIVED`
 					    otherwise. Offering Delete on a live product would be a button that
 					    always fails.
@@ -448,345 +506,469 @@ export function ProductPanel({
 					    is nullable, so past orders still read correctly. What is lost is
 					    the product itself, which is why archiving is the everyday action
 					    and this is the rare one. */}
-					{item.status === "archived" ? (
-						<button
-							type="button"
-							className={`${quiet} ml-auto border-[rgb(255_107_107/0.35)] text-[var(--signal-failure-text)] hover:text-[var(--signal-failure-text)]`}
-							disabled={remove.isPending}
-							onClick={() => {
-								if (confirming) remove.mutate();
-								else setConfirming(true);
-							}}
-							onBlur={() => setConfirming(false)}
-						>
-							{remove.isPending
-								? "Deleting…"
-								: confirming
-									? "Delete for good?"
-									: "Delete"}
-						</button>
-					) : null}
-				</div>
+						{item.status === "archived" ? (
+							<button
+								type="button"
+								className={`${quiet} ml-auto border-[rgb(255_107_107/0.35)] text-[var(--signal-failure-text)] hover:text-[var(--signal-failure-text)]`}
+								disabled={remove.isPending}
+								onClick={() => {
+									if (confirming) remove.mutate();
+									else setConfirming(true);
+								}}
+								onBlur={() => setConfirming(false)}
+							>
+								{remove.isPending
+									? "Deleting…"
+									: confirming
+										? "Delete for good?"
+										: "Delete"}
+							</button>
+						) : null}
+					</div>
 
-				<div className="space-y-3">
-					<Text
-						label="Name"
-						value={draft.name}
-						onChange={(value) => set("name", value)}
-						placeholder="What a shopper sees"
-					/>
-					<Choice
-						label="Type"
-						options={CATALOG_ITEM_TYPES}
-						value={draft.type}
-						onChange={(value) => set("type", value)}
-					/>
-					<Area
-						label="Description"
-						hint="shown on the product page"
-						value={draft.description}
-						onChange={(value) => set("description", value)}
-					/>
-				</div>
-
-				<Section title="Pricing" open>
-					<Choice
-						label="Pricing model"
-						options={PRICING_MODELS}
-						value={draft.pricingModel}
-						onChange={(value) => set("pricingModel", value)}
-					/>
-					{priced ? (
-						<div className="grid grid-cols-2 gap-2">
-							<Text
-								label="Price"
-								value={draft.price}
-								onChange={(value) => set("price", value)}
-								placeholder="12.00"
-								inputMode="decimal"
-							/>
-							<Text
-								label="Compare at"
-								hint="struck through"
-								value={draft.compareAt}
-								onChange={(value) => set("compareAt", value)}
-								placeholder="18.00"
-								inputMode="decimal"
-							/>
-						</div>
-					) : (
-						<p className="text-[11px] text-[var(--ink-30)]">
-							{draft.pricingModel === "free"
-								? "Free items carry no price."
-								: "A quoted item is priced per enquiry, so it carries no price here."}
-						</p>
-					)}
-					<div className="grid grid-cols-2 gap-2">
+					<div className="space-y-3">
 						<Text
-							label="Currency"
-							value={draft.currency}
-							onChange={(value) => set("currency", value.toUpperCase())}
-							placeholder="CAD"
+							label="Name"
+							value={draft.name}
+							onChange={(value) => set("name", value)}
+							placeholder="What a shopper sees"
 						/>
-						<Text
-							label="Unit"
-							hint="per what"
-							value={draft.unitLabel}
-							onChange={(value) => set("unitLabel", value)}
-							placeholder="unit, hour"
+						<Choice
+							label="Type"
+							options={CATALOG_ITEM_TYPES}
+							value={draft.type}
+							onChange={(value) => set("type", value)}
+						/>
+						<Area
+							label="Description"
+							hint="shown on the product page"
+							value={draft.description}
+							onChange={(value) => set("description", value)}
 						/>
 					</div>
-				</Section>
 
-				<Section title="Shipping">
-					<Text
-						label="Weight"
-						hint="grams, used to quote delivery"
-						value={draft.weightGrams}
-						onChange={(value) => set("weightGrams", value)}
-						placeholder="480"
-						inputMode="decimal"
-					/>
-					<Text
-						label="SKU"
-						hint="your own code"
-						value={draft.sku}
-						onChange={(value) => set("sku", value)}
-						placeholder="KA-K2-BLK"
-					/>
-				</Section>
+					<Section title="Pricing" open>
+						<Choice
+							label="Pricing model"
+							options={PRICING_MODELS}
+							value={draft.pricingModel}
+							onChange={(value) => set("pricingModel", value)}
+						/>
+						{priced ? (
+							<div className="grid grid-cols-2 gap-2">
+								<Text
+									label="Price"
+									value={draft.price}
+									onChange={(value) => set("price", value)}
+									placeholder="12.00"
+									inputMode="decimal"
+								/>
+								<Text
+									label="Compare at"
+									hint="struck through"
+									value={draft.compareAt}
+									onChange={(value) => set("compareAt", value)}
+									placeholder="18.00"
+									inputMode="decimal"
+								/>
+							</div>
+						) : (
+							<p className="text-[11px] text-[var(--ink-30)]">
+								{draft.pricingModel === "free"
+									? "Free items carry no price."
+									: "A quoted item is priced per enquiry, so it carries no price here."}
+							</p>
+						)}
+						<div className="grid grid-cols-2 gap-2">
+							<Text
+								label="Currency"
+								value={draft.currency}
+								onChange={(value) => set("currency", value.toUpperCase())}
+								placeholder="CAD"
+							/>
+							<Text
+								label="Unit"
+								hint="per what"
+								value={draft.unitLabel}
+								onChange={(value) => set("unitLabel", value)}
+								placeholder="unit, hour"
+							/>
+						</div>
+					</Section>
 
-				<Section title="Categories" open>
-					{/* 🔑 Saved on click rather than with the rest of the form. Filing is
+					<Section title="Shipping">
+						<Text
+							label="Weight"
+							hint="grams, used to quote delivery"
+							value={draft.weightGrams}
+							onChange={(value) => set("weightGrams", value)}
+							placeholder="480"
+							inputMode="decimal"
+						/>
+						<Text
+							label="SKU"
+							hint="your own code"
+							value={draft.sku}
+							onChange={(value) => set("sku", value)}
+							placeholder="KA-K2-BLK"
+						/>
+					</Section>
+
+					<Section title="Categories" open>
+						{/* 🔑 Saved on click rather than with the rest of the form. Filing is
 					    a different kind of act from editing a description — it is how a
 					    shopper finds the thing — and making it wait behind Save is how
 					    somebody assigns a category, closes the panel and loses it. */}
-					{categories.isError ? (
-						<BlockFailure query={categories} />
-					) : categories.isPending ? (
-						<p className="text-[11px] text-[var(--ink-30)]">Loading…</p>
-					) : (categories.data?.items.length ?? 0) === 0 ? (
-						<p className="text-[11px] text-[var(--ink-30)]">
-							No categories yet. Create one and shoppers can browse by it.
-						</p>
-					) : (
-						<div className="flex flex-wrap gap-1">
-							{(categories.data?.items ?? []).map((category) => {
-								const on = filedUnder.includes(category.id);
-								return (
-									<button
-										key={category.id}
-										type="button"
-										disabled={setCategories.isPending || membership.isPending}
-										onClick={() => toggleCategory(category.id)}
-										className={`h-7 rounded-full px-2.5 text-[11px] transition-colors disabled:opacity-40 ${
-											on
-												? "bg-[rgb(var(--console-ink))] text-[var(--console-pop)]"
-												: "border border-[var(--console-line-strong)] text-[var(--ink-50)] hover:text-[var(--ink-85)]"
-										}`}
-									>
-										{category.name}
-									</button>
-								);
-							})}
-						</div>
-					)}
-				</Section>
+						{categories.isError ? (
+							<BlockFailure query={categories} />
+						) : categories.isPending ? (
+							<p className="text-[11px] text-[var(--ink-30)]">Loading…</p>
+						) : (categories.data?.items.length ?? 0) === 0 ? (
+							<p className="text-[11px] text-[var(--ink-30)]">
+								No categories yet. Create one and shoppers can browse by it.
+							</p>
+						) : (
+							<div className="flex flex-wrap gap-1">
+								{(categories.data?.items ?? []).map((category) => {
+									const on = filedUnder.includes(category.id);
+									return (
+										<button
+											key={category.id}
+											type="button"
+											disabled={setCategories.isPending || membership.isPending}
+											onClick={() => toggleCategory(category.id)}
+											className={`h-7 rounded-full px-2.5 text-[11px] transition-colors disabled:opacity-40 ${
+												on
+													? "bg-[rgb(var(--console-ink))] text-[var(--console-pop)]"
+													: "border border-[var(--console-line-strong)] text-[var(--ink-50)] hover:text-[var(--ink-85)]"
+											}`}
+										>
+											{category.name}
+										</button>
+									);
+								})}
+							</div>
+						)}
+					</Section>
 
-				<Section title="Storefront">
-					<Text
-						label="Web address"
-						hint="the last part of the link"
-						value={draft.slug}
-						onChange={(value) => set("slug", value)}
-						placeholder="k2-studio-monitor"
-					/>
-					<Area
-						label="Short description"
-						hint="listings and previews"
-						rows={2}
-						value={draft.shortDescription}
-						onChange={(value) => set("shortDescription", value)}
-					/>
-					<Text
-						label="Tags"
-						hint="comma separated"
-						value={draft.tags}
-						onChange={(value) => set("tags", value)}
-						placeholder="studio, monitor"
-					/>
-					<Toggle
-						label="Feature this"
-						hint="shops usually show these first"
-						value={draft.featured}
-						onChange={(value) => set("featured", value)}
-					/>
-				</Section>
+					<Section title="Storefront">
+						<Text
+							label="Web address"
+							hint="the last part of the link"
+							value={draft.slug}
+							onChange={(value) => set("slug", value)}
+							placeholder="k2-studio-monitor"
+						/>
+						<Area
+							label="Short description"
+							hint="listings and previews"
+							rows={2}
+							value={draft.shortDescription}
+							onChange={(value) => set("shortDescription", value)}
+						/>
+						<Text
+							label="Tags"
+							hint="comma separated"
+							value={draft.tags}
+							onChange={(value) => set("tags", value)}
+							placeholder="studio, monitor"
+						/>
+						<Toggle
+							label="Feature this"
+							hint="shops usually show these first"
+							value={draft.featured}
+							onChange={(value) => set("featured", value)}
+						/>
+					</Section>
 
-				<Section title="Photographs" open>
-					{images.length > 1 ? (
-						<p className="text-[11px] text-[var(--ink-30)]">
-							Drag to reorder. The first is shown in listings.
-						</p>
-					) : null}
-
-					{images.length > 0 ? (
-						<div className="grid grid-cols-3 gap-2">
-							{images.map((url, index) => (
-								// The drag target holds its own controls so it cannot be a button;
-								// "Make first" is the keyboard equivalent of the drag.
-								// biome-ignore lint/a11y/noStaticElementInteractions: drag reorder container
-								<div
-									key={url}
-									draggable
-									onDragStart={() => setHeld(index)}
-									onDragOver={(event) => event.preventDefault()}
-									onDrop={() => {
-										if (held !== null) move(held, index);
-										setHeld(null);
+					<Section title="Media" open>
+						{/*
+						 * The way back from a mis-click, and it is deliberately here
+						 * rather than in a toast that follows somebody around: leaving
+						 * this panel is the confirmation.
+						 *
+						 * ⚠️ Says what it will restore. "Undo" alone makes somebody guess
+						 * whether they are about to bring back the photograph or reverse
+						 * the reorder they did before it.
+						 */}
+						{undo ? (
+							<div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-[var(--console-line)] px-3 py-2">
+								<p className="text-[11.5px] text-[var(--ink-60)]">
+									That {undo.what} was removed.
+								</p>
+								<button
+									className="control-raised inline-flex h-7 items-center rounded-md border px-2.5 text-[11px] text-[var(--ink-85)]"
+									onClick={() => {
+										setImages.mutate({
+											images: undo.images,
+											videos: undo.videos,
+										});
+										setUndo(null);
 									}}
-									className={`group relative overflow-hidden rounded-lg border ${
-										index === 0
-											? "border-[rgb(var(--console-ink)/0.35)]"
-											: "border-[var(--console-line-soft)]"
-									} ${held === index ? "opacity-40" : ""}`}
+									type="button"
 								>
-									<img
-										src={url}
-										alt=""
-										className="aspect-square w-full object-cover"
-									/>
-									{index > 0 ? (
+									Put it back
+								</button>
+							</div>
+						) : null}
+
+						{images.length > 1 ? (
+							<p className="text-[11px] text-[var(--ink-30)]">
+								Drag to reorder. The first is shown in listings.
+							</p>
+						) : null}
+
+						{images.length > 0 ? (
+							<div className="grid grid-cols-3 gap-2">
+								{images.map((url, index) => (
+									// The drag target holds its own controls so it cannot be a button;
+									// "Make first" is the keyboard equivalent of the drag.
+									// biome-ignore lint/a11y/noStaticElementInteractions: drag reorder container
+									<div
+										key={url}
+										draggable
+										onDragStart={() => setHeld(index)}
+										onDragOver={(event) => event.preventDefault()}
+										onDrop={() => {
+											if (held !== null) move(held, index);
+											setHeld(null);
+										}}
+										className={`group relative overflow-hidden rounded-lg border ${
+											index === 0
+												? "border-[rgb(var(--console-ink)/0.35)]"
+												: "border-[var(--console-line-soft)]"
+										} ${held === index ? "opacity-40" : ""}`}
+									>
+										{/* The picture itself opens the viewer. Buttons over it keep
+									    working because they stop the click. */}
+										<button
+											aria-label={`View photograph ${index + 1}`}
+											className="block w-full"
+											onClick={() => setViewing(index)}
+											type="button"
+										>
+											<img
+												src={url}
+												alt=""
+												className="aspect-square w-full object-cover"
+											/>
+										</button>
+										{index > 0 ? (
+											<button
+												type="button"
+												onClick={() => move(index, 0)}
+												className="absolute bottom-1 left-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+											>
+												Make first
+											</button>
+										) : null}
 										<button
 											type="button"
-											onClick={() => move(index, 0)}
-											className="absolute bottom-1 left-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+											onClick={() => {
+												setUndo({ images, videos, what: "photograph" });
+												setImages.mutate({
+													images: images.filter((entry) => entry !== url),
+													videos,
+												});
+											}}
+											className="absolute top-1 right-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
 										>
-											Make first
+											Remove
 										</button>
-									) : null}
-									<button
-										type="button"
-										onClick={() =>
-											setImages.mutate(images.filter((entry) => entry !== url))
-										}
-										className="absolute top-1 right-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-									>
-										Remove
-									</button>
-								</div>
-							))}
-						</div>
-					) : null}
+									</div>
+								))}
+							</div>
+						) : null}
 
-					{/* A drop target that is also a button, because half of people will
+						{/* Videos, in their own row under the photographs.
+					    ⚠️ Not reorderable with the images and not draggable: they
+					    live in a separate list, and pretending otherwise would let
+					    somebody drag one into a position that does not exist. */}
+						{videos.length > 0 ? (
+							<div className="mt-2 grid grid-cols-3 gap-2">
+								{videos.map((url, index) => (
+									<div
+										key={url}
+										className={`group relative overflow-hidden rounded-lg border ${
+											index === 0
+												? "border-[rgb(var(--console-ink)/0.35)]"
+												: "border-[var(--console-line-soft)]"
+										}`}
+									>
+										{/*
+										 * 🔴 A STILL, not a playing video. `preload="metadata"`
+										 * fetches enough for the browser to paint the first
+										 * frame and no more, so a product with six clips does
+										 * not open six streams and set a laptop fan going.
+										 *
+										 * ⚠️ No `autoPlay`. A wall of moving thumbnails is
+										 * unreadable, and the job here is to say "this is a
+										 * video", which the badge does.
+										 */}
+										<button
+											aria-label={`View video ${index + 1}`}
+											className="block w-full"
+											onClick={() => setViewing(images.length + index)}
+											type="button"
+										>
+											<video
+												className="aspect-square w-full bg-[var(--console-line)] object-cover"
+												muted
+												playsInline
+												preload="metadata"
+												src={url}
+											/>
+										</button>
+										<span
+											aria-hidden="true"
+											className="pointer-events-none absolute inset-0 flex items-center justify-center"
+										>
+											<span className="flex size-7 items-center justify-center rounded-full bg-[rgb(0_0_0/0.55)] pl-[2px] text-[11px] text-white">
+												▶
+											</span>
+										</span>
+										<span className="absolute bottom-1 left-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white">
+											Video
+										</span>
+										{index > 0 ? (
+											<button
+												type="button"
+												onClick={() => moveVideo(index, 0)}
+												className="absolute right-1 bottom-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+											>
+												Make first
+											</button>
+										) : null}
+										<button
+											type="button"
+											onClick={() => {
+												setUndo({ images, videos, what: "video" });
+												setImages.mutate({
+													images,
+													videos: videos.filter((entry) => entry !== url),
+												});
+											}}
+											className="absolute top-1 right-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+										>
+											Remove
+										</button>
+									</div>
+								))}
+							</div>
+						) : null}
+
+						{/* A drop target that is also a button, because half of people will
 					    drag and half will click, and neither should have to discover
 					    the other. */}
-					<button
-						type="button"
-						onClick={() => fileInput.current?.click()}
-						onDragOver={(event) => {
-							event.preventDefault();
-							setDragging(true);
-						}}
-						onDragLeave={() => setDragging(false)}
-						onDrop={(event) => {
-							event.preventDefault();
-							setDragging(false);
-							// Snapshotted for the same reason as the picker: the mutation
-							// body runs after this handler returns, and `dataTransfer` is
-							// not guaranteed to still be readable by then.
-							const files = Array.from(event.dataTransfer.files);
-							if (files.length > 0) upload.mutate(files);
-						}}
-						className={`${upload.isPending ? "shimmer-busy" : ""} flex h-24 w-full items-center justify-center rounded-xl border border-dashed text-[11.5px] transition-colors ${
-							dragging
-								? "border-[rgb(var(--console-ink)/0.4)] bg-[rgb(var(--console-ink)/0.05)] text-[var(--ink-85)]"
-								: "border-[var(--empty-line)] text-[var(--ink-30)] hover:text-[var(--ink-60)]"
-						}`}
-					>
-						{upload.isPending
-							? "Uploading…"
-							: "Drop images here, or click to pick"}
-					</button>
-					{uploadFailure ? <WriteFailure message={uploadFailure} /> : null}
+						<button
+							type="button"
+							onClick={() => fileInput.current?.click()}
+							onDragOver={(event) => {
+								event.preventDefault();
+								setDragging(true);
+							}}
+							onDragLeave={() => setDragging(false)}
+							onDrop={(event) => {
+								event.preventDefault();
+								setDragging(false);
+								// Snapshotted for the same reason as the picker: the mutation
+								// body runs after this handler returns, and `dataTransfer` is
+								// not guaranteed to still be readable by then.
+								const files = Array.from(event.dataTransfer.files);
+								if (files.length > 0) upload.mutate(files);
+							}}
+							className={`${upload.isPending ? "shimmer-busy" : ""} flex h-24 w-full items-center justify-center rounded-xl border border-dashed text-[11.5px] transition-colors ${
+								dragging
+									? "border-[rgb(var(--console-ink)/0.4)] bg-[rgb(var(--console-ink)/0.05)] text-[var(--ink-85)]"
+									: "border-[var(--empty-line)] text-[var(--ink-30)] hover:text-[var(--ink-60)]"
+							}`}
+						>
+							{upload.isPending
+								? "Uploading…"
+								: "Drop images or video here, or click to pick"}
+						</button>
+						{uploadFailure ? <WriteFailure message={uploadFailure} /> : null}
 
-					<input
-						ref={fileInput}
-						type="file"
-						accept="image/*"
-						multiple
-						hidden
-						onChange={(event) => {
-							/**
-							 * 🔴 SNAPSHOT FIRST. `FileList` is LIVE — it is a view onto the
-							 * input, not a copy — so clearing `value` empties the list the
-							 * mutation is about to read.
-							 *
-							 * The old order called `mutate(files)` and then cleared, and
-							 * because the mutation body runs asynchronously it always saw
-							 * zero files: the upload loop never ran, no request was made,
-							 * and the mutation RESOLVED SUCCESSFULLY. The spinner appeared,
-							 * the list refetched, no error showed and nothing was ever
-							 * stored — the exact symptom of "image upload does nothing",
-							 * and invisible in the API log because there was no request to
-							 * log.
-							 *
-							 * Clearing is still required, or picking the same file twice in
-							 * a row fires no `change` event at all.
-							 */
-							const files = Array.from(event.target.files ?? []);
-							event.target.value = "";
-							if (files.length > 0) upload.mutate(files);
-						}}
-					/>
-				</Section>
-			</div>
+						<input
+							ref={fileInput}
+							type="file"
+							// Video too: a shop that filmed its product should not have to
+							// host it somewhere else. The API measures each kind against its
+							// own ceiling.
+							accept="image/*,video/*"
+							multiple
+							hidden
+							onChange={(event) => {
+								/**
+								 * 🔴 SNAPSHOT FIRST. `FileList` is LIVE — it is a view onto the
+								 * input, not a copy — so clearing `value` empties the list the
+								 * mutation is about to read.
+								 *
+								 * The old order called `mutate(files)` and then cleared, and
+								 * because the mutation body runs asynchronously it always saw
+								 * zero files: the upload loop never ran, no request was made,
+								 * and the mutation RESOLVED SUCCESSFULLY. The spinner appeared,
+								 * the list refetched, no error showed and nothing was ever
+								 * stored — the exact symptom of "image upload does nothing",
+								 * and invisible in the API log because there was no request to
+								 * log.
+								 *
+								 * Clearing is still required, or picking the same file twice in
+								 * a row fires no `change` event at all.
+								 */
+								const files = Array.from(event.target.files ?? []);
+								event.target.value = "";
+								if (files.length > 0) upload.mutate(files);
+							}}
+						/>
+					</Section>
+				</div>
 
-			<footer className="shrink-0 px-4 py-3">
-				{missingPrice ? (
-					<p className="mb-2 text-[11.5px] text-[var(--signal-attention-text)]">
-						{draft.pricingModel.replace(/_/g, " ")} pricing needs a price.
-					</p>
-				) : null}
-				{/* 🔑 Publish sits WITH Save, not buried at the top of a scrolling
+				<footer className="shrink-0 px-4 py-3">
+					{missingPrice ? (
+						<p className="mb-2 text-[11.5px] text-[var(--signal-attention-text)]">
+							{draft.pricingModel.replace(/_/g, " ")} pricing needs a price.
+						</p>
+					) : null}
+					{/* 🔑 Publish sits WITH Save, not buried at the top of a scrolling
 				    panel. Saving and publishing are the two ways of being finished,
 				    and separating them made the second look absent — the panel
 				    appeared to only be able to keep drafts. */}
-				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						data-hint={
-							!draft.name.trim()
-								? "Give this product a name"
-								: missingPrice
-									? "Set a price, or change how it is priced"
-									: undefined
-						}
-						disabled={save.isPending || !online || !valid}
-						onClick={() => save.mutate()}
-						className={`${save.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 min-w-0 flex-1 items-center justify-center rounded-md border border-[var(--console-line-strong)] font-medium text-[12.5px] text-[var(--ink-90)] outline-none disabled:opacity-40`}
-					>
-						<SaveLabel saving={save.isPending} saved={saved}>
-							Save
-						</SaveLabel>
-					</button>
-
-					{/* Publishing is a separate commit from saving fields, because the
-					    API models it as one — a status transition with its own legal
-					    moves, not a column on the form. */}
-					{(NEXT_STATUSES[item.status] ?? []).includes("active") ? (
+					<div className="flex items-center gap-2">
 						<button
 							type="button"
-							disabled={setStatus.isPending}
-							onClick={() => setStatus.mutate("active")}
-							className={`${setStatus.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 shrink-0 items-center justify-center rounded-md border px-3.5 text-[12.5px] text-[var(--ink-85)] outline-none disabled:opacity-40`}
+							data-hint={
+								!draft.name.trim()
+									? "Give this product a name"
+									: missingPrice
+										? "Set a price, or change how it is priced"
+										: undefined
+							}
+							disabled={save.isPending || !online || !valid}
+							onClick={() => save.mutate()}
+							className={`${save.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 min-w-0 flex-1 items-center justify-center rounded-md border border-[var(--console-line-strong)] font-medium text-[12.5px] text-[var(--ink-90)] outline-none disabled:opacity-40`}
 						>
-							{setStatus.isPending ? "Publishing…" : "Publish"}
+							<SaveLabel saving={save.isPending} saved={saved}>
+								Save
+							</SaveLabel>
 						</button>
-					) : null}
-				</div>
-			</footer>
-		</aside>
+
+						{/* Publishing is a separate commit from saving fields, because the
+					    API models it as one — a status transition with its own legal
+					    moves, not a column on the form. */}
+						{(NEXT_STATUSES[item.status] ?? []).includes("active") ? (
+							<button
+								type="button"
+								disabled={setStatus.isPending}
+								onClick={() => setStatus.mutate("active")}
+								className={`${setStatus.isPending ? "shimmer-busy" : ""} control-raised inline-flex h-9 shrink-0 items-center justify-center rounded-md border px-3.5 text-[12.5px] text-[var(--ink-85)] outline-none disabled:opacity-40`}
+							>
+								{setStatus.isPending ? "Publishing…" : "Publish"}
+							</button>
+						) : null}
+					</div>
+				</footer>
+			</aside>
+		</>
 	);
 }

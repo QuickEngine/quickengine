@@ -2,7 +2,13 @@ import { ImageIcon } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { workspaceApi } from "../lib/api";
-import { type CatalogItem, compareAt, imagesOf, money } from "../lib/catalog";
+import {
+	type CatalogItem,
+	compareAt,
+	imagesOf,
+	money,
+	videosOf,
+} from "../lib/catalog";
 import { useListLayout } from "../lib/list-view";
 import { useRecordSignals } from "../lib/record-signals";
 import { useSelectedRecord } from "../lib/selected-record";
@@ -21,6 +27,16 @@ const STATUSES = ["active", "draft", "archived"] as const;
 function Thumb({ item, size }: { item: CatalogItem; size: "sm" | "lg" }) {
 	const [broken, setBroken] = useState(false);
 	const url = imagesOf(item.metadata)[0];
+	/**
+	 * 🔴 A product can have a video and no photograph, and that used to show as
+	 * an empty frame: the upload had worked, the file was in storage, and the
+	 * console gave no sign of it at all. Somebody reasonably concluded it had
+	 * failed and uploaded it again.
+	 *
+	 * ⚠️ Muted, looping and playsInline, and never with controls at this size.
+	 * A thumbnail is a picture of the thing, not a player.
+	 */
+	const video = url ? null : videosOf(item.metadata)[0];
 	const box =
 		size === "lg"
 			? // Square, matching the category tiles — the two grids sit one click
@@ -35,6 +51,33 @@ function Thumb({ item, size }: { item: CatalogItem; size: "sm" | "lg" }) {
 	// 🔴 A missing image is the NORMAL state here, not an error: an imported
 	// catalog arrives with none, and a broken <img> icon would read as a fault in
 	// QuickDash rather than a photograph nobody has uploaded yet.
+	if (video && !broken) {
+		return (
+			<div className={`relative ${box} overflow-hidden`}>
+				<video
+					className="size-full bg-[var(--console-line)] object-cover"
+					muted
+					onError={() => setBroken(true)}
+					playsInline
+					preload="metadata"
+					src={video}
+				/>
+				<span
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-0 flex items-center justify-center"
+				>
+					<span
+						className={`flex items-center justify-center rounded-full bg-[rgb(0_0_0/0.55)] pl-[1px] text-white ${
+							size === "lg" ? "size-7 text-[11px]" : "size-4 text-[7px]"
+						}`}
+					>
+						▶
+					</span>
+				</span>
+			</div>
+		);
+	}
+
 	if (!url || broken) {
 		return (
 			<div

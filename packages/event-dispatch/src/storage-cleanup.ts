@@ -82,6 +82,50 @@ export async function purgePendingDocumentDeletions(options?: {
 	return { purged, failed };
 }
 
+/**
+ * Collect product media that was removed long enough ago to be past undoing.
+ *
+ * 🔴 The object is deleted BEFORE the row, never the other way round. The row
+ * holds the storage key, so dropping it first would strand the file in the
+ * bucket with nothing left pointing at it: the exact leak this whole area
+ * started with, made permanent.
+ *
+ * ⚠️ Each failure is swallowed per asset. One unreachable object must not stop
+ * the sweep collecting the rest, and anything missed is simply collected on the
+ * next run because the row stays marked.
+ */
+async function purgeRemovedMedia(): Promise<number> {
+	const { assetsReadyToPurge, dropWorkspaceAsset } = await import(
+		"@quickengine/db"
+	);
+	const { storageProviderFromEnv } = await import("@quickengine/storage");
+	const ready = await assetsReadyToPurge();
+	if (ready.length === 0) return 0;
+
+	// The origin only matters for the local provider, which serves files back
+	// over http. A background sweep has no request to take one from, and R2 in
+	// production ignores it entirely.
+	const provider = storageProviderFromEnv(
+		process.env.API_BASE_URL ?? "http://localhost:3020",
+	);
+	let collected = 0;
+	for (const asset of ready) {
+		try {
+			await provider.deletePublicAsset({ provider: "public", key: asset.key });
+			await dropWorkspaceAsset({
+				workspaceId: asset.workspaceId,
+				key: asset.key,
+			});
+			collected += 1;
+		} catch (error) {
+			console.error(
+				`[storage-cleanup] could not collect ${asset.key} (${error instanceof Error ? error.name : "UnknownError"})`,
+			);
+		}
+	}
+	return collected;
+}
+
 export const storageCleanup = inngest.createFunction(
 	{
 		id: "storage-cleanup",
@@ -89,7 +133,11 @@ export const storageCleanup = inngest.createFunction(
 		retries: 0, // Idempotent and swept on a schedule; a failed cycle just waits.
 		triggers: [{ cron: "*/5 * * * *" }],
 	},
-	async () => purgePendingDocumentDeletions(),
+	async () => {
+		const documents = await purgePendingDocumentDeletions();
+		const media = await purgeRemovedMedia();
+		return { documents, media };
+	},
 );
 
 /**

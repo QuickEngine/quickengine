@@ -10,6 +10,7 @@ import {
 	metaText,
 	money,
 	toCents,
+	videosOf,
 } from "../lib/catalog";
 import { parseAmount } from "../lib/money-input";
 import { useOnline } from "../lib/online";
@@ -122,6 +123,13 @@ export function ProductPanel({
 	const [confirming, setConfirming] = useState(false);
 	const [draft, setDraft] = useState<ProductDraft>(() => draftFrom(item));
 	const images = imagesOf(item.metadata);
+	/**
+	 * 🔴 Shown because otherwise an uploaded video is INVISIBLE here: the file
+	 * reaches storage, the record is written, and this panel renders nothing, so
+	 * the only reasonable conclusion is that the upload failed. Reported from a
+	 * real first-run on 2026-09-07.
+	 */
+	const videos = videosOf(item.metadata);
 
 	// Switching to another product must load that product, not keep editing the
 	// last one's text in a form now labelled with a different name.
@@ -623,7 +631,7 @@ export function ProductPanel({
 					/>
 				</Section>
 
-				<Section title="Photographs" open>
+				<Section title="Media" open>
 					{images.length > 1 ? (
 						<p className="text-[11px] text-[var(--ink-30)]">
 							Drag to reorder. The first is shown in listings.
@@ -679,6 +687,51 @@ export function ProductPanel({
 						</div>
 					) : null}
 
+					{/* Videos, in their own row under the photographs.
+					    ⚠️ Not reorderable with the images and not draggable: they
+					    live in a separate list, and pretending otherwise would let
+					    somebody drag one into a position that does not exist. */}
+					{videos.length > 0 ? (
+						<div className="mt-2 grid grid-cols-3 gap-2">
+							{videos.map((url) => (
+								<div
+									key={url}
+									className="relative overflow-hidden rounded-lg border border-[var(--console-line-soft)]"
+								>
+									{/*
+									 * 🔴 A STILL, not a playing video. `preload="metadata"`
+									 * fetches enough for the browser to paint the first
+									 * frame and no more, so a product with six clips does
+									 * not open six streams and set a laptop fan going.
+									 *
+									 * ⚠️ No `autoPlay`. A wall of moving thumbnails is
+									 * unreadable, and the job here is to say "this is a
+									 * video", which the badge does.
+									 */}
+									{/* biome-ignore lint/a11y/useMediaCaption: a silent still frame */}
+									<video
+										className="aspect-square w-full bg-[var(--console-line)] object-cover"
+										muted
+										playsInline
+										preload="metadata"
+										src={url}
+									/>
+									<span
+										aria-hidden="true"
+										className="pointer-events-none absolute inset-0 flex items-center justify-center"
+									>
+										<span className="flex size-7 items-center justify-center rounded-full bg-[rgb(0_0_0/0.55)] pl-[2px] text-[11px] text-white">
+											▶
+										</span>
+									</span>
+									<span className="absolute bottom-1 left-1 rounded-full bg-[rgb(0_0_0/0.6)] px-2 py-0.5 text-[10px] text-white">
+										Video
+									</span>
+								</div>
+							))}
+						</div>
+					) : null}
+
 					{/* A drop target that is also a button, because half of people will
 					    drag and half will click, and neither should have to discover
 					    the other. */}
@@ -707,14 +760,17 @@ export function ProductPanel({
 					>
 						{upload.isPending
 							? "Uploading…"
-							: "Drop images here, or click to pick"}
+							: "Drop images or video here, or click to pick"}
 					</button>
 					{uploadFailure ? <WriteFailure message={uploadFailure} /> : null}
 
 					<input
 						ref={fileInput}
 						type="file"
-						accept="image/*"
+						// Video too: a shop that filmed its product should not have to
+						// host it somewhere else. The API measures each kind against its
+						// own ceiling.
+						accept="image/*,video/*"
 						multiple
 						hidden
 						onChange={(event) => {

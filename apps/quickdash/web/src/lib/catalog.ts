@@ -41,6 +41,17 @@ export const imagesOf = (metadata: Record<string, unknown>) =>
 		? metadata.images.filter((url): url is string => typeof url === "string")
 		: [];
 
+/**
+ * Videos on an item, kept in their own list rather than mixed into `images`.
+ *
+ * A storefront reading `images` must never have to guess which urls happen to
+ * be playable, and a shop that has not been updated simply never looks here.
+ */
+export const videosOf = (metadata: Record<string, unknown>) =>
+	Array.isArray(metadata.videos)
+		? metadata.videos.filter((url): url is string => typeof url === "string")
+		: [];
+
 /** A struck-through original, when the item is selling below it. */
 export const compareAt = (metadata: Record<string, unknown>) =>
 	typeof metadata.compareAtPriceCents === "number"

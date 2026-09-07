@@ -33,6 +33,7 @@ export * from "./outbox-events";
 export * from "./portal-host";
 export * from "./rbac";
 export * from "./request-lookup";
+export * from "./retention";
 export * from "./saved-views";
 export * from "./schema";
 export * from "./slug";

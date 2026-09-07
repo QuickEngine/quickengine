@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PURGE_AFTER_HOURS } from "../src/workspace-assets";
+import { PURGE_AFTER_HOURS } from "../src/retention";
 
 /**
  * 🔴 Media was erased from object storage the instant it came off a product.

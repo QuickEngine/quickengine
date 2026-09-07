@@ -1467,7 +1467,7 @@ export const TILES: readonly TileSpec[] = [
 	{
 		/**
 		 * 🔴 The two BUSINESS-VOLUME meters, and the reason they are worth a tile
-		 * each: on Solo they are the walls somebody actually meets. Twenty-five
+		 * each: on Free they are the walls somebody actually meets. Twenty-five
 		 * orders a month and twenty-five products listed are what turn a free
 		 * account into a paying one, and a wall nobody saw coming is an ambush.
 		 *
@@ -1486,6 +1486,140 @@ export const TILES: readonly TileSpec[] = [
 				meter="ordersPerMonth"
 				title="Orders this month"
 				sub="orders this period"
+			/>
+		),
+	},
+	{
+		/**
+		 * 🔴 One per module, because capping only orders and products meant a
+		 * consultancy running bookings and invoices hit no limit and paid nothing
+		 * while an identical shop paid. Each is module-gated, so a business only
+		 * ever sees the meters for work it actually does.
+		 */
+		id: "bookings-usage",
+		module: "bookings",
+		name: "Bookings this month",
+		blurb: "Appointments booked this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 2,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="bookingsPerMonth"
+				title="Bookings this month"
+				sub="booked this period"
+			/>
+		),
+	},
+	{
+		id: "invoices-usage",
+		module: "invoicing",
+		name: "Invoices this month",
+		blurb: "Invoices raised this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 2,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="invoicesPerMonth"
+				title="Invoices this month"
+				sub="raised this period"
+			/>
+		),
+	},
+	{
+		id: "contracts-usage",
+		module: "contracts-esign",
+		name: "Contracts this month",
+		blurb: "Contracts sent this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 2,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="contractsPerMonth"
+				title="Contracts this month"
+				sub="sent this period"
+			/>
+		),
+	},
+	{
+		id: "quotes-usage",
+		module: "quotes-estimates",
+		name: "Quotes this month",
+		blurb: "Quotes sent this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 2,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="quotesPerMonth"
+				title="Quotes this month"
+				sub="sent this period"
+			/>
+		),
+	},
+	{
+		id: "projects-usage",
+		module: "projects-tasks",
+		name: "Projects this month",
+		blurb: "Projects started this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 2,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="projectsPerMonth"
+				title="Projects this month"
+				sub="started this period"
+			/>
+		),
+	},
+	{
+		id: "time-usage",
+		module: "time-tracking",
+		name: "Time entries this month",
+		blurb: "Time entries logged this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 2,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="timeEntriesPerMonth"
+				title="Time entries this month"
+				sub="logged this period"
+			/>
+		),
+	},
+	{
+		id: "shipments-usage",
+		module: "shipping",
+		name: "Shipments this month",
+		blurb: "Shipments created this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 2,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="shipmentsPerMonth"
+				title="Shipments this month"
+				sub="sent this period"
+			/>
+		),
+	},
+	{
+		id: "clients-usage",
+		module: "client-records",
+		name: "Clients this month",
+		blurb: "Client records added this month, against your plan.",
+		defaultCols: 1,
+		defaultRows: 2,
+		Render: ({ organizationId }) => (
+			<UsageTile
+				organizationId={organizationId}
+				meter="clientsPerMonth"
+				title="Clients this month"
+				sub="added this period"
 			/>
 		),
 	},

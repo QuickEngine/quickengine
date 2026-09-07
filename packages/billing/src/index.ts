@@ -44,6 +44,7 @@ export { billOverage } from "./overage";
 export type { PlanCapability } from "./plans";
 export {
 	billableSeats,
+	FREE_OVERAGE_CAP_CENTS,
 	getPlan,
 	getPlanLimits,
 	getStripePriceId,
@@ -52,6 +53,7 @@ export {
 	type MeterKey,
 	OVERAGE,
 	type OveragePrice,
+	overageFor,
 	PLANS,
 	type PlanDefinition,
 	type PlanLimits,

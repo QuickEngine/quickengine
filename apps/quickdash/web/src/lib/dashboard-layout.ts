@@ -449,7 +449,7 @@ export function defaultLayout(
 		   every business type. */
 
 		/* Rows 1 to 2: the four meters. The only numbers a customer cannot find
-		   anywhere else in the product, and on Solo two of them are the walls
+		   anywhere else in the product, and on Free two of them are the walls
 		   that decide whether somebody upgrades. */
 		{ id: "orders-usage", cols: 1, rows: 2 },
 		{ id: "products-usage", cols: 1, rows: 2 },

@@ -14,7 +14,7 @@ import { insertOrg } from "./helpers";
  * ⚠️ Exactly one. If this ever becomes a percentage, the guarantee "your next
  * order is your last" stops being a sentence anybody can act on.
  */
-describe("the order soft landing on Solo", () => {
+describe("the order soft landing on Free", () => {
 	const fill = async (scope: string, orders: number) => {
 		await insertOrg(scope);
 		if (orders > 0) {

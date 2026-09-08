@@ -49,6 +49,7 @@ import {
 } from "./order-fulfilment-progress";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
+import { admitRecord, countRecord } from "./record-allowance";
 import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
@@ -360,8 +361,11 @@ export function registerShippingRoutes(
 	);
 	app.post("/v1/shipments", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
+		const refused = await admitRecord(c, "shipmentsPerMonth", "shipments");
+		if (refused) return refused;
 		const context = await mutationContext(c, "shipments.create", body);
 		const result = await createShipmentCommand(context, body, options.uow);
+		await countRecord(c, "shipmentsPerMonth", result);
 		// A parcel exists, so the order is being worked on. Best effort by design.
 		// ⚠️ Narrowed: a mutation may come back `conflict` or `in_progress`, and
 		// neither carries a result to react to.

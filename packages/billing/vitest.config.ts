@@ -21,6 +21,10 @@ process.env.STRIPE_WEBHOOK_SECRET =
 	process.env.STRIPE_WEBHOOK_SECRET ?? "whsec_test_dummy";
 process.env.STRIPE_PRICE_GROW_MONTHLY =
 	process.env.STRIPE_PRICE_GROW_MONTHLY ?? "price_test_grow_monthly";
+// A storage pack price, so the tests can prove a subscription carrying BOTH a
+// plan item and an add-on item still resolves the plan.
+process.env.STRIPE_PRICE_STORAGE_100_MONTHLY =
+	process.env.STRIPE_PRICE_STORAGE_100_MONTHLY ?? "price_test_storage_100";
 
 export default defineConfig({
 	test: {
@@ -52,6 +56,8 @@ export default defineConfig({
 			STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
 			STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 			STRIPE_PRICE_GROW_MONTHLY: process.env.STRIPE_PRICE_GROW_MONTHLY,
+			STRIPE_PRICE_STORAGE_100_MONTHLY:
+				process.env.STRIPE_PRICE_STORAGE_100_MONTHLY,
 		},
 	},
 });

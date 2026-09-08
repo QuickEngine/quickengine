@@ -323,7 +323,7 @@ export function registerProductsServicesRoutes(
 				);
 			}
 			// ⚠️ Images only. A video is measured by the per-kind ceiling below,
-			// which is 500 MB on Solo and scales with the plan; applying the image
+			// which is 500 MB on Free and scales with the plan; applying the image
 			// limit here would refuse every video before it got there.
 			if (!isVideo && file.size > MAX_IMAGE_BYTES) {
 				return respondError(

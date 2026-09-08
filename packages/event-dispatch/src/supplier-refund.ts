@@ -308,6 +308,7 @@ async function tellSupplier(
 			subject: `Canceled: purchase order ${po.number} from ${brand.name}`,
 			html: `<pre style="font:14px/1.5 monospace;white-space:pre-wrap">${body}</pre>`,
 			text: body,
+			workspaceId,
 		});
 	} catch (error) {
 		log("supplier-refund.notice_failed", {

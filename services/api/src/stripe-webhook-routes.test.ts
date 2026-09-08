@@ -3,7 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const constructStripeEvent = vi.fn();
 const handleStripeEvent = vi.fn();
 
-vi.mock("@quickengine/billing", () => ({
+/**
+ * ⚠️ Partial, so it must keep whatever the module graph actually reads at
+ * import time, not only what this test calls. `openapi-requests.ts` pulls in
+ * `billing-info-routes.ts`, whose request schema uses `MAX_STORAGE_PACKS` while
+ * the module is still evaluating, and a mock missing it fails the whole file to
+ * load rather than any single assertion.
+ */
+vi.mock("@quickengine/billing", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@quickengine/billing")>()),
 	constructStripeEvent: (...args: unknown[]) => constructStripeEvent(...args),
 	handleStripeEvent: (...args: unknown[]) => handleStripeEvent(...args),
 }));

@@ -76,7 +76,7 @@ const WARN_AT = 0.8;
  */
 // 🔴 `ordersPerMonth` belongs here and `activeProducts` deliberately does not,
 // by exactly the rule above. Running out of orders refuses real sales, so the
-// merchant has to see it coming: on Solo one order is allowed past the ceiling
+// merchant has to see it coming: on Free one order is allowed past the ceiling
 // and then nothing, and this card is what makes that a warning rather than an
 // ambush. Being at 25 of 25 products is just a full catalog, and belongs in the
 // soft wall shown when somebody tries to add the twenty-sixth.

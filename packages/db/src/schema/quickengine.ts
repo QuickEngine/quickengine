@@ -519,6 +519,21 @@ export const quickengineSubscriptions = pgTable(
 			withTimezone: true,
 		}),
 		cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+		/**
+		 * Extra storage bought as an add-on, stacked on the plan's own allowance.
+		 *
+		 * 🔴 Held here rather than read from Stripe on demand. Every storage check
+		 * needs the allowance, so asking Stripe for it would put a network call on
+		 * the path of every upload. Stripe stays authoritative for the CHARGE; this
+		 * is the cached answer to "how much room do they have", reconciled by the
+		 * subscription webhook.
+		 *
+		 * ⚠️ Null pack with a non-zero quantity, or the reverse, means nothing.
+		 * `purchasedStorageBytes` treats either as no packs at all rather than
+		 * guessing, so a half-written row under-grants instead of over-granting.
+		 */
+		storagePackId: text("storage_pack_id"),
+		storagePackQuantity: integer("storage_pack_quantity").default(0).notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

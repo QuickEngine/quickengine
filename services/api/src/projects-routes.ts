@@ -35,6 +35,7 @@ import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
+import { admitRecord, countRecord } from "./record-allowance";
 import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
@@ -107,10 +108,11 @@ export function registerProjectsRoutes(
 	app.post("/v1/projects", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
 		const context = await mutationContext(c, "projects.create", body);
-		return respondMutation(
-			c,
-			await createProjectCommand(context, body, options.uow),
-		);
+		const refused = await admitRecord(c, "projectsPerMonth", "projects");
+		if (refused) return refused;
+		const created = await createProjectCommand(context, body, options.uow);
+		await countRecord(c, "projectsPerMonth", created);
+		return respondMutation(c, created);
 	});
 	app.get("/v1/projects/:id", readAccess, readLimit, async (c) => {
 		const project = await getProjectDto(

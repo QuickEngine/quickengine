@@ -2,7 +2,7 @@ import type {
 	QuickEngineBillingCycle,
 	QuickEnginePlanId,
 } from "@quickengine/db/schema/quickengine";
-import { getStripePriceId } from "./plans";
+import { billableSeats, getStripePriceId, isPerSeatPlan } from "./plans";
 import { getStripe } from "./stripe";
 import { findOrCreateStripeCustomer } from "./subscriptions";
 
@@ -44,7 +44,22 @@ export const createSubscriptionForPaymentElement = async ({
 		name: billingName,
 	});
 
-	const quantity = Math.max(1, Math.floor(seats ?? 1));
+	/**
+	 * 🔴 A per-seat plan uses its OWN floor, not one.
+	 *
+	 * This was `Math.max(1, ...)`, which meant somebody subscribing to Expand
+	 * was charged for a single seat at checkout: $59 instead of $944. The
+	 * sixteen seat minimum lived in `billableSeats`, which only the seat SYNC
+	 * called, so the correction arrived on their next invoice as a sixteenfold
+	 * surprise. A first charge that is 6% of the real price is worse than a
+	 * refusal.
+	 *
+	 * ⚠️ `billableSeats` is the single source of that floor. Anything computing
+	 * a per-seat quantity has to go through it, or the two disagree and the one
+	 * the customer sees first is the wrong one.
+	 */
+	const requested = Math.max(1, Math.floor(seats ?? 1));
+	const quantity = isPerSeatPlan(planId) ? billableSeats(requested) : requested;
 
 	/**
 	 * A code the customer typed, resolved before the subscription is created.

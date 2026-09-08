@@ -56,6 +56,85 @@ const METERS = [
 		format: "count",
 		consequence: "Outbound webhooks stop being delivered.",
 	},
+	{
+		key: "emailsSent",
+		label: "Emails sent",
+		format: "count",
+		// Never blocked, only billed: refusing to send an order confirmation
+		// strands the customer's customer, who has no idea a limit exists.
+		consequence: "Mail keeps going out, charged at $1 per thousand.",
+	},
+	/**
+	 * The business records, and every one of them is capped on Free only.
+	 *
+	 * 🔴 They were metered, priced and enforced without ever appearing on this
+	 * page, so the first a free account knew of a limit was being refused by it.
+	 * A limit somebody cannot see is a trap rather than a plan.
+	 *
+	 * ⚠️ On every paid tier these are unlimited, so the rows draw no bar and read
+	 * "no limit". That is the point of showing them: it is the clearest statement
+	 * of what upgrading actually buys.
+	 */
+	{
+		key: "ordersPerMonth",
+		label: "Orders",
+		format: "count",
+		consequence: "You keep selling and pay 25 cents an order.",
+	},
+	{
+		key: "activeProducts",
+		label: "Products listed",
+		format: "count",
+		consequence: "You keep listing and pay 50 cents an item.",
+	},
+	{
+		key: "bookingsPerMonth",
+		label: "Bookings",
+		format: "count",
+		consequence: "You keep booking and pay 25 cents a booking.",
+	},
+	{
+		key: "invoicesPerMonth",
+		label: "Invoices",
+		format: "count",
+		consequence: "You keep invoicing and pay 25 cents an invoice.",
+	},
+	{
+		key: "quotesPerMonth",
+		label: "Quotes",
+		format: "count",
+		consequence: "You keep quoting and pay 25 cents a quote.",
+	},
+	{
+		key: "contractsPerMonth",
+		label: "Contracts",
+		format: "count",
+		consequence: "You keep going and pay 25 cents a contract.",
+	},
+	{
+		key: "projectsPerMonth",
+		label: "Projects",
+		format: "count",
+		consequence: "You keep going and pay 25 cents a project.",
+	},
+	{
+		key: "timeEntriesPerMonth",
+		label: "Time entries",
+		format: "count",
+		consequence: "You keep tracking and pay 25 cents an entry.",
+	},
+	{
+		key: "shipmentsPerMonth",
+		label: "Shipments",
+		format: "count",
+		consequence: "You keep shipping and pay 25 cents a shipment.",
+	},
+	{
+		key: "clientsPerMonth",
+		label: "Clients",
+		format: "count",
+		consequence: "You keep adding and pay 25 cents a client.",
+	},
 ] as const;
 
 const compact = new Intl.NumberFormat("en", { notation: "compact" });

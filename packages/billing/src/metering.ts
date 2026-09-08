@@ -18,6 +18,7 @@ import {
 	type MeterKey,
 	PLANS,
 	type PlanCapability,
+	purchasedStorageBytes,
 } from "./plans";
 
 export type { LimitCheck, LimitState } from "./_metering-core";
@@ -32,28 +33,67 @@ type MeterInput = { scopeId: string; meter: MeterKey; amount?: number };
 const ORG_SCOPE_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function getAccountPlanId(
-	scopeId: string,
-): Promise<QuickEnginePlanId> {
+/**
+ * Everything billing knows about an account, from one row.
+ *
+ * 🔴 One read rather than two. The plan and the storage add-on come from the
+ * same subscription row and are needed together on every limit check, so
+ * splitting them into two queries would double the database work on the hottest
+ * path in the product for no reason other than tidiness.
+ *
+ * ⚠️ An account that is not entitled gets the Free answer for BOTH. Storage
+ * packs are an add-on to a live subscription, so a lapsed account past its grace
+ * loses the extra room along with the plan. Nothing is deleted by that: the
+ * gauge refuses new uploads and the bytes stay exactly where they are.
+ */
+type AccountBilling = {
+	planId: QuickEnginePlanId;
+	storagePackId: string | null;
+	storagePackQuantity: number;
+};
+
+const FREE_BILLING: AccountBilling = {
+	planId: "free",
+	storagePackId: null,
+	storagePackQuantity: 0,
+};
+
+async function readAccountBilling(scopeId: string): Promise<AccountBilling> {
 	if (!ORG_SCOPE_PATTERN.test(scopeId)) {
-		return "free";
+		return FREE_BILLING;
 	}
 	const [row] = await db
 		.select({
 			planId: quickengineSubscriptions.planId,
 			status: quickengineSubscriptions.status,
 			currentPeriodEndsAt: quickengineSubscriptions.currentPeriodEndsAt,
+			storagePackId: quickengineSubscriptions.storagePackId,
+			storagePackQuantity: quickengineSubscriptions.storagePackQuantity,
 		})
 		.from(quickengineSubscriptions)
 		.where(eq(quickengineSubscriptions.organizationId, scopeId))
 		.limit(1);
 	if (!row) {
-		return "free";
+		return FREE_BILLING;
 	}
-	if (row.status === "active" || row.status === "trialing") {
-		return row.planId;
+	const entitled =
+		row.status === "active" ||
+		row.status === "trialing" ||
+		withinLapseGrace(row.currentPeriodEndsAt);
+	if (!entitled) {
+		return FREE_BILLING;
 	}
-	return withinLapseGrace(row.currentPeriodEndsAt) ? row.planId : "free";
+	return {
+		planId: row.planId,
+		storagePackId: row.storagePackId,
+		storagePackQuantity: row.storagePackQuantity,
+	};
+}
+
+export async function getAccountPlanId(
+	scopeId: string,
+): Promise<QuickEnginePlanId> {
+	return (await readAccountBilling(scopeId)).planId;
 }
 
 /**
@@ -171,12 +211,32 @@ export async function hasCapability(
 export async function getAccountLimits(
 	scopeId: string,
 ): Promise<{ planId: QuickEnginePlanId; limits: PlanLimits }> {
-	const planId = await getAccountPlanId(scopeId);
-	if (!isPerSeatPlan(planId)) {
-		return { planId, limits: getPlanLimits(planId) };
-	}
-	const seats = await readValue(scopeId, "seats");
-	return { planId, limits: getPlanLimits(planId, seats) };
+	const billing = await readAccountBilling(scopeId);
+	const { planId } = billing;
+	const base = isPerSeatPlan(planId)
+		? getPlanLimits(planId, await readValue(scopeId, "seats"))
+		: getPlanLimits(planId);
+
+	/**
+	 * Purchased storage stacks on top of whatever the plan includes.
+	 *
+	 * ⚠️ Applied here rather than inside `getPlanLimits`, which answers "what
+	 * does this PLAN include" and is read by the pricing page. A pack is a
+	 * property of one account, not of a tier, and folding it into the plan's own
+	 * answer would show every visitor an allowance somebody else paid for.
+	 *
+	 * An unlimited allowance stays unlimited: there is nothing to add to.
+	 */
+	const extra = purchasedStorageBytes(
+		billing.storagePackId,
+		billing.storagePackQuantity,
+	);
+	const limits =
+		extra > 0 && base.storageBytes !== null
+			? { ...base, storageBytes: base.storageBytes + extra }
+			: base;
+
+	return { planId, limits };
 }
 
 /** Read-only status of one meter for an account. */

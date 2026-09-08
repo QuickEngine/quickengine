@@ -857,6 +857,9 @@ importers:
 
   packages/email:
     dependencies:
+      '@quickengine/billing':
+        specifier: workspace:*
+        version: link:../billing
       '@quickengine/env':
         specifier: workspace:*
         version: link:../env

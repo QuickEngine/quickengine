@@ -1,0 +1,2 @@
+ALTER TABLE "quickengine_subscriptions" ADD COLUMN "storage_pack_id" text;--> statement-breakpoint
+ALTER TABLE "quickengine_subscriptions" ADD COLUMN "storage_pack_quantity" integer DEFAULT 0 NOT NULL;

@@ -18,5 +18,6 @@ export * from "./supplier-reconciliation";
 export * from "./supplier-refund";
 export * from "./supplier-settlement";
 export * from "./supplier-settlement-sweep";
+export * from "./usage-billing-run";
 export * from "./webhook-security";
 export * from "./webhooks";

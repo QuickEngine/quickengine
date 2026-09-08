@@ -119,6 +119,24 @@ export type PlanLimits = {
 	 * comes first; the limits come after.
 	 */
 	webhookDeliveries: number | null;
+	/**
+	 * Counter: emails sent on a customer's behalf this billing period.
+	 *
+	 * 🔴 Only mail the CUSTOMER'S business sends counts: order confirmations,
+	 * shipping notices, booking reminders, receipts, supplier handoffs. Password
+	 * resets, sign-in links, email verification and organization invites are OUR
+	 * mail about their account, and charging somebody to reset their own password
+	 * would be billing them for using the login screen.
+	 *
+	 * The split is enforced by construction rather than by a list to keep in
+	 * step: a send is only counted when the caller passes an `organizationId`,
+	 * and the platform auth paths have no reason to.
+	 *
+	 * ⚠️ Charged on EVERY tier, unlike the record meters, because every send
+	 * costs us roughly $0.0004 with the mail provider. Recovering a real cost is
+	 * not the same as taxing somebody's success.
+	 */
+	emailsSent: number | null;
 };
 
 /**
@@ -234,6 +252,7 @@ export const PLANS: readonly PlanDefinition[] = [
 			seats: 1,
 			workspaces: 1,
 			webhookDeliveries: null,
+			emailsSent: 100,
 		},
 	},
 	// 🔴 THE rung. Everything below it is the free single merchant system;
@@ -260,6 +279,7 @@ export const PLANS: readonly PlanDefinition[] = [
 		seats: 5,
 		workspaces: 3,
 		webhookDeliveries: null,
+		emailsSent: 10_000,
 	}),
 	// ⚠️ RETIRED 2026-09-06. Kept ONLY until stored rows are migrated (launch to
 	// commerce, grow to scale). Never shown, never sold, no Stripe price. They
@@ -283,6 +303,7 @@ export const PLANS: readonly PlanDefinition[] = [
 		seats: 3,
 		workspaces: 2,
 		webhookDeliveries: null,
+		emailsSent: 2_500,
 	}),
 	paidPlan("grow", "Grow", {
 		apiRequests: 1_000_000,
@@ -302,6 +323,7 @@ export const PLANS: readonly PlanDefinition[] = [
 		seats: 8,
 		workspaces: 5,
 		webhookDeliveries: null,
+		emailsSent: 5_000,
 	}),
 	paidPlan("scale", "Scale", {
 		apiRequests: 5_000_000,
@@ -320,6 +342,7 @@ export const PLANS: readonly PlanDefinition[] = [
 		seats: 15,
 		workspaces: 10,
 		webhookDeliveries: null,
+		emailsSent: 50_000,
 	}),
 	// 🔴 Teams is the only PER-SEAT tier. Launch, Grow and Scale are flat prices
 	// with a seat ceiling; Teams bills $30 x quantity, where the quantity IS the
@@ -368,6 +391,7 @@ export const PLANS: readonly PlanDefinition[] = [
 			seats: null,
 			workspaces: null,
 			webhookDeliveries: null,
+			emailsSent: 10_000,
 		},
 	},
 	// 🔴 INTERNAL. `enterprise` is the STORED id for what the ladder calls
@@ -406,6 +430,7 @@ export const PLANS: readonly PlanDefinition[] = [
 			seats: null,
 			workspaces: null,
 			webhookDeliveries: null,
+			emailsSent: null,
 		},
 	},
 
@@ -446,6 +471,7 @@ export const PLANS: readonly PlanDefinition[] = [
 			seats: null,
 			workspaces: null,
 			webhookDeliveries: null,
+			emailsSent: null,
 		},
 	},
 ] as const;
@@ -488,6 +514,150 @@ export const isPerSeatPlan = (id: QuickEnginePlanId): boolean => id === "teams";
  */
 export const billableSeats = (memberCount: number): number =>
 	Math.max(TEAMS_MIN_SEATS, memberCount);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STORAGE PACKS
+//
+// Extra storage, bought as a recurring add-on and stacked on top of whatever the
+// plan already includes. The only thing on the ladder that is sold separately
+// from a tier, because it is the only allowance a customer can outgrow without
+// outgrowing anything else: a shop that films every product needs room, not
+// seats, not workspaces, not throughput.
+//
+// 🔴 Non-linear on purpose. $15 buys FIVE times what $5 does, so there is a
+// reason to jump rather than stack five small packs. Our cost is $0.015/GB, so
+// even the large pack keeps a 50% margin.
+//
+// ⚠️ Which creates a trap, and `storageRebateCents` is what defuses it. Overage
+// is 5 cents a gigabyte, exactly the SMALL pack rate, so the larger packs are
+// cheaper per gigabyte than overage is. Somebody who buys the large pack and
+// uses 200 GB of it would pay $15 where pure overage would have cost $10: worse
+// off for committing, which is the opposite of what a bigger pack should mean.
+// Read that function before changing any number here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type StoragePackId = "small" | "medium" | "large";
+
+export type StoragePack = {
+	id: StoragePackId;
+	/** How much one unit of this pack adds. */
+	bytes: number;
+	/**
+	 * The monthly list price, in cents.
+	 *
+	 * ⚠️ A MIRROR of what Stripe charges, not the source of it. Stripe's price is
+	 * authoritative for what a customer actually pays; this number exists so the
+	 * rebate can compare a pack against overage without a network call on every
+	 * billing run. If the two ever disagree, Stripe is right and this is a bug.
+	 */
+	cents: number;
+	priceEnv: Record<QuickEngineBillingCycle, string>;
+};
+
+export const STORAGE_PACKS: readonly StoragePack[] = [
+	{
+		id: "small",
+		bytes: 100 * GB,
+		cents: 500,
+		priceEnv: {
+			monthly: "STRIPE_PRICE_STORAGE_100_MONTHLY",
+			annual: "STRIPE_PRICE_STORAGE_100_ANNUAL",
+		},
+	},
+	{
+		id: "medium",
+		bytes: 250 * GB,
+		cents: 1_000,
+		priceEnv: {
+			monthly: "STRIPE_PRICE_STORAGE_250_MONTHLY",
+			annual: "STRIPE_PRICE_STORAGE_250_ANNUAL",
+		},
+	},
+	{
+		id: "large",
+		bytes: 500 * GB,
+		cents: 1_500,
+		priceEnv: {
+			monthly: "STRIPE_PRICE_STORAGE_500_MONTHLY",
+			annual: "STRIPE_PRICE_STORAGE_500_ANNUAL",
+		},
+	},
+] as const;
+
+export const getStoragePack = (id: string): StoragePack | undefined =>
+	STORAGE_PACKS.find((pack) => pack.id === id);
+
+/** The Stripe price for a pack on a cycle, or undefined when it is not wired. */
+export const getStoragePackPriceId = (
+	id: StoragePackId,
+	cycle: QuickEngineBillingCycle,
+): string | undefined => {
+	const envKey = getStoragePack(id)?.priceEnv[cycle];
+	return envKey ? process.env[envKey] : undefined;
+};
+
+/** Reverse-map a Stripe price back to a pack, for the webhook. */
+export const storagePackForPriceId = (
+	priceId: string,
+): StoragePack | undefined => {
+	for (const pack of STORAGE_PACKS) {
+		for (const envKey of Object.values(pack.priceEnv)) {
+			if (process.env[envKey] === priceId) return pack;
+		}
+	}
+	return undefined;
+};
+
+/** How many bytes a holding of `quantity` packs adds to the plan allowance. */
+export const purchasedStorageBytes = (
+	packId: string | null,
+	quantity: number,
+): number => {
+	const pack = packId ? getStoragePack(packId) : undefined;
+	if (!pack || quantity <= 0) return 0;
+	return pack.bytes * Math.floor(quantity);
+};
+
+/**
+ * What a customer gets back when their packs cost more than overage would have.
+ *
+ * 🔴 The rule: **never charge more than the cheaper of pack or overage.** A pack
+ * is a customer predicting their own month, and predicting it generously must
+ * never cost more than not predicting it at all. Without this, buying the large
+ * pack and using 200 GB of it costs $15 where drifting into overage would have
+ * cost $10, and the honest advice to a customer would be "do not buy the thing
+ * we are selling you".
+ *
+ * ⚠️ Fixed HERE rather than by raising the overage rate to match the large pack.
+ * That would make ordinary usage more expensive in order to protect a pricing
+ * table, which is backwards: overage is what most people meet, packs are what a
+ * few people choose.
+ *
+ * Returns cents to credit, never negative. Zero is the common case by far.
+ */
+export const storageRebateCents = ({
+	packId,
+	quantity,
+	bytesOverPlan,
+}: {
+	packId: string | null;
+	quantity: number;
+	/** Usage above the PLAN allowance, before the packs are counted. */
+	bytesOverPlan: number;
+}): number => {
+	const pack = packId ? getStoragePack(packId) : undefined;
+	if (!pack || quantity <= 0) return 0;
+
+	const packCents = pack.cents * Math.floor(quantity);
+	const perGb = OVERAGE.storageBytes?.cents ?? 0;
+	// Whole gigabytes, matching how overage itself is billed, so the comparison
+	// is against the bill they would actually have received.
+	const overageCents = Math.max(0, Math.floor(bytesOverPlan / GB)) * perGb;
+
+	// ⚠️ Capped at what the packs cost. Somebody using none of their storage owes
+	// nothing and is refunded the packs, never handed a credit beyond them.
+	return Math.max(0, Math.min(packCents, packCents - overageCents));
+};
 
 /** The meters the engine tracks. */
 export type MeterKey = keyof PlanLimits;
@@ -540,6 +710,15 @@ export const OVERAGE: Record<MeterKey, OveragePrice | null> = {
 	// their own month. Our cost is $0.015/GB, so this is a 3.3x margin without
 	// being the dollar a gigabyte some providers charge.
 	storageBytes: { blockSize: 1024 ** 3, cents: 5 },
+	// 🔴 Charged on every tier, because every send costs us money with the mail
+	// provider. A thousand emails costs us about 40 cents and is sold for a
+	// dollar, which is a real margin without being the several dollars a
+	// thousand a dedicated sending platform charges.
+	//
+	// ⚠️ Blocks of a thousand, so a customer a few hundred over their allowance
+	// owes nothing at all. That is deliberate slack: mail volume is spiky and a
+	// busy fortnight should not produce a surprise line.
+	emailsSent: { blockSize: 1_000, cents: 100 },
 	// Counted, never capped, and not charged until real volume says what it costs.
 	webhookDeliveries: null,
 	// 🔴 Priced on FREE ONLY. See `overageFor`, which is the function anything
@@ -561,6 +740,38 @@ export const OVERAGE: Record<MeterKey, OveragePrice | null> = {
 	workspaces: null,
 };
 
+/**
+ * What each meter is called on a customer's invoice.
+ *
+ * 🔴 Nobody outside this repository knows what `storageBytes` is. An invoice
+ * line is one of the few things a customer reads carefully, and reading a
+ * variable name on it tells them the bill was generated by somebody who was not
+ * thinking about them.
+ *
+ * ⚠️ Sentence case, no punctuation, no dashes: these are dropped into a
+ * generated description and the product does not use dash punctuation in
+ * anything a customer reads.
+ */
+export const METER_LABELS: Record<MeterKey, string> = {
+	apiRequests: "API requests",
+	aiActions: "AI actions",
+	emailsSent: "Emails sent",
+	storageBytes: "Storage",
+	ordersPerMonth: "Orders",
+	activeProducts: "Products listed",
+	bookingsPerMonth: "Bookings",
+	invoicesPerMonth: "Invoices",
+	contractsPerMonth: "Contracts",
+	quotesPerMonth: "Quotes",
+	projectsPerMonth: "Projects",
+	timeEntriesPerMonth: "Time entries",
+	shipmentsPerMonth: "Shipments",
+	clientsPerMonth: "Clients",
+	seats: "Seats",
+	workspaces: "Workspaces",
+	webhookDeliveries: "Webhook deliveries",
+};
+
 export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
 	apiRequests: "counter",
 	aiActions: "counter",
@@ -580,6 +791,7 @@ export const METER_KIND: Record<MeterKey, "counter" | "gauge"> = {
 	seats: "gauge",
 	workspaces: "gauge",
 	webhookDeliveries: "counter",
+	emailsSent: "counter",
 };
 
 /**
@@ -702,6 +914,7 @@ export const getPlanLimits = (
 		clientsPerMonth: plan.limits.clientsPerMonth,
 		storageBytes: scale(plan.limits.storageBytes),
 		webhookDeliveries: scale(plan.limits.webhookDeliveries),
+		emailsSent: scale(plan.limits.emailsSent),
 		seats: plan.limits.seats,
 		workspaces: plan.limits.workspaces,
 	};

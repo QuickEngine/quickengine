@@ -133,7 +133,9 @@ request either happened completely or not at all, and there is always a record o
   decrease — the mechanism that keeps logic in the API rather than in the frontend
 
 **Metering charges only what costs real infrastructure** — storage, AI, email, API volume.
-Never a business outcome the customer earns: no per-invoice fee, no per-customer fee, ever.
+**No plan anybody pays for is ever charged per order, per invoice or per customer.** On the free
+plan those records carry a price, because the alternative is shutting a business down mid-month;
+a monthly ceiling keeps that bounded, and it disappears entirely on any paid tier.
 Storage counts every upload, whichever screen it came from, and removing something frees the
 space straight away while the file itself is kept briefly so a mistake can be undone.
 
@@ -192,18 +194,34 @@ never through a public issue containing an exploit, credential or customer data.
 
 ## Plans
 
-| | Free | Launch | Grow | Scale | Expand | Custom |
-|---|---|---|---|---|---|---|
-| Price / mo | $0 | $30 | $90 | $240 | **$25 per seat** | conversation |
-| Seats | 1 | 3 | 8 | 20 | 12 minimum | custom |
-| Workspaces | 1 | 2 | 5 | 15 | per-seat model | custom |
-| Storage | 2 GB | 25 GB | 150 GB | 500 GB | 50 GB per seat | custom |
-| API requests | 50k | 250k | 1M | 5M | 500k per seat | custom |
-| AI actions | 25 | 500 | 2,500 | 10,000 | 1,500 per seat | custom |
+| | Free | Commerce | Scale | Expand | Custom |
+|---|---|---|---|---|---|
+| Price / mo | $0 | **$149** | **$399** | **$59 per seat**, 16 minimum | conversation |
+| Suppliers and partners | no | yes | yes | yes | yes |
+| Seats | 1 | 5 | 15 | unlimited | custom |
+| Workspaces | 1 | 3 | 10 | unlimited | custom |
+| Records / mo | 25 of each | unlimited | unlimited | unlimited | unlimited |
+| Storage | 2 GB | 100 GB | 500 GB | 100 GB per seat | custom |
+| API requests | 25k | 1M | 5M | 500k per seat | unlimited |
+| AI actions | 25 | 1,500 | 6,000 | 1,500 per seat | 100,000 |
+| Emails / mo | 100 | 10,000 | 50,000 | 10,000 per seat | unlimited |
+| **Share of your sales** | **0%** | **0%** | **0%** | **0%** | **0%** |
 
-Annual is ten months on every tier. **Expand bills per seat and is planned to start at 12.**
-QuickEngine is pre-release: this table is the intended launch model, while final entitlement,
-extra-seat, overage and live Stripe behavior still must be completed and verified before paid
+Annual is ten months on every tier. All prices are USD and exclude tax.
+
+**One paid tier unlocks everything the free one does not: a second party on your orders** — a
+supplier, a fulfiller, a partner who gets paid. Volume decides which paid tier, not which
+features. Every module is available on every tier.
+
+**The free plan is metered, not walled.** Past an allowance you keep working and pay for what you
+use, up to a monthly ceiling set below the price of the plan that would have made it unnecessary.
+Records cost nothing on any plan somebody pays for.
+
+**Extra storage** is sold as an add-on to any paid plan: 100 GB for $5 a month, 250 GB for $10,
+500 GB for $15. The larger sizes are cheaper per gigabyte than paying as you go, and if a pack
+goes unfilled the difference is credited back, so buying ahead is never the more expensive choice.
+
+QuickEngine is pre-release: live Stripe behavior still must be verified end to end before paid
 subscriptions open.
 
 A hidden **Bypass** tier exists for internal use. It is never sold or listed: unlimited on

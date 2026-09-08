@@ -11,6 +11,7 @@ const ORG1 = "00000000-0000-4000-8000-0000000ccd01";
 const ORG2 = "00000000-0000-4000-8000-0000000ccd02";
 const ORG3 = "00000000-0000-4000-8000-0000000ccd03";
 const ORG4 = "00000000-0000-4000-8000-0000000ccd04";
+const ORG5 = "00000000-0000-4000-8000-0000000ccd05";
 
 describe("webhook signature verification", () => {
 	it("rejects a tampered/invalid signature", () => {
@@ -51,6 +52,47 @@ describe("webhook → subscription sync (money path)", () => {
 		expect(row?.status).toBe("active");
 		expect(row?.stripe_subscription_id).toBe("sub_test_123");
 		expect(row?.billing_cycle).toBe("monthly");
+	});
+
+	/**
+	 * 🔴 A subscription stopped being one line the day storage packs were added
+	 * to it, and Stripe promises nothing about the order of `items.data`. Reading
+	 * position zero would eventually find the add-on, fail to map it to a plan,
+	 * and fall back to "free" — silently downgrading a paying customer from a
+	 * routine webhook, with no failed payment to explain it.
+	 *
+	 * The add-on is deliberately FIRST here, which is the order that broke it.
+	 */
+	it("finds the plan when an add-on item comes first", async () => {
+		await insertOrg(ORG5);
+		const sub = fakeSubscription({
+			organizationId: ORG5,
+			customer: "cus_5",
+			priceId: "price_test_grow_monthly",
+			status: "active",
+		});
+		const planItem = sub.items.data[0];
+		sub.items.data = [
+			{
+				...planItem,
+				id: "si_storage",
+				quantity: 2,
+				price: {
+					...planItem.price,
+					id: "price_test_storage_100",
+				},
+			} as (typeof sub.items.data)[number],
+			planItem,
+		];
+
+		await handleStripeEvent(event("customer.subscription.updated", sub));
+
+		const row = await getSubRow(ORG5);
+		expect(row?.plan_id).toBe("grow");
+		// The add-on is reconciled from the same event, so the allowance follows
+		// whatever the customer is actually paying for.
+		expect(row?.storage_pack_id).toBe("small");
+		expect(row?.storage_pack_quantity).toBe(2);
 	});
 
 	it("downgrades to free + canceled when the subscription is deleted", async () => {

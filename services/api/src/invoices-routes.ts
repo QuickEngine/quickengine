@@ -20,6 +20,7 @@ import { buildMutationContext } from "./mutation-policy";
 import { respondMutation } from "./mutation-response";
 import type { PlatformDependencies, PlatformEnv } from "./platform-types";
 import { createRateLimit, RATE_LIMIT_POLICIES } from "./rate-limit";
+import { admitRecord, countRecord } from "./record-allowance";
 import { respond, respondError } from "./respond";
 
 const uuid = z.uuid();
@@ -121,10 +122,11 @@ export function registerInvoicesRoutes(
 	app.post("/v1/invoices", writeAccess, writeLimit, async (c) => {
 		const body = await c.req.json();
 		const context = await mutationContext(c, "invoices.create", body);
-		return respondMutation(
-			c,
-			await createInvoiceCommand(context, body, options.uow),
-		);
+		const refused = await admitRecord(c, "invoicesPerMonth", "invoices");
+		if (refused) return refused;
+		const created = await createInvoiceCommand(context, body, options.uow);
+		await countRecord(c, "invoicesPerMonth", created);
+		return respondMutation(c, created);
 	});
 	app.get("/v1/invoices/:id", readAccess, readLimit, async (c) => {
 		const invoice = await getInvoiceDto(

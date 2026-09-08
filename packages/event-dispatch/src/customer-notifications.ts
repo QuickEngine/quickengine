@@ -648,6 +648,7 @@ async function defaultSend(input: {
 	subject: string;
 	html: string;
 	text: string;
+	workspaceId?: string;
 }) {
 	const { getEmailProvider } = await import("@quickengine/email");
 	return getEmailProvider().send(input);
@@ -661,6 +662,8 @@ export function customerNotificationHandler(
 		subject: string;
 		html: string;
 		text: string;
+		/** Present means METERED. This is the business's mail to its own buyers. */
+		workspaceId?: string;
 	}) => Promise<unknown> = defaultSend,
 	log: (message: string, detail: Record<string, unknown>) => void = (
 		message,
@@ -707,6 +710,9 @@ export function customerNotificationHandler(
 					subject: notification.email.subject,
 					html: notification.email.html,
 					text: notification.email.text,
+					// Billable: a receipt to somebody else's customer, sent as their
+					// business. Platform mail about an account is not metered.
+					workspaceId: event.workspaceId,
 				});
 			} catch (error) {
 				// Swallowed on purpose — see the note at the top of this file.

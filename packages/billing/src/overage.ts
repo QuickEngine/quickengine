@@ -1,4 +1,4 @@
-import { type MeterKey, overageFor } from "./plans";
+import { METER_LABELS, type MeterKey, overageFor } from "./plans";
 import { getStripe, isStripeConfigured } from "./stripe";
 import { getSubscriptionForOrg } from "./subscriptions";
 
@@ -29,11 +29,25 @@ export async function billOverage({
 	organizationId,
 	meter,
 	unitsOverAllowance,
+	maxCents,
 }: {
 	organizationId: string;
 	meter: MeterKey;
 	/** Total units past the allowance this period, not the increment. */
 	unitsOverAllowance: number;
+	/**
+	 * The most this line may charge, in cents.
+	 *
+	 * 🔴 How the free-tier spend cap is applied. A free account keeps trading
+	 * past its allowance and pays for what it uses, and this is what stops that
+	 * becoming an unbounded bill from one good month. The caller tracks the
+	 * budget across meters and passes what is left.
+	 *
+	 * ⚠️ Clamps whole BLOCKS, so a capped line lands on a block boundary rather
+	 * than charging a fraction of one. Undefined means no cap, which is every
+	 * paying customer.
+	 */
+	maxCents?: number;
 }): Promise<{ charged: boolean; blocks: number; cents: number }> {
 	const none = { charged: false, blocks: 0, cents: 0 };
 
@@ -57,7 +71,11 @@ export async function billOverage({
 	 * until they cross the next block, which keeps a bill legible and stops a
 	 * single stray request producing a one cent line item.
 	 */
-	const blocks = Math.floor(unitsOverAllowance / price.blockSize);
+	const uncapped = Math.floor(unitsOverAllowance / price.blockSize);
+	const blocks =
+		maxCents === undefined
+			? uncapped
+			: Math.min(uncapped, Math.floor(maxCents / price.cents));
 	if (blocks < 1) return none;
 
 	const cents = blocks * price.cents;
@@ -68,7 +86,8 @@ export async function billOverage({
 			customer: subscription.stripeCustomerId,
 			amount: cents,
 			currency: "usd",
-			description: `${meter} overage — ${blocks} × ${price.blockSize.toLocaleString()} (${period})`,
+			// Reads as a sentence on the invoice: what it is, how much of it, when.
+			description: `${METER_LABELS[meter]} over the plan allowance: ${(blocks * price.blockSize).toLocaleString()} in ${period}`,
 			metadata: { organizationId, meter, blocks: String(blocks), period },
 		},
 		{

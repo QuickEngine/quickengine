@@ -8,6 +8,29 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
 
 ### Added
 
+- **Extra storage, in three sizes.** 100 GB for $5 a month, 250 GB for $10, or 500 GB for $15,
+  added to any paid plan and stacked on top of the storage it already includes. Buy it, change
+  size, or drop it whenever you like, and it renews with the rest of your bill rather than
+  arriving as a second one.
+
+- **Buying a bigger pack can never cost you more than not buying one.** The larger sizes work out
+  cheaper per gigabyte than paying as you go, so if you buy ahead and do not fill it, the
+  difference comes back as a credit on the same invoice. You are never worse off for planning
+  ahead, and you never have to do the arithmetic to check.
+
+- **Email is now included in your plan, with a number attached.** Every plan comes with a monthly
+  allowance for the mail your business sends: order confirmations, shipping notices, booking
+  reminders, purchase orders to suppliers. Past that it is a dollar per thousand. Mail we send you
+  about your own account, like a password reset or an invitation, has never counted and still does
+  not.
+
+- **Your mail is never held back for a billing reason.** Going past the allowance is charged, not
+  blocked, because the person waiting on a shipping notice is your customer and has no idea a limit
+  exists.
+
+- **Every allowance now appears on your usage page**, including the ten record allowances and
+  email. Each one says plainly what happens when it runs out.
+
 - **The free plan now works for every kind of business, not just shops.** Bookings, invoices,
   contracts, quotes, projects, time entries, shipments and client records each have their own
   monthly allowance, the same as orders and products always did. Before this, a consultancy could
@@ -40,6 +63,23 @@ This project is pre-release. Until QuickEngine has real users and a stable relea
   and the limit that applies to you is the one the message names.
 
 ### Fixed
+
+- **Usage past an allowance is now actually billed.** The allowances, the prices and the monthly
+  ceiling on the free plan were all in place, and nothing ever charged for them. A monthly run now
+  closes each month and bills what was used, so what the plan page says is what happens.
+
+- **Subscriptions with an add-on no longer read as a free plan.** Adding extra storage puts a
+  second line on a subscription, and the code that reads a subscription back took whichever line
+  came first. It could have found the add-on, failed to recognise it as a plan, and quietly moved a
+  paying customer onto free limits with nothing to explain it.
+
+
+- **The free plan's allowances now actually count.** Bookings, invoices, contracts, quotes,
+  projects, time entries, shipments and client records each had a monthly allowance that nothing
+  measured, so only shops ever met a limit. All eight now count, and going over one offers the
+  same choice as an order does: keep working and pay for what you use, move up a plan, or wait
+  for the month to reset.
+
 
 - **Everything you upload now counts toward your storage.** Product photographs and workspace
   images were never measured, so a plan could be filled without the number moving. They are

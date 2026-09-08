@@ -314,5 +314,6 @@ async function tellCustomerPaymentFailed(
 		subject: rendered.subject,
 		html: rendered.html,
 		text: rendered.text,
+		workspaceId: subscription.workspaceId,
 	});
 }

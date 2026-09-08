@@ -113,6 +113,7 @@ import {
 	workspaceModuleSchema,
 	workspacePublishedSchema,
 } from "./account-workspace-routes";
+import { storageAddOnInputSchema } from "./billing-info-routes";
 import {
 	conversationStatusInputSchema,
 	customerConversationInputSchema,
@@ -201,6 +202,7 @@ export const REQUEST_SCHEMAS: Record<string, z.ZodType> = {
 	pinSavedView: savedViewPinSchema,
 	recordProductEvent: productEventInputSchema,
 	createCreditTopUp: creditTopUpInputSchema,
+	setStorageAddOn: storageAddOnInputSchema,
 	startAgentRun: agentRunInputSchema,
 	setAutoRecharge: autoRechargeInputSchema,
 	createClient: clientRecordInputSchema,

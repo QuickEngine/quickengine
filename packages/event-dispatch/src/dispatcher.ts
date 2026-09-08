@@ -9,6 +9,7 @@ import { mutationRetention, storageCleanup } from "./storage-cleanup";
 import { renewDueSubscriptions } from "./subscription-renewal";
 import { reconcileSupplierPayments } from "./supplier-reconciliation";
 import { settlePendingSupplierPayments } from "./supplier-settlement-sweep";
+import { usageBilling } from "./usage-billing-run";
 import { deliverPendingWebhooks } from "./webhooks";
 
 /**
@@ -185,4 +186,5 @@ export const eventDispatchFunctions = [
 	webhookDelivery,
 	storageCleanup,
 	mutationRetention,
+	usageBilling,
 ];

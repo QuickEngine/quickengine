@@ -6,7 +6,7 @@ import {
 	quickengineSubscriptions,
 } from "@quickengine/db/schema/quickengine";
 import type Stripe from "stripe";
-import { planIdForPriceId } from "./plans";
+import { planIdForPriceId, storagePackForPriceId } from "./plans";
 import { getStripe } from "./stripe";
 
 // Billing is ORG-scoped: the subscription belongs to an organization (a personal org is an
@@ -126,13 +126,46 @@ export const upsertSubscriptionFromStripe = async (
 		return; // Can't map this subscription to an org — nothing to do.
 	}
 
-	const item = sub.items.data[0];
-	const priceId = item?.price?.id;
+	/**
+	 * 🔴 The plan is the item whose price MAPS TO A PLAN, never `data[0]`.
+	 *
+	 * A subscription stopped being one line the day storage packs were added to
+	 * it. Stripe does not promise an order for `items.data`, so reading position
+	 * zero would sooner or later find the storage pack, fail to map it to a plan,
+	 * and fall back to `"free"` — silently downgrading a paying customer to the
+	 * free tier's limits from a routine webhook, with nothing in the logs and no
+	 * failed payment to explain it.
+	 *
+	 * ⚠️ The fallback to `data[0]` only survives for the case it always covered:
+	 * a subscription on a price we do not recognise at all, which still resolves
+	 * to free exactly as before.
+	 */
+	const items = sub.items.data;
+	const planItem =
+		items.find((entry) =>
+			entry.price?.id ? planIdForPriceId(entry.price.id) : false,
+		) ?? items[0];
+	const priceId = planItem?.price?.id;
 	const planId: QuickEnginePlanId =
 		(priceId ? planIdForPriceId(priceId) : undefined) ?? "free";
 	const cycle: QuickEngineBillingCycle =
-		item?.price?.recurring?.interval === "year" ? "annual" : "monthly";
+		planItem?.price?.recurring?.interval === "year" ? "annual" : "monthly";
 	const endSeconds = periodEndSeconds(sub);
+
+	/**
+	 * The storage add-on, reconciled from the same event.
+	 *
+	 * Stripe is the authority on what the customer is actually paying for, so an
+	 * item added, changed or removed anywhere — our own API, the Stripe
+	 * dashboard, a dunning cancellation — lands here. An absent item means no
+	 * packs, which is what clears the allowance when somebody drops the add-on.
+	 */
+	const packItem = items.find((entry) =>
+		entry.price?.id ? storagePackForPriceId(entry.price.id) : false,
+	);
+	const pack = packItem?.price?.id
+		? storagePackForPriceId(packItem.price.id)
+		: undefined;
 
 	const values = {
 		planId,
@@ -142,6 +175,8 @@ export const upsertSubscriptionFromStripe = async (
 		stripeSubscriptionId: sub.id,
 		currentPeriodEndsAt: endSeconds ? new Date(endSeconds * 1000) : null,
 		cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+		storagePackId: pack?.id ?? null,
+		storagePackQuantity: pack ? (packItem?.quantity ?? 0) : 0,
 		updatedAt: new Date(),
 	};
 

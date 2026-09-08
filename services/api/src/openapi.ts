@@ -4441,6 +4441,38 @@ function declaredDocument(config: ApiConfig) {
 					responses: { "200": { description: "The subscription, or null." } },
 				},
 			},
+			"/v1/billing/storage-packs": {
+				get: {
+					operationId: "listStoragePacks",
+					summary: "The extra-storage ladder as configured",
+					description:
+						"Public, like the plan list. Exposes whether a price is configured, never the price id.",
+					responses: { "200": { description: "The packs." } },
+				},
+			},
+			"/v1/billing/storage": {
+				get: {
+					operationId: "getStorageAddOn",
+					summary: "The extra storage an organization holds",
+					description: "Any member of the organization may read this.",
+					parameters: [
+						{ in: "query", name: "organizationId", schema: { type: "string" } },
+					],
+					responses: { "200": { description: "The pack and quantity held." } },
+				},
+				post: {
+					operationId: "setStorageAddOn",
+					summary: "Buy, change or drop extra storage",
+					description:
+						"Owners and admins only: it changes a recurring charge. Absolute rather than incremental, so the body says what the holding should BE and a retry cannot sell the same storage twice. Requires a paid plan; on free, storage past the allowance is already charged at the same rate.",
+					responses: {
+						"200": { description: "The new holding." },
+						"400": { description: "Unknown pack or quantity out of range." },
+						"403": { description: "Not an owner or admin." },
+						"409": { description: "No active subscription to add it to." },
+					},
+				},
+			},
 
 			"/v1/activity": {
 				get: {

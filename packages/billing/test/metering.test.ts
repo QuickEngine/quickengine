@@ -172,6 +172,7 @@ describe("metering engine", () => {
 			"bookingsPerMonth",
 			"clientsPerMonth",
 			"contractsPerMonth",
+			"emailsSent",
 			"invoicesPerMonth",
 			"ordersPerMonth",
 			"projectsPerMonth",

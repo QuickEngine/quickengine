@@ -310,6 +310,12 @@ export const REQUEST_EXAMPLES: Record<string, unknown> = {
 		billingEmail: "billing@northwind.example",
 		savePaymentMethod: false,
 	},
+	setStorageAddOn: {
+		organizationId: "3f1c9b52-8d64-4a1e-9f77-2c5e0d6b8a41",
+		packId: "medium",
+		// Absolute, not incremental: this is what the holding should BE.
+		quantity: 2,
+	},
 	setAutoRecharge: {
 		enabled: true,
 		thresholdMicros: 50_000_000,

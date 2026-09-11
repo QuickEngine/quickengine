@@ -43,7 +43,7 @@
 		"drizzle-kit": "^0.31.10",
 		"tsx": "^4.23.0",
 		"typescript": "5.9.2",
-		"vitest": "^3.2.6",
+		"vitest": "^5.0.0",
 		"@vercel/blob": "^2.6.1"
 	}
 }

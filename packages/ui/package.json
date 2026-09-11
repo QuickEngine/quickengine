@@ -84,6 +84,6 @@
 		"@types/three": "^0.185.4",
 		"tailwindcss": "^4",
 		"typescript": "^5",
-		"vitest": "^3.2.6"
+		"vitest": "^5.0.0"
 	}
 }

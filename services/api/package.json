@@ -61,7 +61,7 @@
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"@types/node": "^22.15.3",
+		"@types/node": "^26.5.0",
 		"tsx": "^4.21.0",
 		"tsup": "^8.4.0",
 		"typescript": "^5.9.3",

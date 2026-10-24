@@ -26,9 +26,9 @@
 		"@sentry/react": "^10.65.0",
 		"@tanstack/react-router": "^1.95.0",
 		"better-auth": "^1.6.2",
-		"react": "19.2.8",
-		"react-dom": "19.2.8",
-		"three": "^0.185.1"
+		"react": "19.3.1",
+		"react-dom": "19.3.1",
+		"three": "^0.186.1"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",

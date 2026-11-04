@@ -19,11 +19,11 @@
 		"@quickengine/agent-core": "workspace:*",
 		"@quickengine/db": "workspace:*",
 		"@quickengine/module-registry": "workspace:*",
-		"zod": "^4.3.6"
+		"zod": "^4.6.6"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
 		"typescript": "^5",
-		"vitest": "^3.2.6"
+		"vitest": "^4.1.11"
 	}
 }

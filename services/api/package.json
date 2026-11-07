@@ -46,12 +46,12 @@
 		"@quickengine/realtime": "workspace:*",
 		"@quickengine/search": "workspace:*",
 		"@quickengine/storage": "workspace:*",
-		"@sentry/node": "^10.65.0",
+		"@sentry/node": "^11.10.0",
 		"@upstash/redis": "^1.38.0",
 		"drizzle-orm": "^0.45.1",
 		"hono": "^4.12.27",
 		"inngest": "^4.13.0",
-		"postgres": "^3.4.9",
+		"postgres": "^4.0.0",
 		"redis": "^6.1.0",
 		"zod": "^4.3.6",
 		"@quickengine/mod-content": "workspace:*",
@@ -61,10 +61,10 @@
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"@types/node": "^22.15.3",
+		"@types/node": "^26.6.6",
 		"tsx": "^4.21.0",
-		"tsup": "^8.4.0",
-		"typescript": "^5.9.3",
-		"vitest": "^3.2.6"
+		"tsup": "^9.0.0",
+		"typescript": "^7.0.2",
+		"vitest": "^5.1.0"
 	}
 }

@@ -20,6 +20,6 @@
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
-		"typescript": "^5"
+		"typescript": "^7"
 	}
 }

@@ -53,7 +53,7 @@
 		"inngest": "^4.13.0",
 		"postgres": "^3.4.9",
 		"redis": "^6.1.0",
-		"zod": "^4.3.6",
+		"zod": "^4.6.6",
 		"@quickengine/mod-content": "workspace:*",
 		"@quickengine/agent-runtime": "workspace:*",
 		"@quickengine/agent-providers": "workspace:*",
@@ -65,6 +65,6 @@
 		"tsx": "^4.21.0",
 		"tsup": "^8.4.0",
 		"typescript": "^5.9.3",
-		"vitest": "^3.2.6"
+		"vitest": "^4.1.11"
 	}
 }

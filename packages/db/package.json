@@ -35,7 +35,7 @@
 		"@quickengine/env": "workspace:*",
 		"drizzle-orm": "^0.45.1",
 		"postgres": "^3.4",
-		"zod": "^3.25.76"
+		"zod": "^4.6.6"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
@@ -43,7 +43,7 @@
 		"drizzle-kit": "^0.31.10",
 		"tsx": "^4.23.0",
 		"typescript": "5.9.2",
-		"vitest": "^3.2.6",
+		"vitest": "^4.1.11",
 		"@vercel/blob": "^2.6.1"
 	}
 }

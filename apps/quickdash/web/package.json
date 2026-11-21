@@ -29,8 +29,8 @@
 		"@tauri-apps/plugin-opener": "^2.5.4",
 		"ldrs": "^1.1.9",
 		"lightweight-charts": "^5.2.1",
-		"react": "19.2.8",
-		"react-dom": "19.2.8"
+		"react": "19.3.1",
+		"react-dom": "19.3.1"
 	},
 	"devDependencies": {
 		"@quickengine/config": "workspace:*",
